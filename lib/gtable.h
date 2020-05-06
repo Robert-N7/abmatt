@@ -12,7 +12,7 @@
 
 typedef struct {
    Table * table;
-   int * colWidths;
+   String ** formatCol;
    int * colTypes;
    bool isFixedSize; // fixed row size?
 } GTable;
