@@ -10,17 +10,22 @@
 #include "str.h"
 // constructor
 String * str(char * s) {
+   if(!s || !*s)
+      return 0;
    String * ret = malloc(sizeof(String));
    ret->capacity = ret->len = strlen(s);
-   ret->str = malloc(ret->len);
+   ret->str = malloc(ret->len + 1);
+   ret->str[ret->len] = 0;
    strncpy(ret->str, s, ret->len);
+   return ret;
 }
 
 // same as above but with size determined
 String * str_(char * s, int size) {
    String * ret = malloc(sizeof(String));
    ret->capacity = ret->len = size;
-   ret->str = malloc(size);
+   ret->str = malloc(size + 1);
+   ret->str[ret->len] = 0;
    memcpy(ret->str, s, size);
    return ret;
 }
@@ -31,20 +36,24 @@ String * str_empty(int capacity) {
    String * ret = malloc(sizeof(String));
    ret->capacity = capacity;
    ret->str = malloc(capacity);
+   ret->str[0] = 0;
    return ret;
 }
 
 // destructor
 void str_free(String * str) {
-   free(str->str);
-   free(str);
+   if(str) {
+      free(str->str);
+      free(str);
+   }
 }
 
 // copy
 String * str_copy(const String * str) {
    String * ret = malloc(sizeof(String));
    ret->capacity = ret->len = str->len;
-   ret->str = malloc(ret->len);
+   ret->str = malloc(ret->len + 1);
+   ret->str[ret->len] = 0;
    memcpy(ret->str, str->str, ret->len);
    return ret;
 }
@@ -53,7 +62,8 @@ String * str_copy(const String * str) {
 String * str_join(const String * str1, const String * str2) {
    String * s = malloc(sizeof(String));
    s->capacity = s->len = str1->len + str2->len;
-   s->str = malloc(s->len);
+   s->str = malloc(s->len + 1);
+   s->str[s->len] = 0;
    memcpy(s->str, str1, str1->len);
    memcpy(s->str + str1->len, str2, str2->len);
    return s;
@@ -68,9 +78,9 @@ void str_add(String * str1, const String * str2) {
 void str_append(String * str, const char * cptr, int length) {
    int newlen = str->len + length;
    if(newlen > str->capacity) {
-      char * tmp = realloc(str->str, newlen);
+      char * tmp = realloc(str->str, newlen + 1);
       if(!tmp) {
-         tmp = malloc(newlen);
+         tmp = malloc(newlen + 1);
          memcpy(tmp, str->str, str->len);
          free(str->str);
          str->str = tmp;
@@ -78,6 +88,7 @@ void str_append(String * str, const char * cptr, int length) {
       str->capacity = newlen;
    }
    memcpy(str->str + str->len, cptr, length);
+   str->str[newlen] = 0;
    str->len = newlen;
 }
 
@@ -87,7 +98,8 @@ String * str_slice(const String * str1, int start, int end) {
       return NULL;
    String * s = malloc(sizeof(String));
    s->capacity = s->len = end - start;
-   s->str = malloc(s->len);
+   s->str = malloc(s->len + 1);
+   s->str[s->len] = 0;
    memcpy(s->str, str1 + start, s->len);
    return s;
 }
@@ -113,6 +125,7 @@ String * str_replace(const String * haystack, const String * needle, const Strin
    int newlen = (replaceLen - needle->len) * replacementCount + haystack->len;
    String * new = str_empty(newlen);
    char *newcstr = new->str;
+   newcstr[newlen] = 0;
    // now construct the new string
    for(int i = 0; i < replacementCount; i++) {
       replacePoint = replaceIndices[i]; // replacement point in haystack
@@ -173,17 +186,13 @@ int str_write(String * str, int fd) {
 }
 
 // read
-String * str_read(int fd) {
-   int startCapacity = 128, result;
-   char buffer[startCapacity];
-   String * str = str_empty(startCapacity);
-   while((result = read(fd, buffer, startCapacity)) > 0) {
-      str_append(str, buffer, result);
-   }
-   if(!str->len) {
+String * str_read(int fd, int amount) {
+   String * str = str_empty(amount);
+   if((str->len = read(fd, str->str, amount)) <= 0) {
       str_free(str);
       return NULL;
    }
+   str->str[str->len] = 0;
    return str;
 }
 
@@ -231,11 +240,22 @@ int str_trim(String * str, const char * chrs) {
       for(int i = startTrim, j = 0; j < str->len; i++, j++) {
          tmp[j] = tmp[i];
       }
+   str->str[str->len] = 0;
    return endTrim + startTrim;
 }
 
-bool str_eq(String * s1, String * s2) {
+bool str_eq(const String * s1, const String * s2) {
    if(s1->len != s2->len)
       return false;
    return memcmp(s1->str, s2->str, s1->len) == 0;
+}
+
+bool str_eq_ignore_case(const String * s1, const String * s2) {
+   if(s1->len != s2->len)
+      return false;
+   for(char * c1 = s1->str, *c2 = s2->str; *c1; c1++, c2++) {
+      if(*c1 != *c2)
+         return false;
+   }
+   return true;
 }

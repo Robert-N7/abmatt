@@ -19,6 +19,9 @@ String * str(char * s);
 // same as above but with size determined
 String * str_(char * s, int size);
 
+// destructor
+void str_free(String * str);
+
 // for creating a string to be filled
 String * str_empty(int capacity);
 
@@ -59,9 +62,13 @@ void str_err(String * string);
 int str_write(String * str, int fd);
 
 // read
-String * str_read(int fd);
+String * str_read(int fd, int amount);
 
 // trim a string
 int str_trim(String * str, const char * chrs);
+
+bool str_eq(const String * s1, const String * s2);
+
+bool str_eq_ignore_case(const String * s1, const String * s2);
 
 #endif
