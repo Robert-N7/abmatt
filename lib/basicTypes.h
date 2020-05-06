@@ -17,18 +17,21 @@
 #define bt_Byte8 0x308
 #define bt_Nibble4 0x04
 #define bt_Bool1 0x01
+#define bt_TRUE "TRUE"
+#define bt_FALSE "FALSE"
 typedef int BType;
-
 
 #include <stdbool.h>
 
-bool btype_is_int(char * str) {
+bool bt_convert_bool(char * str, bool * retBool);
 
-}
+bool bt_convert_int(char * str, long int * retInt);
 
-bool btype_is_float(char * str) {
+bool bt_convert_float(char * str, float * retFloat);
 
-}
+bool bt_convert_double(char * str, double * retDouble);
 
-int btype_size(BType type) {   return type & 0x00ff;   }
+int bt_size(BType type) {   return type & 0x00ff;   }
+
+
 #endif

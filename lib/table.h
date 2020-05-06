@@ -12,20 +12,29 @@ typedef struct _Table {
    int columns;
    Vector * dataRows;
    int * colOffsets; // the offsets of columns
+   void * defaults;
    FreeFunc freeFunc;
 } Table;
 
-// the variable arguments is the size of each column type
+// ... is the size of each column type
 Table * table_new(FreeFunc freeFunc, int rows, int cols, ...);
+Table * table_vnew(FreeFunc freeFunc, int rows, int cols, va_list args);
+Table * table_anew(FreeFunc freeFunc, int rows, int cols, int * args);
 
 void table_destroy(Table * table);
 
+// ... = list of strings
 void table_addHeader(Table * table,...);
+void table_vaddHeader(Table * table, va_list args);
+
+void table_setDefaults(Table * table,...);
+void table_vsetDefaults(Table * table, va_list args);
 
 int table_rowCount(Table * table) {    return table->dataRows->size;  }
 int table_colCount(Table * table) {    return table->columns; }
 
 void table_addRow(Table * table,...);
+void table_vaddRow(Table * table, va_list args);
 
 void * table_getRow(Table * table, int row);
 

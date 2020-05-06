@@ -5,23 +5,49 @@
 #include <stdlib.h>
 
 Table * table_new(FreeFunc freeFunc, int rows, int cols, ...) {
-   Table * new = malloc(sizeof(Table));
    va_list list;
    va_start(list, cols);
-   int * colOffsets = malloc((cols + 1) * sizeof(int));
-   colOffsets[0] = 0;
-   for(int i = 0, offset = 0; i < cols; i++) {
-      offset += va_arg(list, int);
-      colOffsets[i + 1] = offset;
-   }
-   new->colOffsets = colOffsets;
+   Table * ret = table_vnew(freeFunc, rows, cols, list);
    va_end(list);
-   new->dataRows = vector_new(rows, sizeof(void *), NULL);
-   new->header = 0;
-   new->columns = columns;
-   new->header = header;
-   new->freeFunc = freeFunc;
-   return new;
+   return ret;
+}
+
+Table * table_vnew(FreeFunc freeFunc, int rows, int cols, va_list args) {
+  Table * new = malloc(sizeof(Table));
+  int * colOffsets = malloc((cols + 1) * sizeof(int));
+  colOffsets[0] = 0;
+  for(int i = 0, offset = 0; i < cols; i++) {
+     offset += va_arg(args, int);
+     colOffsets[i + 1] = offset;
+  }
+  new->colOffsets = colOffsets;
+  new->dataRows = vector_new(rows, sizeof(void *), NULL);
+  new->defaults = malloc(colOffsets[cols]);
+  bzero(new->defaults, colOffsets[cols]);
+  new->header = 0;
+  new->columns = columns;
+  new->header = header;
+  new->freeFunc = freeFunc;
+  return new;
+}
+
+Table * table_anew(FreeFunc freeFunc, int rows, int cols, int * args) {
+  Table * new = malloc(sizeof(Table));
+  int * colOffsets = malloc((cols + 1) * sizeof(int));
+  colOffsets[0] = 0;
+  for(int i = 0, offset = 0; i < cols; i++) {
+     offset += args[i];
+     colOffsets[i + 1] = offset;
+  }
+  new->colOffsets = colOffsets;
+  new->dataRows = vector_new(rows, sizeof(void *), NULL);
+  new->defaults = malloc(colOffsets[cols]);
+  bzero(new->defaults, colOffsets[cols]);
+  new->header = 0;
+  new->columns = columns;
+  new->header = header;
+  new->freeFunc = freeFunc;
+  return new;
 }
 
 void table_destroy(Table * table) {
@@ -35,6 +61,11 @@ void table_destroy(Table * table) {
       free(row);
    }
    vector_destroy(table->dataRows);
+   if(table->freeFunc)
+     for(int j = 0; j < table->columns; j++) {
+        table->freeFunc(defaults + table->colOffsets[j]);
+     }
+   free(table->defaults);
    free(table->header);
    free(table->colOffsets);
    free(table);
@@ -43,28 +74,53 @@ void table_destroy(Table * table) {
 void table_addHeader(Table * table,...) {
    va_list valist;
    va_start(valist, table->columns);
-   free(table->header);
-   table->header = malloc(columns * sizeof(String *));
-   String * s;
-   for(int i = 0; i < table->columns; i++) {
-      s = va_arg(valist, String *);
-      table->header[i] = s;
-   }
+   table_vaddHeader( table, valist);
    va_end(valist);
 }
+
+void table_vaddHeader(Table * table, va_list args) {
+  if(!table->header)
+    table->header = malloc(columns * sizeof(String *));
+  String * s;
+  for(int i = 0; i < table->columns; i++) {
+     s = va_arg(args, String *);
+     table->header[i] = s;
+  }
+}
+
+void table_setDefaults(Table * table,...) {
+  va_list list;
+  va_start(list, table->columns);
+  table_vsetDefaults(table, list);
+  va_end(list);
+}
+
+void table_vsetDefaults(Table * table, va_list args) {
+  void * ptr, *defaults = table->defaults;
+  int * offsets = table->colOffsets;
+  for(int i = 0; i < table->columns; i++) {
+    ptr = va_arg(args, void *);
+    memcpy(defaults + offsets[i], ptr, offsets[i + 1] - offsets[i]);
+  }
+}
+
 
 void table_addRow(Table * table,...) {
    va_list valist;
    va_start(valist, table->columns);
-   int * offsets = table->colOffsets;
-   void * rowptr = malloc(offsets[table->columns]);
-   void * s;
-   vector_push(table->dataRows, rowptr);
-   for(int i = 0; i < table->columns; i++) {
-      s = va_arg(valist, void *);
-      memcpy(rowptr + offsets[i], s, offsets[i + 1] - offsets[i]);
-   }
+   table_vaddRow(table, valist);
    va_end(valist);
+}
+
+void table_vaddRow(Table * table, va_list args) {
+  int * offsets = table->colOffsets;
+  void * rowptr = malloc(offsets[table->columns]);
+  void * s;
+  vector_push(table->dataRows, rowptr);
+  for(int i = 0; i < table->columns; i++) {
+     s = va_arg(args, void *);
+     memcpy(rowptr + offsets[i], s, offsets[i + 1] - offsets[i]);
+  }
 }
 
 void * table_getRow(Table * table, int row) {
