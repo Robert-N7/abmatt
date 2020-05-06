@@ -4,6 +4,8 @@
 #ifndef __STR_H
 #define __STR_H
 
+#include <stdbool.h>
+
 // string structure
 typedef struct _String {
    int len;
@@ -54,6 +56,9 @@ void str_lower(String * string);
 
 // print
 void str_print(String * string);
+
+// print up to n characters
+void str_printn(String * string, int n);
 
 // err
 void str_err(String * string);

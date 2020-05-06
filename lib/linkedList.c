@@ -88,8 +88,6 @@ void * list_prepend(List * list, const void * element) {
 
 // Adds a node to end of list
 void * list_append(List * list, const void * element) {
-  if(list->elementSize == 0)
-    return list_append_str(list, element, strlen(element));
   ListNode * node = malloc(sizeof(ListNode));
   node->data = malloc(list->elementSize);
   memcpy(node->data, element, list->elementSize);
@@ -129,8 +127,6 @@ ListNode * list_next(List * list, ListNode * current) {
 
 // list remove, returns an element from list (must be freed)
 void * list_remove(List * list, void * element) {
-  if(list->elementSize == 0) // string case
-    return list_remove_str(list, element);
   for(ListNode * ln = list->head, *prev = 0; ln; ln = ln->next) {
     if(memcmp(element, ln->data, list->elementSize) == 0) {
       // fix up nodes
@@ -208,15 +204,6 @@ ListNode * list_find(List * list, void * element) {
   for(ListNode * n = list->head; n; n = n->next) {
     if(memcmp(n->data, element, list->elementSize)) {
       return n;
-    }
-  }
-  return NULL;
-}
-
-ListNode * list_find_str(List * list, char * element) {
-  for(ListNode * ln = list->head; ln; ln = ln->next) {
-    if(strcmp(ln->data, element) == 0) {
-      return ln;
     }
   }
   return NULL;

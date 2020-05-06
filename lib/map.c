@@ -78,7 +78,7 @@ void * map_key(Map * m, const char * key) {
 }
 
 // get value from map, allocating memory
-void * map_get(Map * m, const String * key) {
+void * map_get(Map * m, const char * key) {
    char * val;
    if(val = map_key(m, key)) {
       void * element = malloc(m->elementSize);
@@ -123,7 +123,7 @@ void * map_set(Map *m, const char * key, const void * value) {
   }
   // Didn't find key in list - create it
   MapNode * newNode = malloc(sizeof(struct _mapNode));
-  newNode->key = str(key);
+  newNode->key = cstr_cpyh(key);
   newNode->next = NULL; // set next to null since it's the last
   newNode->value = malloc(m->elementSize);
   memcpy(newNode->value, value, m->elementSize);

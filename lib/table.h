@@ -35,23 +35,18 @@ int table_colCount(Table * table) {    return table->columns; }
 
 void table_addRow(Table * table,...);
 void table_vaddRow(Table * table, va_list args);
-
+void table_addEmptyRow(Table * table); // adds row with default values
 void * table_getRow(Table * table, int row);
-
 void table_deleteRow(Table * table, int row);
-
 void table_insertRow(Table * table, int row, ...);
-
 void table_swapRows(Table * table, int row1, int row2);
-
 void table_fillRow(Table * table, int row, void * value);
+
 void table_fillColumn(Table * table, int col, void * value);
 
 void * table_getByName(Table * table, int row, String * col);
 void * table_get(Table * table, int row, int col);
-
 void table_set(Table * table, int row, int col, void * data);
-
 void table_setByName(Table * table, int row, String * name, void * data);
 
 int table_findName(Table * table, String * name);

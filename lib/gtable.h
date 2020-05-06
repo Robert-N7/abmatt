@@ -8,18 +8,19 @@
 #include "table.h"
 #include "basicTypes.h"
 #include <stdarg.h>
+#include <stdbool.h>
 
 typedef struct {
    Table * table;
    int * colWidths;
    int * colTypes;
-   void * defaults; // the default value for rows
+   bool isFixedSize; // fixed row size?
 } GTable;
 
 // ... = basic types
 GTable * gtable_new(FreeFunc freeFunc, int rows, int cols, ...);
 
-vodi gtable_destroy(GTable * table);
+void gtable_destroy(GTable * table);
 
 // ... = default values for row
 void gtable_setDefaults(GTable * table, ...);

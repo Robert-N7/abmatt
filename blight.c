@@ -133,19 +133,19 @@ int main(int argc, char ** argv) {
 }
 
 void bl_map_init(Blight * blight) {
-   
+
 }
 
 
-bool bl_set(BinFile * bin, String * sectionName, int index, String * Key, String * value) {
+bool bl_set(BinFile * bin, String * sectionName, int sectionIndex, String * key, String * value, int elementIndex) {
    // attempt to change the value
-   BinHub * hub = bin_getSection(*bin->head, section->str);
-   if(!hub) {
-      fprintf(stderr, "Failed to find section %s\n", section->str);
+   BinHub ** hubs = bin_getSection(*bin->head, sectionName->str);
+   if(!hubs) {
+      fprintf(stderr, "Failed to find section %s\n", sectionName->str);
       return false;
    }
 
-   hub += sectionIndex;
+   BinHub * hub = hubs[sectionIndex];
    BinNode * node = bin_getNode(hub->head, key->str);
    if(!node) {
       fprintf(stderr, "Failed to find Key %s\n", key->str);

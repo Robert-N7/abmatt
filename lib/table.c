@@ -3,6 +3,7 @@
 ************************************************************/
 #include "table.h"
 #include <stdlib.h>
+#include <string.h>
 
 Table * table_new(FreeFunc freeFunc, int rows, int cols, ...) {
    va_list list;
@@ -25,8 +26,8 @@ Table * table_vnew(FreeFunc freeFunc, int rows, int cols, va_list args) {
   new->defaults = malloc(colOffsets[cols]);
   bzero(new->defaults, colOffsets[cols]);
   new->header = 0;
-  new->columns = columns;
-  new->header = header;
+  new->columns = cols;
+  new->header = 0;
   new->freeFunc = freeFunc;
   return new;
 }
@@ -44,8 +45,8 @@ Table * table_anew(FreeFunc freeFunc, int rows, int cols, int * args) {
   new->defaults = malloc(colOffsets[cols]);
   bzero(new->defaults, colOffsets[cols]);
   new->header = 0;
-  new->columns = columns;
-  new->header = header;
+  new->columns = cols;
+  new->header = 0;
   new->freeFunc = freeFunc;
   return new;
 }
@@ -63,7 +64,7 @@ void table_destroy(Table * table) {
    vector_destroy(table->dataRows);
    if(table->freeFunc)
      for(int j = 0; j < table->columns; j++) {
-        table->freeFunc(defaults + table->colOffsets[j]);
+        table->freeFunc(table->defaults + table->colOffsets[j]);
      }
    free(table->defaults);
    free(table->header);
@@ -73,14 +74,14 @@ void table_destroy(Table * table) {
 
 void table_addHeader(Table * table,...) {
    va_list valist;
-   va_start(valist, table->columns);
+   va_start(valist, table);
    table_vaddHeader( table, valist);
    va_end(valist);
 }
 
 void table_vaddHeader(Table * table, va_list args) {
   if(!table->header)
-    table->header = malloc(columns * sizeof(String *));
+    table->header = malloc(table->columns * sizeof(String *));
   String * s;
   for(int i = 0; i < table->columns; i++) {
      s = va_arg(args, String *);
@@ -90,7 +91,7 @@ void table_vaddHeader(Table * table, va_list args) {
 
 void table_setDefaults(Table * table,...) {
   va_list list;
-  va_start(list, table->columns);
+  va_start(list, table);
   table_vsetDefaults(table, list);
   va_end(list);
 }
@@ -107,7 +108,7 @@ void table_vsetDefaults(Table * table, va_list args) {
 
 void table_addRow(Table * table,...) {
    va_list valist;
-   va_start(valist, table->columns);
+   va_start(valist, table);
    table_vaddRow(table, valist);
    va_end(valist);
 }
@@ -121,6 +122,17 @@ void table_vaddRow(Table * table, va_list args) {
      s = va_arg(args, void *);
      memcpy(rowptr + offsets[i], s, offsets[i + 1] - offsets[i]);
   }
+}
+
+// adds row with default values
+void table_addEmptyRow(Table * table) {
+   int * offsets = table->colOffsets;
+   void * defaults = table->defaults;
+   void * rowptr = malloc(offsets[table->columns]);
+   vector_push(table->dataRows, rowptr);
+   for(int i = 0; i < table->columns; i++) {
+      memcpy(rowptr + offsets[i], defaults + offsets[i], offsets[i + 1] - offsets[i]);
+   }
 }
 
 void * table_getRow(Table * table, int row) {
@@ -179,12 +191,12 @@ void table_set(Table * table, int row, int col, void * data) {
 
 void table_setByName(Table * table, int row, String * name, void * data) {
    int col = table_findName(table, name);
-   table_set(table, row, col, data)
+   table_set(table, row, col, data);
 }
 
 int table_findName(Table * table, String * name) {
    String ** header = table->header;
-   for(int i = 0; i < header; i++) {
+   for(int i = 0; i < table->columns; i++) {
       if(header[i] == name) {
          return i;
       }

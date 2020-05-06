@@ -175,6 +175,11 @@ void str_print(String * string) {
    write(1, string->str, string->len);
 }
 
+// print n
+void str_printn(String * string, int n) {
+   write(1, string->str, n > string->len ? string->len : n);
+}
+
 // err
 void str_err(String * string) {
    write(2, string->str, string->len);

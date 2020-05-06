@@ -19,7 +19,7 @@
 #define bt_Bool1 0x01
 #define bt_TRUE "TRUE"
 #define bt_FALSE "FALSE"
-typedef int BType;
+typedef int bt_Type;
 
 #include <stdbool.h>
 
@@ -31,7 +31,7 @@ bool bt_convert_float(char * str, float * retFloat);
 
 bool bt_convert_double(char * str, double * retDouble);
 
-int bt_size(BType type) {   return type & 0x00ff;   }
+int bt_size(bt_Type type) {   return type & 0x00ff;   }
 
 
 #endif

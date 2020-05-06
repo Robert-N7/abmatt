@@ -41,7 +41,7 @@ typedef struct _Blight {
 void bl_template_init();
 Blight * blight_read(BinFile * bin);
 
-bool bl_set(BinFile * bin, String * sectionName, int index, String * Key, String * value);
+bool bl_set(BinFile * bin, String * sectionName, int sectionIndex, String * key, String * value, int elementIndex);
 
 void blight_to_string(Blight * blight);
 

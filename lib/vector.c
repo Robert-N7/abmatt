@@ -10,7 +10,7 @@ Vector * vector_new(int capacity, int elementSize, FreeFunc freeFunc) {
    new->capacity = capacity;
    new->freeFunc = freeFunc;
    new->elementSize = elementSize;
-   new->size = 0
+   new->size = 0;
    new->data = malloc(capacity);
    return new;
 }
@@ -21,7 +21,7 @@ void vector_append(Vector * original, const Vector * newData) {
    }
    // they better be same size data
    memcpy(original->data + original->size * original->elementSize, newData->data, newData->size * original->elementSize);
-   original->size += newData->size
+   original->size += newData->size;
 }
 
 void * vector_get(Vector * vector, int index) {
@@ -51,16 +51,19 @@ Vector * vector_copy(Vector * vector) {
 
 void vector_resize(Vector * vector, int newCapacity) {
    vector->capacity = newCapacity;
-   newData = malloc(vector->capacity * vector->elementSize);
-   memcpy(newData, vector->data, vector->elementSize * vector->size);
-   free(vector->data);
-   vector->data = newData;
+   void * ptr = realloc(vector->data, newCapacity);
+   if(!ptr) {
+      ptr = malloc(vector->capacity * vector->elementSize);
+      memcpy(ptr, vector->data, vector->elementSize * vector->size);
+      free(vector->data);
+      vector->data = ptr;
+   }
 }
 
 void vector_destroy(Vector * vector) {
    if(vector->freeFunc)
    for(int i = 0; i < vector->size; i++) {
-      vector->freeFunc(vector->data[i]);
+      vector->freeFunc(vector->data + vector->elementSize * i);
    }
    free(vector->data);
    free(vector);
@@ -102,7 +105,7 @@ void vector_delete(Vector * vector, int index) {
 
 void vector_deleteRange(Vector * vector, int start, int finish) {
    if(vector->freeFunc) {
-      for(int i = start; i < finish, i++)
+      for(int i = start; i < finish; i++)
          vector->freeFunc(vector->data + i * vector->elementSize);
    }
    int trailing = vector->size - finish;
@@ -115,10 +118,10 @@ void vector_deleteRange(Vector * vector, int start, int finish) {
 
 void vector_insert(Vector * vector, int index, void * data) {
    if(vector->size >= vector->capacity)
-      vector_resize(vewctor, vector->capacity * 2);
+      vector_resize(vector, vector->capacity * 2);
    // since we don't want to overwrite data.. start at the end
    int i = vector->size, eSize = vector->elementSize;
-   for(void * ptr = vector->size * eSize; i > index; ptr -= eSize, i--) {
+   for(void * ptr = vector->data + i * eSize; i > index; ptr -= eSize, i--) {
       memcpy(ptr, ptr - eSize, eSize);
    }
    // now we made room...
