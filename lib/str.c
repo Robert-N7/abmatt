@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include "str.h"
+#include "vector.h"
 // constructor
 String * str(char * s) {
    if(!s || !*s)
@@ -94,8 +95,12 @@ void str_append(String * str, const char * cptr, int length) {
 
 // slice from [start:end)
 String * str_slice(const String * str1, int start, int end) {
-   if(end <= start || end > str1->len) // nope
+   if(end <= STR_END)
+      end = str1->len + 1;
+   if(end < start || end > str1->len + 1) // nope
       return NULL;
+   else if(end == start)
+      end += 1;
    String * s = malloc(sizeof(String));
    s->capacity = s->len = end - start;
    s->str = malloc(s->len + 1);
@@ -145,6 +150,8 @@ String * str_replace(const String * haystack, const String * needle, const Strin
 
 // is string in - returns -1 if not found
 int str_in(const String * haystack, const String * needle, int start) {
+   if(start >= haystack->len)
+      return STR_NOT_FOUND;
    char *h = haystack->str, *n = needle->str;
    for(int i = start, nlen = needle->len, maxI = haystack->len - nlen; i <= maxI; i++) {
       if(h[i] == *n && (memcmp(h + i, n, nlen) == 0)) {
@@ -153,6 +160,43 @@ int str_in(const String * haystack, const String * needle, int start) {
    }
    return STR_NOT_FOUND;
 }
+
+// is string in - returns -1 if not found
+int str_in_ignore_case(const String * haystack, const String * needle, int start) {
+   if(start >= haystack->len)
+      return STR_NOT_FOUND;
+   char *h = haystack->str, *n = needle->str;
+   for(int i = start, nlen = needle->len, maxI = haystack->len - nlen; i <= maxI; i++) {
+      if(toupper(h[i]) == toupper(*n)) {
+         for(char * h = h[i + 1], *ne = n + 1; toupper(*h) == toupper(*ne); h++, ne++) {
+            if(!*ne)
+               return i;
+            else if(!*h)
+               return STR_NOT_FOUND;
+         }
+      }
+   }
+   return STR_NOT_FOUND;
+}
+
+// is string in - returns -1 if not found
+int strc_in_ignore_case(const String * haystack, const char * needle, int start) {
+   if(start >= haystack->len)
+      return STR_NOT_FOUND;
+   char *h = haystack->str, *n = needle;
+   for(int i = start, nlen = strlen(needle), maxI = haystack->len - nlen; i <= maxI; i++) {
+      if(toupper(h[i]) == toupper(*n)) {
+         for(char * h = h[i + 1], *ne = n + 1; toupper(*h) == toupper(*ne); h++, ne++) {
+            if(!*ne)
+               return i;
+            else if(!*h)
+               return STR_NOT_FOUND;
+         }
+      }
+   }
+   return STR_NOT_FOUND;
+}
+
 
 // upper
 void str_upper(String * string) {
@@ -263,4 +307,60 @@ bool str_eq_ignore_case(const String * s1, const String * s2) {
          return false;
    }
    return true;
+}
+
+Vector * str_split(const String * haystack, const String * needle) {
+   int start = 0, end = 0;
+   if(end = str_in(haystack, needle, 0) == STR_NOT_FOUND)
+      return NULL;
+   Vector * ret = vector_new(8, sizeof(String *), str_free);
+   String * sub = str_slice(haystack, start, end);
+   vector_push(ret, &sub);
+   start += needle->len;
+   while((end = str_in(haystack, needle, start)) != STR_NOT_FOUND) {
+      sub = str_slice(haystack, start, end);
+      vector_push(ret, &sub);
+      start += needle->len;
+   }
+   return ret;
+}
+
+bool strc_eq(const String * s1, const char * s2) {
+   return strcmp(s1->str, s2) == 0;
+}
+
+bool strc_eq_ignore_case(const String * s1, const char * s2) {
+   const char *c1 = s1->str, *c2 = s2;
+   for(; *c1 && *c2; c1++, c2++)
+      if(toupper(*c1) != toupper(*c2))
+         return false;
+   return !(*c1 || *c2);
+}
+
+String * strc_replace(const String * haystack, const char * needle, const char * replacement, int count) {
+   String * n = str(needle);
+   String * result = str_replace(haystack, needle, replacement, count);
+   str_free(n);
+   return result;
+}
+
+int strc_in(const String * haystack, const char * needle, int start) {
+   char * res = strstr(haystack->str + start, needle);
+   return res ? res - haystack->str : STR_NOT_FOUND;
+}
+
+Vector * strc_split(const String * haystack, const char * needle) {
+   int start = 0, end = 0, nlen = strlen(needle);
+   if(end = strc_in(haystack, needle, 0) == STR_NOT_FOUND)
+      return NULL;
+   Vector * ret = vector_new(8, sizeof(String *), str_free);
+   String * sub = str_slice(haystack, start, end);
+   vector_push(ret, &sub);
+   start += nlen;
+   while((end = strc_in(haystack, needle, start)) != STR_NOT_FOUND) {
+      sub = str_slice(haystack, start, end);
+      vector_push(ret, &sub);
+      start += nlen;
+   }
+   return ret;
 }

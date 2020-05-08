@@ -17,6 +17,7 @@ typedef struct {
 Vector * vector_new(int capacity, int elementSize, FreeFunc freeFunc);
 
 Vector * vector_copy(Vector * vector);
+Vector * vector_slice(Vector * vector, int start, int end);
 
 void vector_append(Vector * original, const Vector * newData);
 

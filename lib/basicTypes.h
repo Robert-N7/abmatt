@@ -29,11 +29,12 @@ bool bt_convert_int(char * str, long int * retInt);
 bool bt_convert_float(char * str, float * retFloat);
 bool bt_convert_double(char * str, double * retDouble);
 String * bt_toString(bt_Type type, void * data, char * precision);
+bt_Type bt_setByteSize(short size) { return 0x04ff & size; } // 255 max
 
 int bt_size(bt_Type type) {   return type & 0x00ff;   }
 bool bt_isInt(bt_Type type) { return !(type & 0xfe00); }
 bool bt_isFloat(bt_Type type) { return type & 0x0200; }
+bool bt_isnum(bt_Type type) { return !(type & 0xfc00); }
 bool bt_isChar(bt_Type type) { return type & 0x0400; }
 bool bt_isBool(bt_Type type) { return type & 0x0f00; }
-
 #endif

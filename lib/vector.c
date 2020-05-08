@@ -25,11 +25,16 @@ void vector_append(Vector * original, const Vector * newData) {
 }
 
 void * vector_get(Vector * vector, int index) {
-   return vector->data + index * vector->elementSize;
+   if(index < vector->size)
+      return vector->data + index * vector->elementSize;
+   return NULL;
 }
 
 void vector_set(Vector * vector, int index, void * data) {
-   memcpy(vector->data + index * vector->elementSize, data, vector->elementSize);
+   if(index >= vector->size)
+      fprintf(stderr, "Vector index %d out of range\n", index);
+   else
+      memcpy(vector->data + index * vector->elementSize, data, vector->elementSize);
 }
 
 void vector_swap(Vector * vector, int index1, int index2) {
@@ -49,6 +54,15 @@ Vector * vector_copy(Vector * vector) {
    return vec;
 }
 
+
+Vector * vector_slice(Vector * vector, int start, int end) {
+   int len = end - start;
+   Vector * ret = vector_new(len, vector->elementSize, vector->freeFunc);
+   ret->size = len;
+   memcpy(ret->data, vector->data + vector->elementSize * start, len * vector->elementSize);
+   return ret;
+}
+
 void vector_resize(Vector * vector, int newCapacity) {
    vector->capacity = newCapacity;
    void * ptr = realloc(vector->data, newCapacity);
@@ -62,9 +76,9 @@ void vector_resize(Vector * vector, int newCapacity) {
 
 void vector_destroy(Vector * vector) {
    if(vector->freeFunc)
-   for(int i = 0; i < vector->size; i++) {
-      vector->freeFunc(vector->data + vector->elementSize * i);
-   }
+      for(int i = 0; i < vector->size; i++) {
+         vector->freeFunc(vector->data + vector->elementSize * i);
+      }
    free(vector->data);
    free(vector);
 }

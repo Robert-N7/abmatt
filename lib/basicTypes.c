@@ -9,9 +9,9 @@
 #include <stdint.h>
 
 bool bt_convert_bool(String * str, bool * retBool) {
-  if(cstr_eq_ignore_case(str->str, bt_TRUE)) {
+  if(cstr_eq_ignore_case(str->str, bt_TRUE) || atoi(str->str)) {
     *retBool = true;
-  } else if(cstr_eq_ignore_case(str->str, bt_FALSE))
+} else if(cstr_eq_ignore_case(str->str, bt_FALSE) || str->str[0] == '0')
       *retBool = false;
   else
     return false;

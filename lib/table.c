@@ -150,6 +150,9 @@ void table_deleteRow(Table * table, int row) {
    vector_delete(table->dataRows, row);
 }
 
+void table_insertRows(Table * table, int index, int count) {
+}
+
 void table_swapRows(Table * table, int row1, int row2) {
    vector_swap(table->dataRows, row1, row2);
 }
@@ -202,4 +205,56 @@ int table_findName(Table * table, String * name) {
       }
    }
    return 0;
+}
+
+// same as find name except returns -1 on failure
+int table_hasHeader(Table * table, String * header) {
+   String ** header = table->header;
+   for(int i = 0; i < table->columns; i++) {
+      if(str_eq(header[i], header))
+         return i;
+   }
+   return -1;
+}
+
+// Ranges - ends are not inclusive - not to be used with freefunc
+Range * table_getRange(Table * table, int startRow, int startCol, int endRow, int endCol) {
+   Range * rng = malloc(sizeof(Range));
+   rng->rowStart = startRow;
+   rng->rowEnd = endRow;
+   rng->colStart = startCol;
+   rng->colEnd = endCol;
+   rng->dataRows = vector_new(endRow - startRow, sizeof(char *), 0);
+   int * colOffsets = table->colOffsets;
+   void * crow, *copy;
+   for(int i = startRow, startOffset = colOffsets[startCol], len = colOffsets[endCol] - startOffset;\
+       i < endRow; i++) {
+      cRow = table_getRow(table, i);
+      copy = malloc(len);
+      memcpy(copy, cRow + startOffset, len);
+      vector_push(rng->dataRows, &copy);
+   }
+   return rng;
+}
+
+// doesn't handle pasting different columns - overwrites original data with pasted
+void table_pasteRange(Table * table, Range * rng, int rowStart, int rowEnd) {
+   int memStart = table->colOffsets[rng->colStart], memLen = table->colOffsets[rng->colEnd] - memStart;
+   void *trow, *rrow;
+   for(int i = rowStart, j = rng->rowStart; i < rowEnd; i++, j++) {
+      if(j >= rng->rowEnd)
+         j = rng->rowStart;
+      trow = vector_get(table->dataRows, i);
+      rrow = vector_get(rng->dataRows, j);
+      memcpy(trow + memStart, rrow + memStart, memLen);
+   }
+}
+
+// does not free underlying data! if any
+void table_freeRange(Range * range) {
+   for(int i = range->rowStart; i < range->rowEnd; i++) {
+      free(vector_get(range->dataRows, i));
+   }
+   vector_destroy(range->dataRows);
+   free(range);
 }

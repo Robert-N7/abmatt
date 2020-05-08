@@ -5,6 +5,7 @@
 #define __STR_H
 
 #include <stdbool.h>
+#include "vector.h"
 
 // string structure
 typedef struct _String {
@@ -14,6 +15,7 @@ typedef struct _String {
 } String;
 
 #define STR_NOT_FOUND -1
+#define STR_END -1
 
 // constructor
 String * str(char * s);
@@ -48,6 +50,12 @@ String * str_replace(const String * haystack, const String * needle, const Strin
 // is string in - returns -1 if not found
 int str_in(const String * haystack, const String * needle, int start);
 
+// is string in - returns -1 if not found
+int str_in_ignore_case(const String * haystack, const String * needle, int start);
+
+// is string in - returns -1 if not found
+int strc_in_ignore_case(const String * haystack, const char * needle, int start);
+
 // upper
 void str_upper(String * string);
 
@@ -75,5 +83,18 @@ int str_trim(String * str, const char * chrs);
 bool str_eq(const String * s1, const String * s2);
 
 bool str_eq_ignore_case(const String * s1, const String * s2);
+
+Vector * str_split(const String * haystack, const String * needle);
+
+// c string compatibility
+bool strc_eq(const String * s1, const char * s2);
+
+bool strc_eq_ignore_case(const String * s1, const char * s2);
+
+String * strc_replace(const String * haystack, const char * needle, const char * replacement, int count);
+
+int strc_in(const String * haystack, const char * needle, int start);
+
+Vector * strc_split(const String * haystack, const char * needle);
 
 #endif
