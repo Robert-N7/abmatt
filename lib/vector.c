@@ -3,16 +3,17 @@
 ************************************************************/
 #include "vector.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 Vector * vector_new(int capacity, int elementSize, FreeFunc freeFunc) {
-   Vector * new = malloc(sizeof(Vector));
-   new->capacity = capacity;
-   new->freeFunc = freeFunc;
-   new->elementSize = elementSize;
-   new->size = 0;
-   new->data = malloc(capacity);
-   return new;
+   Vector * ret = (Vector *) malloc(sizeof(Vector));
+   ret->capacity = capacity;
+   ret->freeFunc = freeFunc;
+   ret->elementSize = elementSize;
+   ret->size = 0;
+   ret->data = malloc(capacity);
+   return ret;
 }
 
 void vector_append(Vector * original, const Vector * newData) {

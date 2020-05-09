@@ -14,41 +14,42 @@ Table * table_new(FreeFunc freeFunc, int rows, int cols, ...) {
 }
 
 Table * table_vnew(FreeFunc freeFunc, int rows, int cols, va_list args) {
-  Table * new = malloc(sizeof(Table));
-  int * colOffsets = malloc((cols + 1) * sizeof(int));
+  Table * newtable = (Table *) malloc(sizeof(Table));
+  int * colOffsets = (int *) malloc((cols + 1) * sizeof(int));
   colOffsets[0] = 0;
   for(int i = 0, offset = 0; i < cols; i++) {
      offset += va_arg(args, int);
      colOffsets[i + 1] = offset;
   }
-  new->colOffsets = colOffsets;
-  new->dataRows = vector_new(rows, sizeof(void *), NULL);
-  new->defaults = malloc(colOffsets[cols]);
-  bzero(new->defaults, colOffsets[cols]);
-  new->header = 0;
-  new->columns = cols;
-  new->header = 0;
-  new->freeFunc = freeFunc;
-  return new;
+  newtable->colOffsets = colOffsets;
+  newtable->dataRows = vector_new(rows, sizeof(void *), NULL);
+  newtable->defaults = malloc(colOffsets[cols]);
+  bzero(newtable->defaults, colOffsets[cols]);
+  newtable->header = 0;
+  newtable->columns = cols;
+  newtable->header = 0;
+  newtable->freeFunc = freeFunc;
+  return newtable;
 }
 
 Table * table_anew(FreeFunc freeFunc, int rows, int cols, int * args) {
-  Table * new = malloc(sizeof(Table));
-  int * colOffsets = malloc((cols + 1) * sizeof(int));
+  Table * ret = (Table *) malloc(sizeof(Table));
+  int * colOffsets = (int *) malloc((cols + 1) * sizeof(int));
   colOffsets[0] = 0;
   for(int i = 0, offset = 0; i < cols; i++) {
      offset += args[i];
      colOffsets[i + 1] = offset;
   }
-  new->colOffsets = colOffsets;
-  new->dataRows = vector_new(rows, sizeof(void *), NULL);
-  new->defaults = malloc(colOffsets[cols]);
-  bzero(new->defaults, colOffsets[cols]);
-  new->header = 0;
-  new->columns = cols;
-  new->header = 0;
-  new->freeFunc = freeFunc;
-  return new;
+  ret->colOffsets = colOffsets;
+  ret->dataRows = vector_new(rows, sizeof(void *), NULL);
+  ret->defaults = malloc(colOffsets[cols]);
+  bzero(ret->defaults, colOffsets[cols]);
+  
+  ret->header = 0;
+  ret->columns = cols;
+  ret->header = 0;
+  ret->freeFunc = freeFunc;
+  return ret;
 }
 
 void table_destroy(Table * table) {
@@ -81,7 +82,7 @@ void table_addHeader(Table * table,...) {
 
 void table_vaddHeader(Table * table, va_list args) {
   if(!table->header)
-    table->header = malloc(table->columns * sizeof(String *));
+    table->header = (String **) malloc(table->columns * sizeof(String *));
   String * s;
   for(int i = 0; i < table->columns; i++) {
      s = va_arg(args, String *);
@@ -151,6 +152,11 @@ void table_deleteRow(Table * table, int row) {
 }
 
 void table_insertRows(Table * table, int index, int count) {
+  // first gather the current rows
+  Vector * v = vector_slice(table->dataRows, index, table->dataRows->size);
+  for(int i = 0; i < v->size; i++) {
+
+  }
 }
 
 void table_swapRows(Table * table, int row1, int row2) {
@@ -208,10 +214,10 @@ int table_findName(Table * table, String * name) {
 }
 
 // same as find name except returns -1 on failure
-int table_hasHeader(Table * table, String * header) {
-   String ** header = table->header;
+int table_hasHeader(Table * table, String * name) {
+   String **header = table->header;
    for(int i = 0; i < table->columns; i++) {
-      if(str_eq(header[i], header))
+      if(str_eq(header[i], name))
          return i;
    }
    return -1;
@@ -219,19 +225,19 @@ int table_hasHeader(Table * table, String * header) {
 
 // Ranges - ends are not inclusive - not to be used with freefunc
 Range * table_getRange(Table * table, int startRow, int startCol, int endRow, int endCol) {
-   Range * rng = malloc(sizeof(Range));
+   Range * rng = (Range *) malloc(sizeof(Range));
    rng->rowStart = startRow;
    rng->rowEnd = endRow;
    rng->colStart = startCol;
    rng->colEnd = endCol;
    rng->dataRows = vector_new(endRow - startRow, sizeof(char *), 0);
    int * colOffsets = table->colOffsets;
-   void * crow, *copy;
+   void *crow, *copy;
    for(int i = startRow, startOffset = colOffsets[startCol], len = colOffsets[endCol] - startOffset;\
        i < endRow; i++) {
-      cRow = table_getRow(table, i);
+      crow = table_getRow(table, i);
       copy = malloc(len);
-      memcpy(copy, cRow + startOffset, len);
+      memcpy(copy, crow + startOffset, len);
       vector_push(rng->dataRows, &copy);
    }
    return rng;
