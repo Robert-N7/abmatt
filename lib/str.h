@@ -26,6 +26,10 @@ String * str_(char * s, int size);
 // destructor
 void str_free(String * str);
 
+// destructor taking a pointer to the pointed string
+void str_freepointer(String ** str);
+
+
 // for creating a string to be filled
 String * str_empty(int capacity);
 
@@ -67,6 +71,8 @@ void str_print(String * string);
 
 // print up to n characters
 void str_printn(String * string, int n);
+// get a line from stdin
+String * str_get();
 
 // err
 void str_err(String * string);
@@ -94,7 +100,9 @@ bool strc_eq_ignore_case(const String * s1, const char * s2);
 String * strc_replace(const String * haystack, const char * needle, const char * replacement, int count);
 
 int strc_in(const String * haystack, const char * needle, int start);
-
 Vector * strc_split(const String * haystack, const char * needle);
+
+// resize.. capacity must be greater than current
+void str_resize(String * s, int capacity);
 
 #endif

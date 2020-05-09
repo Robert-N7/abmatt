@@ -9,13 +9,16 @@
 #include <stdbool.h>
 #include "str.h"
 #include "vector.h"
+
+char STR_BUFFERIN[256];
+
 // constructor
 String * str(char * s) {
    if(!s || !*s)
       return 0;
    String * ret = malloc(sizeof(String));
    ret->capacity = ret->len = strlen(s);
-   ret->str = malloc(ret->len + 1);
+   ret->str = malloc((ret->len + 1) * sizeof(char));
    ret->str[ret->len] = 0;
    strncpy(ret->str, s, ret->len);
    return ret;
@@ -25,7 +28,7 @@ String * str(char * s) {
 String * str_(char * s, int size) {
    String * ret = malloc(sizeof(String));
    ret->capacity = ret->len = size;
-   ret->str = malloc(size + 1);
+   ret->str = malloc((size + 1) * sizeof(char));
    ret->str[ret->len] = 0;
    memcpy(ret->str, s, size);
    return ret;
@@ -36,7 +39,7 @@ String * str_(char * s, int size) {
 String * str_empty(int capacity) {
    String * ret = malloc(sizeof(String));
    ret->capacity = capacity;
-   ret->str = malloc(capacity);
+   ret->str = malloc((capacity + 1) * sizeof(char));
    ret->str[0] = 0;
    return ret;
 }
@@ -49,11 +52,16 @@ void str_free(String * str) {
    }
 }
 
+// destructor taking a pointer to the pointed string
+void str_freepointer(String ** str) {
+   str_free(*str);
+}
+
 // copy
 String * str_copy(const String * str) {
    String * ret = malloc(sizeof(String));
    ret->capacity = ret->len = str->len;
-   ret->str = malloc(ret->len + 1);
+   ret->str = malloc((ret->len + 1) * sizeof(char));
    ret->str[ret->len] = 0;
    memcpy(ret->str, str->str, ret->len);
    return ret;
@@ -63,7 +71,7 @@ String * str_copy(const String * str) {
 String * str_join(const String * str1, const String * str2) {
    String * s = malloc(sizeof(String));
    s->capacity = s->len = str1->len + str2->len;
-   s->str = malloc(s->len + 1);
+   s->str = malloc((s->len + 1) * sizeof(char));
    s->str[s->len] = 0;
    memcpy(s->str, str1, str1->len);
    memcpy(s->str + str1->len, str2, str2->len);
@@ -79,14 +87,7 @@ void str_add(String * str1, const String * str2) {
 void str_append(String * str, const char * cptr, int length) {
    int newlen = str->len + length;
    if(newlen > str->capacity) {
-      char * tmp = realloc(str->str, newlen + 1);
-      if(!tmp) {
-         tmp = malloc(newlen + 1);
-         memcpy(tmp, str->str, str->len);
-         free(str->str);
-         str->str = tmp;
-      }
-      str->capacity = newlen;
+      str_resize(str, newlen);
    }
    memcpy(str->str + str->len, cptr, length);
    str->str[newlen] = 0;
@@ -103,9 +104,9 @@ String * str_slice(const String * str1, int start, int end) {
       end += 1;
    String * s = malloc(sizeof(String));
    s->capacity = s->len = end - start;
-   s->str = malloc(s->len + 1);
+   s->str = malloc((s->len + 1) * sizeof(char));
    s->str[s->len] = 0;
-   memcpy(s->str, str1 + start, s->len);
+   memcpy(s->str, str1->str + start, s->len);
    return s;
 }
 
@@ -216,17 +217,36 @@ void str_lower(String * string) {
 
 // print
 void str_print(String * string) {
-   write(1, string->str, string->len);
+   fwrite(string->str, 1, string->len, stdout);
 }
 
 // print n
 void str_printn(String * string, int n) {
-   write(1, string->str, n > string->len ? string->len : n);
+   if(n > string->len)
+      n = string->len;
+   fwrite(string->str, 1, n, stdout);
 }
+
+// stdin get
+String * str_get() {
+   int start = 0;
+   String *s = str_empty(64);
+   while(fgets(s->str + start, s->capacity, stdin)) {
+      start += strlen(s->str);
+      // did it get new line?
+      if(s->str[start - 1] == '\n') {
+         s->str[(s->len = start - 1)] = 0;
+         break;
+      }
+      str_resize(s, s->capacity * 2);
+   }
+   return s;
+}
+
 
 // err
 void str_err(String * string) {
-   write(2, string->str, string->len);
+   fwrite(string->str, 1, string->len, stderr);
 }
 
 // write
@@ -244,6 +264,7 @@ String * str_read(int fd, int amount) {
    str->str[str->len] = 0;
    return str;
 }
+
 
 // trim a string
 int str_trim(String * str, const char * chrs) {
@@ -311,17 +332,23 @@ bool str_eq_ignore_case(const String * s1, const String * s2) {
 
 Vector * str_split(const String * haystack, const String * needle) {
    int start = 0, end = 0;
-   if(end = str_in(haystack, needle, 0) == STR_NOT_FOUND)
+   if((end = str_in(haystack, needle, 0)) == STR_NOT_FOUND) {
       return NULL;
-   Vector * ret = vector_new(8, sizeof(String *), (FreeFunc) str_free);
+   }
+   Vector * ret = vector_new(8, sizeof(String *), str_freepointer);
    String * sub = str_slice(haystack, start, end);
    vector_push(ret, &sub);
-   start += needle->len;
+   start = end + needle->len;
    while((end = str_in(haystack, needle, start)) != STR_NOT_FOUND) {
       sub = str_slice(haystack, start, end);
       vector_push(ret, &sub);
-      start += needle->len;
+      start = end + needle->len;
    }
+   if(start < haystack->len) {
+      sub = str_slice(haystack, start, haystack->len);
+      vector_push(ret, &sub);
+   }
+
    return ret;
 }
 
@@ -330,6 +357,8 @@ bool strc_eq(const String * s1, const char * s2) {
 }
 
 bool strc_eq_ignore_case(const String * s1, const char * s2) {
+   if(s1 == NULL || s2 == NULL)
+      printf("STRING IS NULL!\n");
    const char *c1 = s1->str, *c2 = s2;
    for(; *c1 && *c2; c1++, c2++)
       if(toupper(*c1) != toupper(*c2))
@@ -352,16 +381,32 @@ int strc_in(const String * haystack, const char * needle, int start) {
 
 Vector * strc_split(const String * haystack, const char * needle) {
    int start = 0, end = 0, nlen = strlen(needle);
-   if(end = strc_in(haystack, needle, 0) == STR_NOT_FOUND)
+   if((end = strc_in(haystack, needle, 0)) == STR_NOT_FOUND)
       return NULL;
-   Vector * ret = vector_new(8, sizeof(String *), (FreeFunc) str_free);
+   Vector * ret = vector_new(8, sizeof(String *), (FreeFunc) str_freepointer);
    String * sub = str_slice(haystack, start, end);
    vector_push(ret, &sub);
-   start += nlen;
+   start = end + nlen;
    while((end = strc_in(haystack, needle, start)) != STR_NOT_FOUND) {
       sub = str_slice(haystack, start, end);
       vector_push(ret, &sub);
-      start += nlen;
+      start = end + nlen;
+   }
+   if(start < haystack->len) {
+      sub = str_slice(haystack, start, haystack->len);
+      vector_push(ret, &sub);
    }
    return ret;
+}
+
+// resize.. capacity must be greater than current
+void str_resize(String * s, int capacity) {
+   char * ptr = realloc(s->str, capacity + 1);
+   if(!ptr) {
+      ptr = malloc((capacity + 1) * sizeof(char));
+      memcpy(ptr, s->str, s->len);
+      free(s->str);
+   }
+   s->str = ptr;
+   s->capacity = capacity;
 }

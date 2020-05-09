@@ -33,7 +33,7 @@ GTable * gtable_new(FreeFunc freeFunc, int rows, int cols, ...) {
   va_end(list);
   n->table = table_anew(freeFunc, rows, cols, colSizes);
   free(colSizes);
-  n->isFixedSize = 0;
+  n->isFixedSize = 1;
   gtable_autoSizeColumns(n);
   return n;
 }
@@ -69,13 +69,13 @@ void gtable_autoSizeColumns(GTable * table) {
        type = table->colTypes[i];
         if(bt_isInt(type)) {
             if(bt_size(type) > 16)
-              table->formatCol[i] = str("5");
+              table->formatCol[i] = str("7");
             else if(bt_size(type) == 16)
-              table->formatCol[i] = str("3");
+              table->formatCol[i] = str("4");
             else
-              table->formatCol[i] = str("2");
+              table->formatCol[i] = str("3");
         } else if(bt_isFloat(type)) {
-          table->formatCol[i] = str("6.1");
+          table->formatCol[i] = str("7.1");
         }
    }
 }
@@ -87,10 +87,10 @@ void gtable_setColFormat(GTable * table, int col, String * format) {
 void gtable_processInput(GTable * table, String * input) {
    Vector * v = strc_split(input, " ");
    if(!v) {
-      fprintf(stderr, "%s: Not enough parameters", input->str);
+      fprintf(stderr, "%s: Not enough parameters\n", input->str);
       return;
    }
-   String * first = vector_get(v, 0);
+   String * first = vector_getp(v, 0);
    // Set <column> [<row range>] to <val> [incrementing [by <x>]]
    if(strc_eq_ignore_case(first, "Set")) {
       gtable_set(table, v);
@@ -129,39 +129,39 @@ void gtable_set(GTable * table, Vector * input) {
       return;
    }
    int colBegin = -1, colEnd, rowStart = 0, rowEnd = table_rowCount(table->table) - 1, i = 1, increment = 0, advancing = 0;
-   String * s1 = vector_get(input, i++);
+   String * s1 = vector_getp(input, i++);
    if(!gtable_validCol(table, s1, &colBegin, &colEnd)) {
       printf("%s", GTABLE_SET);
       return;
    }
-   String * s2 = vector_get(input, i++);
+   String * s2 = vector_getp(input, i++);
    if(!strc_eq_ignore_case(s2, "to")) {
       // try row range
       if(!gtable_validRow(table, s2, &rowStart, &rowEnd)) {
          printf("%s", GTABLE_SET);
          return;
       }
-      s1 = vector_get(input, i++);
+      s1 = vector_getp(input, i++);
       if(!(strc_eq_ignore_case( s1, "to"))) {
          fprintf(stderr, GTABLE_UNKNOWNPARAM, s1->str, "to");
          return;
       }
    }
-   if(!(s1 = vector_get(input, i++))) {
+   if(!(s1 = vector_getp(input, i++))) {
       fprintf(stderr, GTABLE_NOTENOUGHPARAMS, "Set");
       printf("%s", GTABLE_SET);
       return;
    }
-   while(s2 = vector_get(input, i++)) {
+   while(s2 = vector_getp(input, i++)) {
       if(strc_in_ignore_case(s2, "increment", 0) == 0) {
 
-         if(s2 = vector_get(input, i++))
-            if(!(increment = atoi(s2->str)) && (s2 = vector_get(input, i++)))
+         if(s2 = vector_getp(input, i++))
+            if(!(increment = atoi(s2->str)) && (s2 = vector_getp(input, i++)))
                increment = atoi(s2->str);
       }
       else if(strc_in_ignore_case(s2, "advanc", 0) == 0) {
-         if(s2 = vector_get(input, i++))
-            if(!(advancing = atoi(s2->str)) && (s2 = vector_get(input, i++)))
+         if(s2 = vector_getp(input, i++))
+            if(!(advancing = atoi(s2->str)) && (s2 = vector_getp(input, i++)))
                advancing = atoi(s2->str);
       }
    }
@@ -199,23 +199,23 @@ void gtable_swapRows(GTable * table, Vector * v) {
       return;
    }
    int i = 1, nstart, nend, mstart, mend;
-   String * s = vector_get(v, i++), *sr1;
+   String * s = vector_getp(v, i++), *sr1;
    if(strc_in_ignore_case(s, "row", 0) < 0) {
       fprintf(stderr, GTABLE_UNKNOWNPARAM, s->str, "rows");
       printf("%s", GTABLE_SWAP);
       return;
    }
-   sr1 = vector_get(v, i++);
+   sr1 = vector_getp(v, i++);
    if(!gtable_validRow(table, s, &nstart, &nend)) {
       printf("%s", GTABLE_SWAP);
    }
-   s = vector_get(v, i++);
+   s = vector_getp(v, i++);
    if(!strc_eq_ignore_case(s, "and") && !strc_eq_ignore_case(s, "with")) {
       fprintf(stderr, GTABLE_UNKNOWNPARAM, s->str, "and");
       printf("%s", GTABLE_SWAP);
       return;
    }
-   s = vector_get(v, i);
+   s = vector_getp(v, i);
    if(!gtable_validRow(table, s, &mstart, &mend)) {
       printf("%s", GTABLE_SWAP);
       return;
@@ -243,41 +243,41 @@ void gtable_replaceRows(GTable * table, Vector * v) {
       return;
    }
    int i = 1, nstart, nend, mstart, mend, colstart = 0, colend = table->table->columns;
-   String * s1 = vector_get(v, i++), *s2;
+   String * s1 = vector_getp(v, i++), *s2;
    if(strc_in_ignore_case(s1, "row", 0) < 0) {
       fprintf(stderr, GTABLE_UNKNOWNPARAM, s1->str, "rows");
       printf("%s", GTABLE_REPLACE);
       return;
    }
-   s2 = vector_get(v, i++);
+   s2 = vector_getp(v, i++);
    if(!gtable_validRow(table, s2, &nstart, &nend)) {
       printf("%s", GTABLE_REPLACE);
       return;
    }
-   s1 = vector_get(v, i++);
+   s1 = vector_getp(v, i++);
    if(!strc_eq_ignore_case(s1, "with")) {
       fprintf(stderr, GTABLE_UNKNOWNPARAM, s1->str, "with");
       printf("%s", GTABLE_REPLACE);
       return;
    }
-   s1 = vector_get(v, i++);
+   s1 = vector_getp(v, i++);
    if(strc_in_ignore_case(s1, "row", 0) < 0) {
       fprintf(stderr, GTABLE_UNKNOWNPARAM, s1->str, "rows");
       printf("%s", GTABLE_REPLACE);
       return;
    }
-   s1 = vector_get(v, i++);
+   s1 = vector_getp(v, i++);
    if(!gtable_validRow(table, s1, &mstart, &mend)) {
       printf("%s", GTABLE_REPLACE);
       return;
    }
-   if(s1 = vector_get(v, i++)) {
+   if(s1 = vector_getp(v, i++)) {
       if(strc_in_ignore_case(s1, "column", 0) < 0) {
          fprintf(stderr, GTABLE_UNKNOWNPARAM, s1->str, "columns");
          printf("%s", GTABLE_REPLACE);
          return;
       }
-      if(!(s1 = vector_get(v, i++))) {
+      if(!(s1 = vector_getp(v, i++))) {
          fprintf(stderr, "Missing columns range parameter.\n");
          printf("%s", GTABLE_REPLACE);
          return;
@@ -300,7 +300,7 @@ void gtable_addRows(GTable * table, Vector * v) {
       return;
    }
    int i = 1, numRows = 0, matchBegin = -1, matchEnd;
-   String * s1 = vector_get(v, i++);
+   String * s1 = vector_getp(v, i++);
    if((strc_in_ignore_case(s1, "row", 0) < 0))
       numRows = 1;
    else if(!bt_convert_int(s1, &numRows)) {
@@ -312,26 +312,26 @@ void gtable_addRows(GTable * table, Vector * v) {
       printf("%s", GTABLE_ADD);
       return;
    } else {
-      if(s1 = vector_get(v, i++))
+      if(s1 = vector_getp(v, i++))
          if(strc_in_ignore_case(s1, "row", 0) < 0) {
             fprintf(stderr, GTABLE_UNKNOWNPARAM, s1->str, "rows");
             printf("%s", GTABLE_ADD);
             return;
          }
    }
-   if(s1 = vector_get(v, i++)) {
+   if(s1 = vector_getp(v, i++)) {
       if(!strc_eq_ignore_case(s1, "matching")) {
          fprintf(stderr, GTABLE_UNKNOWNPARAM, s1->str, "matching");
          printf("%s", GTABLE_ADD);
          return;
       }
-      s1 = vector_get(v, i++);
+      s1 = vector_getp(v, i++);
       if(strc_in_ignore_case(s1, "row", 0) < 0) {
          fprintf(stderr, GTABLE_UNKNOWNPARAM, s1->str, "rows");
          printf("%s", GTABLE_ADD);
          return;
       }
-      s1 = vector_get(v, i++);
+      s1 = vector_getp(v, i++);
       if(!gtable_validRow(table, s1, &matchBegin, &matchEnd)) {
          printf("%s", GTABLE_ADD);
          return;
@@ -356,13 +356,13 @@ void gtable_deleteRows(GTable * table, Vector * v) {
       return;
    }
    int i = 1, start, finish = table_rowCount(table->table);
-   String * s1 = vector_get(v, i++);
+   String * s1 = vector_getp(v, i++);
    if(strc_in_ignore_case(s1, "row", 0)  < 0) {
       fprintf(stderr, GTABLE_UNKNOWNPARAM, s1->str, "rows");
       printf("%s", GTABLE_DELETE);
       return;
    }
-   if(s1 = vector_get(v, i++)) {
+   if(s1 = vector_getp(v, i++)) {
       if(!gtable_validRow(table, s1, &start, &finish)) {
          printf("%s", GTABLE_DELETE);
          return;
@@ -382,7 +382,7 @@ void gtable_insertRows(GTable * table, Vector * v) {
       return;
    }
    int i = 1, numRows, atIndex, atEnd, matchBegin = -1, matchEnd;
-   String * s1 = vector_get(v, i++);
+   String * s1 = vector_getp(v, i++);
    if(strc_in_ignore_case(s1, "row", 0) < 0) {
       if(!bt_convert_int(s1, &numRows)) {
          fprintf(stderr, GTABLE_NOTANUMBER, s1->str);
@@ -393,7 +393,7 @@ void gtable_insertRows(GTable * table, Vector * v) {
          printf("%s", GTABLE_INSERT);
          return;
       }
-      s1 = vector_get(v, i++);
+      s1 = vector_getp(v, i++);
       if(strc_in_ignore_case(s1, "row", 0) < 0) {
          fprintf(stderr, GTABLE_UNKNOWNPARAM, s1->str);
          printf("%s", GTABLE_INSERT);
@@ -401,13 +401,13 @@ void gtable_insertRows(GTable * table, Vector * v) {
       }
    } else
       numRows = 1;
-   s1 = vector_get(v, i++);
+   s1 = vector_getp(v, i++);
    if(!strc_eq_ignore_case(s1, "at")) {
       fprintf(stderr, GTABLE_UNKNOWNPARAM, s1->str, "at");
       printf("%s", GTABLE_INSERT);
       return;
    }
-   if(!(s1 = vector_get(v, i++))) {
+   if(!(s1 = vector_getp(v, i++))) {
       fprintf(stderr, GTABLE_NOTENOUGHPARAMS, "Insert");
       printf("%s", GTABLE_INSERT);
       return;
@@ -416,19 +416,19 @@ void gtable_insertRows(GTable * table, Vector * v) {
       printf("%s", GTABLE_INSERT);
       return;
    }
-   if(s1 = vector_get(v, i++)) {
+   if(s1 = vector_getp(v, i++)) {
       // matching
       if(!strc_eq_ignore_case(s1, "matching")) {
          fprintf(stderr, GTABLE_UNKNOWNPARAM, s1->str, "matching" );
          printf("%s", GTABLE_INSERT);
          return;
       }
-      if(!(s1 = vector_get(v, i++)) || strc_in_ignore_case(s1, "row", 0) < 0) {
+      if(!(s1 = vector_getp(v, i++)) || strc_in_ignore_case(s1, "row", 0) < 0) {
          fprintf(stderr, "Expected 'rows'.\n");
          printf("%s", GTABLE_INSERT);
          return;
       }
-      if(!(s1 = vector_get(v, i++)) || !gtable_validRow(table, s1, &matchBegin, &matchEnd)) {
+      if(!(s1 = vector_getp(v, i++)) || !gtable_validRow(table, s1, &matchBegin, &matchEnd)) {
          printf("%s", GTABLE_INSERT);
          return;
       }
@@ -645,21 +645,30 @@ void gtable_print(GTable * table) {
       str_printn(header[i], width);
       printf("|");
    }
+   printf("\n");
    // print rows
    void * row;
    bt_Type type;
    String * tmp;
    int * colOffsets = t->colOffsets;
+
    for(int i = 0, j; i < table_rowCount(t); i++) {
       printf("%3d|", i);
-      row = table_getRow(t, i);
+      row = *((char **) table_getRow(t, i));
+      // printf("Got address of row %p\n", row);
+      // printf("%2X\n", *((char * )row));
       for(j = 0; j < t->columns; j++) {
         type = table->colTypes[j];
+        // if(type == bt_UInt8) {
+        //    printf("row %d col %d int is %d at offset %d\n", i, j, *((uint8_t *)(row + colOffsets[j])), colOffsets[j]);
+        // }
         tmp = bt_toString(type, row + colOffsets[j], 0);
         printf("%s|", tmp->str);
         str_free(tmp);
       }
+      printf("\n");
    }
+   printf("Done\n");
 }
 
 void gtable_addRow(GTable * table, ...) {

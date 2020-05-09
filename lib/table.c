@@ -122,10 +122,14 @@ void table_vaddRow(Table * table, va_list args) {
   int * offsets = table->colOffsets;
   void * rowptr = malloc(offsets[table->columns]);
   void * s;
-  vector_push(table->dataRows, rowptr);
+  // printf("Table has %d rows\n", table->dataRows->size); // debug
+  // printf("Pushing address of row %p\n", rowptr);
+  vector_push(table->dataRows, &rowptr);
   for(int i = 0; i < table->columns; i++) {
      s = va_arg(args, void *);
+     // printf("Copying argument for column %s of length %d\n", table->header[i]->str, offsets[i + 1] - offsets[i]);
      memcpy(rowptr + offsets[i], s, offsets[i + 1] - offsets[i]);
+     // printf("Copied %2X to rowptr\n", *((char *)(rowptr + offsets[i])));
   }
 }
 

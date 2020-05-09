@@ -22,6 +22,8 @@ Vector * vector_slice(Vector * vector, int start, int end);
 void vector_append(Vector * original, const Vector * newData);
 
 void * vector_get(Vector * vector, int index);
+// retrieves the item assuming it to be a pointer
+void * vector_getp(Vector * vector, int index);
 
 void vector_set(Vector * vector, int index, void * data);
 
@@ -46,4 +48,5 @@ void vector_deleteRange(Vector * vector, int start, int finish);
 // O(n) worst case
 void vector_insert(Vector * vector, int index, void * data);
 
+int vector_size(Vector * vector);
 #endif

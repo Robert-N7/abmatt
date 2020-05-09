@@ -12,7 +12,7 @@ Vector * vector_new(int capacity, int elementSize, FreeFunc freeFunc) {
    ret->freeFunc = freeFunc;
    ret->elementSize = elementSize;
    ret->size = 0;
-   ret->data = malloc(capacity);
+   ret->data = malloc(capacity * elementSize);
    return ret;
 }
 
@@ -30,6 +30,12 @@ void * vector_get(Vector * vector, int index) {
       return vector->data + index * vector->elementSize;
    return NULL;
 }
+
+// retrieves the item assuming it to be a pointer
+void * vector_getp(Vector * vector, int index) {
+   return *((void **) (vector->data + index * vector->elementSize));
+}
+
 
 void vector_set(Vector * vector, int index, void * data) {
    if(index >= vector->size)
@@ -66,13 +72,13 @@ Vector * vector_slice(Vector * vector, int start, int end) {
 
 void vector_resize(Vector * vector, int newCapacity) {
    vector->capacity = newCapacity;
-   void * ptr = realloc(vector->data, newCapacity);
+   void * ptr = realloc(vector->data, newCapacity * vector->elementSize);
    if(!ptr) {
-      ptr = malloc(vector->capacity * vector->elementSize);
+      ptr = malloc(newCapacity * vector->elementSize);
       memcpy(ptr, vector->data, vector->elementSize * vector->size);
       free(vector->data);
-      vector->data = ptr;
    }
+   vector->data = ptr;
 }
 
 void vector_destroy(Vector * vector) {
@@ -143,3 +149,5 @@ void vector_insert(Vector * vector, int index, void * data) {
    memcpy(vector->data + eSize * index, data, eSize);
    vector->size += 1;
 }
+
+int vector_size(Vector * vector) {  return vector->size;  }

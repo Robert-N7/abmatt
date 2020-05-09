@@ -51,8 +51,13 @@ String * bt_toString(bt_Type type, void * data, char * precision) {
   char fmtBuffer[10];
   int i = 0;
   fmtBuffer[i++] = '%';
-  for(char * c = precision; *c; c++)
-    fmtBuffer[i++] = *c;
+  if(precision) {
+   for(char * c = precision; *c; c++)
+      fmtBuffer[i++] = *c;
+   } else if(bt_isFloat(type)) {
+      fmtBuffer[i++] = '.';
+      fmtBuffer[i++] = '2';
+   }
   switch(type) {
       case bt_UInt32:
         fmtBuffer[i++] = 'l';

@@ -324,10 +324,10 @@ GTable * blight_initialize_table(Blight * blight) {
    for(int i = 0; i < 16; i++) {
       lobj = & blight->lobjs[i];
       amRGBA = blight->ambients[i].rgba;
-      gtable_addRow(table, lobj->lightType, lobj->ambientIndex, amRGBA[0], amRGBA[1], amRGBA[2], amRGBA[3],
-         lobj->origin[0], lobj->origin[1], lobj->origin[2],
-         lobj->destination[0], lobj->destination[1], lobj->destination[2],
-         lobj->colorEffect, lobj->rgba[0], lobj->rgba[1], lobj->rgba[2], lobj->rgba[3]);
+      gtable_addRow(table, lobj->lightType, lobj->ambientIndex, amRGBA, amRGBA + 1, amRGBA + 2, amRGBA + 3,
+         lobj->origin, lobj->origin + 1, lobj->origin + 2,
+         lobj->destination, lobj->destination + 1, lobj->destination + 2,
+         lobj->colorEffect, lobj->rgba, lobj->rgba + 1, lobj->rgba + 2, lobj->rgba + 3);
    }
    return table;
 }
