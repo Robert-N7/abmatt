@@ -27,7 +27,7 @@ linkedList.o: lib/linkedList.c lib/linkedList.h
 basicTypes.o:  lib/basicTypes.c lib/basicTypes.h
 	gcc -c lib/basicTypes.c
 
-gtable.o:  lib/gtable.c lib/gtable.h lib/table.h
+gtable.o:  lib/gtable.c lib/gtable.h lib/gtable.h
 	gcc -c lib/gtable.c
 
 table.o:  lib/table.c lib/table.h

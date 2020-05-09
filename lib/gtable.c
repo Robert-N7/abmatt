@@ -111,7 +111,7 @@ void gtable_processInput(GTable * table, String * input) {
       }
       // Insert [<n>] Row(s) at <i>
       else if(strc_eq_ignore_case(first, "Insert")) {
-         // todo
+         gtable_insertRows(table, v);
       }
    }
    vector_destroy(v);
@@ -419,8 +419,13 @@ void gtable_insertRows(GTable * table, Vector * v) {
          return;
       }
    }
-
-
+   table_insertRows(table->table, atIndex, numRows);
+   if(matchBegin >= 0) {
+      // then put in the matching values
+      Range * rng = table_getRange(table->table, matchBegin, 0, matchEnd, table->table->columns);
+      table_pasteRange(table->table, rng, atIndex, atIndex + numRows);
+      table_freeRange(rng);
+   }
 }
 
 bool gtable_setValue(GTable * table, int row, int col, String * value) {
@@ -641,4 +646,11 @@ void gtable_print(GTable * table) {
         str_free(tmp);
       }
    }
+}
+
+void gtable_addRow(Gtable * table, ...) {
+   va_list list;
+   va_start(list, table);
+   table_vaddRow(table->table, list);
+   va_end(list);
 }

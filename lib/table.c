@@ -44,7 +44,7 @@ Table * table_anew(FreeFunc freeFunc, int rows, int cols, int * args) {
   ret->dataRows = vector_new(rows, sizeof(void *), NULL);
   ret->defaults = malloc(colOffsets[cols]);
   bzero(ret->defaults, colOffsets[cols]);
-  
+
   ret->header = 0;
   ret->columns = cols;
   ret->header = 0;
@@ -67,6 +67,10 @@ void table_destroy(Table * table) {
      for(int j = 0; j < table->columns; j++) {
         table->freeFunc(table->defaults + table->colOffsets[j]);
      }
+     // free header strings
+   for(int i = 0; i < table->columns; i++) {
+      str_free(table->header[i]);
+   }
    free(table->defaults);
    free(table->header);
    free(table->colOffsets);
@@ -153,10 +157,17 @@ void table_deleteRow(Table * table, int row) {
 
 void table_insertRows(Table * table, int index, int count) {
   // first gather the current rows
-  Vector * v = vector_slice(table->dataRows, index, table->dataRows->size);
-  for(int i = 0; i < v->size; i++) {
-
+  Vector * mydata = table->dataRows;
+  Vector * v = vector_slice(mydata, index, mydata->size);
+  int i = 0;
+  for(; i < mydata->size - index; i++)
+      vector_pop(mydata);
+   void * tmp;
+  for(i = 0; i < count; i++) {
+     table_addEmptyRow(table); // add default rows
   }
+  vector_append(mydata, v);
+  vector_destroy(v);
 }
 
 void table_swapRows(Table * table, int row1, int row2) {

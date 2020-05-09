@@ -2,6 +2,7 @@
 * Blight stuff
 /******************************************************/
 #include "blight.h"
+#include "lib/gtable.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -293,4 +294,29 @@ void blight_to_string(Blight * blight) {
    }
    printf("%s\n", table_head);
    printf("%s\n", table_head);
+}
+
+GTable * blight_initialize_table(Blight * blight) {
+   GTable * table = gtable_new(0, 16, 17, bt_UInt8, bt_UInt16,\
+       bt_UInt8, bt_UInt8, bt_UInt8, bt_UInt8, // ambient RGBA
+       bt_Float32, bt_Float32, bt_Float32,\ // origin
+       bt_Float32, bt_Float32, bt_Float32,\ // dest
+       bt_Float32, bt_UInt8, bt_UInt8, bt_UInt8, bt_UInt8); // RGBA
+
+   gtable_addHeader(table, str("Light"), str("Amb"), str("AmR"), str("AmG"), str("AmB"), str("AmA"),\
+      str("Origin X"), str("Origin Y"), str("Origin Z"),\
+      str("Destin X"), str("Destin Y"), str("Destin Z"),\
+      str("Effect"), str("LR"), str("LG"), str("LB"), str("LA"));
+
+   Lobj * lobj;
+   uint8_t * amRGBA;
+   for(int i = 0; i < 16; i++) {
+      lobj = & blight->lobjs[i];
+      amRGBA = blight->ambients[i].rgba;
+      gtable_addRow(table, lobj->lightType, lobj->ambientIndex, amRGBA[0], amRGBA[1], amRGBA[2], amRGBA[3],\
+         lobj->origin[0], lobj->origin[1], lobj->origin[2],\
+         lobj->destination[0], lobj->destination[1], lobj->destination[2],\
+         lobj->colorEffect, lobj->rgba[0], lobj->rgba[1], lobj->rgba[2], lobj->rgba[3]);
+   }
+   return table;
 }

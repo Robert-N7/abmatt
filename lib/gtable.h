@@ -28,6 +28,8 @@ void gtable_setDefaults(GTable * table, ...);
 
 // ... = list of strings
 void gtable_addHeader(Gtable * table, ...);
+// ... = row data
+void gtable_addRow(Gtable * table, ...);
 
 void gtable_setColWidth(GTable * table, int col, int width);
 
@@ -42,6 +44,8 @@ void gtable_replaceRows(GTable * table, Vector * v);
 void gtable_addRows(GTable * table, Vector * v);
 // Delete Row(s) [<row range>]
 void gtable_deleteRows(GTable * table, Vector * v);
+// Insert [<n>] Row(s) at <i> [matching row(s) <row range>]
+void gtable_insertRows(GTable * table, Vector * v);
 
 bool gtable_setValue(GTable * table, int row, int col, String * value);
 bool gtable_setIntValue(GTable * table, int row, int col, double value);
