@@ -41,8 +41,8 @@ int table_hasHeader(Table * table, String * header);
 void table_setDefaults(Table * table,...);
 void table_vsetDefaults(Table * table, va_list args);
 
-int table_rowCount(Table * table) {    return table->dataRows->size;  }
-int table_colCount(Table * table) {    return table->columns; }
+int table_rowCount(Table * table);
+int table_colCount(Table * table);
 
 void table_addRow(Table * table,...);
 void table_vaddRow(Table * table, va_list args);

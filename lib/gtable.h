@@ -27,11 +27,12 @@ void gtable_destroy(GTable * table);
 void gtable_setDefaults(GTable * table, ...);
 
 // ... = list of strings
-void gtable_addHeader(Gtable * table, ...);
+void gtable_addHeader(GTable * table, ...);
 // ... = row data
-void gtable_addRow(Gtable * table, ...);
+void gtable_addRow(GTable * table, ...);
 
 void gtable_setColWidth(GTable * table, int col, int width);
+void gtable_autoSizeColumns(GTable * table);
 
 void gtable_processInput(GTable * table, String * input);
 // Set <column> [<row range>] to <val> [incrementing [by <x>]] [advancing by <y>]
@@ -50,7 +51,7 @@ void gtable_insertRows(GTable * table, Vector * v);
 bool gtable_setValue(GTable * table, int row, int col, String * value);
 bool gtable_setIntValue(GTable * table, int row, int col, double value);
 bool gtable_validRow(GTable * table, String * row, int * start, int * finish);
-int gtable_validCol(GTable * table, String * col);
+bool gtable_validCol(GTable * table, String * col, int * start, int * finish);
 
 void gtable_print(GTable * table);
 

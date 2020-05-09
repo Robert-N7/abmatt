@@ -2,14 +2,11 @@
 * Blight stuff
 /******************************************************/
 #include "blight.h"
-#include "lib/gtable.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "lib/str.h"
 #include "lib/file.h"
 #include "lib/stringUtil.h"
-#include "lib/serialize.h"
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
@@ -110,11 +107,25 @@ int main(int argc, char ** argv) {
       bin_destroy(bin);
       exit(0);
    }
+   // todo changes based on parameters.. and shortcut to exit
    Blight * bl = blight_read(bin);
-   if(value) {
+   GTable * mytable = blight_initialize_table(bl);
+   bool quit = false;
+   char buffer[256];
+   String * s;
+   while(!quit) {
+      fgets(buffer, 256, stdin);
+      if(buffer[0] == 'q' || buffer[0] == 'Q') {
+         quit = true;
+      } else {
+         s = str(buffer);
+         gtable_processInput(mytable, s);
+         str_free(s);
+      }
    }
+   // todo move table values to binfile
 
-   blight_to_string(bl);
+   // blight_to_string(bl);
    if(!destination)
       destination = source;
    if(file_exists(destination) && !overwrite) {
@@ -297,15 +308,15 @@ void blight_to_string(Blight * blight) {
 }
 
 GTable * blight_initialize_table(Blight * blight) {
-   GTable * table = gtable_new(0, 16, 17, bt_UInt8, bt_UInt16,\
+   GTable * table = gtable_new(0, 16, 17, bt_UInt8, bt_UInt16,
        bt_UInt8, bt_UInt8, bt_UInt8, bt_UInt8, // ambient RGBA
-       bt_Float32, bt_Float32, bt_Float32,\ // origin
-       bt_Float32, bt_Float32, bt_Float32,\ // dest
+       bt_Float32, bt_Float32, bt_Float32,  // origin
+       bt_Float32, bt_Float32, bt_Float32,  // dest
        bt_Float32, bt_UInt8, bt_UInt8, bt_UInt8, bt_UInt8); // RGBA
 
-   gtable_addHeader(table, str("Light"), str("Amb"), str("AmR"), str("AmG"), str("AmB"), str("AmA"),\
-      str("Origin X"), str("Origin Y"), str("Origin Z"),\
-      str("Destin X"), str("Destin Y"), str("Destin Z"),\
+   gtable_addHeader(table, str("Light"), str("Amb"), str("AmR"), str("AmG"), str("AmB"), str("AmA"),
+      str("Origin X"), str("Origin Y"), str("Origin Z"),
+      str("Destin X"), str("Destin Y"), str("Destin Z"),
       str("Effect"), str("LR"), str("LG"), str("LB"), str("LA"));
 
    Lobj * lobj;
@@ -313,9 +324,9 @@ GTable * blight_initialize_table(Blight * blight) {
    for(int i = 0; i < 16; i++) {
       lobj = & blight->lobjs[i];
       amRGBA = blight->ambients[i].rgba;
-      gtable_addRow(table, lobj->lightType, lobj->ambientIndex, amRGBA[0], amRGBA[1], amRGBA[2], amRGBA[3],\
-         lobj->origin[0], lobj->origin[1], lobj->origin[2],\
-         lobj->destination[0], lobj->destination[1], lobj->destination[2],\
+      gtable_addRow(table, lobj->lightType, lobj->ambientIndex, amRGBA[0], amRGBA[1], amRGBA[2], amRGBA[3],
+         lobj->origin[0], lobj->origin[1], lobj->origin[2],
+         lobj->destination[0], lobj->destination[1], lobj->destination[2],
          lobj->colorEffect, lobj->rgba[0], lobj->rgba[1], lobj->rgba[2], lobj->rgba[3]);
    }
    return table;

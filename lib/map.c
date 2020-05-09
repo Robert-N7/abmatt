@@ -6,6 +6,7 @@
 #include <string.h>
 #include "map.h"
 #include "str.h"
+#include "stringUtil.h"
 
 // constructor
 Map * map_new(int capacity, int elementSize, Map_freefunc freeFunc) {

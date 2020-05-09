@@ -168,10 +168,10 @@ int str_in_ignore_case(const String * haystack, const String * needle, int start
    char *h = haystack->str, *n = needle->str;
    for(int i = start, nlen = needle->len, maxI = haystack->len - nlen; i <= maxI; i++) {
       if(toupper(h[i]) == toupper(*n)) {
-         for(char * h = h[i + 1], *ne = n + 1; toupper(*h) == toupper(*ne); h++, ne++) {
+         for(char *hay = h + i + 1, *ne = n + 1; toupper(*h) == toupper(*ne); h++, ne++) {
             if(!*ne)
                return i;
-            else if(!*h)
+            else if(!*hay)
                return STR_NOT_FOUND;
          }
       }
@@ -186,10 +186,10 @@ int strc_in_ignore_case(const String * haystack, const char * needle, int start)
    char *h = haystack->str, *n = needle;
    for(int i = start, nlen = strlen(needle), maxI = haystack->len - nlen; i <= maxI; i++) {
       if(toupper(h[i]) == toupper(*n)) {
-         for(char * h = h[i + 1], *ne = n + 1; toupper(*h) == toupper(*ne); h++, ne++) {
+         for(char * hay = h + i + 1, *ne = n + 1; toupper(*h) == toupper(*ne); h++, ne++) {
             if(!*ne)
                return i;
-            else if(!*h)
+            else if(!*hay)
                return STR_NOT_FOUND;
          }
       }
@@ -313,7 +313,7 @@ Vector * str_split(const String * haystack, const String * needle) {
    int start = 0, end = 0;
    if(end = str_in(haystack, needle, 0) == STR_NOT_FOUND)
       return NULL;
-   Vector * ret = vector_new(8, sizeof(String *), str_free);
+   Vector * ret = vector_new(8, sizeof(String *), (FreeFunc) str_free);
    String * sub = str_slice(haystack, start, end);
    vector_push(ret, &sub);
    start += needle->len;
@@ -338,9 +338,10 @@ bool strc_eq_ignore_case(const String * s1, const char * s2) {
 }
 
 String * strc_replace(const String * haystack, const char * needle, const char * replacement, int count) {
-   String * n = str(needle);
-   String * result = str_replace(haystack, needle, replacement, count);
+   String *n = str(needle), *rep = str(replacement);
+   String * result = str_replace(haystack, n, rep, count);
    str_free(n);
+   str_free(rep);
    return result;
 }
 
@@ -353,7 +354,7 @@ Vector * strc_split(const String * haystack, const char * needle) {
    int start = 0, end = 0, nlen = strlen(needle);
    if(end = strc_in(haystack, needle, 0) == STR_NOT_FOUND)
       return NULL;
-   Vector * ret = vector_new(8, sizeof(String *), str_free);
+   Vector * ret = vector_new(8, sizeof(String *), (FreeFunc) str_free);
    String * sub = str_slice(haystack, start, end);
    vector_push(ret, &sub);
    start += nlen;

@@ -275,3 +275,6 @@ void table_freeRange(Range * range) {
    vector_destroy(range->dataRows);
    free(range);
 }
+
+int table_rowCount(Table * table) {    return table->dataRows->size;  }
+int table_colCount(Table * table) {    return table->columns; }

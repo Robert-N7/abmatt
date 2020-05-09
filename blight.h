@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include "lib/str.h"
 #include "lib/serialize.h"
+#include "lib/gtable.h"
 
 typedef struct _BlightHeader {
    char * magic;
@@ -45,4 +46,5 @@ bool bl_set(BinFile * bin, String * sectionName, int sectionIndex, String * key,
 
 void blight_to_string(Blight * blight);
 
+GTable * blight_initialize_table(Blight * blight);
 #endif
