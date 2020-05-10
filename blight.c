@@ -119,7 +119,7 @@ int main(int argc, char ** argv) {
       s = str_get();
       if(s->str[0] == 'q' || s->str[0] == 'Q') {
          quit = true;
-      } else if(strc_in_ignore_case(s, "save") == 0) {
+      } else if(strc_in_ignore_case(s, "save", 0) == 0) {
          // todo better command processing
          blight_save(bl, mytable, bin, dest, 0);
       } else {
@@ -136,7 +136,7 @@ int main(int argc, char ** argv) {
    str_free(key);
    str_free(value);
    str_free(section);
-
+   str_free(dest);
    return 0;
 }
 
@@ -329,7 +329,7 @@ void blight_saveTable(Blight * blight, GTable * table) {
    Ambient * am;
    for(int i = 0; i < 16; i++) {
       lobj = &blight->lobjs[i];
-      lobj->ambientIndex = *((uint16_t * ) gtable_get(table, i, 1));
+      *(lobj->ambientIndex) = *((uint16_t * ) gtable_get(table, i, 1));
       am = &blight->ambients[*lobj->ambientIndex];
       gtable_getRow(table, i, lobj->lightType, lobj->ambientIndex, am->rgba, am->rgba + 1, am->rgba + 2, am->rgba + 3,
          lobj->origin, lobj->origin + 1, lobj->origin + 2,
@@ -343,6 +343,6 @@ void blight_save(Blight * blight, GTable * table, BinFile * file, String * desti
    if(file_exists(destination->str) && !overwrite) {
       fprintf(stderr, "File '%s' already exists!\n", destination->str);
    } else {
-      bin_write(bin, destination);
+      bin_write(file, destination->str);
    }
 }

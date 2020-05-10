@@ -36,21 +36,21 @@ void gtable_getRow(GTable * table, int row, ...);
 void gtable_setColWidth(GTable * table, int col, int width);
 void gtable_autoSizeColumns(GTable * table);
 
-void gtable_processInput(GTable * table, String * input);
+bool gtable_processInput(GTable * table, String * input);
 
 void * gtable_get(GTable * table, int row, int column);
 // Set <column> [<row range>] to <val> [incrementing [by <x>]] [advancing by <y>]
-void gtable_set(GTable * table, Vector * input);
+bool gtable_set(GTable * table, Vector * input);
 // Swap Rows <row range> and <row range>
-void gtable_swapRows(GTable * table, Vector * v);
+bool gtable_swapRows(GTable * table, Vector * v);
 // Replace row(s) <row range> with row(s) <row range> [columns <col range>]
-void gtable_replaceRows(GTable * table, Vector * v);
+bool gtable_replaceRows(GTable * table, Vector * v);
 // Add [<n>] row(s) [matching row(s) <row range>]
-void gtable_addRows(GTable * table, Vector * v);
+bool gtable_addRows(GTable * table, Vector * v);
 // Delete Row(s) [<row range>]
-void gtable_deleteRows(GTable * table, Vector * v);
+bool gtable_deleteRows(GTable * table, Vector * v);
 // Insert [<n>] Row(s) at <i> [matching row(s) <row range>]
-void gtable_insertRows(GTable * table, Vector * v);
+bool gtable_insertRows(GTable * table, Vector * v);
 
 bool gtable_setValue(GTable * table, int row, int col, String * value);
 bool gtable_setIntValue(GTable * table, int row, int col, double value);
