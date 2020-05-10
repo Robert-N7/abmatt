@@ -33,7 +33,9 @@ void * vector_get(Vector * vector, int index) {
 
 // retrieves the item assuming it to be a pointer
 void * vector_getp(Vector * vector, int index) {
-   return *((void **) (vector->data + index * vector->elementSize));
+   if(index < vector->size)
+      return *((void **) (vector->data + index * vector->elementSize));
+   return NULL;
 }
 
 

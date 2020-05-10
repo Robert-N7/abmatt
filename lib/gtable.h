@@ -30,11 +30,15 @@ void gtable_setDefaults(GTable * table, ...);
 void gtable_addHeader(GTable * table, ...);
 // ... = row data
 void gtable_addRow(GTable * table, ...);
+//  ... = pointers where to store data
+void gtable_getRow(GTable * table, int row, ...);
 
 void gtable_setColWidth(GTable * table, int col, int width);
 void gtable_autoSizeColumns(GTable * table);
 
 void gtable_processInput(GTable * table, String * input);
+
+void * gtable_get(GTable * table, int row, int column);
 // Set <column> [<row range>] to <val> [incrementing [by <x>]] [advancing by <y>]
 void gtable_set(GTable * table, Vector * input);
 // Swap Rows <row range> and <row range>

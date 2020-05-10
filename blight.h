@@ -47,4 +47,7 @@ bool bl_set(BinFile * bin, String * sectionName, int sectionIndex, String * key,
 void blight_to_string(Blight * blight);
 
 GTable * blight_initialize_table(Blight * blight);
+// moves the table values to binfile
+void blight_saveTable(Blight * blight, GTable * table);
+void blight_save(Blight * blight, GTable * table, BinFile * file, String * destination, bool overwrite);
 #endif

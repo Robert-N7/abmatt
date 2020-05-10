@@ -128,7 +128,8 @@ void gtable_set(GTable * table, Vector * input) {
       printf("%s", GTABLE_SET);
       return;
    }
-   int colBegin = -1, colEnd, rowStart = 0, rowEnd = table_rowCount(table->table) - 1, i = 1, increment = 0, advancing = 0;
+   int colBegin = -1, colEnd = -1, rowStart = 0, rowEnd = table_rowCount(table->table) - 1, \
+    i = 1, increment = 0, advancing = 0;
    String * s1 = vector_getp(input, i++);
    if(!gtable_validCol(table, s1, &colBegin, &colEnd)) {
       printf("%s", GTABLE_SET);
@@ -445,55 +446,43 @@ void gtable_insertRows(GTable * table, Vector * v) {
 bool gtable_setValue(GTable * table, int row, int col, String * value) {
    // check if it's correct type
    bt_Type expected = table->colTypes[col];
-   if(expected == bt_UInt32) {
-      uint32_t val;
-      if(bt_convert_int(value, &val)) {
+   int t;
+   if(bt_isInt(expected) && bt_convert_int(value, &t)) {
+      if(expected == bt_UInt32) {
+         uint32_t val = (uint32_t) t;
+         table_set(table->table, row, col, &val);
+         return true;
+      } else if(expected == bt_UInt16) {
+         uint16_t val = (uint16_t) t;
+         table_set(table->table, row, col, &val);
+         return true;
+      } else if(expected == bt_UInt8) {
+         uint8_t val = (uint8_t) t;
+         table_set(table->table, row, col, &val);
+         return true;
+      } else if(expected == bt_UInt64) {
+         uint64_t val = (uint64_t) t;
+         table_set(table->table, row, col, &val);
+         return true;
+      } else if(expected == bt_Int32) {
+         int32_t val = (int32_t) t;
+         table_set(table->table, row, col, &val);
+         return true;
+      } else if(expected == bt_Int16) {
+         int16_t val = (int16_t) t;
+         table_set(table->table, row, col, &val);
+         return true;
+      } else if(expected == bt_Int8) {
+         int8_t val = (int8_t) t;
+         table_set(table->table, row, col, &val);
+         return true;
+      } else if(expected == bt_Int64) {
+         int64_t val = (int64_t) t;
          table_set(table->table, row, col, &val);
          return true;
       }
-   } else if(expected == bt_UInt16) {
-      uint16_t val;
-      if(bt_convert_int(value, &val)) {
-         table_set(table->table, row, col, &val);
-         return true;
-      }
-   } else if(expected == bt_UInt8) {
-      uint8_t val;
-      if(bt_convert_int(value, &val)) {
-         table_set(table->table, row, col, &val);
-         return true;
-      }
-   } else if(expected == bt_UInt64) {
-      uint64_t val;
-      if(bt_convert_int(value, &val)) {
-         table_set(table->table, row, col, &val);
-         return true;
-      }
-   } else if(expected == bt_Int32) {
-      int32_t val;
-      if(bt_convert_int(value, &val)) {
-         table_set(table->table, row, col, &val);
-         return true;
-      }
-   } else if(expected == bt_Int16) {
-      int16_t val;
-      if(bt_convert_int(value, &val)) {
-         table_set(table->table, row, col, &val);
-         return true;
-      }
-   } else if(expected == bt_Int8) {
-      int8_t val;
-      if(bt_convert_int(value, &val)) {
-         table_set(table->table, row, col, &val);
-         return true;
-      }
-   } else if(expected == bt_Int64) {
-      int64_t val;
-      if(bt_convert_int(value, &val)) { // todo fix converting
-         table_set(table->table, row, col, &val);
-         return true;
-      }
-   } else if(expected == bt_Float32) {
+   }
+   else if(expected == bt_Float32) {
       float val;
       if(bt_convert_float(value, &val)) {
          table_set(table->table, row, col, &val);
@@ -605,10 +594,12 @@ bool gtable_validCol(GTable * table, String * col, int * start, int * finish) {
       String * strart = str_slice(col, 0, pos);
       String * strend = str_slice(col, pos + 1, STR_END);
       if((*start = table_hasHeader(table->table, strart)) < 0) {
+         printf("Failed to find header '%s'\n", strart->str);
          if(!strart || !bt_convert_int(strart, start))
             valid = false;
       }
-      if((*finish = table_hasHeader(table->table, col)) < 0) {
+      if((*finish = table_hasHeader(table->table, strend)) < 0) {
+         printf("Failed to find header '%s'\n", strend->str);
          if(!strend || !bt_convert_int(strend, finish)) {
             valid = false;
          }
@@ -654,7 +645,7 @@ void gtable_print(GTable * table) {
 
    for(int i = 0, j; i < table_rowCount(t); i++) {
       printf("%3d|", i);
-      row = *((char **) table_getRow(t, i));
+      row = table_getRow(t, i);
       // printf("Got address of row %p\n", row);
       // printf("%2X\n", *((char * )row));
       for(j = 0; j < t->columns; j++) {
@@ -662,7 +653,7 @@ void gtable_print(GTable * table) {
         // if(type == bt_UInt8) {
         //    printf("row %d col %d int is %d at offset %d\n", i, j, *((uint8_t *)(row + colOffsets[j])), colOffsets[j]);
         // }
-        tmp = bt_toString(type, row + colOffsets[j], 0);
+        tmp = bt_toString(type, row + colOffsets[j], table->formatCol[j]->str);
         printf("%s|", tmp->str);
         str_free(tmp);
       }
@@ -675,5 +666,23 @@ void gtable_addRow(GTable * table, ...) {
    va_list list;
    va_start(list, table);
    table_vaddRow(table->table, list);
+   va_end(list);
+}
+
+void * gtable_get(GTable * table, int row, int column) {
+   return table_get(table->table, row, col);
+}
+
+//  ... = pointers where to store data
+void gtable_getRow(GTable * table, int row, ...) {
+   void * row = table_getRow(table->table, row);
+   va_list list;
+   va_start(list, row);
+   void *data;
+   int * offsets = table->table->colOffsets;
+   for(int i = 0; i < table->table->columns; i++) {
+      data = va_arg(list, void *);
+      memcpy(data, row + offsets[i], offsets[i + 1] - offsets[i]);
+   }
    va_end(list);
 }

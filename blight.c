@@ -110,29 +110,25 @@ int main(int argc, char ** argv) {
    // todo changes based on parameters.. and shortcut to exit
    Blight * bl = blight_read(bin);
    GTable * mytable = blight_initialize_table(bl);
-   bool quit = false;
-   char buffer[256];
-   String * s;
-   while(!quit) {
-      fgets(buffer, 256, stdin);
-      if(buffer[0] == 'q' || buffer[0] == 'Q') {
-         quit = true;
-      } else {
-         s = str(buffer);
-         gtable_processInput(mytable, s);
-         str_free(s);
-      }
-   }
-   // todo move table values to binfile
-
-   // blight_to_string(bl);
+   gtable_print(mytable);
+   bool quit = false, hasSaved = true;
    if(!destination)
       destination = source;
-   if(file_exists(destination) && !overwrite) {
-      fprintf(stderr, "File '%s' already exists!\n", destination);
-   } else {
-      bin_write(bin, destination);
+   String * s, *dest = str(destination);
+   while(!quit) {
+      s = str_get();
+      if(s->str[0] == 'q' || s->str[0] == 'Q') {
+         quit = true;
+      } else if(strc_in_ignore_case(s, "save") == 0) {
+         // todo better command processing
+         blight_save(bl, mytable, bin, dest, 0);
+      } else {
+         gtable_processInput(mytable, s);
+      }
+      str_free(s);
    }
+
+   // blight_to_string(bl);
    bin_destroy(bin);
    bin_template_destroy(BL_TEMPLATE);
    free(bl);
@@ -142,10 +138,6 @@ int main(int argc, char ** argv) {
    str_free(section);
 
    return 0;
-}
-
-void bl_map_init(Blight * blight) {
-
 }
 
 
@@ -314,10 +306,10 @@ GTable * blight_initialize_table(Blight * blight) {
        bt_Float32, bt_Float32, bt_Float32,  // dest
        bt_Float32, bt_UInt8, bt_UInt8, bt_UInt8, bt_UInt8); // RGBA
 
-   gtable_addHeader(table, str("Light"), str("Amb"), str("AmR"), str("AmG"), str("AmB"), str("AmA"),
-      str("Origin X"), str("Origin Y"), str("Origin Z"),
-      str("Destin X"), str("Destin Y"), str("Destin Z"),
-      str("Effect"), str("LR"), str("LG"), str("LB"), str("LA"));
+   gtable_addHeader(table, str("Lig"), str("AmI"), str("AmR"), str("AmG"), str("AmB"), str("AmA"),
+      str("OriginX"), str("OriginY"), str("OriginZ"),
+      str("DestinX"), str("DestinY"), str("DestinZ"),
+      str("Effect"), str("LiR"), str("LiG"), str("LiB"), str("LiA"));
 
    Lobj * lobj;
    uint8_t * amRGBA;
@@ -330,4 +322,27 @@ GTable * blight_initialize_table(Blight * blight) {
          lobj->colorEffect, lobj->rgba, lobj->rgba + 1, lobj->rgba + 2, lobj->rgba + 3);
    }
    return table;
+}
+
+void blight_saveTable(Blight * blight, GTable * table) {
+   Lobj * lobj;
+   Ambient * am;
+   for(int i = 0; i < 16; i++) {
+      lobj = &blight->lobjs[i];
+      lobj->ambientIndex = *((uint16_t * ) gtable_get(table, i, 1));
+      am = &blight->ambients[*lobj->ambientIndex];
+      gtable_getRow(table, i, lobj->lightType, lobj->ambientIndex, am->rgba, am->rgba + 1, am->rgba + 2, am->rgba + 3,
+         lobj->origin, lobj->origin + 1, lobj->origin + 2,
+         lobj->destination, lobj->destination + 1, lobj->destination + 2,
+         lobj->colorEffect, lobj->rgba, lobj->rgba + 1, lobj->rgba + 2, lobj->rgba + 3);
+   }
+}
+
+void blight_save(Blight * blight, GTable * table, BinFile * file, String * destination, bool overwrite) {
+   blight_saveTable(blight, table);
+   if(file_exists(destination->str) && !overwrite) {
+      fprintf(stderr, "File '%s' already exists!\n", destination->str);
+   } else {
+      bin_write(bin, destination);
+   }
 }

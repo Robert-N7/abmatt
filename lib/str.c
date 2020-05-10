@@ -97,8 +97,8 @@ void str_append(String * str, const char * cptr, int length) {
 // slice from [start:end)
 String * str_slice(const String * str1, int start, int end) {
    if(end <= STR_END)
-      end = str1->len + 1;
-   if(end < start || end > str1->len + 1) // nope
+      end = str1->len;
+   if(end < start || end > str1->len) // nope
       return NULL;
    else if(end == start)
       end += 1;
@@ -315,6 +315,7 @@ int str_trim(String * str, const char * chrs) {
 }
 
 bool str_eq(const String * s1, const String * s2) {
+   // printf("comparing String 1 %s length %d to String 2 %s length %d\n", s1->str, s1->len, s2->str, s2->len);
    if(s1->len != s2->len)
       return false;
    return memcmp(s1->str, s2->str, s1->len) == 0;

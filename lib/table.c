@@ -55,7 +55,7 @@ Table * table_anew(FreeFunc freeFunc, int rows, int cols, int * args) {
 void table_destroy(Table * table) {
    // first take care of the rows of data;
    for(int i = 0; i < table->dataRows->size; i++) {
-      void * row = vector_get(table->dataRows, i);
+      void * row = vector_getp(table->dataRows, i);
       if(table->freeFunc)
          for(int j = 0; j < table->columns; j++) {
             table->freeFunc(row + table->colOffsets[j]);
@@ -145,12 +145,12 @@ void table_addEmptyRow(Table * table) {
 }
 
 void * table_getRow(Table * table, int row) {
-   return vector_get(table->dataRows, row);
+   return vector_getp(table->dataRows, row);
 }
 
 void table_deleteRow(Table * table, int row) {
    // take care of freeing data?
-   void * ptr = vector_get(table->dataRows, row);
+   void * ptr = vector_getp(table->dataRows, row);
    if(table->freeFunc) {
       for(int i = 0; i < table->columns; i++)
          table->freeFunc(ptr + table->colOffsets[i]);
@@ -179,7 +179,7 @@ void table_swapRows(Table * table, int row1, int row2) {
 }
 
 void table_fillRow(Table * table, int row, void * value) {
-   void * rowdata = vector_get(table->dataRows, row);
+   void * rowdata = vector_getp(table->dataRows, row);
    void * current;
    int * offsets = table->colOffsets;
    for(int i = 0; i < table->columns; i++) {
@@ -199,18 +199,19 @@ void table_fillColumn(Table * table, int col, void * value) {
 
 void * table_getByName(Table * table, int row, String * name) {
    int index = table_findName(table, name);
-   return vector_get(table->dataRows, row) + table->colOffsets[index];
+   return vector_getp(table->dataRows, row) + table->colOffsets[index];
 }
 
 void * table_get(Table * table, int row, int col) {
-   return vector_get(table->dataRows, row) + table->colOffsets[col];
+   return vector_getp(table->dataRows, row) + table->colOffsets[col];
 }
 
 void table_set(Table * table, int row, int col, void * data) {
-   void * current = vector_get(table->dataRows, row) + table->colOffsets[col];
+   void * current = vector_getp(table->dataRows, row) + table->colOffsets[col];
    if(table->freeFunc)
       table->freeFunc(current);
    memcpy(current, data, table->colOffsets[col + 1] - table->colOffsets[col]);
+   printf("Copied data %2X size %d into table\n", *((char * ) data), table->colOffsets[col + 1] - table->colOffsets[col]);
 }
 
 void table_setByName(Table * table, int row, String * name, void * data) {
@@ -265,8 +266,8 @@ void table_pasteRange(Table * table, Range * rng, int rowStart, int rowEnd) {
    for(int i = rowStart, j = rng->rowStart; i < rowEnd; i++, j++) {
       if(j >= rng->rowEnd)
          j = rng->rowStart;
-      trow = vector_get(table->dataRows, i);
-      rrow = vector_get(rng->dataRows, j);
+      trow = vector_getp(table->dataRows, i);
+      rrow = vector_getp(rng->dataRows, j);
       memcpy(trow + memStart, rrow + memStart, memLen);
    }
 }
@@ -274,7 +275,7 @@ void table_pasteRange(Table * table, Range * rng, int rowStart, int rowEnd) {
 // does not free underlying data! if any
 void table_freeRange(Range * range) {
    for(int i = range->rowStart; i < range->rowEnd; i++) {
-      free(vector_get(range->dataRows, i));
+      free(vector_getp(range->dataRows, i));
    }
    vector_destroy(range->dataRows);
    free(range);
