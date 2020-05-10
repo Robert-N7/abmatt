@@ -154,15 +154,31 @@ BinHub ** bin_read(BinFile * file, char * filename) {
       return NULL;
    FILE * fptr = fopen(file->filename, "rb");
    if(fptr) {
-      void * data = malloc(file->filesize);
+      char buffer[512];
       // read file
-      int result = fread(data, 1, file->filesize, fptr);
-      fclose(fptr);
-      if(result != file->filesize) {
-         printf("Failed to read in the sufficient number of bytes\n");
-         free(data);
-         return NULL;
+      int result, bytesRead = 0, capacity = 1024;
+      void * data = malloc(capacity);
+      while(result = fread(buffer, 1, 512, fptr)) {
+         if(bytesRead + result > capacity) { // resize
+            capacity *= 2;
+            void * ptr = realloc(data, capacity);
+            if(!ptr) {
+               ptr = malloc(capacity);
+               memcpy(ptr, data, bytesRead);
+               free(data);
+            }
+            data = ptr;
+         }
+         memcpy(data + bytesRead, buffer, result);
+         bytesRead += result;
       }
+      file->filesize = bytesRead;
+      fclose(fptr);
+      // if(result != file->filesize) {
+      //    printf("Failed to read in the sufficient number of bytes\n");
+      //    free(data);
+      //    return NULL;
+      // }
       int offset = 0;
       file->head = bin_read_section(file->template, data, &offset);
       free(data);

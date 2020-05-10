@@ -5,9 +5,9 @@
 /******************************************************/
 #include <stdint.h>
 #include <stdbool.h>
-#include "lib/str.h"
-#include "lib/serialize.h"
-#include "lib/gtable.h"
+#include "../lib/str.h"
+#include "../lib/serialize.h"
+#include "../lib/gtable.h"
 
 typedef struct _BlightHeader {
    char * magic;

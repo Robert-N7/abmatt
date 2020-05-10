@@ -5,7 +5,7 @@
 /******************************************************/
 #include <stdint.h>
 #include <stdbool.h>
-#include "lib/str.h"
+#include "../lib/str.h"
 
 typedef struct _BlightHeader {
    char magic[4];

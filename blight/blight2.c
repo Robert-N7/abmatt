@@ -5,10 +5,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "lib/str.h"
-#include "lib/file.h"
-#include "lib/stringUtil.h"
-#include "lib/serialize.h"
+#include "../lib/str.h"
+#include "../lib/file.h"
+#include "../lib/stringUtil.h"
+#include "../lib/serialize.h"
 #include <string.h>
 #include <unistd.h>
 
