@@ -12,16 +12,16 @@ class Material:
     CULL_ALL = 3
     def __init__(self, name):
         self.name = name
-        self.alphafunction = AlphaFunction(0)
-        self.blendmode = BlendMode(0)
+        self.alphafunction = 0
+        self.blendmode = 0
         self.constantAlpha = 0
-        self.texgens = []
-        self.lightChannels = (LightChannel(1), LightChannel(0))
+        self.layers = []
+        self.lightChannels = []
         self.xlu = False
         self.cullmode = self.CULL_INSIDE
         self.shader = 0
-        self.shaderColors = [[0,0,0,0], [0,0,0,0], [0,0,0,0]]
-        self.shaderConstantColors = [[0,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,0]]
+        self.shaderColors = 0
+        self.shaderConstantColors = 0
         self.compareBeforeTexture = True
         self.enableDepthTest = True
         self.enableDepthUpdate = True
@@ -29,16 +29,21 @@ class Material:
         self.lightset = 0xff
         self.fogset = 0
 
-    def addTexGen(self, texRef):
-        self.texgens.append(texRef)
+    def addTexRef(self, texRef):
+        self.layers.append(texRef)
+
+    def getLayer(self, i):
+        if i < len(self.layers):
+            return self.layers[i]
+        return None
 
     def setTransparent(self):
-        self.alphafunction.enable()
+        # self.alphafunction.enable()
         self.compareBeforeTexture = False
         self.xlu = True
 
     def setOpaque(self):
-        self.alphafunction.disable()
+        # self.alphafunction.disable() # todo
         self.compareBeforeTexture = True
         self.xlu = False
 
@@ -47,18 +52,21 @@ class Material:
 
 
 class TexRef:
+    WRAP=["Clamp", "Repeat", "Mirror"]
+    FILTER = ["Nearest", "Linear", "Nearest_Mipmap_Nearest", "Linear_Mipmap_Nearest", "Nearest_Mipmap_Linear", "Linear_Mipmap_Linear"]
+    ANISOTROPHY = ["One", "Two", "Four"]
     def __init__(self, name):
         self.name = name    # reference to texture
         self.scale = [1, 1]
         self.rotation = 0
         self.translation = [0, 0]
-        self.mapmode = "TexCoord"
+        self.mapmode = 0 # tex coord
         self.uwrap = "Repeat"
         self.vwrap = "Repeat"
         self.minFilter = "Linear_Mipmap_Linear"
         self.magFilter = "Linear"
-        self.LODBias = 0
-        self.maxAnisotrophy = "Four"
+        self.LODBias = 0.0
+        self.maxAnisotrophy = self.ANISOTROPHY[0]
         self.clampBias = True
         self.texelInterpolate = True
         self.projection = "ST"
@@ -68,6 +76,7 @@ class TexRef:
         self.embossSource = 5
         self.embossLight = 0
         self.normalize = False
+
 
 class Shader:
     def __init__(self, id):
@@ -106,34 +115,21 @@ class ShaderStage:
         self.indirectBias = 0
         self.indirectMatrix = 0
 
+# LIGHT CHANNEL ----------------------------------------------------
+        # LC flags bits
+        # 0	Material color enabled
+        # 1	Material alpha enabled
+        # 2	Ambient color enabled
+        # 3	Ambient alpha enabled
+        # 4	Raster color enabled
+        # 5	Raster alpha enabled
+# Light Controls
+#   3rd byte 7 for activated, 4th 0-1 for ambient or vertex color
 class LightChannel:
-    def __init__(self, enabled):
-        self.rasterColorOn = enabled    # disabled in lc2
-        self.rasterAlphaOn = enabled    # ditto
-        self.ambientColorOn = True
-        self.ambientAlphaOn = True
-        self.materialColorOn = True
-        self.materialAlphaOn = True
-        self.materialColor = [0xff, 0xff, 0xff, 0xff]
-        self.ambientColor = [0x00, 0x00, 0x00, 0xff]
-        self.colorOn = False
-        self.alphaOn = False
-        if(enabled):
-            self.colorMaterialSource = "Vertex"     # this may be changed to register
-            self.alphaMaterialSource = "Vertex"
-            self.colorDiffuseFunction = "Clamped"
-            self.alphaDiffuseFunction = "Clamped"
-            self.colorAttenuation = "Spotlight"
-            self.alphaAttenuation = "Spotlight"
-        else:
-            self.colorMaterialSource = "Register"
-            self.alphaMaterialSource = "Register"
-            self.colorDiffuseFunction = 0
-            self.alphaDiffuseFunction = 0
-            self.colorAttenuation = 0
-            self.alphaAttenuation = 0
-        self.colorAmbientSource = "Register"
-        self.alphaAmbientSource = "Register"
+    def __init__(self):
+        self.flags = 0xff
+        self.materialColor = []
+        self.ambientColor = []
 
 class BlendMode:
     def __init__(self, enabled):
