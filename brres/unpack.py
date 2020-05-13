@@ -5,9 +5,13 @@
 # -------------------------------------------------------------------
 from struct import *
 import binascii
+from material import *
+
+
 
 class BinRead:
-    def __init__(self, filename):
+    def __init__(self, filename, container):
+        self.container = container
         self.offset = 0
         file = open(filename, "rb")
         self.file = file.read()
@@ -22,11 +26,15 @@ class BinRead:
         packed = self.file[offset:(offset + len)]
         return struct.unpack(packed)
 
+    def unpack_name(self, offset):
+        nameLens = self.readOffset(Struct("> I"), offset - 4, 4)
+        if nameLens[0] > 120:
+            print("Name length too long!")
+        else:
+            name = self.readOffset(Struct("> " + str(nameLens[0]) + "s"), offset, nameLens[0]);
+            print("Name: {}".format(name[0]))
+            return name[0]
 
-class UnpackMDL:
-    def __init__(self, file, subfile):
-        self.file = file
-        self.indexGroups = []
 
 
 class BresSubFile:
@@ -49,79 +57,492 @@ class BresSubFile:
         "TEX02" : 2,
         "TEX03" : 1
     }
-    def __init__(self, file):
-        self.offset = file.offset
+    def __init__(self, file, offset):
+        self.offset = file.offset = offset
         self.h = file.read(self.structs["h"], 16)
-        # print("Unpacked: {}".format(self.h))
+        # print("Subfile, len, version, outerOffset: {}".format(self.h))
         self.magic = self.h[0]
         self.length = self.h[1]
         self.version = self.h[2]
-        self.sectionCount = self.numSections[self.magic + str(self.version)]
-        # print("Got section count of {}".format(self.sectionCount))
+        # self.bin = file.file[self.offset:self.offset + self.length]
+        self.sectionCount = self.numSections[self.magic.decode() + str(self.version)]
+        # print("section count: {}".format(self.sectionCount))
         self.sectionOffsets = file.read(Struct(">" + (" I" * self.sectionCount)), self.sectionCount * 4)
         # print("{} Section offsets: {}".format(self.magic, self.sectionOffsets))
+        if self.magic == b"MDL0":
+            UnpackMDL0(file, self)
 
 
 class IndexGroup:
+    structs = {
+        "h" : Struct("> I I"),
+        "indexGroup" : Struct("> H H H H I I"),
+    }
     def __init__(self, file, offset):
-        structs = {
-            "h" : Struct("> I I"),
-            "indexGroup" : Struct("> H H H H I I"),
-            "entryNameLen" : Struct("> I")
-        }
         if offset:
             file.offset = offset
         self.startOffset = file.offset
-        self.h = file.read(structs["h"], 8)
-        # print("Unpacked: {}".format(self.h))
+        self.h = file.read(self.structs["h"], 8)
+        print("Group byte len, numEntries: {}".format(self.h))
         self.entries = []
         self.entryNames = []
         self.entryOffsets = []
         # file.offset += 16
         for i in range(self.h[1] + 1):
-            entry = file.read(structs["indexGroup"], 16)
-            # print("Unpacked: {}".format(entry))
+            entry = file.read(self.structs["indexGroup"], 16)
+            print("Entry id, uk, left, right, namep, datap {}".format(entry))
             if i != 0:
-                nameLenst = file.readOffset(structs["entryNameLen"], entry[4] - 4 + self.startOffset, 4)
-                nameLen = nameLenst[0]
-                # print("Name length: {}".format(nameLen))
-                name = file.readOffset(Struct("> " + str(nameLen) + "s"), entry[4] + self.startOffset, nameLen);
-                # print("Name: {}".format(name[0]))
+                name = file.unpack_name(entry[4] + self.startOffset)
                 self.entryNames.append(name)
                 self.entryOffsets.append(entry[5] + self.startOffset)
+            # else:
+            #     self.entryNames.append("Null")
+
             self.entries.append(entry)
-        self.children = []
-        if not offset:
-            for off in self.entryOffsets:
-                self.children.append(IndexGroup(file, off))
-        else:
-            for off in self.entryOffsets:
-                file.offset = off
-                self.children.append(BresSubFile(file))
+
+
+class UnpackMDL0:
+    def __init__(self, file, subFileHeader):
+        print("======================================================================")
+        print("\t\tMDL0:")
+        self.file = file
+        self.offset = subFileHeader.offset
+        self.version = subFileHeader.version
+        self.indexGroups = []
+        self.sections = []
+        self.drawlistsGroup = None
+        self.bonesGroup = None
+        self.verticesGroup = None
+        self.normalsGroup = None
+        self.colorsGroup = None
+        self.texCoordGroup = None
+        self.furVectorsGroup = None
+        self.furlayersGroup = None
+        self.materialsGroup = None
+        self.tevsGroup = None
+        self.objectsGroup = None
+        self.palettelinksGroup = None
+        self.texturelinksGroup = None
+        self.folders = subFileHeader
+        offsets =  subFileHeader.sectionOffsets
+        for i in range(len(offsets)):
+            group = None
+            if offsets[i]: # offset exists?
+                print("Section {} exists".format(i))
+                if i == 0:
+                    group = IndexGroup(file, offsets[i] + self.offset)
+                    self.drawlistsGroup = group
+                elif i == 1:
+                    group = IndexGroup(file, offsets[i] + self.offset)
+                    self.bonesGroup = group
+                elif i == 2:
+                    group = IndexGroup(file, offsets[i] + self.offset)
+                    self.verticesGroup = group
+                elif i == 3:
+                    group = IndexGroup(file, offsets[i] + self.offset)
+                    self.normalsGroup = group
+                elif i == 4:
+                    group = IndexGroup(file, offsets[i] + self.offset)
+                    self.colorsGroup = group
+                elif i == 5:
+                    group = IndexGroup(file, offsets[i] + self.offset)
+                    self.texCoordGroup = group
+                elif i == 6:
+                    group = IndexGroup(file, offsets[i] + self.offset)
+                    self.furVectorsGroup = group
+                elif i == 7:
+                    group = IndexGroup(file, offsets[i] + self.offset)
+                    self.furlayersGroup = group
+                elif i == 8:
+                    group = IndexGroup(file, offsets[i] + self.offset)
+                    self.materialsGroup = group
+                elif i == 9:
+                    group = IndexGroup(file, offsets[i] + self.offset)
+                    self.tevsGroup = group
+                elif i == 10:
+                    group = IndexGroup(file, offsets[i] + self.offset)
+                    self.objectsGroup = group
+                elif i == 11:
+                    group = IndexGroup(file, offsets[i] + self.offset)
+                    self.texturelinksGroup = group
+                elif i == 12:
+                    group = IndexGroup(file, offsets[i] + self.offset)
+                    self.palettelinksGroup = group
+            self.indexGroups.append(group)
+        # Header file
+        file.offset = self.offset + 0x14 + (self.version + 3) * 4
+        self.h = file.read(Struct("> 4I 6I 3f 3f"), 64)
+        file.offset = self.h[9] + self.offset
+        self.boneTable = self.unpack_boneTable(file)
+        self.mats = self.unpack_materials(file)
+        self.drawlists = self.unpack_drawlists(file)
+        self.bones = self.unpack_bones(file)
+        self.vertices = self.unpack_vertices(file)
+        self.normals = self.unpack_normals(file)
+        self.colors = self.unpack_colors(file)
+        self.texCoords = self.unpack_textureCoordinates(file)
+        self.furVectors = self.unpack_furVectors(file)
+        self.furLayers = self.unpack_furLayers(file)
+        self.tevs = self.unpack_tevs(file)
+        self.objects = self.unpack_objects(file)
+        self.textureLinks = self.unpack_texturelinks(file)
+        self.paletteLinks = self.unpack_palletelinks(file)
+        self.sections.append(self.drawlists)
+        self.sections.append(self.bones)
+        self.sections.append(self.vertices)
+        self.sections.append(self.normals)
+        self.sections.append(self.colors)
+        self.sections.append(self.texCoords)
+        self.sections.append(self.furVectors)
+        self.sections.append(self.furLayers)
+        self.sections.append(self.mats)
+        self.sections.append(self.tevs)
+        self.sections.append(self.objects)
+        self.sections.append(self.textureLinks)
+        self.sections.append(self.paletteLinks)
+        # for i in range(len(self.sections)):
+        #     section = self.sections[i]
+        #     if section:
+        #         entryNames = self.indexGroups[i].entryNames
+        #         offsets = self.indexGroups[i].entryOffsets
+        #         print("=========================================================================")
+        #         print("Section {}:\tsize {}".format(i, len(section)))
+        #         print("=========================================================================")
+        #         for i in range(len(section)):
+        #             print("{} {}\t{}".format(offsets[i], entryNames[i], section[i]))
+        #     else:
+        #         print("------------------------------Missing section-----------------------------")
+        print("======================================================================")
+        file.container.models.append(self)
+
+    def unpack_boneTable(self, file):
+        count = file.read(Struct("> I"), 4)
+        return file.read(Struct(">" + str(count[0]) + "I"), 4 * count[0])
+
+    def unpack_drawlists(self, file):
+        if not self.drawlistsGroup:
+            return None
+        offsets = self.drawlistsGroup.entryOffsets
+        drawlists = []
+        maxOffsetlist = len(offsets)
+        for i in range(maxOffsetlist):
+            done = False
+            struct0 = Struct("> B")
+            struct1 = Struct("> 4B")
+            struct2 = Struct("> 7B")
+            currentList = []
+            file.offset = offsets[i]
+            while not done:
+                byte = file.read(struct0, 1)
+                # print("Byte: {}".format(byte))
+                currentList.append(byte[0])
+                if byte[0] == 0x01:
+                    break
+                elif byte[0] == 0x02 or byte[0] == 0x05:
+                    currentList.append(file.read(struct1, 4))
+                else:
+                    currentList.append(file.read(struct2, 7))
+            drawlists.append(currentList)
+        return drawlists
+
+    def unpack_bones(self, file):
+        if not self.bonesGroup:
+            return None
+        offsets = self.bonesGroup.entryOffsets
+        print(offsets)
+        bones = []
+        for i in range(len(offsets)):
+            file.offset = offsets[i]
+            bones.append(file.read(Struct("> 8I 9f 6f 5I 12f 12f"), 0xd0))
+            # todo children bones?
+        return bones
+
+    def unpack_vertices(self, file):
+        if not self.verticesGroup:
+            return None
+        offsets = self.verticesGroup.entryOffsets
+        vertices = []
+        for i in range(len(offsets)):
+            file.offset = offsets[i]
+            vertices.append(file.read(Struct("> 7I 2B H 3f 3f"), 0x38))
+        return vertices
+
+    def unpack_normals(self, file):
+        if not self.normalsGroup:
+            return None
+
+        offsets = self.normalsGroup.entryOffsets
+        normals = []
+        for i in range(len(offsets)):
+            file.offset = offsets[i]
+            normals.append(file.read(Struct("> 7I 2B H"), 0x20))
+        return normals
+
+    def unpack_colors(self, file):
+        if not self.colorsGroup:
+            return None
+
+        offsets = self.colorsGroup.entryOffsets
+        colors = []
+        for i in range(len(offsets)):
+            file.offset = offsets[i]
+            colors.append(file.read(Struct("> 7I 2B H"), 0x20))
+        return colors
+
+    def unpack_textureCoordinates(self, file):
+        if not self.texCoordGroup:
+            return None
+
+        offsets = self.texCoordGroup.entryOffsets
+        texCoord = []
+        for i in range(len(offsets)):
+            file.offset = offsets[i]
+            texCoord.append(file.read(Struct("> 7I 2B H 2f 2f"), 0x30))
+        return texCoord
+
+
+    def unpack_furVectors(self, file):
+        if not self.furVectorsGroup:
+            return None
+        offsets = self.furVectorsGroup.entryOffsets
+        fv = []
+        for i in range(len(offsets)):
+            file.offset = offsets[i]
+            fv.append(file.read(Struct("> 5I H 10B"), 0x20))
+        return fv
+
+    def unpack_furLayers(self, file):
+        if not self.furlayersGroup:
+            return None
+        offsets = self.furlayersGroup.entryOffsets
+        layers = []
+        for i in range(len(offsets)):
+            file.offset = offsets[i]
+            layers.append(file.read(Struct("> 7I 2B H 3f 3f"), 0x38))
+        return layers
+
+    def unpack_materials(self, file):
+        mats = []
+        offsets = self.materialsGroup.entryOffsets
+        names = self.materialsGroup.entryNames
+        storedOffset = self.offset
+        for i in range(len(offsets)):
+            mat = Material(names[i])
+            mat.offset = offsets[i]
+            file.offset = offsets[i]
+            matData = file.read(Struct("> 5I 4B I 4B 4B 4B"), 40) #up to 0x20
+            print("\tName: {}, index: {}".format(names[i], matData[3]))
+            print("Flags: {}, texgens: {}, lights: {}, shaderstages: {}, indirectStages: {}".format(matData[4], matData[5], matData[6], matData[7], matData[8]))
+            print("Cull: {}, AlphaFunction: {}, Lightset: {}, Fogset: {}".format(matData[9], matData[10], matData[11], matData[12]))
+            mat.id = matData[3]
+            mat.xlu = matData[4]
+            numTexGens = matData[5]
+            mat.flags = matData
+            mat.cullmode = matData[9]
+            if matData[10]:
+                mat.setTransparent()
+            matData = file.read(Struct("> 6I"), 24)
+            print("Shader Offset {}, numTextures {}, layer offset {}".format(matData[0], matData[1], matData[2]))
+            if self.version < 10:
+                displayListOffset = matData[4]
+            else:
+                displayListOffset = matData[5]
+            # file.offset =  matData[0] + mat.offset
+            # self.unpack_shader(file)
+            # Advance to layer offset
+            file.offset = matData[2] + mat.offset
+            for i in range(matData[1]):
+                ref = self.unpack_layer(file)
+                mat.addTexRef(ref)
+            # Advance to shader offset
+            if file.offset % 0x20:
+                file.offset += (0x20 - file.offset % 0x20)
+            shaderMode = file.read(Struct("32B"), 32)
+            print("\tMODE: {}".format(shaderMode))
+            shadertev = file.read(Struct("128B"), 128)
+            print("\tTev: {}".format(shadertev))
+            shaderTex = file.read(Struct("64B"), 64)
+            print("\tTexTransform: {}".format(shaderTex))
+            shaderMatrices = file.read(Struct("160B"), 160)
+            print("\tMatrices: {}".format(shaderMatrices))
+            # for i in range(8):"
+            #     shader = file.read(Struct("48B"), 48)
+            #     print(shader)
+
+            file.offset = mat.offset + 0x1a8
+            matData = file.read(Struct("< 4B I"), 8)
+            layerIndex = 0
+            for i in range(3, -1, -1): # read it backwards
+                flags = matData[i]
+                # print("Flags: {}".format(flags))
+                layer = mat.getLayer(layerIndex)
+                if layer:
+                    layer.flags = flags & 0xf
+                layerIndex += 1
+                layer = mat.getLayer(layerIndex)
+                if layer:
+                    layer.flags = (flags >> 4)  & 0xf
+                layerIndex += 1
+            mat.textureMatrixMode = matData[4]
+            # print("Mat Flags {}".format(matData))
+            # Texture Position
+            matData = file.read(Struct("> 40f"), 160)
+            structIndex = 0
+            for i in range(8):
+                layer = mat.getLayer(i)
+                if layer:
+                    layer.scale = (matData[structIndex], matData[structIndex + 1])
+                    layer.rotation = matData[structIndex + 2]
+                    layer.translation = (matData[structIndex + 3], matData[structIndex + 4])
+                    structIndex += 5
+                    # print("Name: {}, Scale: {}, Rotation: {}, translation: {} flags: {}".format(layer.name, layer.scale, layer.rotation, layer.translation, hex(layer.flags)))
+            # Texture Matrix
+            for i in range(8):
+                layer = mat.getLayer(i)
+                if layer:
+                    matData = file.read(Struct("> 4B 12f"), 52)
+                    layer.scn0CameraRef = matData[0]
+                    layer.scn0LightRef = matData[1]
+                    layer.mapMode = matData[2]
+                    layer.enableIdentityMatrix = matData[3]
+                    layer.textureMatrix = matData[4:]
+                else:
+                    file.offset += 52
+            # Lighting channels
+            mat.lightChannels.append(self.unpack_lightingChannel(file))
+            mat.lightChannels.append(self.unpack_lightingChannel(file))
+            mats.append(mat)
+        return mats
+
+
+    def unpack_layer(self, file):
+        offset = file.offset
+        layer = file.read(Struct("> 10I f I 4B"), 52)
+        print("Layer: {}".format(layer))
+        name = file.unpack_name(layer[0] + offset)
+        ref = TexRef(name)
+        ref.texDataID = layer[4]
+        ref.palleteDataID = layer[5]
+        ref.uwrap = ref.WRAP[layer[6]]
+        ref.vwrap = ref.WRAP[layer[7]]
+        ref.minFilter = ref.FILTER[layer[8]]
+        ref.magFilter = ref.FILTER[layer[9]]
+        ref.LODBias = layer[10]
+        ref.maxAnisotrophy = ref.ANISOTROPHY[layer[11]]
+        ref.clampBias = layer[12]
+        ref.texelInterpolate = layer[13]
+        return ref
+
+    def unpack_shader(self, file):
+        # todo sort this mess out
+        modeInformation = file.read(Struct("> 32B"), 32)
+        shaderID = modeInformation[11]
+        numStages = modeInformation[12]
+        # print("\tID: {} NumStages: {}".format(shaderID, numStages))
+        # print("Shader Header: {}".format(modeInformation))
+        tevRegs = file.read(Struct("> 80B"), 80)
+        # print("\tTevRegs: {}".format(tevRegs))
+        indirectRefs = file.read(Struct("> 16B"), 16)
+        # for i in range(8):
+        #     textureTransformations = file.read(Struct("> 48B"), 48)
+        #     # textureTransformations = file.read(Struct("> 32B"), 32)
+        #     print("\tstage {}: {}".format(i, textureTransformations))
+        #     if i == 0:
+        #         offset = 5
+        #         print("Data {}, {} at offset {}".format(textureTransformations[offset], hex(textureTransformations[offset]), offset))
+        # textureMatrices = file.read(Struct("> 160B"), 160)
+        # print("\tmatrices: {}".format(textureMatrices))
+
+    def unpack_lightingChannel(self, file):
+        data = file.read(Struct("> 20B"), 20)
+        print("Light Channel data {}".format(data))
+        lc = LightChannel()
+        lc.flags = data[3]
+        lc.materialColor = data[4:8]
+        lc.ambientColor = data[8:12]
+        lc.colorLightControl = data[12:16]
+        lc.alphaLightControl = data[16:20]
+        return lc
+
+    def unpack_tevs(self, file):
+        if not self.tevsGroup:
+            return None
+        offsets = self.tevsGroup.entryOffsets
+        tevs = []
+        for i in range(len(offsets)):
+            file.offset = offsets[i]
+            tevs.append(file.read(Struct("> 3I 4B 8B 2I"), 0x20))
+        return tevs
+
+    def unpack_objects(self, file):
+        if not self.objectsGroup:
+            return None
+        offsets = self.objectsGroup.entryOffsets
+        objects = []
+        for i in range(len(offsets)):
+            file.offset = offsets[i]
+            objects.append(file.read(Struct("> 18I 2H 10H 2I"), 0x68))
+        return objects
+
+    def unpack_texturelinks(self, file):
+        if not self.texturelinksGroup:
+            return None
+        offsets = self.texturelinksGroup.entryOffsets
+        tlinks = []
+        for i in range(len(offsets)):
+            file.offset = offsets[i]
+            size = file.read(Struct("> I"), 4)
+            tlinks.append(file.read(Struct("> " + str(size[0] * 2) + "I"), size[0] * 8))
+        return tlinks
+
+    def unpack_palletelinks(self, file):
+        if not self.palettelinksGroup:
+            return None
+        offsets = self.palettelinksGroup.entryOffsets
+        palletelinks = []
+        for i in range(len(offsets)):
+            file.offset = offsets[i]
+            size = file.read(Struct("> I"), 4)
+            palletelinks.append(file.read(Struct("> " + str(size[0] * 2) + "I"), size[0] * 8))
+        return palletelinks
 
 
 
-class unpackBrres:
+class UnpackBrres:
     structs = {
         "h" : Struct("> 4s H H I H H"),
         "root" : Struct("> 4s I"),
         "indexGroupH" : Struct("> I I"),
         "indexGroup" : Struct("> H H H H I I"),
     }
+
     def __init__(self, filename):
         print("Starting...")
-        f = BinRead(filename)
-        brresHd = f.read(self.structs["h"], 16)
-        # print("Unpacked: {}".format(brresHd))
-        assert(brresHd[0] == "bres")
+        structs = self.structs
+        self.models = []
+        self.textures = []
+        self.anmClr = []
+        self.anmTexSrt = []
+        f = BinRead(filename, self)
+        self.file = f
+        brresHd = f.read(structs["h"], 16)
+        print("Unpacked: {}".format(brresHd))
+        # assert(brresHd[0] == "bres")
         f.offset = brresHd[4]
+
         self.brresHd = brresHd
-        self.rootHd = f.read(self.structs["root"], 8)
-        # print("Unpacked: {}".format(self.rootHd))
+        self.rootHd = f.read(structs["root"], 8)
+        print("Unpacked: {}".format(self.rootHd))
         self.indexGroups = []
-        self.indexGroups.append(IndexGroup(f, 0))
+        self.subFiles = []
+        self.root = IndexGroup(f, 0)
+        for offset in self.root.entryOffsets:
+            self.indexGroups.append(IndexGroup(f, offset))
+        for group in self.indexGroups:
+            # folderNames = group.entryNames
+            offsets = group.entryOffsets
+            for i in range(len(offsets)):
+                # print("\t=====Folder {}======".format(folderNames[i]))
+                self.subFiles.append(BresSubFile(f, offsets[i]))
+        self.structs = structs
         self.filename = filename
-
-
-
-b = Brres("course_model.brres")

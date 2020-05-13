@@ -11,7 +11,7 @@ class Material:
     CULL_INSIDE = 2
     CULL_ALL = 3
     def __init__(self, name):
-        self.name = name
+        self.name = name.decode()
         self.alphafunction = 0
         self.blendmode = 0
         self.constantAlpha = 0
@@ -56,7 +56,7 @@ class TexRef:
     FILTER = ["Nearest", "Linear", "Nearest_Mipmap_Nearest", "Linear_Mipmap_Nearest", "Nearest_Mipmap_Linear", "Linear_Mipmap_Linear"]
     ANISOTROPHY = ["One", "Two", "Four"]
     def __init__(self, name):
-        self.name = name    # reference to texture
+        self.name = name.decode()    # reference to texture
         self.scale = [1, 1]
         self.rotation = 0
         self.translation = [0, 0]
