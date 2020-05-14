@@ -327,111 +327,11 @@ class UnpackMDL0:
         names = self.materialsGroup.entryNames
         storedOffset = self.offset
         for i in range(len(offsets)):
-            mat = Material(names[i])
-            mat.offset = offsets[i]
             file.offset = offsets[i]
-            matData = file.read(Struct("> 5I 4B I 4B 4B 4B"), 40) #up to 0x20
-            print("\tName: {}, index: {}".format(names[i], matData[3]))
-            print("Flags: {}, texgens: {}, lights: {}, shaderstages: {}, indirectStages: {}".format(matData[4], matData[5], matData[6], matData[7], matData[8]))
-            print("Cull: {}, AlphaFunction: {}, Lightset: {}, Fogset: {}".format(matData[9], matData[10], matData[11], matData[12]))
-            mat.id = matData[3]
-            mat.xlu = matData[4]
-            numTexGens = matData[5]
-            mat.flags = matData
-            mat.cullmode = matData[9]
-            if matData[10]:
-                mat.setTransparent()
-            matData = file.read(Struct("> 6I"), 24)
-            print("Shader Offset {}, numTextures {}, layer offset {}".format(matData[0], matData[1], matData[2]))
-            if self.version < 10:
-                displayListOffset = matData[4]
-            else:
-                displayListOffset = matData[5]
-            # file.offset =  matData[0] + mat.offset
-            # self.unpack_shader(file)
-            # Advance to layer offset
-            file.offset = matData[2] + mat.offset
-            for i in range(matData[1]):
-                ref = self.unpack_layer(file)
-                mat.addTexRef(ref)
-            # Advance to shader offset
-            if file.offset % 0x20:
-                file.offset += (0x20 - file.offset % 0x20)
-            shaderMode = file.read(Struct("32B"), 32)
-            print("\tMODE: {}".format(shaderMode))
-            shadertev = file.read(Struct("128B"), 128)
-            print("\tTev: {}".format(shadertev))
-            shaderTex = file.read(Struct("64B"), 64)
-            print("\tTexTransform: {}".format(shaderTex))
-            shaderMatrices = file.read(Struct("160B"), 160)
-            print("\tMatrices: {}".format(shaderMatrices))
-            # for i in range(8):"
-            #     shader = file.read(Struct("48B"), 48)
-            #     print(shader)
-
-            file.offset = mat.offset + 0x1a8
-            matData = file.read(Struct("< 4B I"), 8)
-            layerIndex = 0
-            for i in range(3, -1, -1): # read it backwards
-                flags = matData[i]
-                # print("Flags: {}".format(flags))
-                layer = mat.getLayer(layerIndex)
-                if layer:
-                    layer.flags = flags & 0xf
-                layerIndex += 1
-                layer = mat.getLayer(layerIndex)
-                if layer:
-                    layer.flags = (flags >> 4)  & 0xf
-                layerIndex += 1
-            mat.textureMatrixMode = matData[4]
-            # print("Mat Flags {}".format(matData))
-            # Texture Position
-            matData = file.read(Struct("> 40f"), 160)
-            structIndex = 0
-            for i in range(8):
-                layer = mat.getLayer(i)
-                if layer:
-                    layer.scale = (matData[structIndex], matData[structIndex + 1])
-                    layer.rotation = matData[structIndex + 2]
-                    layer.translation = (matData[structIndex + 3], matData[structIndex + 4])
-                    structIndex += 5
-                    # print("Name: {}, Scale: {}, Rotation: {}, translation: {} flags: {}".format(layer.name, layer.scale, layer.rotation, layer.translation, hex(layer.flags)))
-            # Texture Matrix
-            for i in range(8):
-                layer = mat.getLayer(i)
-                if layer:
-                    matData = file.read(Struct("> 4B 12f"), 52)
-                    layer.scn0CameraRef = matData[0]
-                    layer.scn0LightRef = matData[1]
-                    layer.mapMode = matData[2]
-                    layer.enableIdentityMatrix = matData[3]
-                    layer.textureMatrix = matData[4:]
-                else:
-                    file.offset += 52
-            # Lighting channels
-            mat.lightChannels.append(self.unpack_lightingChannel(file))
-            mat.lightChannels.append(self.unpack_lightingChannel(file))
+            mat = Material(names[i])
+            mat.unpack(file)
             mats.append(mat)
         return mats
-
-
-    def unpack_layer(self, file):
-        offset = file.offset
-        layer = file.read(Struct("> 10I f I 4B"), 52)
-        print("Layer: {}".format(layer))
-        name = file.unpack_name(layer[0] + offset)
-        ref = TexRef(name)
-        ref.texDataID = layer[4]
-        ref.palleteDataID = layer[5]
-        ref.uwrap = ref.WRAP[layer[6]]
-        ref.vwrap = ref.WRAP[layer[7]]
-        ref.minFilter = ref.FILTER[layer[8]]
-        ref.magFilter = ref.FILTER[layer[9]]
-        ref.LODBias = layer[10]
-        ref.maxAnisotrophy = ref.ANISOTROPHY[layer[11]]
-        ref.clampBias = layer[12]
-        ref.texelInterpolate = layer[13]
-        return ref
 
     def unpack_shader(self, file):
         # todo sort this mess out
@@ -452,17 +352,6 @@ class UnpackMDL0:
         #         print("Data {}, {} at offset {}".format(textureTransformations[offset], hex(textureTransformations[offset]), offset))
         # textureMatrices = file.read(Struct("> 160B"), 160)
         # print("\tmatrices: {}".format(textureMatrices))
-
-    def unpack_lightingChannel(self, file):
-        data = file.read(Struct("> 20B"), 20)
-        print("Light Channel data {}".format(data))
-        lc = LightChannel()
-        lc.flags = data[3]
-        lc.materialColor = data[4:8]
-        lc.ambientColor = data[8:12]
-        lc.colorLightControl = data[12:16]
-        lc.alphaLightControl = data[16:20]
-        return lc
 
     def unpack_tevs(self, file):
         if not self.tevsGroup:
