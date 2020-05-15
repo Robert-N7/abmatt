@@ -81,7 +81,7 @@ class IndexGroup:
     def __init__(self, file, offset):
         if offset:
             file.offset = offset
-        self.startOffset = file.offset
+        self.offset = file.offset
         self.h = file.read(self.structs["h"], 8)
         print("Group byte len, numEntries: {}".format(self.h))
         self.entries = []
@@ -92,13 +92,27 @@ class IndexGroup:
             entry = file.read(self.structs["indexGroup"], 16)
             print("Entry id, uk, left, right, namep, datap {}".format(entry))
             if i != 0:
-                name = file.unpack_name(entry[4] + self.startOffset)
+                name = file.unpack_name(entry[4] + self.offset)
                 self.entryNames.append(name)
-                self.entryOffsets.append(entry[5] + self.startOffset)
+                self.entryOffsets.append(entry[5] + self.offset)
             # else:
             #     self.entryNames.append("Null")
 
             self.entries.append(entry)
+
+    # does not handle changing left right id etc
+    def repack(self, file):
+        offset = self.startOffset
+        # pack header
+        pack_into("> I I", file.file, offset, self.h[0], self.h[1])
+        offset += 8
+        # pack entries
+        for i in range(len(self.entries)):
+            entryOffset = self.entryOffsets[i]
+            entry = self.entries[i]
+            entry[5] = entryOffset # update to whatever is in the offset
+            pack_into("> 4H 2I", file.file, offset, entry[0], entry[1], entry[2],
+            entry[3], entry[4], entry[5])
 
 
 class UnpackMDL0:
@@ -106,6 +120,7 @@ class UnpackMDL0:
         print("======================================================================")
         print("\t\tMDL0:")
         self.file = file
+        self.isModified = False
         self.offset = subFileHeader.offset
         self.version = subFileHeader.version
         self.indexGroups = []
@@ -214,6 +229,15 @@ class UnpackMDL0:
         #         print("------------------------------Missing section-----------------------------")
         print("======================================================================")
         file.container.models.append(self)
+
+    def isChanged(self):
+        if self.isModified:
+            return True
+        for mat in self.mats:
+            if mat.isChanged():
+                self.isModified = True
+                return True
+        return False
 
     def unpack_boneTable(self, file):
         count = file.read(Struct("> I"), 4)

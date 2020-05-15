@@ -11,16 +11,22 @@ import sys, getopt
 import os.path
 
 class Brres:
-    LAYERSETTINGSINDEX = 20
-    SETTINGS = ["xlu", "transparent", "cullmode", "lightchannel",
-    "lightset", "fogset", "alpha", "matrixmode",
-    "activestages", "indirectstages", "comparebeforetexture", "enabledepthtest",
-    "enabledepthupdate", "filler1", "filler1", "filler1",
+    LAYERSETTINGSINDEX = 32
+    SETTINGS = ["xlu", "transparent", "ref0", "ref1", #4
+    "comp0", "comp1", "comparebeforetexture", "blend", #8
+    "blendsrc", "blendlogic", "blenddest", "constantalpha",
+    "cullmode", "shader", "shadercolor", "lightchannel", #16
+    "lightset", "fogset", "matrixmode", "enabledepthtest",
+    "enabledepthupdate", "depthfunction", "drawpriority", "filler1" #24
     "filler1", "filler1", "filler1", "filler1",
+    "filler1", "filler1", "filler1", "filler1", #32
+    # start layer settings 32
     "scale", "rotation", "translation", "scn0cameraref",
-    "scn0lightref", "mapmode", "uwrap", "vwrap",
+    "scn0lightref", "mapmode", "uwrap", "vwrap",    #40
     "minfilter", "magfilter", "lodbias", "anisotrophy",
-    "clampbias", "texelinterpolate"]
+    "clampbias", "texelinterpolate", "projection", "inputform", #48
+    "type", "coordinates", "embosssource", "embosslight",
+    "normalize"]
     # Future shader stuff, blend mode and alpha func
     def __init__(self, fname):
         self.brres = UnpackBrres(fname)
@@ -44,14 +50,18 @@ class Brres:
             print("File '{}' already exists!".format(filename))
             return False
         else:
-            packed = PackBrres(self)
+            if self.isChanged():
+                packed = PackBrres(self).file.file
+            else:
+                packed = self.brres.file.file
             f = open(filename, "wb")
-            f.write(f)
+            f.write(packed)
             f.close()
             print("Wrote file '{}'".format(filename))
             return True
 
     def setModel(self, modelname):
+        self.isChanged() # check if the materials were modified
         for mdl in self.brres.models:
             if modelname == mdl.name:
                 self.model = mdl
@@ -66,6 +76,8 @@ class Brres:
 
     def parseSetting(self, setting, refname, value):
         settingIndex = -1
+        setting = setting.lower()
+        value = value.lower()
         for i in range(len(self.SETTINGS)):
             if(self.SETTINGS[i] == setting):
                 settingIndex = i
@@ -73,79 +85,154 @@ class Brres:
         if settingIndex == -1:
             print("Unkown setting '{}'".format(setting))
             return False
-        if settingIndex >= self.LAYERSETTINGSINDEX:
-            matches = self.getLayersByName(refname)
-            if settingIndex < 2: # XLU
-                for x in matches:
-                    if value and value is not "false":
-                        x.setTransparent()
-                    else:
-                        x.setOpaque()
-
-            elif settingIndex == 3: # CULL Mode
-                try:
+        try:
+            if settingIndex < self.LAYERSETTINGSINDEX:
+                matches = self.getMaterialsByName(refname)
+                # Ugly ugly ugly!
+                if settingIndex < 2: # XLU
+                    for x in matches:
+                        setTranslationStr(value)
+                elif settingIndex == 2: # Ref0
+                    for x in matches:
+                        x.setRef0Str(value)
+                elif settingIndex == 3: # Ref1
+                    for x in matches:
+                        x.setRef1Str(value)
+                elif settingIndex == 4: # Comp0
+                    for x in matches:
+                        x.setComp0Str(value)
+                elif settingIndex == 5: # Comp1
+                    for x in matches:
+                        x.setComp1Str(value)
+                elif settingIndex == 6: # CompareBeforeTexture
+                    for x in matches:
+                        x.setCompareBeforeTexStr(value)
+                elif settingIndex == 7: # Blend
+                    for x in matches:
+                        x.setBlendStr(value)
+                elif settingIndex == 8: # blendsrc
+                    for x in matches:
+                        x.setBlendSrcStr(value)
+                elif settingIndex == 9: # blendlogic
+                    for x in matches:
+                        x.setBlendLogicStr(value)
+                elif settingIndex == 10: # blenddest
+                    for x in matches:
+                        x.setBlendDestStr(value)
+                elif settingIndex == 11:    # constant alpha
+                    for x in matches:
+                        x.setConstantAlphaStr(value)
+                elif settingIndex == 12: # CULL Mode
                     for x in matches:
                         x.setCullModeStr(value)
-                except ValueError as e:
-                    print(str(e))
-                    print("Valid modes are 'all|inside|outside|none'")
-                    sys.exit(1)
-            elif settingIndex == 4: #Light Channel
-                try:
+                elif settingIndex == 13: # Shader
                     for x in matches:
-                        pass
-                except ValueError as e:
-                    pass
+                        x.setShaderStr(value)
+                elif settingIndex == 14:    # shader color
+                    for x in matches:
+                        x.setShaderColorStr(value)
+                elif settingIndex == 15: #Light Channel
+                    for x in matches:
+                        x.setLightChannelStr(value)
+                elif settingIndex == 16: #Light set
+                    for x in matches:
+                        x.setLightsetStr(value)
+                elif settingIndex == 17: #Fog set
+                    for x in matches:
+                        x.setFogsetStr(value)
+                elif settingIndex == 18: # matrix mode
+                    for x in matches:
+                        x.setMatrixModeStr(value)
+                elif settingIndex == 19:    # enableDepthTest
+                    for x in matches:
+                        x.setEnableDepthTestStr(value)
+                elif settingIndex == 20:    #enableDepthUpdate
+                    for x in matches:
+                        x.setEnableDepthUpdateStr(value)
+                elif settingIndex == 21:    # depth function
+                    for x in matches:
+                        x.setDepthFunctionStr(value)
+                elif settingIndex == 22:    # draw priority
+                    for x in matches:
+                        x.setDrawPriorityStr(value)
 
-            elif settingIndex == 5:
-                pass    # todo
-            elif settingIndex == 6:
-                pass    # todo
-            elif settingIndex == 7:
-                pass    # todo
-            elif settingIndex == 8:
-                pass    # todo
-            elif settingIndex == 9:
-                pass    # todo
-            elif settingIndex == 10:
-                pass    # todo
-            elif settingIndex == 11:
-                pass    # todo
-            elif settingIndex == 12:
-                pass    # todo
-        else:
-            matches = self.getMaterialsByName(refname)
-            if settingIndex == 13:
-                pass    # todo
-            elif settingIndex == 14:
-                pass    # todo
-            elif settingIndex == 15:
-                pass    # todo
-            elif settingIndex == n:
-                pass    # todo
-            elif settingIndex == n:
-                pass    # todo
-            elif settingIndex == n:
-                pass    # todo
-            elif settingIndex == n:
-                pass    # todo
-            elif settingIndex == n:
-                pass    # todo
-            elif settingIndex == n:
-                pass    # todo
-            elif settingIndex == n:
-                pass    # todo
-            elif settingIndex == n:
-                pass    # todo
-            elif settingIndex == n:
-                pass    # todo
-            elif settingIndex == n:
-                pass    # todo
-            elif settingIndex == n:
-                pass    # todo
-            elif settingIndex == n:
-                pass    # todo
+            else:
+                matches = self.getLayersByName(refname)
+                if settingIndex == 32:  # Scale
+                    for x in matches:
+                        x.setScaleStr(value)
+                elif settingIndex == 33:  # rotation
+                    for x in matches:
+                        x.setRotationStr(value)
+                elif settingIndex == 34:    # translation
+                    for x in matches:
+                        x.setTranslationStr(value)
+                elif settingIndex == 35:    # scn0CameraRef
+                    for x in matches:
+                        x.setCameraRefStr(value)
+                elif settingIndex == 36:    # lightRef
+                    for x in matches:
+                        x.setLightRefStr(value)
+                elif settingIndex == 37:    # mapmode
+                    for x in matches:
+                        x.setMapmodeStr(value)
+                elif settingIndex == 38:    # uwrap
+                    for x in matches:
+                        x.setUWrapStr(value)
+                elif settingIndex == 39:    #vwrap
+                    for x in matches:
+                        x.setVWrapStr(value)
+                elif settingIndex == 40:    # minfilter
+                    for x in matches:
+                        x.setMinFilterStr(value)
+                elif settingIndex == 41:    # magfilter
+                    for x in matches:
+                        x.setMagFilterStr(value)
+                elif settingIndex == 42:    #  lodbias
+                    for x in matches:
+                        x.setLodBiasStr(value)
+                elif settingIndex == 43:    # anisotrophy
+                    for x in matches:
+                        x.setAnisotrophyStr(value)
+                elif settingIndex == 44:    # clampbias
+                    for x in matches:
+                        x.setClampBiasStr(value)
+                elif settingIndex == 45:    # texelInterpolate
+                    for x in matches:
+                        x.setTexelInterpolateStr(value)
+                elif settingIndex == 46:    # projection
+                    for x in matches:
+                        x.setProjectionStr(value)
+                elif settingIndex == 47:    # inputform
+                    for x in matches:
+                        x.setInputFormStr(value)
+                elif settingIndex == 48:    # type
+                    for x in matches:
+                        x.setTypeStr(value)
+                elif settingIndex == 49:    # coordinates
+                    for x in matches:
+                        x.setCoordinatesStr(value)
+                elif settingIndex == 50:    # embosssource
+                    for x in matches:
+                        x.setEmbossSourceStr(value)
+                elif settingIndex == 51:    # embosslight
+                    for x in matches:
+                        x.setEmbossLightStr(value)
+                elif settingIndex == 52:    # normalize
+                    for x in matches:
+                        x.setNormalizeStr(value)
+        except ValueError as e:
+            print(str(e))
+            sys.exit(1)
 
+
+    def isChanged(self):
+        if self.isModified:
+            return True
+        if self.model.isChanged():
+            self.isModified = True # to prevent checking further
+            return True
+        return False
 
     def info(self, name):
         print("Here's some info, you're welcome")
@@ -162,10 +249,11 @@ def help():
     print("This is helpful.")
     # todo
 
+    # todo read in file of commands option
 def main(argv):
-    usage = "brres.py -f <file> [-d <destination> -o -s <setting> -v <value> -n <name> -m <model> -i] "
+    usage = "brres.py -f <file> [-d <destination> -o -c <commandfile> -s <setting> -v <value> -n <name> -m <model> -i] "
     try:
-        opts, args = getopt.getopt(argv, "hf:d:os:v:n:m:", ["help", "file=", "destination=", "overwrite", "setting=", "value=", "name=", "model=", "info"])
+        opts, args = getopt.getopt(argv, "hf:d:os:v:n:m:c:", ["help", "file=", "destination=", "overwrite", "setting=", "value=", "name=", "model=", "info", "commandfile="])
     except getopt.GetoptError:
         print(usage)
         sys.exit(2)
@@ -176,6 +264,7 @@ def main(argv):
     value = ""
     name = ".*"
     model = ""
+    commandfile = ""
     info = False
     for opt, arg in opts:
         if opt in ("-h", "--help"):
@@ -197,6 +286,8 @@ def main(argv):
             model = arg
         elif opt in ("-i", "--info"):
             info = True
+        elif opt in ("-c", "--commandfile"):
+            commandfile = arg
         else:
             print("Unknown option '{}'".format(opt))
             print(usage)
@@ -209,15 +300,15 @@ def main(argv):
         print("File '{}' does not exist.".format(filename))
         sys.exit(1)
 
-    b = Brres(filename)
+    brres = Brres(filename)
     if model:
-        b.setModel(model)
+        brres.setModel(model)
     if setting:
-        b.parseSetting(setting, name, value)
+        brres.parseSetting(setting, name, value)
     if info or not setting:
-        b.info(name)
-    if b.isModified or destination:
-        b.save(destination, overwrite)
+        brres.info(name)
+    if brres.isChanged() or destination:
+        brres.save(destination, overwrite)
     # interactive mode maybe?
 
 # finds a name in group, group instances must have .name
