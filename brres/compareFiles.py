@@ -11,8 +11,8 @@ def compareFiles(fname1, fname2):
     for i in range(len(byteString)):
         if byteString[i] != byteString2[i]:
             print("Mismatch at offset {}!".format(i))
-            print("\t:{}".format(byteString[i:i+10]))
-            print("\t:{}".format(byteString2[i:i+10]))
+            print("{}\n\t:{}".format(fname1, byteString[i:i+10]))
+            print("{}\n\t:{}".format(fname2, byteString2[i:i+10]))
 
 if __name__ == "__main__":
     args = sys.argv

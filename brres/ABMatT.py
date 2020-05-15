@@ -51,9 +51,8 @@ class Brres:
             return False
         else:
             if self.isChanged():
-                packed = PackBrres(self).file.file
-            else:
-                packed = self.brres.file.file
+                PackBrres(self)
+            packed = self.brres.file.file
             f = open(filename, "wb")
             f.write(packed)
             f.close()
@@ -91,7 +90,7 @@ class Brres:
                 # Ugly ugly ugly!
                 if settingIndex < 2: # XLU
                     for x in matches:
-                        setTranslationStr(value)
+                        x.setTransparentStr(value)
                 elif settingIndex == 2: # Ref0
                     for x in matches:
                         x.setRef0Str(value)
@@ -324,7 +323,7 @@ def findAll(name, group):
     # direct matching?
     for item in group:
         if item.name == name:
-            item.append(item)
+            items.append(item)
     if(len(items)):
         return items
     return None

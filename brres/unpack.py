@@ -28,13 +28,16 @@ class BinRead:
 
     def unpack_name(self, offset):
         nameLens = self.readOffset(Struct("> I"), offset - 4, 4)
-        if nameLens[0] > 120:
+        if nameLens[0] > 256:
             print("Name length too long!")
         else:
             name = self.readOffset(Struct("> " + str(nameLens[0]) + "s"), offset, nameLens[0]);
-            print("Name: {}".format(name[0]))
+            # print("Name: {}".format(name[0]))
             return name[0]
 
+    def convertByteArr(self):
+        if type(self.file) != bytearray:
+            self.file = bytearray(self.file)
 
 
 class BresSubFile:
@@ -90,7 +93,8 @@ class IndexGroup:
         # file.offset += 16
         for i in range(self.h[1] + 1):
             entry = file.read(self.structs["indexGroup"], 16)
-            print("Entry id, uk, left, right, namep, datap {}".format(entry))
+            if self.h[1] == 3:
+                print("{} Entry id, uk, left, right, namep, datap {}".format(file.offset - 16, entry))
             if i != 0:
                 name = file.unpack_name(entry[4] + self.offset)
                 self.entryNames.append(name)
@@ -102,17 +106,18 @@ class IndexGroup:
 
     # does not handle changing left right id etc
     def repack(self, file):
-        offset = self.startOffset
+        offset = self.offset
         # pack header
         pack_into("> I I", file.file, offset, self.h[0], self.h[1])
         offset += 8
         # pack entries
         for i in range(len(self.entries)):
-            entryOffset = self.entryOffsets[i]
             entry = self.entries[i]
-            entry[5] = entryOffset # update to whatever is in the offset
+            entryOffset = entry[5] if i == 0 else self.entryOffsets[i - 1] - self.offset
+            print("Offset is {} for entry {}".format(entryOffset, self.entries[i]))
             pack_into("> 4H 2I", file.file, offset, entry[0], entry[1], entry[2],
-            entry[3], entry[4], entry[5])
+            entry[3], entry[4], entryOffset)
+            offset += 16
 
 
 class UnpackMDL0:
@@ -215,19 +220,19 @@ class UnpackMDL0:
         self.sections.append(self.objects)
         self.sections.append(self.textureLinks)
         self.sections.append(self.paletteLinks)
-        # for i in range(len(self.sections)):
-        #     section = self.sections[i]
-        #     if section:
-        #         entryNames = self.indexGroups[i].entryNames
-        #         offsets = self.indexGroups[i].entryOffsets
-        #         print("=========================================================================")
-        #         print("Section {}:\tsize {}".format(i, len(section)))
-        #         print("=========================================================================")
+        for i in range(len(self.sections)):
+            section = self.sections[i]
+            if section:
+                entryNames = self.indexGroups[i].entryNames
+                offsets = self.indexGroups[i].entryOffsets
+                print("=========================================================================")
+                print("Section {}:\tsize {} offset {}".format(i, len(section), offsets[0]))
+                print("=========================================================================")
         #         for i in range(len(section)):
         #             print("{} {}\t{}".format(offsets[i], entryNames[i], section[i]))
         #     else:
         #         print("------------------------------Missing section-----------------------------")
-        print("======================================================================")
+        # print("======================================================================")
         file.container.models.append(self)
 
     def isChanged(self):
@@ -357,34 +362,18 @@ class UnpackMDL0:
             mats.append(mat)
         return mats
 
-    def unpack_shader(self, file):
-        # todo sort this mess out
-        modeInformation = file.read(Struct("> 32B"), 32)
-        shaderID = modeInformation[11]
-        numStages = modeInformation[12]
-        # print("\tID: {} NumStages: {}".format(shaderID, numStages))
-        # print("Shader Header: {}".format(modeInformation))
-        tevRegs = file.read(Struct("> 80B"), 80)
-        # print("\tTevRegs: {}".format(tevRegs))
-        indirectRefs = file.read(Struct("> 16B"), 16)
-        # for i in range(8):
-        #     textureTransformations = file.read(Struct("> 48B"), 48)
-        #     # textureTransformations = file.read(Struct("> 32B"), 32)
-        #     print("\tstage {}: {}".format(i, textureTransformations))
-        #     if i == 0:
-        #         offset = 5
-        #         print("Data {}, {} at offset {}".format(textureTransformations[offset], hex(textureTransformations[offset]), offset))
-        # textureMatrices = file.read(Struct("> 160B"), 160)
-        # print("\tmatrices: {}".format(textureMatrices))
-
     def unpack_tevs(self, file):
         if not self.tevsGroup:
             return None
         offsets = self.tevsGroup.entryOffsets
+        used = []
         tevs = []
         for i in range(len(offsets)):
-            file.offset = offsets[i]
-            tevs.append(file.read(Struct("> 3I 4B 8B 2I"), 0x20))
+            if not offsets[i] in used:
+                file.offset = offsets[i]
+                used.append(file.offset)
+                tev = Shader(file)
+                tevs.append(tev)
         return tevs
 
     def unpack_objects(self, file):

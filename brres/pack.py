@@ -4,14 +4,15 @@
 # Some useful text
 #-----------------------------------------------------------------
 import unpack
-import brres
+import ABMatT
 from struct import *
 
 class PackBrres:
     def __init__(self, brres):
         self.brres = brres.brres
-        self.file = brres.file
-        self.filename = brres.filename
+        self.file = self.brres.file
+        self.file.convertByteArr()
+        self.filename = self.brres.filename
         for model in self.brres.models:
             if model.isChanged():
                 self.pack_materials(model.mats)
@@ -35,33 +36,46 @@ class PackBrres:
             # ignore command entries
             if i % 2 != 0:
                 entry = drawOpa[i]
-                if mats[entry[0]].xlu: # xlu mat?
+                matIndex = (entry[0] << 8 | entry[1]) & 0xff
+                if mats[matIndex].xlu: # xlu mat?
                     newXlu.append(entry)
                 else:
                     newOpa.append(entry)
         for i in range(len(drawXlu)):
             # ignore command entries
             if i % 2 != 0:
-                entry = drawOpa[i]
-                if mats[entry[0]].xlu: # xlu mat?
+                entry = drawXlu[i]
+                matIndex = (entry[0] << 8 | entry[1]) & 0xff
+                if mats[matIndex].xlu: # xlu mat?
                     newXlu.append(entry)
                 else:
                     newOpa.append(entry)
-        newXlu.sort(key = lambda item: item[3]) # sort by draw priority
-        newOpa.sort(key = lambda item: item[3])
+        newXlu.sort(key = lambda item: item[6]) # sort by draw priority
+        newOpa.sort(key = lambda item: item[6])
+        print("New Xlu {}".format(newXlu))
+        print("Old xlu {}".format(drawXlu))
+        print("New opa {}".format(newOpa))
+        print("Old opa {}".format(drawOpa))
         # rehook things
-        drawlists[1] = newOpa
-        drawlists[2] = newXlu
+        # print("Old length: {} new length {}".format(len(drawlists[1]) + len(drawlists[2]), (len(newOpa) + len(newXlu)) * 2 + 2))
+        assert(len(drawlists[1]) + len(drawlists[2]) == (len(newOpa) + len(newXlu)) * 2 + 2)
+        # drawlists[1] = newOpa
+        # drawlists[2] = newXlu
         # the actual byte string and update entry offsets
         data = self.file.file
         offsets = mdl.drawlistsGroup.entryOffsets
         offset = offsets[1] # skip bonetree
         for draw in newOpa:
-            pack_into("> B 3H B", data, offset, 4, draw[0], draw[1], draw[2], draw[3])
+            pack_into("> 8B", data, offset, 4, draw[0], draw[1], draw[2], draw[3], draw[4], draw[5], draw[6])
             offset += 8
+        pack_into("> B", data, offset, 1)
+        offset += 1
         # this offset may change the entry location of xlu draw
+        print("Updating xlu draw offset from {} to {}".format(offsets[2], offset))
         offsets[2] = offset
         for draw in newXlu:
-            pack_into("> B 3H B", data, offset, 4, draw[0], draw[1], draw[2], draw[3])
+            pack_into("> 8B", data, offset, 4, draw[0], draw[1], draw[2], draw[3], draw[4], draw[5], draw[6])
             offset += 8
+        print("Data at end of drawlists {}".format(data[offset]))
+        pack_into("> B", data, offset, 1) # Terminate, but theoretically should be at same offset now?
         mdl.drawlistsGroup.repack(self.file)

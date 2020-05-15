@@ -2,13 +2,10 @@
 | Offset | Size | Description |  
 |---|---|---|
 | 0x00 | 4 | Length|
-| 0x04 | 2 | Always 0xFFFF |
-| 0x06 | 1 | Unknown |
-| 0x07 | 1 | Unknown |
-| 0x08 | 3 | padding |
-| 0x0B | 1 | Shader index |
+| 0x04 | 4 | mdl0offset |
+| 0x08 | 4 | shaderIndex |
 | 0x0C | 1 | Number of stages |
-| 0x0D | 3 | padding |
+| 0x0D | 3 | res |
 | 0x10 | 8 | Texture Reference index enabled (ordered, 0xff for disabled)
 | 0x18 | 8 | padding |
 | 0x20 | 80 | 8 Structures 10 bytes each, last byte dealing with swap table. |
