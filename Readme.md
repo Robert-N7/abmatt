@@ -5,7 +5,9 @@ Todo: Some text here
 ## File Format
 ABMatT supports reading in external commands from files which have a specified extended BNF format.
 ```
-command   = 'Set' space key ':' value  [space 'for' space name] [space 'in' space container] EOL;
+command = set | info [space 'for' space name] [space 'in' space container] EOL;
+set   = 'set' space key ':' value
+info  = 'info' [space key]
 key   = 'xlu' | 'transparent' | 'ref0' | 'ref1' |
   'comp0' | 'comp1' | 'comparebeforetexture' | 'blend' |
   'blendsrc' | 'blendlogic' | 'blenddest' | 'constantalpha' |

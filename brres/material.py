@@ -30,11 +30,14 @@ def parseValStr(value):
     return value.split(",")
 
 class Material:
+    SETTINGS = ["xlu", "transparent", "ref0", "ref1", #4
+    "comp0", "comp1", "comparebeforetexture", "blend", #8
+    "blendsrc", "blendlogic", "blenddest", "constantalpha",
+    "cullmode", "shader", "shadercolor", "lightchannel", #16
+    "lightset", "fogset", "matrixmode", "enabledepthtest",
+    "enabledepthupdate", "depthfunction", "drawpriority"] #23
     # CULL MODES
-    CULL_NONE = 0
-    CULL_OUTSIDE = 1
-    CULL_INSIDE = 2
-    CULL_ALL = 3
+    CULL_STRINGS = ["none", "outside", "inside", "all"]
     # COMPARE
     COMP_STRINGS = ["never", "less", "equal", "lessorequal", "greater", "notequal", "greaterorequal", "always"]
     COMP_NEVER = 0
@@ -63,7 +66,7 @@ class Material:
     MATRIXMODE_MAYA = 0
     MATRIXMODE_XSI = 1
     MATRIXMODE_3DSMAX = 2
-    SHADERCOLOR_ERROR = "Invalid color '{  }', Expected [constant]color<i>=<r>,<g>,<b>,<a>"
+    SHADERCOLOR_ERROR = "Invalid color '{}', Expected [constant]color<i>=<r>,<g>,<b>,<a>"
 
     def __init__(self, name):
         self.isModified = False
@@ -78,7 +81,7 @@ class Material:
             return
         data = file.file
         args = (self.length, self.mdl0Offset, self.nameOffset,
-        self.id, self.xlu, self.numLayers, self.numLights, self.shaderStages,
+        self.id, self.xlu << 31, self.numLayers, self.numLights, self.shaderStages,
         self.indirectStages, self.cullmode, self.compareBeforeTexture, self.lightset,
         self.fogset)
         # print("===========> Packing mat flags at {}:\n{}".format(self.offset, data[self.offset:31 + self.offset]))
@@ -181,6 +184,9 @@ class Material:
         self.lightChannels[1].pack(file)
         # print("{}".format(data[file.offset:file.offset+20]))
 
+    def getMdlOffset(self):
+        return self.mdl0Offset + self.offset
+
 
     def unpack(self, file):
         self.offset = file.offset
@@ -192,7 +198,7 @@ class Material:
         self.mdl0Offset = matData[1]
         self.nameOffset = matData[2]
         self.id = matData[3]
-        self.xlu = matData[4]
+        self.xlu = matData[4] >> 31 & 1
         self.numLayers = matData[5]
         self.numLights = matData[6]
         self.shaderStages = matData[7]
@@ -368,9 +374,11 @@ class Material:
             self.ref1 = 255
             self.comp0 = self.COMP_GREATEROREQUAL
             self.comp1 = self.COMP_LESSOREQUAL
-        self.compareBeforeTexture = False
-        self.xlu = True
-        self.isModified = True
+            self.isModified = True
+        if not self.xlu or self.compareBeforeTexture:
+            self.compareBeforeTexture = False
+            self.xlu = True
+            self.isModified = True
 
     def setOpaque(self):
         self.ref0 = 0
@@ -385,10 +393,8 @@ class Material:
         val = validBool(str)
         self.setTransparent() if val else self.setOpaque()
 
-    # todo find the shader and update it
-    def setShaderStr(self, shader):
-        # todo a lot more
-        self.shader = shader
+    def setShaderOffset(self, offset):
+        self.shaderOffset = offset - self.offset
 
     def setShaderColorStr(self, str):
         const = "constantcolor"
@@ -420,17 +426,10 @@ class Material:
         self.isModified = True
 
     def setCullModeStr(self, cullstr):
-        if "all" in cullstr:
-            self.cullmode = self.CULL_ALL
-        elif "inside" in cullstr:
-            self.cullmode = self.CULL_INSIDE
-        elif "outside" in cullstr:
-            self.cullmode = self.CULL_OUTSIDE
-        elif "none" in cullstr:
-            self.cullmode = self.CULL_NONE
-        else:
-            raise ValueError("Invalid cullmode " + cullstr  + ", Valid modes are 'all|inside|outside|none'")
-        self.isModified = True
+        i = indexListItem(self.CULL_STRINGS, cullstr, self.cullmode)
+        if i >= 0:
+            self.cullmode = i
+            self.isModified = True
 
     def setLightChannelStr(self, lcStr):
         if "vertex" in lcStr:
@@ -581,8 +580,20 @@ class Material:
             self.drawPriority = i
             self.isModified = True
 
+    def info(self, command):
+        print("Mat {}: {}\tlayers:{} xlu:{} cull:{} blend:{} light:{}".format(self.id, self.name,
+        self.numLayers, self.xlu, self.CULL_STRINGS[self.cullmode], self.enableBlend,
+        self.lightChannels[0].getLight()))
+
 
 class Layer:
+    SETTINGS = [
+    "scale", "rotation", "translation", "scn0cameraref",
+    "scn0lightref", "mapmode", "uwrap", "vwrap",
+    "minfilter", "magfilter", "lodbias", "anisotrophy",
+    "clampbias", "texelinterpolate", "projection", "inputform",
+    "type", "coordinates", "embosssource", "embosslight",
+    "normalize"]
     WRAP=["clamp", "repeat", "mirror"]
     FILTER = ["nearest", "linear", "nearest_mipmap_nearest", "linear_mipmap_nearest", "nearest_mipmap_linear", "linear_mipmap_linear"]
     ANISOTROPHY = ["one", "two", "four"]
@@ -592,6 +603,7 @@ class Layer:
     TYPE = ["regular", "embossmap", "color0", "color1"]
     COORDINATES = ["geometry", "normals", "colors", "binormalst", "binormalsb",
     "texcoord0", "texcoord1", "texcoord2", "texcoord3", "texcoord4", "texcoord5", "texcoord6", "texcoord7"]
+
     def __init__(self, file):
         offset = file.offset
         layer = file.read(Struct("> 10I f I 4B"), 52)
@@ -789,6 +801,10 @@ class Layer:
             self.normalize = val
             self.isModified = True
 
+    def info(self, command):
+        print("L {}:\tScale:{} Rot:{} Trans:{} UWrap:{} VWrap:{} MinFilter:{}".format(self.name,
+        self.scale, self.rotation, self.translation, self.WRAP[self.uwrap], self.WRAP[self.vwrap], self.FILTER[self.minFilter]))
+
 
 class Shader:
     def __init__(self, file):
@@ -820,7 +836,7 @@ class Shader:
 
 class ShaderStage:
     def __init__(self, file):
-        
+
         self.textureMap = 0
         self.textureCoord = 0
         self.textureSwap = 0
@@ -862,6 +878,7 @@ class ShaderStage:
 # Light Controls
 #   3rd byte 7 for activated, 4th 0-1 for ambient or vertex color
 class LightChannel:
+    LIGHTS = ["ambient", "vertex"]
     def __init__(self, file):
         data = file.read(Struct("> I 16B"), 20)
         # print("Light Channel data {}".format(data))
@@ -870,6 +887,16 @@ class LightChannel:
         self.ambientColor = data[5:9]
         self.colorLightControl = data[9:13]
         self.alphaLightControl = data[13:17]
+
+    def getLight(self):
+        return self.LIGHTS[self.colorLightControl[3]]
+
+    def isAmbient(self):
+        return self.colorLightControl[3] == 0
+
+    def isVertex(self):
+        return self.colorLightControl[3] == 1
+
 
     def setVertex(self, vertexEnabled):
         self.colorLightControl[3] = 1 if vertexEnabled else 0

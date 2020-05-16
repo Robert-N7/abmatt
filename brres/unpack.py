@@ -60,8 +60,9 @@ class BresSubFile:
         "TEX02" : 2,
         "TEX03" : 1
     }
-    def __init__(self, file, offset):
+    def __init__(self, file, offset, name):
         self.offset = file.offset = offset
+        self.name = name
         self.h = file.read(self.structs["h"], 16)
         # print("Subfile, len, version, outerOffset: {}".format(self.h))
         self.magic = self.h[0]
@@ -70,7 +71,7 @@ class BresSubFile:
         # self.bin = file.file[self.offset:self.offset + self.length]
         self.sectionCount = self.numSections[self.magic.decode() + str(self.version)]
         # print("section count: {}".format(self.sectionCount))
-        self.sectionOffsets = file.read(Struct(">" + (" I" * self.sectionCount)), self.sectionCount * 4)
+        self.sectionOffsets = file.read(Struct("> " + str(self.sectionCount) + "I" ), self.sectionCount * 4)
         # print("{} Section offsets: {}".format(self.magic, self.sectionOffsets))
         if self.magic == b"MDL0":
             UnpackMDL0(file, self)
@@ -128,6 +129,7 @@ class UnpackMDL0:
         self.isModified = False
         self.offset = subFileHeader.offset
         self.version = subFileHeader.version
+        self.name = subFileHeader.name.decode()
         self.indexGroups = []
         self.sections = []
         self.drawlistsGroup = None
@@ -362,6 +364,12 @@ class UnpackMDL0:
             mats.append(mat)
         return mats
 
+    def getTev(self, index):
+        for x in self.tevs:
+            if x.id == index:
+                return x
+        return None
+
     def unpack_tevs(self, file):
         if not self.tevsGroup:
             return None
@@ -408,6 +416,10 @@ class UnpackMDL0:
             palletelinks.append(file.read(Struct("> " + str(size[0] * 2) + "I"), size[0] * 8))
         return palletelinks
 
+    def info(self, command):
+        print("Mdl0 {}:\t v{} Mats: {} shaders: {}".format(self.name, self.version, len(self.mats), len(self.tevs)))
+
+
 
 
 class UnpackBrres:
@@ -443,8 +455,9 @@ class UnpackBrres:
         for group in self.indexGroups:
             # folderNames = group.entryNames
             offsets = group.entryOffsets
+            names = group.entryNames
             for i in range(len(offsets)):
                 # print("\t=====Folder {}======".format(folderNames[i]))
-                self.subFiles.append(BresSubFile(f, offsets[i]))
+                self.subFiles.append(BresSubFile(f, offsets[i], names[i]))
         self.structs = structs
         self.filename = filename

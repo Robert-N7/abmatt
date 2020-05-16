@@ -2,6 +2,7 @@
 
 # -------------------------------------------------------------------
 #   lets have fun with python!
+#   Robert Nelson
 # -------------------------------------------------------------------
 from unpack import *
 from material import *
@@ -10,42 +11,75 @@ import re  # yeah regexs are in
 import sys, getopt
 import os.path
 
+
+class Command:
+    def __init__(self, cmd, key, value, name, file, model, material):
+        self.cmd = cmd
+        self.key = key
+        self.value = value
+        self.name = name
+        self.filename = file
+        self.modelname = model
+        self.materialname = material
+
+def load_commandfile(filename):
+    if not os.path.exists(filename):
+        print("No such file {}".format(filename))
+        exit(2)
+    f = open(filename, "r")
+    lines = f.readlines()
+    regex = re.compile("(?P<cmd>\w+)\s+(?P<key>\w+)\s*:(?P<value>\S+)(\s+for\s+(?P<item>\S+))?(\s+in(\s+file\s+(?P<fname>\S+))?(\s+model\s+(?P<modelname>\S+))?(\s+material\s+(?P<matname>\S+))?)?")
+    commands = []
+    for line in lines:
+        match = regex.match(line)
+        if match:
+            commands.append(Command(match["cmd"], match["key"], match["value"], match["item"], match["fname"], match["modelname"], match["matname"]))
+    return commands
+
+def run_commands(commandlist, brres, destination, overwrite):
+    if not commandlist:
+        print("No commands detected")
+        return False
+    if not brres:
+        if not commandlist[0].filename:
+            print("No brres file detected")
+            return False
+        else:
+            brres = Brres(commandlist[0].filename)
+    for cmd in commandlist:
+        if cmd.filename and cmd.filename != brres.filename:
+            if brres.isChanged():
+                if destination:
+                    print("Unclear write destination when opening multiple files.")
+                    print("Specify single file and destination, or no destination with overwrite option.")
+                    return False
+                brres.save(destination, overwrite)
+            if not os.path.exists(cmd.filename):
+                print("The file {} does not exist!".format(cmd.filename))
+                return False
+            brres = Brres(cmd.filename)
+        brres.parseCommand(cmd)
+    if not destination:
+        destination = brres.filename
+    brres.save(destination, overwrite)
+
+
 class Brres:
     LAYERSETTINGSINDEX = 32
-    SETTINGS = ["xlu", "transparent", "ref0", "ref1", #4
-    "comp0", "comp1", "comparebeforetexture", "blend", #8
-    "blendsrc", "blendlogic", "blenddest", "constantalpha",
-    "cullmode", "shader", "shadercolor", "lightchannel", #16
-    "lightset", "fogset", "matrixmode", "enabledepthtest",
-    "enabledepthupdate", "depthfunction", "drawpriority", "filler1" #24
-    "filler1", "filler1", "filler1", "filler1",
-    "filler1", "filler1", "filler1", "filler1", #32
-    # start layer settings 32
-    "scale", "rotation", "translation", "scn0cameraref",
-    "scn0lightref", "mapmode", "uwrap", "vwrap",    #40
-    "minfilter", "magfilter", "lodbias", "anisotrophy",
-    "clampbias", "texelinterpolate", "projection", "inputform", #48
-    "type", "coordinates", "embosssource", "embosslight",
-    "normalize"]
     # Future shader stuff, blend mode and alpha func
     def __init__(self, fname):
+        self.filename = fname
         self.brres = UnpackBrres(fname)
-        self.model = self.brres.models[0]
+        self.models = self.brres.models
         self.isModified = False
+        self.isUpdated = False
 
-
-    def getMaterialsByName(self, name):
-        return findAll(name, self.model.mats)
-
-    def getLayersByName(self, name):
-        mats = self.model.mats
-        layers = []
-        for mat in mats:
-            for layer in mat.layers:
-                layers.append(layer)
-        return findAll(name, layers)
+    def getModelsByName(self, name):
+        return findAll(name, self.models)
 
     def save(self, filename, overwrite):
+        if not filename:
+            filename = self.filename
         if not overwrite and os.path.exists(filename):
             print("File '{}' already exists!".format(filename))
             return False
@@ -60,183 +94,250 @@ class Brres:
             return True
 
     def setModel(self, modelname):
-        self.isChanged() # check if the materials were modified
-        for mdl in self.brres.models:
+        for mdl in self.models:
             if modelname == mdl.name:
                 self.model = mdl
                 return True
         regex = re.compile(modelname)
         if regex:
-            for mdl in self.brres.models:
+            for mdl in self.models:
                 if regex.search(modelname):
                     self.model = mdl
                     return True
         return False
 
-    def parseSetting(self, setting, refname, value):
-        settingIndex = -1
-        setting = setting.lower()
-        value = value.lower()
-        for i in range(len(self.SETTINGS)):
-            if(self.SETTINGS[i] == setting):
-                settingIndex = i
-                break
-        if settingIndex == -1:
-            print("Unkown setting '{}'".format(setting))
+    def parseCommand(self, command):
+        if command.cmd == "set":
+            self.set(command)
+        elif command.cmd == "info":
+            self.info(command)
+        else:
+            print("Unknown command: {}".format(self.cmd))
+
+    def info(self, command):
+        if command.key:
+            mats = self.getMatCollection(command.modelname, command.materialname)
+            if command.key in Layer.SETTINGS:
+                layers = self.getLayerCollection(mats, command.name)
+                for layer in layers:
+                    layer.info(command)
+            elif command.key in Material.SETTINGS:
+                mats = findAll(command.name, mats)
+                for mat in mats:
+                    mat.info(command)
+            else:
+                print("Unknown command key {}".format(command.key))
+        else:
+            mdls = findAll(command.name, self.models)
+            for mdl in mdls:
+                mdl.info(command)
+            mats = self.getMatCollection(command.modelname, command.materialname)
+            matches = findAll(command.name, mats)
+            for mat in matches:
+                mat.info(command)
+            layers = self.getLayerCollection(mats, command.name)
+            for layer in layers:
+                layer.info(command)
+
+    def set(self, command):
+        mats = self.getMatCollection(command.modelname, command.materialname)
+        if command.key in Layer.SETTINGS:
+            layers = self.getLayerCollection(mats, command.name)
+            self.layersSet(layers, command.key, command.value)
+        else:
+            mats = findAll(command.name, mats)
+            self.materialSet(mats, command.key, command.value)
+
+
+    def getModelByOffset(self, offset):
+        for mdl in self.models:
+            if offset == mdl.offset:
+                return mdl
+
+
+    def getMatCollection(self, modelname, materialname):
+        mdls = findAll(modelname, self.brres.models)
+        mats = []
+        for mdl in mdls:
+            mats = mats + findAll(materialname, mdl.mats)
+        return mats
+
+    def getLayerCollection(self, mats, layername):
+        layers = []
+        for m in mats:
+            layers = layers + findAll(layername, m.layers)
+        return layers
+
+    def materialSet(self, materials, setting, value):
+        settingIndex = Material.SETTINGS.index(setting)
+        if settingIndex < 0:
+            print("Unknown setting {}".format(setting))
             return False
         try:
-            if settingIndex < self.LAYERSETTINGSINDEX:
-                matches = self.getMaterialsByName(refname)
-                # Ugly ugly ugly!
-                if settingIndex < 2: # XLU
-                    for x in matches:
-                        x.setTransparentStr(value)
-                elif settingIndex == 2: # Ref0
-                    for x in matches:
-                        x.setRef0Str(value)
-                elif settingIndex == 3: # Ref1
-                    for x in matches:
-                        x.setRef1Str(value)
-                elif settingIndex == 4: # Comp0
-                    for x in matches:
-                        x.setComp0Str(value)
-                elif settingIndex == 5: # Comp1
-                    for x in matches:
-                        x.setComp1Str(value)
-                elif settingIndex == 6: # CompareBeforeTexture
-                    for x in matches:
-                        x.setCompareBeforeTexStr(value)
-                elif settingIndex == 7: # Blend
-                    for x in matches:
-                        x.setBlendStr(value)
-                elif settingIndex == 8: # blendsrc
-                    for x in matches:
-                        x.setBlendSrcStr(value)
-                elif settingIndex == 9: # blendlogic
-                    for x in matches:
-                        x.setBlendLogicStr(value)
-                elif settingIndex == 10: # blenddest
-                    for x in matches:
-                        x.setBlendDestStr(value)
-                elif settingIndex == 11:    # constant alpha
-                    for x in matches:
-                        x.setConstantAlphaStr(value)
-                elif settingIndex == 12: # CULL Mode
-                    for x in matches:
-                        x.setCullModeStr(value)
-                elif settingIndex == 13: # Shader
-                    for x in matches:
-                        x.setShaderStr(value)
-                elif settingIndex == 14:    # shader color
-                    for x in matches:
-                        x.setShaderColorStr(value)
-                elif settingIndex == 15: #Light Channel
-                    for x in matches:
-                        x.setLightChannelStr(value)
-                elif settingIndex == 16: #Light set
-                    for x in matches:
-                        x.setLightsetStr(value)
-                elif settingIndex == 17: #Fog set
-                    for x in matches:
-                        x.setFogsetStr(value)
-                elif settingIndex == 18: # matrix mode
-                    for x in matches:
-                        x.setMatrixModeStr(value)
-                elif settingIndex == 19:    # enableDepthTest
-                    for x in matches:
-                        x.setEnableDepthTestStr(value)
-                elif settingIndex == 20:    #enableDepthUpdate
-                    for x in matches:
-                        x.setEnableDepthUpdateStr(value)
-                elif settingIndex == 21:    # depth function
-                    for x in matches:
-                        x.setDepthFunctionStr(value)
-                elif settingIndex == 22:    # draw priority
-                    for x in matches:
-                        x.setDrawPriorityStr(value)
-
-            else:
-                matches = self.getLayersByName(refname)
-                if settingIndex == 32:  # Scale
-                    for x in matches:
-                        x.setScaleStr(value)
-                elif settingIndex == 33:  # rotation
-                    for x in matches:
-                        x.setRotationStr(value)
-                elif settingIndex == 34:    # translation
-                    for x in matches:
-                        x.setTranslationStr(value)
-                elif settingIndex == 35:    # scn0CameraRef
-                    for x in matches:
-                        x.setCameraRefStr(value)
-                elif settingIndex == 36:    # lightRef
-                    for x in matches:
-                        x.setLightRefStr(value)
-                elif settingIndex == 37:    # mapmode
-                    for x in matches:
-                        x.setMapmodeStr(value)
-                elif settingIndex == 38:    # uwrap
-                    for x in matches:
-                        x.setUWrapStr(value)
-                elif settingIndex == 39:    #vwrap
-                    for x in matches:
-                        x.setVWrapStr(value)
-                elif settingIndex == 40:    # minfilter
-                    for x in matches:
-                        x.setMinFilterStr(value)
-                elif settingIndex == 41:    # magfilter
-                    for x in matches:
-                        x.setMagFilterStr(value)
-                elif settingIndex == 42:    #  lodbias
-                    for x in matches:
-                        x.setLodBiasStr(value)
-                elif settingIndex == 43:    # anisotrophy
-                    for x in matches:
-                        x.setAnisotrophyStr(value)
-                elif settingIndex == 44:    # clampbias
-                    for x in matches:
-                        x.setClampBiasStr(value)
-                elif settingIndex == 45:    # texelInterpolate
-                    for x in matches:
-                        x.setTexelInterpolateStr(value)
-                elif settingIndex == 46:    # projection
-                    for x in matches:
-                        x.setProjectionStr(value)
-                elif settingIndex == 47:    # inputform
-                    for x in matches:
-                        x.setInputFormStr(value)
-                elif settingIndex == 48:    # type
-                    for x in matches:
-                        x.setTypeStr(value)
-                elif settingIndex == 49:    # coordinates
-                    for x in matches:
-                        x.setCoordinatesStr(value)
-                elif settingIndex == 50:    # embosssource
-                    for x in matches:
-                        x.setEmbossSourceStr(value)
-                elif settingIndex == 51:    # embosslight
-                    for x in matches:
-                        x.setEmbossLightStr(value)
-                elif settingIndex == 52:    # normalize
-                    for x in matches:
-                        x.setNormalizeStr(value)
+            # Ugly ugly ugly!
+            if settingIndex < 2: # XLU
+                for x in materials:
+                    x.setTransparentStr(value)
+            elif settingIndex == 2: # Ref0
+                for x in materials:
+                    x.setRef0Str(value)
+            elif settingIndex == 3: # Ref1
+                for x in materials:
+                    x.setRef1Str(value)
+            elif settingIndex == 4: # Comp0
+                for x in materials:
+                    x.setComp0Str(value)
+            elif settingIndex == 5: # Comp1
+                for x in materials:
+                    x.setComp1Str(value)
+            elif settingIndex == 6: # CompareBeforeTexture
+                for x in materials:
+                    x.setCompareBeforeTexStr(value)
+            elif settingIndex == 7: # Blend
+                for x in materials:
+                    x.setBlendStr(value)
+            elif settingIndex == 8: # blendsrc
+                for x in materials:
+                    x.setBlendSrcStr(value)
+            elif settingIndex == 9: # blendlogic
+                for x in materials:
+                    x.setBlendLogicStr(value)
+            elif settingIndex == 10: # blenddest
+                for x in materials:
+                    x.setBlendDestStr(value)
+            elif settingIndex == 11:    # constant alpha
+                for x in materials:
+                    x.setConstantAlphaStr(value)
+            elif settingIndex == 12: # CULL Mode
+                for x in materials:
+                    x.setCullModeStr(value)
+            elif settingIndex == 13: # Shader
+                shaderindex = int(value)
+                for x in materials:
+                    # may be a more efficent way to do this
+                    mdl = self.getModelByOffset(x.getMdlOffset())
+                    tev = mdl.getTev(shaderindex)
+                    if not tev:
+                        raise ValueError("Shader '{}' does not exist in model '{}'!".format(shaderindex, mdl.name))
+                    x.setShaderOffset(tev.offset)
+            elif settingIndex == 14:    # shader color
+                for x in materials:
+                    x.setShaderColorStr(value)
+            elif settingIndex == 15: #Light Channel
+                for x in materials:
+                    x.setLightChannelStr(value)
+            elif settingIndex == 16: #Light set
+                for x in materials:
+                    x.setLightsetStr(value)
+            elif settingIndex == 17: #Fog set
+                for x in materials:
+                    x.setFogsetStr(value)
+            elif settingIndex == 18: # matrix mode
+                for x in materials:
+                    x.setMatrixModeStr(value)
+            elif settingIndex == 19:    # enableDepthTest
+                for x in materials:
+                    x.setEnableDepthTestStr(value)
+            elif settingIndex == 20:    #enableDepthUpdate
+                for x in materials:
+                    x.setEnableDepthUpdateStr(value)
+            elif settingIndex == 21:    # depth function
+                for x in materials:
+                    x.setDepthFunctionStr(value)
+            elif settingIndex == 22:    # draw priority
+                for x in materials:
+                    x.setDrawPriorityStr(value)
         except ValueError as e:
             print(str(e))
             sys.exit(1)
+        self.isUpdated = True
+        return True
 
+    def layersSet(self, layers, setting, value):
+        try:
+            settingIndex = Layer.SETTINGS.index(setting)
+            if settingIndex < 0:
+                print("Unknown setting {}".format(setting))
+                return False
+            if settingIndex == 0:  # Scale
+                for x in matches:
+                    x.setScaleStr(value)
+            elif settingIndex == 1:  # rotation
+                for x in matches:
+                    x.setRotationStr(value)
+            elif settingIndex == 2:    # translation
+                for x in matches:
+                    x.setTranslationStr(value)
+            elif settingIndex == 3:    # scn-32CameraRef
+                for x in matches:
+                    x.setCameraRefStr(value)
+            elif settingIndex == 4:    # lightRef
+                for x in matches:
+                    x.setLightRefStr(value)
+            elif settingIndex == 5:    # mapmode
+                for x in matches:
+                    x.setMapmodeStr(value)
+            elif settingIndex == 6:    # uwrap
+                for x in matches:
+                    x.setUWrapStr(value)
+            elif settingIndex == 7:    #vwrap
+                for x in matches:
+                    x.setVWrapStr(value)
+            elif settingIndex == 8:    # minfilter
+                for x in matches:
+                    x.setMinFilterStr(value)
+            elif settingIndex == 9:    # magfilter
+                for x in matches:
+                    x.setMagFilterStr(value)
+            elif settingIndex == 10:    #  lodbias
+                for x in matches:
+                    x.setLodBiasStr(value)
+            elif settingIndex == 11:    # anisotrophy
+                for x in matches:
+                    x.setAnisotrophyStr(value)
+            elif settingIndex == 12:    # clampbias
+                for x in matches:
+                    x.setClampBiasStr(value)
+            elif settingIndex == 13:    # texelInterpolate
+                for x in matches:
+                    x.setTexelInterpolateStr(value)
+            elif settingIndex == 14:    # projection
+                for x in matches:
+                    x.setProjectionStr(value)
+            elif settingIndex == 15:    # inputform
+                for x in matches:
+                    x.setInputFormStr(value)
+            elif settingIndex == 16:    # type
+                for x in matches:
+                    x.setTypeStr(value)
+            elif settingIndex == 17:    # coordinates
+                for x in matches:
+                    x.setCoordinatesStr(value)
+            elif settingIndex == 18:    # embosssource
+                for x in matches:
+                    x.setEmbossSourceStr(value)
+            elif settingIndex == 19:    # embosslight
+                for x in matches:
+                    x.setEmbossLightStr(value)
+            elif settingIndex == 20:    # normalize
+                for x in matches:
+                    x.setNormalizeStr(value)
+        except ValueError as e:
+            print(str(e))
+            sys.exit(1)
+        self.isUpdated = True
+        return True
 
     def isChanged(self):
         if self.isModified:
             return True
-        if self.model.isChanged():
-            self.isModified = True # to prevent checking further
-            return True
+        if self.isUpdated:
+            for mdl in self.models:
+                if mdl.isChanged():
+                    self.isModified = True # to prevent checking further
+                    return True
+        self.isUpdated = False
         return False
-
-    def info(self, name):
-        print("Here's some info, you're welcome")
-        self.list_materials()
-        # todo
 
     def list_materials(self):
         mats = self.model.mats
@@ -299,19 +400,21 @@ def main(argv):
         print("File '{}' does not exist.".format(filename))
         sys.exit(1)
 
-    brres = Brres(filename)
-    if model:
-        brres.setModel(model)
-    if setting:
-        brres.parseSetting(setting, name, value)
     if info or not setting:
-        brres.info(name)
-    if brres.isChanged() or destination:
-        brres.save(destination, overwrite)
+        cmd = "info"
+        cmds = [Command(cmd, setting, value, name, filename, model, None)]
+    else:
+        cmd = "set"
+        cmds = [Command(cmd, setting, value, name, filename, model, None)]
+        if info:
+            cmds.append(Command("info", setting, value, name, filename, model, None))
+    run_commands(cmds, None, destination, overwrite)
     # interactive mode maybe?
 
 # finds a name in group, group instances must have .name
 def findAll(name, group):
+    if not name or name == "*":
+        return group
     items = []
     try:
         regex = re.compile(name)
