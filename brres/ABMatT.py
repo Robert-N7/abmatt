@@ -11,6 +11,9 @@ import re  # yeah regexs are in
 import sys, getopt
 import os.path
 
+VERSION = "0.1.0"
+USAGE = "{} -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value> -n <name> -m <model> -i] "
+
 
 class Command:
     def __init__(self, cmd, key, value, name, file, model, material):
@@ -23,6 +26,7 @@ class Command:
         self.materialname = material
 
 def load_commandfile(filename):
+    # todo - regex matching on file names
     if not os.path.exists(filename):
         print("No such file {}".format(filename))
         exit(2)
@@ -33,7 +37,7 @@ def load_commandfile(filename):
     for line in lines:
         match = regex.match(line)
         if match:
-            commands.append(Command(match["cmd"], match["key"], match["value"], match["item"], match["fname"], match["modelname"], match["matname"]))
+            commands.append(Command(match["cmd"], match["key"].lower(), match["value"].lower(), match["item"], match["fname"], match["modelname"], match["matname"]))
     return commands
 
 def run_commands(commandlist, brres, destination, overwrite):
@@ -346,16 +350,75 @@ class Brres:
             print("\t{}".format(mat.name))
 
 def help():
-    print("This is helpful.")
-    # todo
+    help  = '''
+====================================================================================
+ANOOB'S BRRES MATERIAL TOOL
+Version {}
 
-    # todo read in file of commands option
+      >>       >==>    >=>     >===>          >===>      >=>>=>    >=>   >=>>=>
+     >>=>      >> >=>  >=>   >=>    >=>     >=>    >=>   >>   >=>   >> >=>    >=>
+    >> >=>     >=> >=> >=> >=>        >=> >=>        >=> >>    >=>      >=>
+   >=>  >=>    >=>  >=>>=> >=>        >=> >=>        >=> >==>>=>          >=>
+  >=====>>=>   >=>   > >=> >=>        >=> >=>        >=> >>    >=>           >=>
+ >=>      >=>  >=>    >>=>   >=>     >=>    >=>     >=>  >>     >>     >=>    >=>
+>=>        >=> >=>     >=>     >===>          >===>      >===>>=>        >=>>=>
+
+>=>>=>    >======>     >======>     >=======>   >=>>=>
+>>   >=>  >=>    >=>   >=>    >=>   >=>       >=>    >=>
+>>    >=> >=>    >=>   >=>    >=>   >=>        >=>
+>==>>=>   >> >==>      >> >==>      >=====>      >=>
+>>    >=> >=>  >=>     >=>  >=>     >=>             >=>
+>>     >> >=>    >=>   >=>    >=>   >=>       >=>    >=>
+>===>>=>  >=>      >=> >=>      >=> >=======>   >=>>=>
+
+>=>       >=>       >>       >===>>=====> >=======> >======>     >=>       >>       >=>
+>> >=>   >>=>      >>=>           >=>     >=>       >=>    >=>   >=>      >>=>      >=>
+>=> >=> > >=>     >> >=>          >=>     >=>       >=>    >=>   >=>     >> >=>     >=>
+>=>  >=>  >=>    >=>  >=>         >=>     >=====>   >> >==>      >=>    >=>  >=>    >=>
+>=>   >>  >=>   >=====>>=>        >=>     >=>       >=>  >=>     >=>   >=====>>=>   >=>
+>=>       >=>  >=>      >=>       >=>     >=>       >=>    >=>   >=>  >=>      >=>  >=>
+>=>       >=> >=>        >=>      >=>     >=======> >=>      >=> >=> >=>        >=> >=======>
+
+>===>>=====>     >===>          >===>      >=>
+     >=>       >=>    >=>     >=>    >=>   >=>
+     >=>     >=>        >=> >=>        >=> >=>
+     >=>     >=>        >=> >=>        >=> >=>
+     >=>     >=>        >=> >=>        >=> >=>
+     >=>       >=>     >=>    >=>     >=>  >=>
+     >=>         >===>          >===>      >=======>
+====================================================================================
+ABMatT is a tool for editing materials in Mario Kart Wii 'Brres' files. The tool can
+do quick edits from the command line, or read in a command file for processing multiple
+setting adjustments. This is particularly useful for editing a large
+amount of materials or recreating a brres multiple times. Python regex matching is supported.
+The tool is also smart about adjusting transparency. When setting to transparent it also
+updates the comparison and reference settings, and the draw list to be xlu (fixing Harry Potter bug).
+File command format in extended BNF:
+    command = set | info;
+    set   = 'set' space key ':' value [space 'for' space name] [space 'in' space container] EOL;
+    info  = 'info' [space key] [space 'for' space name] [space 'in' space container] EOL;
+
+Example file commands:
+    set transparent:true for xlu.* in model course      # Sets all materials in course starting with xlu to transparent
+    set shader:3 for ef_dushboard   # set any material in any model found matching 'ef_dushboard' to shader 3
+    set scale:(1,1)                 # Sets the scale for all layers to 1,1
+Example command line usage:
+    ./AbMatT.py -f course_model.brres -o -k xlu -v disable -n opaque_material
+This opens course_model.brres in overwrite mode and disables transparency for material 'opaque_material'.
+For more Help visit https://github.com/Robert-N7/ABMatT
+    '''
+    print(help.format(VERSION))
+    print("Usage: {}".format(USAGE))
+
+
 def main(argv):
-    usage = "brres.py -f <file> [-d <destination> -o -c <commandfile> -s <setting> -v <value> -n <name> -m <model> -i] "
+
     try:
-        opts, args = getopt.getopt(argv, "hf:d:os:v:n:m:c:", ["help", "file=", "destination=", "overwrite", "setting=", "value=", "name=", "model=", "info", "commandfile="])
+        opts, args = getopt.getopt(argv, "hf:d:ok:v:n:m:c:i",
+         ["help", "file=", "destination=", "overwrite", "key=", "value=",
+         "name=", "model=", "info", "commandfile="])
     except getopt.GetoptError:
-        print(usage)
+        print(USAGE)
         sys.exit(2)
     filename = ""
     destination = ""
@@ -376,7 +439,7 @@ def main(argv):
             destination = arg
         elif opt in ("-o", "--overwrite"):
             overwrite = True
-        elif opt in ("-s", "--setting"):
+        elif opt in ("-s", "--key"):
             setting = arg
         elif opt in ("-v", "--value"):
             value = arg
@@ -390,11 +453,11 @@ def main(argv):
             commandfile = arg
         else:
             print("Unknown option '{}'".format(opt))
-            print(usage)
+            print(USAGE)
             sys.exit(2)
     if not filename:
         print("Filename is required")
-        print(usage)
+        print(USAGE)
         sys.exit(2)
     if not os.path.exists(filename):
         print("File '{}' does not exist.".format(filename))
@@ -432,4 +495,5 @@ def findAll(name, group):
     return None
 
 if __name__ == "__main__":
+    USAGE = USAGE.format(sys.argv[0])
     main(sys.argv[1:])

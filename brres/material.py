@@ -646,9 +646,9 @@ class Layer:
         i2 = float(values[1])
         if self.scale[0] != i1 or self.scale[1] != i2:
             if i1 != 1 or i2 != 1:
-                self.scaleFixed = False
+                self.scaleFixed = 0
             else:
-                self.scaleFixed = True
+                self.scaleFixed = 1
             self.scale = (i1, i2)
             self.isModified = True
 
@@ -656,7 +656,7 @@ class Layer:
         f = float(str)
         if f != self.rotation:
             self.rotation = f
-            self.rotationFixed = False if self.rotation == 0 else True
+            self.rotationFixed = 0 if self.rotation == 0 else 1
             self.isModified = True
 
     def setTranslationStr(self, str):
@@ -667,7 +667,7 @@ class Layer:
         i2 = float(values[1])
         if self.translation[0] != i1 or self.translation[1] != i2:
             self.translation = (i1, i2)
-            self.translationFixed = True if i1 == 1 and i2 == 1 else False
+            self.translationFixed = 1 if i1 == 1 and i2 == 1 else 0
             self.isModified = True
 
     def setCameraRefStr(self, str):
