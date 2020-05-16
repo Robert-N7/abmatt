@@ -17,6 +17,13 @@ class PackBrres:
             if model.isChanged():
                 self.pack_materials(model.mats)
                 self.pack_drawlists(model)
+                self.pack_indexGroups(model)
+
+
+    def pack_indexGroups(self, model):
+        for group in model.indexGroups:
+            if group:
+                group.repack(self.file)
 
     def pack_materials(self, mats):
         for mat in mats:
@@ -72,10 +79,9 @@ class PackBrres:
         offset += 1
         # this offset may change the entry location of xlu draw
         print("Updating xlu draw offset from {} to {}".format(offsets[2], offset))
-        offsets[2] = offset
+        mdl.drawlistsGroup.updateEntryOffset(offset, 2)
         for draw in newXlu:
             pack_into("> 8B", data, offset, 4, draw[0], draw[1], draw[2], draw[3], draw[4], draw[5], draw[6])
             offset += 8
         print("Data at end of drawlists {}".format(data[offset]))
         pack_into("> B", data, offset, 1) # Terminate, but theoretically should be at same offset now?
-        mdl.drawlistsGroup.repack(self.file)

@@ -85,7 +85,9 @@ class Material:
         self.indirectStages, self.cullmode, self.compareBeforeTexture, self.lightset,
         self.fogset)
         # print("===========> Packing mat flags at {}:\n{}".format(self.offset, data[self.offset:31 + self.offset]))
-        pack_into("> 5I 4B I 3B", data, self.offset, *args)
+        pack_into("> I i 3I 4B I 3B", data, self.offset, *args)
+        offset = self.offset + 0x28
+        pack_into("> 3I", data, offset, self.shaderOffset, self.numTextures, self.layerOffset)
         # print("{}".format(data[self.offset:31 + self.offset]))
         # Alpha Mode
         byte1 = self.logic << 6 | self.comp1 << 3 | self.comp0
@@ -185,12 +187,13 @@ class Material:
         # print("{}".format(data[file.offset:file.offset+20]))
 
     def getMdlOffset(self):
+        print("Mdl0 offset {}\t my offset {} ".format(self.mdl0Offset, self.offset))
         return self.mdl0Offset + self.offset
 
 
     def unpack(self, file):
         self.offset = file.offset
-        matData = file.read(Struct("> 5I 4B I 4B 4B 4B"), 40) #up to 0x20
+        matData = file.read(Struct("> I i 3I 4B I 4B 4B 4B"), 40) #up to 0x20
         print("\t{} Name: {}, index: {}".format(self.offset, self.name, matData[3]))
         print("Flags: {}, texgens: {}, lights: {}, shaderstages: {}, indirectStages: {}".format(matData[4], matData[5], matData[6], matData[7], matData[8]))
         print("Cull: {}, CompareBeforeTexture: {}, Lightset: {}, Fogset: {}".format(matData[9], matData[10], matData[11], matData[12]))
@@ -393,8 +396,13 @@ class Material:
         val = validBool(str)
         self.setTransparent() if val else self.setOpaque()
 
-    def setShaderOffset(self, offset):
-        self.shaderOffset = offset - self.offset
+    def setShader(self, shader):
+        # print("Updating to shader {}".format(shader.id))
+        self.shaderOffset = shader.offset - self.offset
+        # print("Set shader offset to {}".format(self.shaderOffset + self.offset))
+        self.shaderStages = shader.countDirectStages()
+        self.indirectStages = shader.countIndirectStages()
+        self.isModified = True
 
     def setShaderColorStr(self, str):
         const = "constantcolor"
@@ -833,6 +841,23 @@ class Shader:
         self.indirectTexCoords.append(data[2] >> 5 & 7)
         data = file.read(Struct("> 384B"), 384)
         print("Shader stage Data: {}".format(data))
+
+    def countDirectStages(self):
+        i = 0
+        for x in self.references:
+            print("Ref {} is {}".format(i, x))
+            if x > 7:
+                break
+            i+=1
+        return i
+
+    def countIndirectStages(self):
+        i = 0
+        for x in self.indirectTexMaps:
+            if x >= 7:
+                break
+            i += 1
+        return i
 
 class ShaderStage:
     def __init__(self, file):

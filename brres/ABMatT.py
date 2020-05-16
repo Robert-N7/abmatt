@@ -220,10 +220,12 @@ class Brres:
                 for x in materials:
                     # may be a more efficent way to do this
                     mdl = self.getModelByOffset(x.getMdlOffset())
-                    tev = mdl.getTev(shaderindex)
-                    if not tev:
+                    shader = mdl.getTev(shaderindex)
+                    if not shader:
                         raise ValueError("Shader '{}' does not exist in model '{}'!".format(shaderindex, mdl.name))
-                    x.setShaderOffset(tev.offset)
+                    x.setShader(shader)
+                    # update shader material entry
+                    mdl.updateTevEntry(shader, x)
             elif settingIndex == 14:    # shader color
                 for x in materials:
                     x.setShaderColorStr(value)
@@ -387,12 +389,14 @@ Version {}
      >=>       >=>     >=>    >=>     >=>  >=>
      >=>         >===>          >===>      >=======>
 ====================================================================================
+
 ABMatT is a tool for editing materials in Mario Kart Wii 'Brres' files. The tool can
 do quick edits from the command line, or read in a command file for processing multiple
 setting adjustments. This is particularly useful for editing a large
 amount of materials or recreating a brres multiple times. Python regex matching is supported.
 The tool is also smart about adjusting transparency. When setting to transparent it also
-updates the comparison and reference settings, and the draw list to be xlu (fixing Harry Potter bug).
+updates the comparison and reference settings, and the draw list to be xlu (fixing Harry Potter effect).
+
 File command format in extended BNF:
     command = set | info;
     set   = 'set' space key ':' value [space 'for' space name] [space 'in' space container] EOL;
@@ -405,7 +409,7 @@ Example file commands:
 Example command line usage:
     ./AbMatT.py -f course_model.brres -o -k xlu -v disable -n opaque_material
 This opens course_model.brres in overwrite mode and disables transparency for material 'opaque_material'.
-For more Help visit https://github.com/Robert-N7/ABMatT
+For more Help or if you want to contribute visit https://github.com/Robert-N7/ABMatT
     '''
     print(help.format(VERSION))
     print("Usage: {}".format(USAGE))
@@ -439,7 +443,7 @@ def main(argv):
             destination = arg
         elif opt in ("-o", "--overwrite"):
             overwrite = True
-        elif opt in ("-s", "--key"):
+        elif opt in ("-k", "--key"):
             setting = arg
         elif opt in ("-v", "--value"):
             value = arg

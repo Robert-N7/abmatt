@@ -1,7 +1,7 @@
 # ANoobs Brres Material Tool (ABMatT)
-This command line tool is for editing materials in _Brres_ files in _Mario Kart Wii_. Python is required to run it. The tool can do quick edits from the command line, or read in a command file for processing multiple setting adjustments. This is particularly useful for editing a large amount of materials or recreating a brres multiple times. Python regex matching is supported.
+This command line tool is for editing materials in _Brres_ files in _Mario Kart Wii_. Python is required to run it. The tool can do quick edits from the command line, or read in a command file for processing multiple setting adjustments. This is particularly useful for editing a large amount of materials or recreating a brres multiple times. Python regular expression matching is supported.
 ## Transparency
-The tool is also smart about adjusting transparency. When setting materials to transparent it also updates the comparison and reference settings, and the draw list to be xlu (fixing Harry Potter bug). These settings can also be adjusted individually, including draw priority.
+The tool is also smart about adjusting transparency. When setting materials to transparent it also updates the comparison and reference settings, and the draw list to be xlu (fixing Harry Potter effect). These settings can also be adjusted individually, including draw priority.
 
 ## Command Line Usage
 ```
