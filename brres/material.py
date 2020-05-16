@@ -76,6 +76,10 @@ class Material:
         self.colors = []
         self.constantColors = []
 
+    def __str__(self):
+        return "Mt{} {}: xlu {} layers {} culling {} blend {}".format(self.id, self.name,
+        self.numLayers, self.CULL_STRINGS[self.cullmode], self.enableBlend)
+
     def pack(self, file):
         if not self.isChanged():
             return
@@ -634,6 +638,10 @@ class Layer:
         self.clampBias = layer[12]
         self.texelInterpolate = layer[13]
 
+    def __str__(self):
+        return "Layer {}: scale {} rot {} trans {} uwrap {} vwrap {} minfilter {}".format(self.name,
+        self.scale, self.rotation, self.translation, self.uwrap, self.vwrap, self.minFilter)
+
     def pack_texRef(self, file):
         pack_into("> 10I f I 2B", file.file, file.offset, self.nameOffset, self.palettenameOffset,
         self.textureDataOffset, self.palleteOffset, self.texDataID, self.palleteDataID,
@@ -842,6 +850,9 @@ class Shader:
         data = file.read(Struct("> 384B"), 384)
         print("Shader stage Data: {}".format(data))
 
+    def __str__(self):
+        return "shdr {} layers {} stages {}: {}".format(self.id, self.layercount, self.countDirectStages(), self.countIndirectStages())
+
     def countDirectStages(self):
         i = 0
         for x in self.references:
@@ -934,3 +945,29 @@ class LightChannel:
         self.ambientColor[0], self.ambientColor[1], self.ambientColor[2], self.ambientColor[3],
         self.colorLightControl[0],  self.colorLightControl[1], self.colorLightControl[2], self.colorLightControl[3],
         self.alphaLightControl[0], self.alphaLightControl[1], self.alphaLightControl[2], self.alphaLightControl[3])
+
+
+class TexCoord:
+    TEX_FORMAT = ("u8", "s8", "u16", "s16", "float")
+    def __init__(self, file):
+        self.offset = file.offset
+        data = file.read(Struct("> I i 5I 2B H 2f 2f"), 0x30)
+        print("Texture header: {}".format(data))
+        self.length = data[0]
+        self.mdl0Offset = data[1]
+        self.dataOffset = data[2]
+        self.nameOffset = data[3]
+        self.id = data[4]
+        self.component = data[5]
+        self.format = data[6]
+        self.divisor = data[7]
+        self.stride = data[8]
+        self.size = data[9]
+        self.minimum = data[10:12]
+        self.maximum = data[12:14]
+        file.offset = self.offset + self.dataOffset
+        data = file.read(Struct("> " + str(self.length - 0x30) + "B"), self.length - 0x30)
+        print("TCoord: {}".format(data))
+
+    def __str__(self):
+        return "UV {} size {} format {} divisor {} stride {}".format(self.id, self.size, self.TEX_FORMAT[self.format], self.divisor, self.stride)

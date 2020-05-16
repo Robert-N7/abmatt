@@ -202,33 +202,33 @@ class UnpackMDL0:
         file.offset = self.offset + 0x14 + (self.version + 3) * 4
         self.h = file.read(Struct("> 4I 6I 3f 3f"), 64)
         file.offset = self.h[9] + self.offset
-        self.boneTable = self.unpack_boneTable(file)
+        # self.boneTable = self.unpack_boneTable(file)
         self.mats = self.unpack_materials(file)
         self.drawlists = self.unpack_drawlists(file)
-        self.bones = self.unpack_bones(file)
-        self.vertices = self.unpack_vertices(file)
-        self.normals = self.unpack_normals(file)
-        self.colors = self.unpack_colors(file)
-        self.texCoords = self.unpack_textureCoordinates(file)
-        self.furVectors = self.unpack_furVectors(file)
-        self.furLayers = self.unpack_furLayers(file)
+        # self.bones = self.unpack_bones(file)
+        # self.vertices = self.unpack_vertices(file)
+        # self.normals = self.unpack_normals(file)
+        # self.colors = self.unpack_colors(file)
+        # self.texCoords = self.unpack_textureCoordinates(file)
+        # self.furVectors = self.unpack_furVectors(file)
+        # self.furLayers = self.unpack_furLayers(file)
         self.tevs = self.unpack_tevs(file)
         self.objects = self.unpack_objects(file)
-        self.textureLinks = self.unpack_texturelinks(file)
-        self.paletteLinks = self.unpack_palletelinks(file)
+        # self.textureLinks = self.unpack_texturelinks(file)
+        # self.paletteLinks = self.unpack_palletelinks(file)
         self.sections.append(self.drawlists)
-        self.sections.append(self.bones)
-        self.sections.append(self.vertices)
-        self.sections.append(self.normals)
-        self.sections.append(self.colors)
-        self.sections.append(self.texCoords)
-        self.sections.append(self.furVectors)
-        self.sections.append(self.furLayers)
+        # self.sections.append(self.bones)
+        # self.sections.append(self.vertices)
+        # self.sections.append(self.normals)
+        # self.sections.append(self.colors)
+        # self.sections.append(self.texCoords)
+        # self.sections.append(self.furVectors)
+        # self.sections.append(self.furLayers)
         self.sections.append(self.mats)
         self.sections.append(self.tevs)
         self.sections.append(self.objects)
-        self.sections.append(self.textureLinks)
-        self.sections.append(self.paletteLinks)
+        # self.sections.append(self.textureLinks)
+        # self.sections.append(self.paletteLinks)
         for i in range(len(self.sections)):
             section = self.sections[i]
             if section:
@@ -335,7 +335,7 @@ class UnpackMDL0:
         texCoord = []
         for i in range(len(offsets)):
             file.offset = offsets[i]
-            texCoord.append(file.read(Struct("> 7I 2B H 2f 2f"), 0x30))
+            texCoord.append(TexCoord(file))
         return texCoord
 
 

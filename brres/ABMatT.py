@@ -8,8 +8,9 @@ from unpack import *
 from material import *
 from pack import *
 import re  # yeah regexs are in
+import fnmatch
 import sys, getopt
-import os.path
+import os
 
 VERSION = "0.1.0"
 USAGE = "{} -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value> -n <name> -m <model> -i] "
@@ -26,7 +27,6 @@ class Command:
         self.materialname = material
 
 def load_commandfile(filename):
-    # todo - regex matching on file names
     if not os.path.exists(filename):
         print("No such file {}".format(filename))
         exit(2)
@@ -40,36 +40,79 @@ def load_commandfile(filename):
             commands.append(Command(match["cmd"], match["key"].lower(), match["value"].lower(), match["item"], match["fname"], match["modelname"], match["matname"]))
     return commands
 
-def run_commands(commandlist, brres, destination, overwrite):
+def getFiles(filename):
+    directory = os.path.dirname(filename)
+    print("Directory: {}".format(directory))
+    files = []
+    for file in os.listdir(directory):
+        if fnmatch.fnmatch(file, filename):
+            files.append(file)
+    return files
+
+def openFiles(filenames, openfiles):
+    for f in filenames:
+        if not openFiles[f]:
+            openFiles[f] = Brres(f)
+
+def closeFiles(excludenames, openfiles, destination, overwrite):
+    for fname, brres in openfiles:
+        if not fname in excludenames:
+            brres.save(destination, overwrite)
+
+
+def validate_cmds(commandlist, destination):
     if not commandlist:
         print("No commands detected")
         return False
-    if not brres:
-        if not commandlist[0].filename:
-            print("No brres file detected")
-            return False
-        else:
-            brres = Brres(commandlist[0].filename)
+    file = ""
+    count = 0
     for cmd in commandlist:
-        if cmd.filename and cmd.filename != brres.filename:
-            if brres.isChanged():
-                if destination:
-                    print("Unclear write destination when opening multiple files.")
-                    print("Specify single file and destination, or no destination with overwrite option.")
+        cmd.key = cmd.key.lower()
+        cmd.cmd = cmd.cmd.lower()
+        cmd.value = cmd.value.lower()
+        if count == 0 and not cmd.filename:
+            print("File is required to run commands!")
+            return False
+        count += 1
+        try:
+            i = Brres.COMMANDS.index(cmd)
+            if i == 0:
+                if not cmd.key in Material.SETTINGS and not cmd.key in Layer.SETTINGS:
+                    print("Unknown Key {}".format(cmd.key))
                     return False
-                brres.save(destination, overwrite)
-            if not os.path.exists(cmd.filename):
-                print("The file {} does not exist!".format(cmd.filename))
+        except ValueError:
+            print("Unknown command {}".format(cmd.cmd))
+            return False
+        if cmd.filename:
+            files = getFiles(cmd.filename)
+            if not files: # could possibly ignore error here for wildcard patterns?
+                print("The file '{}' does not exist", cmd.filename)
                 return False
-            brres = Brres(cmd.filename)
+            elif destination and len(files) > 1 or file and files[0] != file:
+                print("Error: Multiple files for single destination!")
+                print("Specify single file and destination, or no destination with overwrite option.")
+                return False
+            elif not file:
+                file = files[0]
+    return count
+
+
+def run_commands(commandlist, destination, overwrite):
+    if not validate_cmds(commandlist, destination):
+        sys.exit(1)
+    openFiles = {}
+    for cmd in commandlist:
+        if cmd.filename:
+            filenames = getFiles(cmd.filename)
+            closeFiles(filenames, openFiles, destination, overwrite)
+            openFiles(filenames, openFiles)
         brres.parseCommand(cmd)
-    if not destination:
-        destination = brres.filename
-    brres.save(destination, overwrite)
+    closeFiles(None, openFiles, destination, overwrite)
 
 
 class Brres:
     LAYERSETTINGSINDEX = 32
+    COMMANDS = ["set", "info"]
     # Future shader stuff, blend mode and alpha func
     def __init__(self, fname):
         self.filename = fname
@@ -111,9 +154,9 @@ class Brres:
         return False
 
     def parseCommand(self, command):
-        if command.cmd == "set":
+        if command.cmd == self.COMMANDS[0]:
             self.set(command)
-        elif command.cmd == "info":
+        elif command.cmd == self.COMMANDS[1]:
             self.info(command)
         else:
             print("Unknown command: {}".format(self.cmd))
