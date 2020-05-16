@@ -42,6 +42,8 @@ def load_commandfile(filename):
 
 def getFiles(filename):
     directory = os.path.dirname(filename)
+    if not directory:
+        directory = "."
     print("Directory: {}".format(directory))
     files = []
     for file in os.listdir(directory):
@@ -49,10 +51,12 @@ def getFiles(filename):
             files.append(file)
     return files
 
-def openFiles(filenames, openfiles):
+def openFiles(filenames, files):
     for f in filenames:
-        if not openFiles[f]:
-            openFiles[f] = Brres(f)
+        try:
+            brres = files[f]
+        except:
+            files[f] = Brres(f)
 
 def closeFiles(excludenames, openfiles, destination, overwrite):
     for fname, brres in openfiles:
@@ -70,12 +74,14 @@ def validate_cmds(commandlist, destination):
         cmd.key = cmd.key.lower()
         cmd.cmd = cmd.cmd.lower()
         cmd.value = cmd.value.lower()
+        print("Command {} key {} val {}".format(cmd.cmd, cmd.key, cmd.value))
         if count == 0 and not cmd.filename:
             print("File is required to run commands!")
             return False
         count += 1
         try:
-            i = Brres.COMMANDS.index(cmd)
+            i = Brres.COMMANDS.index(cmd.cmd)
+            print("I is {}".format(i))
             if i == 0:
                 if not cmd.key in Material.SETTINGS and not cmd.key in Layer.SETTINGS:
                     print("Unknown Key {}".format(cmd.key))
@@ -100,14 +106,15 @@ def validate_cmds(commandlist, destination):
 def run_commands(commandlist, destination, overwrite):
     if not validate_cmds(commandlist, destination):
         sys.exit(1)
-    openFiles = {}
+    files = {}
     for cmd in commandlist:
         if cmd.filename:
             filenames = getFiles(cmd.filename)
-            closeFiles(filenames, openFiles, destination, overwrite)
-            openFiles(filenames, openFiles)
-        brres.parseCommand(cmd)
-    closeFiles(None, openFiles, destination, overwrite)
+            closeFiles(filenames, files, destination, overwrite)
+            openFiles(filenames, files)
+        for file, brres in files:
+            brres.parseCommand(cmd)
+    closeFiles(None, files, destination, overwrite)
 
 
 class Brres:
@@ -116,7 +123,12 @@ class Brres:
     # Future shader stuff, blend mode and alpha func
     def __init__(self, fname):
         self.filename = fname
-        self.brres = UnpackBrres(fname)
+        try:
+            self.brres = UnpackBrres(fname)
+        except:
+            print("Error parsing '{}', are you sure it's a valid brres?".format(fname))
+            sys.exit(1)
+
         self.models = self.brres.models
         self.isModified = False
         self.isUpdated = False
@@ -518,7 +530,7 @@ def main(argv):
         cmds = [Command(cmd, setting, value, name, filename, model, None)]
         if info:
             cmds.append(Command("info", setting, value, name, filename, model, None))
-    run_commands(cmds, None, destination, overwrite)
+    run_commands(cmds, destination, overwrite)
     # interactive mode maybe?
 
 # finds a name in group, group instances must have .name
