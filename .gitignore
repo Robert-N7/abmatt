@@ -2,3 +2,9 @@
 *.out
 *.exe
 *.gch
+*.tags*
+*.pyc
+*.brres
+*.d
+tmp.*
+temp.*
