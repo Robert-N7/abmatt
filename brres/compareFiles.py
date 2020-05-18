@@ -8,11 +8,13 @@ def compareFiles(fname1, fname2):
     file2 = open(fname2, "rb")
     byteString2 = file2.read()
     file2.close()
+    print("========================================================\n==\n\n")
     for i in range(len(byteString)):
         if byteString[i] != byteString2[i]:
             print("Mismatch at offset {}!".format(i))
             print("{}\n\t:{}".format(fname1, byteString[i:i+10]))
             print("{}\n\t:{}".format(fname2, byteString2[i:i+10]))
+    print("========================================================\n==\n\n")
 
 if __name__ == "__main__":
     args = sys.argv

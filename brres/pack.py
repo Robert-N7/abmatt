@@ -1,23 +1,21 @@
 #!/usr/bin/python
 #-----------------------------------------------------------------
 #   Robert Nelson
-# Some useful text
+# For packing brres
 #-----------------------------------------------------------------
-import unpack
-import ABMatT
 from struct import *
 
 class PackBrres:
     def __init__(self, brres):
-        self.brres = brres.brres
-        self.file = self.brres.file
+        self.brres = brres
+        self.file = brres.file
         self.file.convertByteArr()
-        self.filename = self.brres.filename
-        for model in self.brres.models:
+        self.filename = brres.filename
+        for model in brres.models:
             if model.isChanged():
                 self.pack_materials(model.mats)
-                self.pack_drawlists(model)
                 self.pack_indexGroups(model)
+            self.pack_drawlists(model)
 
 
     def pack_indexGroups(self, model):
@@ -59,10 +57,10 @@ class PackBrres:
                     newOpa.append(entry)
         newXlu.sort(key = lambda item: item[6]) # sort by draw priority
         newOpa.sort(key = lambda item: item[6])
-        print("New Xlu {}".format(newXlu))
-        print("Old xlu {}".format(drawXlu))
-        print("New opa {}".format(newOpa))
-        print("Old opa {}".format(drawOpa))
+        # print("New Xlu {}".format(newXlu))
+        # print("Old xlu {}".format(drawXlu))
+        # print("New opa {}".format(newOpa))
+        # print("Old opa {}".format(drawOpa))
         # rehook things
         # print("Old length: {} new length {}".format(len(drawlists[1]) + len(drawlists[2]), (len(newOpa) + len(newXlu)) * 2 + 2))
         assert(len(drawlists[1]) + len(drawlists[2]) == (len(newOpa) + len(newXlu)) * 2 + 2)
@@ -78,10 +76,10 @@ class PackBrres:
         pack_into("> B", data, offset, 1)
         offset += 1
         # this offset may change the entry location of xlu draw
-        print("Updating xlu draw offset from {} to {}".format(offsets[2], offset))
+        # print("Updating xlu draw offset from {} to {}".format(offsets[2], offset))
         mdl.drawlistsGroup.updateEntryOffset(offset, 2)
         for draw in newXlu:
             pack_into("> 8B", data, offset, 4, draw[0], draw[1], draw[2], draw[3], draw[4], draw[5], draw[6])
             offset += 8
-        print("Data at end of drawlists {}".format(data[offset]))
+        # print("Data at end of drawlists {}".format(data[offset]))
         pack_into("> B", data, offset, 1) # Terminate, but theoretically should be at same offset now?
