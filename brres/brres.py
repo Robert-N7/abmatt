@@ -1,3 +1,4 @@
+#!/usr/bin/python
 #--------------------------------------------------------
 #   Brres Class
 #--------------------------------------------------------
@@ -8,6 +9,45 @@ from shader import *
 from struct import *
 from pack import *
 from fileobject import *
+import sys
+import binascii
+
+class BresSubFile:
+    structs = {
+        "h" : Struct("> 4s I I I")
+    }
+    numSections = {
+        "CHR03" : 1,
+        "CHR05" : 5,
+        "CLR04" : 2,
+        "MDL08" : 11,
+        "MDL011" : 14,
+        "PAT04" : 6,
+        "SCN04" : 6,
+        "SCN05" : 7,
+        "SHP04" : 3,
+        "SRT04" : 1,
+        "SRT05" : 2,
+        "TEX01" : 1,
+        "TEX02" : 2,
+        "TEX03" : 1
+    }
+    def __init__(self, file, offset, name):
+        self.offset = file.offset = offset
+        self.name = name
+        self.h = file.read(self.structs["h"], 16)
+        # print("Subfile, len, version, outerOffset: {}".format(self.h))
+        self.magic = self.h[0]
+        self.length = self.h[1]
+        self.version = self.h[2]
+        # self.bin = file.file[self.offset:self.offset + self.length]
+        self.sectionCount = self.numSections[self.magic.decode() + str(self.version)]
+        # print("section count: {}".format(self.sectionCount))
+        self.sectionOffsets = file.read(Struct("> " + str(self.sectionCount) + "I" ), self.sectionCount * 4)
+        # print("{} Section offsets: {}".format(self.magic, self.sectionOffsets))
+        if self.magic == b"MDL0":
+            Model(file, self)
+
 
 class Brres:
     structs = {
@@ -27,32 +67,34 @@ class Brres:
         self.isUpdated = False
         self.file = Bin(self.filename, self)
         try:
-            self.unpack(self.file)
+            if not self.unpack(self.file):
+                print("Error parsing '{}'".format(filename))
+                sys.exit(1)
         except ValueError as e:
             print("Error parsing '{}': {}".format(fname, e))
             sys.exit(1)
-            return
 
     def unpack(self, file):
         brresHd = file.read(self.structs["h"], 16)
-        if brresHd[0] != "bres":
+        if brresHd[0].decode() != "bres":
+            print("Not a brres file {}".format(brresHd[0]))
             return False
         file.offset = brresHd[4]
         self.brresHd = brresHd
         self.rootHd = file.read(self.structs["root"], 8)
         self.indexGroups = []
         self.subFiles = []
-        self.root = IndexGroup(f, 0)
+        self.root = IndexGroup(file, 0)
         for offset in self.root.entryOffsets:
-            self.indexGroups.append(IndexGroup(f, offset))
+            self.indexGroups.append(IndexGroup(file, offset))
         for group in self.indexGroups:
             # folderNames = group.entryNames
             offsets = group.entryOffsets
             names = group.entryNames
             for i in range(len(offsets)):
                 # print("\t=====Folder {}======".format(folderNames[i]))
-                self.subFiles.append(BresSubFile(f, offsets[i], names[i]))
-        return True
+                self.subFiles.append(BresSubFile(file, offsets[i], names[i]))
+        return self.models
 
     def pack(self, brres):
         pass
@@ -188,53 +230,3 @@ class Brres:
                     return True
         self.isUpdated = False
         return False
-
-class IndexGroup:
-    structs = {
-        "h" : Struct("> I I"),
-        "indexGroup" : Struct("> H H H H I I"),
-    }
-    def __init__(self, file, offset):
-        if offset:
-            file.offset = offset
-        self.isModified = False
-        self.offset = file.offset
-        self.h = file.read(self.structs["h"], 8)
-        # print("Group byte len, numEntries: {}".format(self.h))
-        self.entries = []
-        self.entryNames = []
-        self.entryOffsets = []
-        # file.offset += 16
-        for i in range(self.h[1] + 1):
-            entry = file.read(self.structs["indexGroup"], 16)
-            # if self.h[1] == 3:
-            # print("{} Entry id, uk, left, right, namep, datap {}".format(file.offset - 16, entry))
-            if i != 0:
-                name = file.unpack_name(entry[4] + self.offset)
-                self.entryNames.append(name)
-                self.entryOffsets.append(entry[5] + self.offset)
-            # else:
-            #     self.entryNames.append("Null")
-
-            self.entries.append(entry)
-
-    def updateEntryOffset(self, offset, index):
-        self.entryOffsets[index] = offset
-        self.isModified = True
-
-    # does not handle changing left right id etc
-    def repack(self, file):
-        if not self.isModified:
-            return
-        offset = self.offset
-        # pack header
-        pack_into("> I I", file.file, offset, self.h[0], self.h[1])
-        offset += 8
-        # pack entries
-        for i in range(len(self.entries)):
-            entry = self.entries[i]
-            entryOffset = entry[5] if i == 0 else self.entryOffsets[i - 1] - self.offset
-            # print("Offset is {} for entry {}".format(self.offset + entryOffset, self.entries[i]))
-            pack_into("> 4H 2I", file.file, offset, entry[0], entry[1], entry[2],
-            entry[3], entry[4], entryOffset)
-            offset += 16
