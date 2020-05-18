@@ -10,6 +10,7 @@ from struct import *
 from pack import *
 from fileobject import *
 import sys
+import os
 import binascii
 
 class BresSubFile:
@@ -71,7 +72,7 @@ class Brres:
                 print("Error parsing '{}'".format(filename))
                 sys.exit(1)
         except ValueError as e:
-            print("Error parsing '{}': {}".format(fname, e))
+            print("Error parsing '{}': {}".format(filename, e))
             sys.exit(1)
 
     def unpack(self, file):

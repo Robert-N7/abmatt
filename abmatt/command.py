@@ -5,8 +5,10 @@ import os
 import re
 from material import *
 from layer import *
-import ABMatT
+import abmatt
 import fnmatch
+import sys
+
 class Command:
     COMMANDS = ["set", "info"]
     def __init__(self, cmd, key, value, name, file, model, material):
@@ -105,7 +107,7 @@ def getFiles(filename):
 def openFiles(filenames, files):
     for f in filenames:
         if not f in files:
-            brres = ABMatT.Brres(f)
+            brres = abmatt.Brres(f)
             files[f] = brres
 
 def closeFiles(excludenames, openfiles, destination, overwrite):

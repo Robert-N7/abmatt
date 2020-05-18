@@ -71,7 +71,7 @@ class Model:
         if self.version != 11:
             raise ValueError("Unsupported mdl0 version {}".format(self.version))
         self.name = subFileHeader.name.decode()
-        # print("\t\tMDL0: {}".format(self.name))
+        print("\t\tMDL0: {}".format(self.name))
         self.indexGroups = []
         self.sections = []
         self.drawlistsGroup = None
@@ -197,26 +197,38 @@ class Model:
             return None
         offsets = self.drawlistsGroup.entryOffsets
         drawlists = []
+        names = self.drawlistsGroup.entryNames
         maxOffsetlist = len(offsets)
         for i in range(maxOffsetlist):
-            done = False
+            file.offset = offsets[i]
+            drawlists.append(self.DrawList(file, names[i]))
+        return drawlists
+
+    class DrawList:
+        def __init__(self, file, name):
+            self.name = name
+            self.offset = file.offset
+            self.unpack(file)
+
+        def unpack(self, file):
             struct0 = Struct("> B")
             struct1 = Struct("> 4B")
             struct2 = Struct("> 7B")
             currentList = []
-            file.offset = offsets[i]
-            while not done:
+            while True:
                 byte = file.read(struct0, 1)
-                # print("Byte: {}".format(byte))
                 currentList.append(byte[0])
                 if byte[0] == 0x01:
                     break
-                elif byte[0] == 0x02 or byte[0] == 0x05:
-                    currentList.append(file.read(struct1, 4))
-                else:
+                elif byte[0] == 0x4:    # doesn't always work with mix node list
                     currentList.append(file.read(struct2, 7))
-            drawlists.append(currentList)
-        return drawlists
+                elif byte[0] == 0x3:
+                    currentList.append(file.read(Struct("> 10B"), 10))
+                elif byte[0] > 0x6: # error reading list?
+                    break
+                else:
+                    currentList.append(file.read(struct1, 4))
+            self.cmds = currentList
 
     def unpack_bones(self, file):
         if not self.bonesGroup:

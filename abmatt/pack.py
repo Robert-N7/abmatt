@@ -29,11 +29,21 @@ class PackBrres:
 
 
     def pack_drawlists(self, mdl):
-        # Remake drawlists
-        drawlists = mdl.drawlists
+        # Remake drawlists - possible that list doesn't exist?
         drawCmd = 4
-        drawOpa = drawlists[1]
-        drawXlu = drawlists[2]
+        lists = mdl.drawlists
+        opaIndex = -1
+        xluIndex = -1
+        for i in range(len(lists)):
+            if lists[i].name == "DrawOpa":
+                opaIndex = i
+                drawOpa = lists[i].cmds
+            elif lists[i].name == "DrawXlu":
+                xluIndex = i
+                drawXlu = lists[i].cmds
+        if opaIndex == -1 or xluIndex == -1:
+            print("Warning, unable to remake drawlists for model {}.".format(mdl.name))
+            return False
         mats = mdl.mats
         newOpa = []
         newXlu = []
@@ -46,7 +56,7 @@ class PackBrres:
                     newXlu.append(entry)
                 else:
                     newOpa.append(entry)
-        for i in range(len(drawXlu)):
+        for i in range(len(lists[xluIndex])):
             # ignore command entries
             if i % 2 != 0:
                 entry = drawXlu[i]
@@ -63,7 +73,7 @@ class PackBrres:
         # print("Old opa {}".format(drawOpa))
         # rehook things
         # print("Old length: {} new length {}".format(len(drawlists[1]) + len(drawlists[2]), (len(newOpa) + len(newXlu)) * 2 + 2))
-        assert(len(drawlists[1]) + len(drawlists[2]) == (len(newOpa) + len(newXlu)) * 2 + 2)
+        # assert(len(drawOpa) + len(drawXlu) == (len(newOpa) + len(newXlu)) * 2 + 2)
         # drawlists[1] = newOpa
         # drawlists[2] = newXlu
         # the actual byte string and update entry offsets
