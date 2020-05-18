@@ -1,25 +1,18 @@
 #!/usr/bin/python
-
-# -------------------------------------------------------------------
-#   lets have fun with python!
-#   Robert Nelson
-# -------------------------------------------------------------------
-from unpack import *
-from material import *
-from brres import *
-from model import *
-from layer import *
-from pack import *
+"""
+ANoob's Brres Material Editor
+For editing Mario Kart Wii files
+"""
+import sys
+import getopt
 from command import *
-import fnmatch
-import sys, getopt
-import os
 
+USAGE = "{} -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value>\
+ -n <name> -m <model> -i] "
 
-USAGE = "{} -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value> -n <name> -m <model> -i] "
-
-def help():
-    help  = '''
+def hlp():
+    """ displays help message """
+    helpstr = '''
 ====================================================================================
 ANOOB'S BRRES MATERIAL TOOL
 Version {}
@@ -78,18 +71,20 @@ Example command line usage:
 This opens course_model.brres in overwrite mode and disables transparency for material 'opaque_material'.
 For more Help or if you want to contribute visit https://github.com/Robert-N7/ABMatT
     '''
-    print(help.format(VERSION))
+    print(helpstr.format(__version__))
     print("Usage: {}".format(USAGE))
 
 
 def main(argv):
+    ''' Main '''
     if not argv:
-        help()
+        hlp()
         sys.exit(0)
     try:
         opts, args = getopt.getopt(argv, "hf:d:ok:v:n:m:c:i",
-         ["help", "file=", "destination=", "overwrite", "key=", "value=",
-         "name=", "model=", "info", "commandfile="])
+                             ["help", "file=", "destination=", "overwrite",
+                              "key=", "value=",
+                              "name=", "model=", "info", "commandfile="])
     except getopt.GetoptError:
         print(USAGE)
         sys.exit(2)
@@ -104,7 +99,7 @@ def main(argv):
     info = False
     for opt, arg in opts:
         if opt in ("-h", "--help"):
-            help()
+            hlp()
             sys.exit()
         elif opt in ("-f", "--file"):
             filename = arg

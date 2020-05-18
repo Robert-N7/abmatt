@@ -25,6 +25,9 @@ class Material:
     CULL_STRINGS = ("none", "outside", "inside", "all")
     # COMPARE
     COMP_STRINGS = ("never", "less", "equal", "lessorequal", "greater", "notequal", "greaterorequal", "always")
+    COMP_GREATEROREQUAL = 6
+    COMP_LESSOREQUAL = 3
+    COMP_ALWAYS = 7
     # Blend factor
     BLLOGIC_STRINGS = ("clear", "and", "reverseand", "copy",
     "inverseand", "nooperation", "exclusiveor", "or", "notor", "equivalent", "inverse",
@@ -180,8 +183,7 @@ class Material:
         if not self.xlu or self.compareBeforeTexture:
             self.compareBeforeTexture = False
             self.xlu = True
-            self.isMo
-            dified = True
+            self.isModified = True
 
     def setOpaque(self):
         self.ref0 = 0

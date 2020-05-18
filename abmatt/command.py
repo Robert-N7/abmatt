@@ -5,7 +5,7 @@ import os
 import re
 from material import *
 from layer import *
-import abmatt
+from brres import Brres
 import fnmatch
 import sys
 
@@ -107,7 +107,7 @@ def getFiles(filename):
 def openFiles(filenames, files):
     for f in filenames:
         if not f in files:
-            brres = abmatt.Brres(f)
+            brres = Brres(f)
             files[f] = brres
 
 def closeFiles(excludenames, openfiles, destination, overwrite):
