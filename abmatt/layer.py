@@ -50,7 +50,7 @@ def indexListItem(list, item, compareIndex):
                 return i
             else:
                 return -1
-    raise ValueError("Invalid setting '" + item + "', Options are: " + list)
+    raise ValueError("Invalid setting '" + item + "', Options are: " + str(list))
 
 def parseValStr(value):
     if value[0] == "(" and value[-1] == ")":
@@ -338,7 +338,7 @@ class Layer:
         if val != self.normalize:
             self.normalize = val
             self.isModified = True
-            
+
     SET_SETTING = ( setScaleStr, setRotationStr, setTranslationStr, setCameraRefStr,
     setLightRefStr, setMapmodeStr, setUWrapStr, setVWrapStr, setMinFilterStr, setMagFilterStr,
     setLodBiasStr, setAnisotrophyStr, setClampBiasStr, setTexelInterpolateStr, setProjectionStr,
