@@ -6,13 +6,14 @@ with open('README.md') as file:
 
 
 # specify requirements of your package here
-REQUIREMENTS = ['requests']
+REQUIREMENTS = []
 
 # some more details
 CLASSIFIERS = [
   "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3.7",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent"
  ]
 
 # calling the setup function
@@ -20,12 +21,13 @@ setup(name='abmatt',
       version='0.1.0',
       description='Brres file material editor',
       long_description=long_description,
+      long_description_content_type="text/markdown",
       url='https://github.com/Robert-N7/abmatt',
       author='Robert Nelson',
       author_email='robert7.nelson@gmail.com',
-      license='GNU',
+      license='GPLv3',
       packages=setuptools.find_packages(),
       classifiers=CLASSIFIERS,
       install_requires=REQUIREMENTS,
-      keywords='maps location address'
+      keywords='Mario Kart Wii Brres Material MDL0'
       )

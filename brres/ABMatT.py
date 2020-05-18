@@ -15,7 +15,7 @@ import fnmatch
 import sys, getopt
 import os
 
-VERSION = "0.1.0"
+
 USAGE = "{} -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value> -n <name> -m <model> -i] "
 
 def help():
