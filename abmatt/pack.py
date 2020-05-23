@@ -14,12 +14,12 @@ class PackBrres:
         for model in brres.models:
             if model.isChanged():
                 self.pack_materials(model.mats)
-                self.pack_indexGroups(model)
+                self.pack_Folders(model)
             self.pack_drawlists(model)
 
 
-    def pack_indexGroups(self, model):
-        for group in model.indexGroups:
+    def pack_Folders(self, model):
+        for group in model.Folders:
             if group:
                 group.repack(self.file)
 

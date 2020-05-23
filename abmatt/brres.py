@@ -3,102 +3,39 @@
 #   Brres Class
 #--------------------------------------------------------
 from model import *
+from subfile import *
+from srt import *
 from material import *
 from layer import *
 from shader import *
-from struct import *
-from pack import *
-from fileobject import *
 import sys
 import os
 import binascii
 
-class BresSubFile:
-    structs = {
-        "h" : Struct("> 4s I I I")
-    }
-    numSections = {
-        "CHR03" : 1,
-        "CHR05" : 5,
-        "CLR04" : 2,
-        "MDL08" : 11,
-        "MDL011" : 14,
-        "PAT04" : 6,
-        "SCN04" : 6,
-        "SCN05" : 7,
-        "SHP04" : 3,
-        "SRT04" : 1,
-        "SRT05" : 2,
-        "TEX01" : 1,
-        "TEX02" : 2,
-        "TEX03" : 1
-    }
-    def __init__(self, file, offset, name):
-        self.offset = file.offset = offset
-        self.name = name
-        self.h = file.read(self.structs["h"], 16)
-        # print("Subfile, len, version, outerOffset: {}".format(self.h))
-        self.magic = self.h[0]
-        self.length = self.h[1]
-        self.version = self.h[2]
-        # self.bin = file.file[self.offset:self.offset + self.length]
-        self.sectionCount = self.numSections[self.magic.decode() + str(self.version)]
-        # print("section count: {}".format(self.sectionCount))
-        self.sectionOffsets = file.read(Struct("> " + str(self.sectionCount) + "I" ), self.sectionCount * 4)
-        # print("{} Section offsets: {}".format(self.magic, self.sectionOffsets))
-        if self.magic == b"MDL0":
-            Model(file, self)
 
+class Brres():
+    FOLDERS = ["3DModels(NW4R)", "Textures(NW4R)", "AnmTexSrt(NW4R)", "AnmChr(NW4R)",
+                "AnmTexPat(NW4R)", "AnmScn(NW4R)", "AnmShp(NW4R)", "AnmClr(NW4R)"]
+    CLASSES = [Model, Tex, Srt, Chr, Pat, SCn, Shp, Clr]
+    MAGIC = "bres"
+    ROOTMAGIC = "root"
 
-class Brres:
-    structs = {
-        "h" : Struct("> 4s H H I H H"),
-        "root" : Struct("> 4s I"),
-        "indexGroupH" : Struct("> I I"),
-        "indexGroup" : Struct("> H H H H I I"),
-    }
-
-    def __init__(self, filename):
-        self.filename = filename
+    def __init__(self, name, parent):
+        ''' initialize brres '''
         self.models = []
         self.textures = []
+        self.anmSrt = []
+        self.anmChr = []
+        self.anmPat = []
         self.anmClr = []
-        self.anmTexSrt = []
+        self.anmShp = []
+        self.anmScn = []
+        self.folders = [self.models, self.textures, self.anmSrt, self.anmChr,
+                        self.anmPat, self.anmClr, self.anmShp, self.anmScn]
         self.isModified = False
         self.isUpdated = False
-        self.file = Bin(self.filename, self)
-        try:
-            if not self.unpack(self.file):
-                print("Error parsing '{}'".format(filename))
-                sys.exit(1)
-        except ValueError as e:
-            print("Error parsing '{}': {}".format(filename, e))
-            sys.exit(1)
-
-    def unpack(self, file):
-        brresHd = file.read(self.structs["h"], 16)
-        if brresHd[0].decode() != "bres":
-            print("Not a brres file {}".format(brresHd[0]))
-            return False
-        file.offset = brresHd[4]
-        self.brresHd = brresHd
-        self.rootHd = file.read(self.structs["root"], 8)
-        self.indexGroups = []
-        self.subFiles = []
-        self.root = IndexGroup(file, 0)
-        for offset in self.root.entryOffsets:
-            self.indexGroups.append(IndexGroup(file, offset))
-        for group in self.indexGroups:
-            # folderNames = group.entryNames
-            offsets = group.entryOffsets
-            names = group.entryNames
-            for i in range(len(offsets)):
-                # print("\t=====Folder {}======".format(folderNames[i]))
-                self.subFiles.append(BresSubFile(file, offsets[i], names[i]))
-        return self.models
-
-    def pack(self, brres):
-        pass
+        self.parent = parent
+        self.name = name
 
     def getModelsByName(self, name):
         return findAll(name, self.models)
@@ -112,12 +49,9 @@ class Brres:
             print("File '{}' already exists!".format(filename))
             return False
         else:
-            PackBrres(self)
-            packed = self.file
-            # packed.convertByteArr()
-            f = open(filename, "wb")
-            f.write(packed.file)
-            f.close()
+            binfile = Bin(filename, mode="w")
+            self.pack(binfile)
+            binfile.commitWrite()
             print("Wrote file '{}'".format(filename))
             return True
 
@@ -231,3 +165,113 @@ class Brres:
                     return True
         self.isUpdated = False
         return False
+
+    def getNumSections(self):
+        ''' gets the number of sections, including root'''
+        count = 1 # root
+        for x in self.folders:
+            if x:
+                count += 1
+        return count
+
+    # -------------------------------------------------------------------------
+    #   PACKING / UNPACKING
+    # -------------------------------------------------------------------------
+    def unpackFolder(self, bin, root, folderIndex):
+        ''' Unpacks the folder folderIndex '''
+        name = self.FOLDERS[folderIndex]
+        if root.open(name):
+            container = self.folders[folderIndex]
+            subFolder = Folder(bin, name)
+            subFolder.unpack(bin)
+            klass = self.CLASSES[folderIndex]
+            while True:
+                nm = subFolder.openI()
+                if not nm:
+                    break
+                container.append(klass(nm, self))
+
+
+    def unpack(self, bin):
+        ''' Unpacks the brres '''
+        bin.start()
+        magic = bin.readMagic()
+        if magic != self.MAGIC:
+            raise ValueError("Magic {} does not match {}".format(magic, self.MAGIC))
+        bom = bin.read("H", 2)
+        self.bin.bom = "<" if bom == 0xfffe else ">"
+        pad, self.length, rootoffset, self.numSections = bin.read("hI2h", 10)
+        bin.offset = rootoffset
+        root = bin.readMagic()
+        assert(root == self.ROOTMAGIC)
+        sectionLength = bin.read("I", 4)
+        root = Folder(bin, root)
+        # open all the folders
+        for i in range(len(self.FOLDERS)):
+            self.unpackFolder(bin, root, i)
+        bin.end()
+
+    def generateRoot(self, bin):
+        ''' Generates the root folders
+            Does not hook up data pointers except the head group,
+            returns (rootFolders, bytesize)
+        '''
+        rootFolders = [] # for storing Index Groups
+        byteSize = 0
+        # Create folder indexing folders
+        rootFolder = Folder(bin, self.ROOTMAGIC)
+        rootFolders.append(rootFolder)
+        offsets = []    # for tracking offsets from first group to others
+        # Create folder for each section the brres has
+        for i in range(len(self.folders)):
+            folder = self.folders[i]
+            size = len(folder)
+            if size:
+                f = Folder(bin, self.FOLDERS[i])
+                for j in range(size):
+                    f.addEntry(folder[j].name)  # might not have name?
+                rootFolder.addEntry(f.name)
+                rootFolders.append(f)
+                offsets.append(byteSize)
+                byteSize += f.byteSize()
+        # now update the dataptrs
+        rtsize = rootFolder.byteSize()
+        entries = rootFolder.entries
+        for i in range(len(offsets)):
+            entries[i].dataPtr = offsets[i] + rtsize
+        byteSize += rtsize + 8  # add first folder to bytsize, and header len
+        return rootFolders, bytesize
+
+    def packRoot(self, bin):
+        ''' Packs the root section, returns root folders that need data ptrs'''
+        bin.start()
+        bin.writeMagic("root")
+        rtFolders, rtSize = self.generateRoot(bin)
+        bin.write("I", 4, rtsize)
+        for f in rtFolders:
+            f.pack()
+        bin.end()
+        return rtFolders[1:]
+
+    def pack(self, bin):
+        ''' packs the brres '''
+        bin.start()
+        bin.writeMagic(self.MAGIC)
+        bin.write("H", 2, 0xfffe)   # BOM
+        bin.advance(2)
+        bin.markLen()
+        numSections = self.getNumSections()
+        bin.write("2H", 4, 0x10, numSections)
+        folders = self.packRoot(bin)
+        # now pack the folders
+        folderIndex = 0
+        for subfolder in self.folders:
+            if len(subfolder):
+                refGroup = folders[folderIndex]
+                for file in subfolder:
+                    refGroup.createEntryRefI()  # create the dataptr
+                    entry.pack(bin)
+                folderIndex += 1
+        bin.packNames()
+        bin.end()
+    # --------------------------------------------------------------------------
