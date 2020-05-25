@@ -3,11 +3,20 @@
 #   Robert Nelson
 #  Structure for working with materials
 #---------------------------------------------------------------------
-import unpack
-from struct import *
 import re
+from struct import *
 from layer import *
+from binfile import printCollectionHex
 BOOLABLE = ["False", "True"]
+
+class OutAnalysis():
+    def __init__(self):
+        self.fname = "analysis.txt"
+        self.file = open(self.fname, "a")
+    def write(self, text):
+        self.file.write(text + "\n")
+
+ANALYSIS = OutAnalysis()
 
 class Material:
 # -----------------------------------------------------------------------
@@ -40,16 +49,15 @@ class Material:
     SHADERCOLOR_ERROR = "Invalid color '{}', Expected [constant]color<i>=<r>,<g>,<b>,<a>"
 
 
-    def __init__(self, name, file, parent):
+    def __init__(self, name, parent=None):
         self.parent = parent
         self.isModified = False
-        self.name = name.decode()
+        self.name = name
         self.layers = []
         self.lightChannels = []
         self.colors = []
         self.constantColors = []
         self.shader = None
-        self.unpack(file)
 
     def __str__(self):
         # print("Cull mode is {}".format(self.cullmode))
@@ -437,29 +445,44 @@ class Material:
                 return True
         return False
 
+    def removeLayer(self, name):
+        ''' Removes layer from material by name '''
+        for i, x in enumerate(self.layers):
+            if x.name == name:
+                del self.layers[i]
+                break
 
-    def addLayer(self, layer):
-        self.layers.append(layer)
+    def addLayer(self, name):
+        ''' Creates and returns new layer '''
+        l = Layer(len(self.layers), name, self)
+        self.layers.append(l)
+        return l
 
 # -----------------------------------------------------------------------------
 # PACKING
 # -----------------------------------------------------------------------------
-    def pack(self, file):
+    def pack(self, binfile):
+        ''' Packs the material '''
         if not self.isChanged():
             return
+        binfile.start()
+        self.offset = binfile.offset    # for backtracking offsets like shaders
         data = file.file
         args = (self.length, self.mdl0Offset, self.nameOffset,
         self.id, self.xlu << 31, self.numLayers, self.numLights, self.shaderStages,
         self.indirectStages, self.cullmode, self.compareBeforeTexture, self.lightset,
         self.fogset)
         # print("===========> Packing mat flags at {}:\n{}".format(self.offset, data[self.offset:31 + self.offset]))
-        pack_into("> I i 3I 4B I 3B", data, self.offset, *args)
-        offset = self.offset + 0x28
-        pack_into("> 3I", data, offset, self.shaderOffset, self.numTextures, self.layerOffset)
+        binfile.write("I i 3I 4B I 3B", args)
+        binfile.write("BI4B", 0, 0, [0xff] * 4) # padding, indirect method, light normal map
+        binfile.mark()  # shader offset, to be filled
+        binfile.write("I", len(self.layers))
+        binfile.mark()  # layer offset
         # print("{}".format(data[self.offset:31 + self.offset]))
         # Alpha Mode
         byte1 = self.logic << 6 | self.comp1 << 3 | self.comp0
         # print("===========> Packing alpha func at {}:\n{}".format(self.modeOffset + 2, data[self.modeOffset + 2: self.modeOffset + 5]))
+        binfile.write("3B", byte1, self.ref1, self.ref0)
         pack_into("> 3B", data, self.modeOffset + 2, byte1, self.ref1, self.ref0)
         # print("{}".format(data[self.modeOffset + 2:self.modeOffset+5]))
         offset = self.modeOffset + 9
@@ -512,13 +535,13 @@ class Material:
         for i in range(3, -1, -1): # read it backwards
             layer = self.getLayer(layerIndex)
             if layer:
-                flags = layer.enable | layer.scaleFixed << 1 | layer.rotationFixed << 2 | layer.translationFixed << 3
+                flags = layer.enable | layer.scaleDefault << 1 | layer.rotationDefault << 2 | layer.translationDefault << 3
             else:
                 flags = 0
             layerIndex += 1
             layer = self.getLayer(layerIndex)
             if layer:
-                flags = flags | (layer.enable | layer.scaleFixed << 1 | layer.rotationFixed << 2 | layer.translationFixed << 3) << 4
+                flags = flags | (layer.enable | layer.scaleDefault << 1 | layer.rotationDefault << 2 | layer.translationDefault << 3) << 4
             pack_into("> B", data, offset + i, flags)
             layerIndex += 1
         offset += 4
@@ -540,145 +563,158 @@ class Material:
         file.offset += 20
         self.lightChannels[1].pack(file)
 
-    def unpack(self, file):
-        self.offset = file.offset
-        matData = file.read(Struct("> I i 3I 4B I 4B 4B 4B"), 40) #up to 0x20
-        # print("\t{} Name: {}, index: {}".format(self.offset, self.name, matData[3]))
-        # print("Flags: {}, texgens: {}, lights: {}, shaderstages: {}, indirectStages: {}".format(matData[4], matData[5], matData[6], matData[7], matData[8]))
-        # print("Cull: {}, CompareBeforeTexture: {}, Lightset: {}, Fogset: {}".format(matData[9], matData[10], matData[11], matData[12]))
-        self.length = matData[0]
-        self.mdl0Offset = matData[1]
-        self.nameOffset = matData[2]
-        self.id = matData[3]
-        self.xlu = matData[4] >> 31 & 1
-        self.numLayers = matData[5]
-        self.numLights = matData[6]
-        self.shaderStages = matData[7]
-        self.indirectStages = matData[8]
-        self.cullmode = matData[9]
-        self.compareBeforeTexture = matData[10]
-        self.lightset = matData[11]
-        self.fogset = matData[12]
-        oset = file.offset
-        matData = file.read(Struct("> 6I"), 24)
-        self.shaderOffset = matData[0]
-        self.numTextures = matData[1] # is this ever different from numlayers?
-        self.layerOffset = matData[2]
-        self.furDataOffset = matData[3]
-        self.displayListOffset0 = matData[4]
-        self.displayListOffset1 = matData[5]
-        # print("{} Shader Offset {}, numTextures {}, layer offset {}".format(oset, matData[0], matData[1], matData[2]))
-        # Advance to layer offset
-        file.offset = matData[2] + self.offset
-        for i in range(matData[1]):
-            ref = Layer(file, self)
-            self.addLayer(ref)
-        if file.offset % 0x20:
-            file.offset += (0x20 - file.offset % 0x20)
-        self.modeOffset = file.offset
-        oset = file.offset
-        mode = file.read(Struct("32B"), 32)
+    def unpackLayers(self, binfile, startLayerInfo, numlayers):
+        ''' unpacks the material layers '''
+        binfile.recall() # layers
+        offset = binfile.offset
+        for i in range(numlayers):
+            binfile.start()
+            scaleoffset = startLayerInfo + 8 + i * 20
+            self.addLayer(binfile.unpack_name()).unpack(binfile, scaleoffset)
+            print("Layer: {} ".format(self.layers[-1].name))
+            binfile.end()
+        # Layer Flags
+        binfile.offset = startLayerInfo
+        flags = binfile.read("4B", 4)
+        layerIndex = 0
+        i = 3
+        for li in range(len(self.layers)):
+            if li % 2 == 0:
+                f = flags[i]
+            else:
+                f = flags[i] >> 4
+                i -= 1
+            self.layers[li].setLayerFlags(f)
+        return offset
+
+    def unpackLightChannels(self, binfile):
+        ''' Unpacks the light channels '''
+        for i in range(2):
+            lc = LightChannel()
+            self.lightChannels.append(lc)
+            lc.unpack(binfile)
+
+
+    def unpack(self, binfile):
+        binfile.start()
+        offset = binfile.offset
+        l, mdOff = binfile.read("Ii", 8)
+        print("Length {} mdl0 {} offset {}".format(l, mdOff, offset))
+        # self.name = binfile.unpack_name()
+        binfile.advance(4)
+        self.id, xluFlags, nlayers, nlights, \
+            self.shaderStages, self.indirectStages, \
+            self.cullmode, self.compareBeforeTexture, \
+            self.lightset, self.fogset, pad  = binfile.read("2I2B2BI4B", 20)
+        self.xlu = xluFlags >> 31 & 1
+        print("id {} xlu {} layers{} lights {}".format(self.id, xluFlags, nlayers, nlights))
+        binfile.advance(8)
+        self.shaderOffset, self.numTextures = binfile.read("2I", 8)
+        binfile.store() #  layer offset
+        if self.parent.version >= 10:
+            binfile.advance(8)
+            bo = binfile.offset
+            [dpo] = binfile.readOffset("I", binfile.offset)
+            binfile.store() # store display mode offset
+        else:
+            binfile.advance(4)
+            binfile.store()
+            # bo = binfile.offset
+            # dpo = binfile.read("I", 4)
+            binfile.advance(4)
+        # ignore precompiled code space
+        binfile.advance(360)
+        startlayerInfo = binfile.offset
+        offset = self.unpackLayers(binfile, startlayerInfo, nlayers)
+        self.textureMatrixMode = binfile.read("I", 4)
+        binfile.advance(576)
+        self.unpackLightChannels(binfile)
+        # binfile.advance(0x34 * nlayers)
+        # binfile.advance(0x40)
+        binfile.recall()
+        print("BO {} DPO: {}".format(bo + dpo, dpo + binfile.beginOffset))
+        print("Layer Offset {}, current {}".format(offset, binfile.offset))
+        remaining = binfile.readRemaining(l)
+        xftexgens = remaining[0xe0:]
+        layerI = 0
+        for i in range(len(xftexgens)):
+            c = xftexgens[i]
+            if c == 0x10 and xftexgens[i + 1] >= 0x50:
+                if xftexgens[i + 2] or xftexgens[i + 3] or xftexgens[i + 4] \
+                    or xftexgens[i + 5]:
+                    m = ""
+                    for he in xftexgens[i:i+6]:
+                        m += "{:02X} ".format(he)
+                    name = self.layers[layerI].name
+                    if not name:
+                        name = str(layerI)
+                    ANALYSIS.write(self.name + "->" + name + "\t" + m)
+                    # printCollectionHex(xftexgens)
+                layerI += 1
+        binfile.end()
+        # binfile.recall()
+        # self.modeOffset = file.offset
+        #
+        # oset = file.offset
+        #
+        # mode = file.read(Struct("32B"), 32)
         # print("\t{} MODE: {}".format(oset, mode))
-        self.comp0 = mode[2] & 7
-        self.comp1 = mode[2] >> 3 & 7
-        self.logic = (mode[2] >> 6) & 3 # always 0 (and)
-        self.ref1 = mode[3]
-        self.ref0 = mode[4]
-        depthfunction = mode[9]
-        self.enableDepthTest = depthfunction & 1
-        self.depthFunction = (depthfunction >> 1) & 0x7
-        self.enableDepthUpdate = (depthfunction >> 4) & 1
-        self.srcFactor = mode[18] & 7
-        self.blendlogic = mode[18] >> 4 & 0xf
-        self.dstFactor = mode[19] >> 5 & 7
-        self.enableBlend = mode[19] & 1
-        self.enableBlendLogic = mode[19] >> 1 & 1
-        self.subtract = mode[19] >> 3 & 1
-        self.constAlphaEnable = mode[23]
-        self.constAlpha = mode[24]
-        tev = file.read(Struct("128B"), 128)
+        # self.comp0 = mode[2] & 7
+        # self.comp1 = mode[2] >> 3 & 7
+        # self.logic = (mode[2] >> 6) & 3 # always 0 (and)
+        # self.ref1 = mode[3]
+        # self.ref0 = mode[4]
+        # depthfunction = mode[9]
+        # self.enableDepthTest = depthfunction & 1
+        # self.depthFunction = (depthfunction >> 1) & 0x7
+        # self.enableDepthUpdate = (depthfunction >> 4) & 1
+        # self.srcFactor = mode[18] & 7
+        # self.blendlogic = mode[18] >> 4 & 0xf
+        # self.dstFactor = mode[19] >> 5 & 7
+        # self.enableBlend = mode[19] & 1
+        # self.enableBlendLogic = mode[19] >> 1 & 1
+        # self.subtract = mode[19] >> 3 & 1
+        # self.constAlphaEnable = mode[23]
+        # self.constAlpha = mode[24]
+        # tev = file.read(Struct("128B"), 128)
         # A tev[2-3] R tev[4] G tev[7-8] B tev[9]
         # G and B are repeated 3 times for some reason
-        j = 2
-        for i in range(3):
-            self.colors.append((tev[2 + j], (tev[5 + j] << 4) | (tev[6 + j] >> 4), tev[7 + j], (tev[j] << 4) | (tev[1 + j] >> 4)))
-            j += 20
+        # j = 2
+        # for i in range(3):
+        #     self.colors.append((tev[2 + j], (tev[5 + j] << 4) | (tev[6 + j] >> 4), tev[7 + j], (tev[j] << 4) | (tev[1 + j] >> 4)))
+        #     j += 20
             # print("Color: {}".format(self.colors[i]))
-        j += 4
-        for i in range(4):
-            self.constantColors.append((tev[2 + j], ((tev[5 + j] & 0xf) << 4) | (tev[6 + j] >> 4), tev[7 + j], ((tev[j] & 0xf) << 4) | (tev[1 + j] >> 4)))
-            j+=10
-        shaderTex = file.read(Struct("64B"), 64)
-        xfFlags = file.read(Struct("160B"), 160)
-        j = 0
+        # j += 4
+        # for i in range(4):
+        #     self.constantColors.append((tev[2 + j], ((tev[5 + j] & 0xf) << 4) | (tev[6 + j] >> 4), tev[7 + j], ((tev[j] & 0xf) << 4) | (tev[1 + j] >> 4)))
+        #     j+=10
+        # shaderTex = file.read(Struct("64B"), 64)
+        # xfFlags = file.read(Struct("160B"), 160)
+        # j = 0
         # 18 width
         # byte 5-6 r-shifted 1 short emboss light
         # byte 7 msb 1-3 emboss source
-        # 3 lsb and msb of 8 are coordinates (geometry 0 normals 1 colors 10 BinormalsT 11 BinormalsB 100 TexCoord0 101 TexCoord1 110 TexCoord2 111 TexCoord3 1000 TexCoord4 1001 TexCoord5 1010 TexCoord6 1011 TexCoord 7 1111)
+        # 3 lsb and msb of 8 are coordinates (geometry 0 normals 1 colors 10 binfileormalsT 11 binfileormalsB 100 TexCoord0 101 TexCoord1 110 TexCoord2 111 TexCoord3 1000 TexCoord4 1001 TexCoord5 1010 TexCoord6 1011 TexCoord 7 1111)
         # byte 8 lsb bit 2 is projection (STU 1 ST 0)
         # bit 3 inputform (AB11 0 ABC1 1)
         # bit 5-6 type (regular 0 embossmap1 color0 10 color1 11)
         # byte 16 lsb normalize
-        for i in range(len(self.layers)):
-            layer = self.getLayer(i)
-            layer.embossLight = (xfFlags[j + 5] << 8 | xfFlags[j + 6]) << 1 | (xfFlags[j + 7] >> 7 & 1)
-            layer.embossSource = xfFlags[j + 7] >> 4 & 7
-            layer.coordinates = xfFlags[j + 7] << 1 & 0xe | (xfFlags[j + 8] >> 7 & 1)
-            layer.projection = xfFlags[j + 8] >> 1 & 1
-            layer.inputform = xfFlags[j + 8] >> 2 & 1
-            layer.type = xfFlags[j + 8] >> 4 & 3
-            layer.normalize = xfFlags[j + 16]
-            j += 18
-
-        file.offset = self.offset + 0x1a8
-        matData = file.read(Struct("< 4B I"), 8)
-        layerIndex = 0
-        for i in range(3, -1, -1): # read it backwards
-            layer = self.getLayer(layerIndex)
-            if layer:
-                flags = matData[i]
-                layer.enable = flags & 1
-                layer.scaleFixed = (flags & 2) >> 1
-                layer.rotationFixed = (flags & 4) >> 2
-                layer.translationFixed = (flags & 8) >> 3
-            layerIndex += 1
-            layer = self.getLayer(layerIndex)
-            if layer:
-                flags = matData[i] >> 4
-                layer.enable = flags & 1
-                layer.scaleFixed = (flags & 2) >> 1
-                layer.rotationFixed = (flags & 4) >> 2
-                layer.translationFixed = (flags & 8) >> 3
-            layerIndex += 1
-        self.textureMatrixMode = matData[4]
+        # for i in range(len(self.layers)):
+        #     layer = self.getLayer(i)
+        #     layer.embossLight = (xfFlags[j + 5] << 8 | xfFlags[j + 6]) << 1 | (xfFlags[j + 7] >> 7 & 1)
+        #     layer.embossSource = xfFlags[j + 7] >> 4 & 7
+        #     layer.coordinates = xfFlags[j + 7] << 1 & 0xe | (xfFlags[j + 8] >> 7 & 1)
+        #     layer.projection = xfFlags[j + 8] >> 1 & 1
+        #     layer.inputform = xfFlags[j + 8] >> 2 & 1
+        #     layer.type = xfFlags[j + 8] >> 4 & 3
+        #     layer.normalize = xfFlags[j + 16]
+        #     j += 18
+        #
+        # file.offset = self.offset + 0x1a8
+        # matData = file.read(Struct("< 4B I"), 8)
+        # layerIndex = 0
         # # print("Mat Flags {}".format(matData))
         # Texture Position
-        matData = file.read(Struct("> 40f"), 160)
-        structIndex = 0
-        for i in range(8):
-            layer = self.getLayer(i)
-            if layer:
-                layer.scale = (matData[structIndex], matData[structIndex + 1])
-                layer.rotation = matData[structIndex + 2]
-                layer.translation = (matData[structIndex + 3], matData[structIndex + 4])
-                structIndex += 5
-                # print("Name: {}, Scale: {}, Rotation: {}, translation: {}".format(layer.name, layer.scale, layer.rotation, layer.translation))
-        # Texture Matrix
-        for i in range(8):
-            layer = self.getLayer(i)
-            if layer:
-                matData = file.read(Struct("> 4B 12f"), 52)
-                layer.scn0CameraRef = matData[0]
-                layer.scn0LightRef = matData[1]
-                layer.mapMode = matData[2]
-                layer.enableIdentityMatrix = matData[3]
-                # layer.textureMatrix = matData[4:]
-                # # print("Texture matrix: {}".format(layer.textureMatrix))
-            else:
-                file.offset += 52
-        # Lighting channels
-        self.lightChannels.append(LightChannel(file))
-        self.lightChannels.append(LightChannel(file))
 
 # LIGHT CHANNEL ----------------------------------------------------
         # LC flags bits
@@ -692,14 +728,8 @@ class Material:
 #   3rd byte 7 for activated, 4th 0-1 for register or vertex color
 class LightChannel:
     LIGHTS = ["register", "vertex"]
-    def __init__(self, file):
-        data = file.read(Struct("> I 16B"), 20)
-        # print("Light Channel data {}".format(data))
-        self.flags = data[0]
-        self.materialColor = data[1:5]
-        self.ambientColor = data[5:9]
-        self.colorLightControl = data[9:13]
-        self.alphaLightControl = data[13:17]
+    def __init__(self, enabled = True):
+        self.flags =  0xff # todo
 
     def getLight(self):
         return self.LIGHTS[(self.colorLightControl[3] & 1)]
@@ -715,9 +745,17 @@ class LightChannel:
         self.colorLightControl[3] = self.colorLightControl[3] & 1 if vertexEnabled else self.colorLightControl[3] & 2
         self.alphaLightControl[3] = self.alphaLightControl[3] & 1 if vertexEnabled else self.alphaLightControl[3] & 2
 
+    def unpack(self, binfile):
+        data = binfile.read("I16B", 20)
+        # print("Light Channel data {}".format(data))
+        self.flags = data[0]
+        self.materialColor = data[1:5]
+        self.ambientColor = data[5:9]
+        self.colorLightControl = data[9:13]
+        self.alphaLightControl = data[13:17]
+
     def pack(self, file):
         pack_into("> I 16B", file.file, file.offset,
-        self.flags,
         self.materialColor[0], self.materialColor[1], self.materialColor[2], self.materialColor[3],
         self.ambientColor[0], self.ambientColor[1], self.ambientColor[2], self.ambientColor[3],
         self.colorLightControl[0],  self.colorLightControl[1], self.colorLightControl[2], self.colorLightControl[3],

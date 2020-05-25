@@ -3,11 +3,9 @@
 # ---------------------------------------------------------------------------
 import os
 import re
-from material import *
-from layer import *
 from brres import Brres
 import fnmatch
-import sys
+
 
 class Command:
     COMMANDS = ["set", "info"]
@@ -19,6 +17,10 @@ class Command:
         self.filename = file
         self.modelname = model
         self.materialname = material
+
+    def __str__(self):
+        return "{} {}:{} for {} in file {} model {} material {}".format(self.cmd,
+            self.key, self.value, self.name, self.filename, self.modelname, self.materialname)
 
 def validate_cmds(commandlist, destination):
     if not commandlist:
@@ -67,6 +69,8 @@ def run_commands(commandlist, destination, overwrite):
         sys.exit(1)
     files = {}
     for cmd in commandlist:
+        if __debug__:
+            print("Running: {}".format(cmd))
         if cmd.filename:
             filenames = getFiles(cmd.filename)
             closeFiles(filenames, files, destination, overwrite)
@@ -107,6 +111,8 @@ def getFiles(filename):
 def openFiles(filenames, files):
     for f in filenames:
         if not f in files:
+            if __debug__:
+                print("Opening file {}".format(f))
             brres = Brres(f)
             files[f] = brres
 

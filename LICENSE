@@ -234,7 +234,7 @@ terms of section 4, provided that you also meet all of these conditions:
 
   A compilation of a covered work with other separate and independent
 works, which are not by their nature extensions of the covered work,
-and which are not combined with it such as to form a larger program,
+and which are not combinfileed with it such as to form a larger program,
 in or on a volume of a storage or distribution medium, is called an
 "aggregate" if the compilation and its resulting copyright are not
 used to limit the access or legal rights of the compilation's users
@@ -552,13 +552,13 @@ License would be to refrain entirely from conveying the Program.
   13. Use with the GNU Affero General Public License.
 
   Notwithstanding any other provision of this License, you have
-permission to link or combine any covered work with a work licensed
+permission to link or combinfilee any covered work with a work licensed
 under version 3 of the GNU Affero General Public License into a single
-combined work, and to convey the resulting work.  The terms of this
+combinfileed work, and to convey the resulting work.  The terms of this
 License will continue to apply to the part which is the covered work,
 but the special requirements of the GNU Affero General Public License,
 section 13, concerning interaction through a network will apply to the
-combination as such.
+combinfileation as such.
 
   14. Revised Versions of this License.
 

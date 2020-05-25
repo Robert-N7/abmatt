@@ -1,38 +1,5 @@
-#=========================================================================
-# Layer class
-#=========================================================================
-from struct import *
-import re
-# finds a name in group, group instances must have .name
-def findAll(name, group):
-    if not name or name == "*":
-        return group
-    items = []
-    try:
-        regex = re.compile(name)
-        for item in group:
-            if regex.search(item.name):
-                items.append(item)
-    except re.error:
-        pass
-    # direct matching?
-    for item in group:
-        if item.name == name:
-            items.append(item)
-    return items
-
-def matches(regexname, name):
-    if not regexname or regexname == "*":
-        return True
-    if regexname == name:
-        return True
-    try:
-        result = re.search(regexname, name)
-        if result:
-            return True
-    except re.error:
-        pass
-    return False
+''' Layer class '''
+from matching import *
 
 def validBool(str):
     if str == "false" or not str or str == "0" or str == "disable":
@@ -77,31 +44,14 @@ class Layer:
     PROJECTION = ("st", "stq")
     INPUTFORM = ("ab11", "abc1")
     TYPE = ("regular", "embossmap", "color0", "color1")
-    COORDINATES = ("geometry", "normals", "colors", "binormalst", "binormalsb",
+    COORDINATES = ("geometry", "normals", "colors", "binfileormalst", "binfileormalsb",
     "texcoord0", "texcoord1", "texcoord2", "texcoord3", "texcoord4", "texcoord5", "texcoord6", "texcoord7")
 
-    def __init__(self, file, parent):
+    def __init__(self, id, name, parent):
+        ''' Initializes id (position of layer), name, and parent material '''
+        self.id = id
         self.parent = parent
-        offset = file.offset
-        layer = file.read(Struct("> 10I f I 4B"), 52)
-        # print("Layer: {}".format(layer))
-        name = file.unpack_name(layer[0] + offset)
-        self.nameOffset = layer[0]
-        self.name = name.decode()
-        self.isModified = False
-        self.palettenameOffset = layer[1]
-        self.textureDataOffset = layer[2]
-        self.palleteOffset = layer[3]
-        self.texDataID = layer[4]
-        self.palleteDataID = layer[5]
-        self.uwrap = layer[6]
-        self.vwrap = layer[7]
-        self.minFilter = layer[8]
-        self.magFilter = layer[9]
-        self.LODBias = layer[10]
-        self.maxAnisotrophy = layer[11]
-        self.clampBias = layer[12]
-        self.texelInterpolate = layer[13]
+        self.name = name
 
     def __str__(self):
         return "Layer {}: scale {} rot {} trans {} uwrap {} vwrap {} minfilter {}".format(self.name,
@@ -158,6 +108,10 @@ class Layer:
         return self.embossSource
     def getNormalize(self):
         return self.normalize
+
+    def getFlagNibble(self):
+        return self.enable | self.scaleDefault << 1 \
+            | self.rotationDefault << 2 | self.translationDefault << 3
 
     GET_SETTINGS = ( getScale, getRotation, getTranslation, getScn0CameraRef,
     getScn0LightRef, getMapmode, getUwrap, getVwrap, getMinfilter, getMagfilter,
@@ -316,7 +270,6 @@ class Layer:
         if i >= 0:
             self.coordinates = i
             self.isModified = True
-
     def setEmbossSourceStr(self, str):
         i = int(str)
         if not 0 <= i <= 7:
@@ -324,7 +277,6 @@ class Layer:
         if self.embossSource != i:
             self.embossSource = i
             self.isModified = True
-
     def setEmbossLightStr(self, str):
         i = int(str)
         if not 0 <= i <= 255:
@@ -332,12 +284,19 @@ class Layer:
         if self.embossLight != i:
             self.embossLight = i
             self.isModified = True
-
     def setNormalizeStr(self, str):
         val = validBool(str)
         if val != self.normalize:
             self.normalize = val
             self.isModified = True
+
+    def setLayerFlags(self, nibble):
+        ''' from lsb, enable, scaledefault, rotationdefault, transdefault '''
+        self.enable = nibble & 1
+        self.scaleDefault = nibble >> 1 & 1
+        self.rotationDefault = nibble >> 2 & 1
+        self.translationDefault = nibble >> 3 & 1
+        return self.enable
 
     SET_SETTING = ( setScaleStr, setRotationStr, setTranslationStr, setCameraRefStr,
     setLightRefStr, setMapmodeStr, setUWrapStr, setVWrapStr, setMinFilterStr, setMagFilterStr,
@@ -348,6 +307,28 @@ class Layer:
 # -------------------------------------------------------------------------
 # Packing things
 # -------------------------------------------------------------------------
+
+    def unpack(self, binfile, scaleOffset):
+        ''' unpacks layer information '''
+        # assumes material already unpacked name
+        binfile.advance(12)
+        self.texDataID, self.palleteDataID, self.uwrap, self.vwrap, \
+            self.minFilter, self.magFilter, self.LODBias, self.maxAnisotrophy, \
+            self.clampBias, self.texelInterpolate, pad = binfile.read("6IfI2BH", 48)
+        transforms = binfile.readOffset("5f", scaleOffset)
+        self.scale = transforms[0:2]
+        self.rotation = transforms[2]
+        self.translation = transforms[3:]
+        self.scn0CameraRef, self.scn0LightRef, self.mapMode, \
+            self.enableIdentityMatrix = binfile.readOffset("4B", scaleOffset + 160)
+        self.texMatrix = binfile.readOffset("12f", scaleOffset + 164)
+
+    def pack(self, binfile):
+        binfile.advance(12)
+        binfile.write("10IfI4BH", self.texDataID, self.palleteDataID,
+            self.uwrap, self.vwrap, self.minFilter, self.getMagfilter,
+            self.LODBias, self.maxAnisotrophy, self.clampBias,
+            self.texelInterpolate, 0)
 
     def pack_texRef(self, file):
         pack_into("> 10I f I 2B", file.file, file.offset, self.nameOffset, self.palettenameOffset,
@@ -360,8 +341,6 @@ class Layer:
         self.embossLight << 7 & 0x80 | self.embossSource << 4 & 0x70 | self.coordinates >> 1 & 7,
         (self.coordinates & 1) << 7 | (self.projection & 1) << 1 | (self.inputform & 1) << 2 | (self.type & 3) << 4)
         pack_into("> B", file.file, file.offset + 11, self.normalize)
-
-
 
     def info(self, command, trace):
         trace += "->" + self.name

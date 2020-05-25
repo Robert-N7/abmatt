@@ -126,66 +126,66 @@ class  SRTTexAnim():
     # -------------------------------------------------------
     # UNPACKING/PACKING
     # probably a better way to do all this
-    def unpackScale(self, bin):
+    def unpackScale(self, binfile):
         ''' unpacks scale data '''
         if self.scaleDefault:
             return
         if self.scaleIsotropic:
             if self.xScaleFixed:
-                [val] = bin.read("f", 4)
+                [val] = binfile.read("f", 4)
                 self.animations[0].setValue(val)
                 self.animations[1].setValue(val)
             else:
-                offset = bin.offset
-                [bin.offset] = bin.read("I", 4)
-                self.animations[0].unpack(bin)
-                self.animations[1].unpack(bin)
-                bin.offset = offset + 4
+                offset = binfile.offset
+                [binfile.offset] = binfile.read("I", 4)
+                self.animations[0].unpack(binfile)
+                self.animations[1].unpack(binfile)
+                binfile.offset = offset + 4
         else:   # not isotropic
             if self.xScaleFixed:
-                [val] = bin.read("f", 4)
+                [val] = binfile.read("f", 4)
                 self.animations[0].setValue(val)
             else:
-                bin.bl_unpack(self.animations[0], False)
+                binfile.bl_unpack(self.animations[0], False)
             if self.yScaleFixed:
-                [val] = bin.read("f", 4)
+                [val] = binfile.read("f", 4)
                 self.animations[1].setValue(val)
             else:
-                bin.bl_unpack(self.animations[1], False)
+                binfile.bl_unpack(self.animations[1], False)
 
-    def unpackTranslation(self, bin):
+    def unpackTranslation(self, binfile):
         ''' unpacks translation data '''
         if self.translationDefault:
             return
         if self.xTranslationFixed:
-            [val] = bin.read("f", 4)
+            [val] = binfile.read("f", 4)
             self.animations[3].setValue(val)
         else:
-            bin.bl_unpack(self.animations[3], False)
+            binfile.bl_unpack(self.animations[3], False)
         if self.yTranslationFixed:
-            [val] = bin.read("f", 4)
+            [val] = binfile.read("f", 4)
             self.animations[4].setValue(val)
         else:
-            bin.bl_unpack(self.animations[4], False)
+            binfile.bl_unpack(self.animations[4], False)
 
-    def unpackRotation(self, bin):
+    def unpackRotation(self, binfile):
         ''' unpacks rotation '''
         if not self.rotationDefault:
             if self.rotationFixed:
-                [val] = bin.read("f", 4)
+                [val] = binfile.read("f", 4)
                 self.animations[2].setValue(val)
             else:
-                bin.bl_unpack(self.animations[2], False)
+                binfile.bl_unpack(self.animations[2], False)
 
-    def unpack(self, bin):
+    def unpack(self, binfile):
         ''' unpacks SRT Texture animation data '''
-        code = bin.read("I", 4)
+        code = binfile.read("I", 4)
         self.parseIntCode(code)
-        self.unpackScale(bin)
-        self.unpackRotation(bin)
-        self.unpackTranslation(bin)
+        self.unpackScale(binfile)
+        self.unpackRotation(binfile)
+        self.unpackTranslation(binfile)
 
-    def packScale(self, bin):
+    def packScale(self, binfile):
         ''' packs scale data
             returning a tuple (hasxListOffset, hasyListOffset)
         '''
@@ -194,57 +194,57 @@ class  SRTTexAnim():
             x = self.animations["xscale"]
             y = self.animations["yscale"]
             if self.xScaleFixed:
-                bin.write("f", 4, x.getValue())
+                binfile.write("f", x.getValue())
             else:
-                bin.mark()  # mark to be stored
+                binfile.mark()  # mark to be stored
                 hasxListOffset = True
             if not self.scaleIsotropic:
                 if self.yScaleFixed:
-                    bin.write("f", 4, y.getValue())
+                    binfile.write("f", y.getValue())
                 else:
-                    bin.mark()
+                    binfile.mark()
                     hasyListOffset = True
         return (hasxListOffset, hasyListOffset)
 
-    def packRotation(self, bin):
+    def packRotation(self, binfile):
         ''' packs rotation data '''
         if not self.rotationDefault:
             if self.rotationFixed:
-                bin.write("f", 4, self.animations["rotation"].getValue())
+                binfile.write("f", self.animations["rotation"].getValue())
             else:
-                bin.mark()
+                binfile.mark()
                 return True
         return False
 
-    def packTranslation(self, bin):
+    def packTranslation(self, binfile):
         ''' packs translation data, returning tuple (hasXTransOffset, hasYTransOffset) '''
         hasXTransOffset = hasYTransOffset = False
         if not self.translationDefault:
             if self.xTranslationFixed:
-                bin.write("f", 4, self.animations["xtranslation"].getValue())
+                binfile.write("f", self.animations["xtranslation"].getValue())
             else:
-                bin.mark()
+                binfile.mark()
                 hasXTransOffset = True
             if self.yTranslationFixed:
-                bin.write("f", 4, self.animations["ytranslation"].getValue())
+                binfile.write("f", self.animations["ytranslation"].getValue())
             else:
-                bin.mark()
+                binfile.mark()
                 hasYTransOffset = False
         return (hasXTransOffset, hasYTransOffset)
 
-    def pack(self, bin):
+    def pack(self, binfile):
         ''' packs the texture animation entry '''
         code = self.calculateCode()
-        bin.write("I", 4, code)
-        haveOffsets = self.packScale(bin)
-        haveOffsets.append( self.packRotation(bin))
-        haveOffsets.extend(list(self.packTranslation(bin)))
+        binfile.write("I", code)
+        haveOffsets = self.packScale(binfile)
+        haveOffsets.append( self.packRotation(binfile))
+        haveOffsets.extend(list(self.packTranslation(binfile)))
         for i in range(len(haveOffsets)):
             if haveOffsets[i]: # then pack key frames
-                bin.createRefFromStored()
-                self.animations[i].pack(bin, framescale)
+                binfile.createRefFromStored()
+                self.animations[i].pack(binfile, framescale)
                 if i == 0 and self.scaleIsotropic: # special case for isotropic
-                    self.animations[i + 1].pack(bin)
+                    self.animations[i + 1].pack(binfile)
 
     # ---------------------------------------------------------
 
@@ -307,7 +307,7 @@ class  SRTTexAnim():
                 raise ValueError("Frame Index {} out of range.".format(index))
             entries = self.entries
             found = False
-            for i in range(1:len(entries)):
+            for i in range(1, len(entries)):
                 cntry = entries[i]
                 if index < cntry.index:     # insert
                     newEntry = SRTKeyFrame(value, index)
@@ -316,7 +316,7 @@ class  SRTTexAnim():
                     newEntry.calcDelta(cntry)
                     found = True
                     break
-                elif index == cntry.index   # replace
+                elif index == cntry.index:   # replace
                     cntry.value = value
                     break
             if not found:   # append it
@@ -335,8 +335,8 @@ class  SRTTexAnim():
         def removeKeyFrame(self, index = -1):
             ''' Removes key frame from list, updating delta '''
             entries = self.entries
-            for i in range(1:len(entries)):
-                if entries[i].index = index:
+            for i in range(1, len(entries)):
+                if entries[i].index == index:
                     entries.pop(i)
                     if i == len(entries) - 1: # last entry?
                         next = entries[0]
@@ -366,28 +366,28 @@ class  SRTTexAnim():
             ''' calculates the frame scale... 1/framecount '''
             self.frameScale = 1 / frameCount if frameCount > 1 else 1
 
-        def unpack(self, bin):
+        def unpack(self, binfile):
             ''' unpacks an animation entry list '''
             self.entries = []
             # header
-            size, uk, fs = bin.read("2Hf", 8)
+            size, uk, fs = binfile.read("2Hf", 8)
             for i in range(self.size):
-                self.entries.append(SRTKeyFrame(bin.read("3f", 12)))
+                self.entries.append(SRTKeyFrame(binfile.read("3f", 12)))
 
-        def pack(self, bin):
+        def pack(self, binfile):
             ''' packs an animation entry list '''
-            bin.write("2Hf", 8, len(self.entries), 0, self.calcFrameScale(self.frameCount))
+            binfile.write("2Hf", len(self.entries), 0, self.calcFrameScale(self.frameCount))
             for x in self.entries:
-                bin.write("3f", 12, x.index, x.value, x.delta)
+                binfile.write("3f", x.index, x.value, x.delta)
 
 
-class Srt(SubFile):
+class Srt0(SubFile):
     ''' Srt0 Animation '''
     MAGIC = "SRT0"
     VERSION_SECTIONCOUNT = {4:1, 5:2}
 
     def __init__(self, name, parent):
-        super().__init__(name, parent)
+        super(Srt, self).__init__(name, parent)
         self.matAnimations = []
 
     def __getitem__(self, matname):
@@ -427,37 +427,40 @@ class Srt(SubFile):
 
     # ----------------------------------------------------------------------
     #   PACKING
-    def unpackData(self, bin):
-        uk, self.framecount, self.size, self.matrixmode, self.looping = bin.read("I2H2I", 16)
+    def unpack(self, binfile):
+        self._unpack(binfile)
+        uk, self.framecount, self.size, self.matrixmode, self.looping = binfile.read("I2H2I", 16)
         # advance to section 0
-        bin.recall()
-        folder = Folder(bin, self, "scn0root") # todo name here
-        folder.unpack(bin)
+        binfile.recall()
+        folder = Folder(binfile, self, "scn0root") # todo name here
+        folder.unpack(binfile)
         while True:
             e = folder.openI()
             if not e:
                 break
             mat = SRTMatAnim(e)
-            mat.unpack(bin)
+            mat.unpack(binfile)
             self.matAnimations.append(mat)
-        bin.recall() # section 1 (unknown)
-        self.section1 = bin.readRemaining(self.len)
+        binfile.recall() # section 1 (unknown)
+        self.section1 = binfile.readRemaining(self.len)
+        binfile.end()
 
-    def packData(self, bin):
+    def pack(self, binfile):
+        self._pack(binfile)
         ''' Packs the data for SRT file '''
-        bin.write("I2H2I", 16, 0, self.framecount, len(self.matAnimations),
+        binfile.write("I2H2I", 0, self.framecount, len(self.matAnimations),
                   self.matrixmode, self.looping)
-        bin.createRef()  # create ref to section 0
+        binfile.createRef()  # create ref to section 0
         # create index group
-        folder = Folder(bin, self, "scn0root")
+        folder = Folder(binfile, self, "scn0root")
         for x in self.matAnimations:
             folder.addEntry(x.name)
-        folder.pack(bin)
+        folder.pack(binfile)
         for x in self.matAnimations:
             folder.createEntryRefI()
-            x.pack(bin)
-        bin.createRef() # section 1 (unknown)
-        bin.writeRemaining(self.section1)
+            x.pack(binfile)
+        binfile.createRef() # section 1 (unknown)
+        binfile.writeRemaining(self.section1)
 
 
     class SRTMatAnim():
@@ -485,10 +488,11 @@ class Srt(SubFile):
 
         # -----------------------------------------------------
         #  Packing
-        def unpack(self, bin):
+        def unpack(self, binfile):
             ''' unpacks the material srt entry '''
-            bin.start()
-            nameoff, self.enableFlag, uk = bin.read("3I", 12)
+            self._unpack(binfile)
+            binfile.start()
+            nameoff, self.enableFlag, uk = binfile.read("3I", 12)
             bit = 1
             self.count = 0
             for i in range(8):
@@ -499,16 +503,16 @@ class Srt(SubFile):
                 else:
                     self.texEnabled.append(False)
                 bit <<= 1
-            bin.store(self.count)   # offsets
+            binfile.store(self.count)   # offsets
             for tex in self.texAnim:
-                bin.recall()
-                tex.unpack(bin)
-            bin.end()
+                binfile.recall()
+                tex.unpack(binfile)
+            binfile.end()
 
-        def pack(self, bin):
+        def pack(self, binfile):
             ''' Packs the material srt entry '''
-            bin.start()
-            bin.storeNameRef(self.name)
+            binfile.start()
+            binfile.storeNameRef(self.name)
             # parse enabled
             i = 0
             count = 0
@@ -517,10 +521,10 @@ class Srt(SubFile):
                 if x:
                     i |= 1
                     count +=  1
-            bin.write("2I", 8, i, 0)
-            bin.mark(count)
+            binfile.write("2I", i, 0)
+            binfile.mark(count)
             for tex in self.texAnim:
-                bin.createRef()
-                tex.pack(bin)
-            bin.end()
+                binfile.createRef()
+                tex.pack(binfile)
+            binfile.end()
         # -----------------------------------------------------

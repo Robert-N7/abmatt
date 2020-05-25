@@ -6,7 +6,7 @@ For editing Mario Kart Wii files
 import sys
 import getopt
 from command import *
-
+__version__ = "0.1.0"
 USAGE = "{} -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value>\
  -n <name> -m <model> -i] "
 

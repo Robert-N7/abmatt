@@ -72,8 +72,8 @@ value     = 'true' | 'false' | number-list | cull-mode | light-channel | const-a
   projection    = 'st' | 'stq';
   inputform     = 'ab11' | 'abc1';
   type          = 'regular' | 'embossmap' | 'color0' | 'color1';
-  coordinates   = 'geometry' | 'normals' | 'colors' | 'binormalst' |    
-    'binormalsb' | 'texcoord0' | 'texcoord1' | 'texcoord2' | 'texcoord3'  | 'texcoord4' | 'texcoord5' | 'texcoord6' | 'texcoord7';
+  coordinates   = 'geometry' | 'normals' | 'colors' | 'binfileormalst' |    
+    'binfileormalsb' | 'texcoord0' | 'texcoord1' | 'texcoord2' | 'texcoord3'  | 'texcoord4' | 'texcoord5' | 'texcoord6' | 'texcoord7';
 
 container = ['file' space filename] ['model' space name] ['material' space name];
 name      = string | regex {',' space string | regex};
