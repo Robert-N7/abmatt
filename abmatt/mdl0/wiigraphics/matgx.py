@@ -5,23 +5,23 @@ from bp import *
 class TevRegister():
     def __init__(self, index, type):
         ''' Type, enable for constant color '''
-        reglow = ColorReg(index, 0, type)
-        reghigh = ColorReg(index, 1, type)
+        self.reglow = ColorReg(index, 0, type)
+        self.reghigh = ColorReg(index, 1, type)
         self.type = type
 
     def unpack(self, binfile):
         ''' unpacks the tev register '''
-        reglow.unpack(binfile)
-        reghigh.unpack(binfile)
+        self.reglow.unpack(binfile)
+        self.reghigh.unpack(binfile)
         if not self.type:   # repeats 3x
             binfile.advance(10)
     def pack(self, binfile):
         ''' packs the tev register '''
-        reglow.pack(binfile)
+        self.reglow.pack(binfile)
         if not self.type:
-            reghigh.pack(binfile)
-            reghigh.pack(binfile)
-        reghigh.pack(binfile)
+            self.reghigh.pack(binfile)
+            self.reghigh.pack(binfile)
+        self.reghigh.pack(binfile)
 
     def getColor(self):
         ''' Gets the color (r,g,b,a) '''
@@ -30,8 +30,8 @@ class TevRegister():
 
     def setColor(self, rgba):
         ''' Sets the color (r,g,b,a) '''
-        reglow.setColor(argb[1:3])
-        reghigh.setColor(argb[3], rgba[0])
+        reglow.setColor(rgba[1:3])
+        reghigh.setColor(rgba[3], rgba[0])
 
 
 class MatGX():
@@ -43,11 +43,16 @@ class MatGX():
         self.blendmode = BlendMode()
         self.constantalpha = ConstantAlpha()
         self.tevRegs = []
-        for i in Range(3):
+        for i in range(3):
             self.tevRegs.append(TevRegister(i + 1, 0))
         self.cctevRegs = []
-        for i in Range(4):
+        for i in range(4):
             self.cctevRegs.append(TevRegister(i, 1))
+        self.ras1 = [BPCommand(BPCommand.BPMEM_RAS1_SS0), BPCommand(BPCommand.BPMEM_RAS1_SS1)]
+        self.indMatrices = []
+        for i in range(3):
+            self.indMatrices.append(IndMatrix(i))
+
 
     def unpack(self, binfile):
         ''' unpacks the mat graphic codes '''
@@ -56,12 +61,19 @@ class MatGX():
         self.bpmask.unpack(binfile)
         self.blendmode.unpack(binfile)
         self.constantalpha.unpack(binfile)
-        binfile.advance(7)  # pad
+        binfile.advance(7)  # pad - unknown?
         for i in range(len(self.tevRegs)):
             self.tevRegs[i].unpack(binfile)
         for i in range(len(self.cctevRegs)):
             self.cctevRegs[i].unpack(binfile)
         binfile.align()  # pad
+        for x in self.ras1:
+            x.unpack(binfile)
+        for x in self.indMatrices:
+            x.unpack(binfile)
+        binfile.align()
+        print("BO: {}".format(binfile.offset))
+        # should be at layer xf flags
 
     def pack(self, binfile):
         ''' packs the mat graphic codes '''
@@ -76,5 +88,8 @@ class MatGX():
         for i in range(len(self.cctevRegs)):
             self.cctevRegs[i].pack(binfile)
         binfile.align()
-
-class LayerGX(self, binfile):
+        for x in self.ras1:
+            x.pack(binfile)
+        for x in self.indMatrices:
+            x.pack(binfile)
+        binfile.align()

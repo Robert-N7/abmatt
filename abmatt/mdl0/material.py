@@ -6,17 +6,20 @@
 import re
 from struct import *
 from layer import *
+from matgx import MatGX
+from bp import *
 from binfile import printCollectionHex
 BOOLABLE = ["False", "True"]
 
-class OutAnalysis():
-    def __init__(self):
-        self.fname = "analysis.txt"
-        self.file = open(self.fname, "a")
-    def write(self, text):
-        self.file.write(text + "\n")
+if __debug__:
+    class OutAnalysis():
+        def __init__(self):
+            self.fname = "analysis.txt"
+            self.file = open(self.fname, "a")
+        def write(self, text):
+            self.file.write(text + "\n")
 
-ANALYSIS = OutAnalysis()
+    ANALYSIS = OutAnalysis()
 
 class Material:
 # -----------------------------------------------------------------------
@@ -55,9 +58,9 @@ class Material:
         self.name = name
         self.layers = []
         self.lightChannels = []
-        self.colors = []
-        self.constantColors = []
-        self.shader = None
+        self.shader = None      # to be hooked up
+        self.drawlist = None    # to be hooked up
+        self.matGX = MatGX()
 
     def __str__(self):
         # print("Cull mode is {}".format(self.cullmode))
@@ -78,36 +81,37 @@ class Material:
         return self.xlu
 
     def getRef0(self):
-        return self.ref0
+        return self.matGX.alphafunction.getRef0()
 
     def getRef1(self):
-        return self.ref1
+        return self.matGX.alphafunction.getRef1()
 
     def getComp0(self):
-        return self.COMP_STRINGS[self.comp0]
+        return self.COMP_STRINGS[self.matGX.alphafunction.getComp0()]
 
     def getComp1(self):
-        return self.COMP_STRINGS[self.comp1]
+        return self.COMP_STRINGS[self.matGX.alphafunction.getComp1()]
 
     def getCompareBeforeTexture(self):
         return self.compareBeforeTexture
 
     def getBlend(self):
-        return self.enableBlend
+        return self.matGX.blendmode.isEnabled()
 
     def getBlendSrc(self):
-        return self.BLFACTOR_STRINGS[self.srcFactor]
+        return self.BLFACTOR_STRINGS[self.matGX.blendmode.getSrcFactor()]
 
     def getBlendLogic(self):
-        return self.BLLOGIC_STRINGS[self.blendlogic]
+        return self.BLLOGIC_STRINGS[self.matGX.blendmode.getBlendLogic()]
 
     def getBlendDest(self):
-        return self.BLFACTOR_STRINGS[self.dstFactor]
+        return self.BLFACTOR_STRINGS[self.matGX.blendmode.getDstFactor()]
 
     def getConstantAlpha(self):
-        if not self.constAlphaEnable:
+        ca = self.matGX.constantalpha
+        if not ca.isEnabled():
             return -1
-        return self.constAlpha
+        return ca.get()
 
     def getCullMode(self):
         return self.CULL_STRINGS[self.cullmode]
@@ -128,24 +132,24 @@ class Material:
 
     def getShaderColor(self):
         str = ""
-        for i in range(len(self.colors)):
-            str += "Color{}: {}\t".format(i, self.colors[i])
+        for i in range(3):
+            str += "Color{}: {}\t".format(i, self.matGX.tevRegs[i].getColor())
         str += "\n\t"
-        for i in range(len(self.constantColors)):
-            str += "Const{}: {}\t".format(i, self.constantColors[i])
+        for i in range(4):
+            str += "Const{}: {}\t".format(i, self.matGX.cctevRegs[i].getColor())
         return str
 
     def  getMatrixMode(self):
         return self.MATRIXMODE[self.textureMatrixMode]
 
     def getEnableDepthTest(self):
-        return self.enableDepthTest
+        return self.matGX.zmode.getDepthTest()
 
     def getEnableDepthUpdate(self):
-        return self.enableDepthUpdate
+        return self.matGX.zmode.getDepthUpdate()
 
     def getDepthFunction(self):
-        return self.COMP_STRINGS[self.depthFunction]
+        return self.COMP_STRINGS[self.matGX.zmode.getDepthFunction()]
 
     def getDrawPriority(self):
         return self.drawPriority
@@ -182,11 +186,12 @@ class Material:
                 return func(strvalue)
 
     def setTransparent(self):
-        if not self.ref0 or self.comp0 == self.COMP_ALWAYS:
-            self.ref0 = 128
-            self.ref1 = 255
-            self.comp0 = self.COMP_GREATEROREQUAL
-            self.comp1 = self.COMP_LESSOREQUAL
+        af = self.matGX.alphafunction
+        if not af.getRef0() or af.getComp0() == self.COMP_ALWAYS:
+            af.setRef0(128)
+            af.setRef1(255)
+            af.setComp0(self.COMP_GREATEROREQUAL)
+            af.setComp1(self.COMP_LESSOREQUAL)
             self.isModified = True
         if not self.xlu or self.compareBeforeTexture:
             self.compareBeforeTexture = False
@@ -194,13 +199,15 @@ class Material:
             self.isModified = True
 
     def setOpaque(self):
-        self.ref0 = 0
-        self.ref1 = 0
-        self.comp0 = self.COMP_ALWAYS
-        self.comp1 = self.COMP_ALWAYS
-        self.compareBeforeTexture = True
-        self.xlu = False
-        self.isModified = True
+        af = self.matGX.alphafunction
+        if not self.xlu or af.getComp0() != self.COMP_ALWAYS or af.getComp1() != self.COMP_ALWAYS:
+            af.setRef0(0)
+            af.setRef1(0)
+            af.setComp0(self.COMP_ALWAYS)
+            af.setComp1(self.COMP_ALWAYS)
+            self.compareBeforeTexture = True
+            self.xlu = False
+            self.isModified = True
 
     def setTransparentStr(self, str):
         val = validBool(str)
@@ -254,8 +261,8 @@ class Material:
             if not 0 <= i <= 255:
                 raise ValueError(self.SHADERCOLOR_ERROR.format(str))
             intVals.append(i)
-        list = self.constantColors if isConstant else self.colors
-        list[index] = (intVals[0], intVals[1], intVals[2], intVals[3])
+        list = self.matGX.cctevRegs if isConstant else self.matGX.tevRegs
+        list[index].setColor(intVals)
         self.isModified = True
 
     def setCullModeStr(self, cullstr):
@@ -299,18 +306,20 @@ class Material:
             val = int(str)
         if val > 255 or val < -2:
             raise ValueError("Invalid alpha " + str + ", expected 0-255|enable|disable")
+        ca = self.matGX.constantalpha
+        enabled = ca.isEnabled()
         if val == -1:
-            if not self.constAlphaEnable:
-                self.constAlphaEnable = False
+            if enabled:
+                ca.setEnabled(False)
                 self.isModified = True
         elif val == -2:
-            if self.constAlphaEnable:
-                self.constAlphaEnable = True
+            if not enabled:
+                ca.setEnabled(True)
                 self.isModified = True
         else:
-            if not self.constAlphaEnable  or self.constAlpha != val:
-                self.constAlphaEnable = True
-                self.constAlpha = val
+            if not enabled  or ca.get() != val:
+                ca.setEnabled(True)
+                ca.set(val)
                 self.isModified = True
 
     def setMatrixModeStr(self, str):
@@ -333,28 +342,30 @@ class Material:
         val = int(str)
         if not 0 <= val < 256:
             raise ValueError("Ref0 must be 0-255")
-        if not self.ref0 == val:
-            self.ref0 = val
+        af = self.matGX.alphafunction
+        if af.getRef0() != val:
+            af.setRef0(val)
             self.isModified = True
 
     def setRef1Str(self, str):
         val = int(str)
         if not 0 <= val < 256:
             raise ValueError("Ref1 must be 0-255")
-        if not self.ref1 == val:
-            self.ref1 = val
+        af = self.matGX.alphafunction
+        if af.getRef1() != val:
+            af.setRef1(val)
             self.isModified = True
 
     def setComp0Str(self, str):
         i = indexListItem(self.COMP_STRINGS, str, self.comp0)
         if i >= 0:
-            self.comp0 = i
+            self.matGX.alphafunction.setComp0(i)
             self.isModified = True
 
     def setComp1Str(self, str):
         i = indexListItem(self.COMP_STRINGS, str, self.comp1)
         if i >= 0:
-            self.comp1 = i
+            self.matGX.alphafunction.setComp1(i)
             self.isModified = True
 
     def setCompareBeforeTexStr(self, str):
@@ -365,44 +376,51 @@ class Material:
 
     def setBlendStr(self, str):
         val = validBool(str)
-        if val != self.enableBlend:
-            self.enableBlend = val
+        b = self.matGX.blendmode
+        if val != b.isEnabled():
+            b.setEnabled(val)
             self.isModified = True
 
     def setBlendSrcStr(self, str):
-        i = indexListItem(self.BLFACTOR_STRINGS, str, self.srcFactor)
+        b = self.matGX.blendmode
+        i = indexListItem(self.BLFACTOR_STRINGS, str, b.getSrcFactor())
         if i >= 0:
-            self.srcFactor = i
+            b.setSrcFactor(i)
             self.isModified = True
 
     def setBlendDestStr(self, str):
-        i = indexListItem(self.BLFACTOR_STRINGS, str, self.dstFactor)
+        b = self.matGX.blendmode
+        i = indexListItem(self.BLFACTOR_STRINGS, str, b.getDstFactor())
         if i >= 0:
-            self.dstFactor = i
+            b.setDstFactor(i)
             self.isModified = True
 
     def setBlendLogicStr(self, str):
-        i = indexListItem(self.BLLOGIC_STRINGS, str, self.blendlogic)
+        b = self.matGX.blendmode
+        i = indexListItem(self.BLLOGIC_STRINGS, str, b.getBlendLogic())
         if i >= 0:
-            self.blendlogic = i
+            b.setBlendLogic(i)
             self.isModified = True
 
     def setEnableDepthTestStr(self, str):
         val = validBool(str)
-        if val != self.enableDepthTest:
-            self.enableDepthTest = val
+        d = self.matGX.zmode
+        if val != d.getDepthTest():
+            d.setDepthTest(val)
             self.isModified = True
 
     def setEnableDepthUpdateStr(self, str):
         val = validBool(str)
-        if val != self.enableDepthUpdate:
-            self.enableDepthUpdate = val
+        d = self.matGX.zmode
+        if val != d.getDepthUpdate():
+            d.setDepthUpdate(val)
             self.isModified = True
 
     def setDepthFunctionStr(self, str):
         i = indexListItem(self.COMP_STRINGS, str, self.depthFunction)
+        d = self.matGX.zmode
         if i >= 0:
-            self.depthFunction = self.COMP_STRINGS[i]
+            d.setDepthFunction(i)
             self.isModified = True
 
     def setDrawPriorityStr(self, str):
@@ -467,101 +485,52 @@ class Material:
             return
         binfile.start()
         self.offset = binfile.offset    # for backtracking offsets like shaders
-        data = file.file
-        args = (self.length, self.mdl0Offset, self.nameOffset,
-        self.id, self.xlu << 31, self.numLayers, self.numLights, self.shaderStages,
-        self.indirectStages, self.cullmode, self.compareBeforeTexture, self.lightset,
-        self.fogset)
+        binfile.markLen()
+        binfile.write("I", binfile.getOuterOffset())
+        binfile.storeNameRef()
+        binfile.write("2I4BI3B", self.id, self.xlu << 31, len(self.layers), len(self.lightChannels),
+                      self.shaderStages, self.indirectStages, self.cullmode,
+                      self.compareBeforeTexture, self.lightset, self.fogset)
         # print("===========> Packing mat flags at {}:\n{}".format(self.offset, data[self.offset:31 + self.offset]))
-        binfile.write("I i 3I 4B I 3B", args)
         binfile.write("BI4B", 0, 0, [0xff] * 4) # padding, indirect method, light normal map
         binfile.mark()  # shader offset, to be filled
         binfile.write("I", len(self.layers))
         binfile.mark()  # layer offset
-        # print("{}".format(data[self.offset:31 + self.offset]))
-        # Alpha Mode
-        byte1 = self.logic << 6 | self.comp1 << 3 | self.comp0
-        # print("===========> Packing alpha func at {}:\n{}".format(self.modeOffset + 2, data[self.modeOffset + 2: self.modeOffset + 5]))
-        binfile.write("3B", byte1, self.ref1, self.ref0)
-        pack_into("> 3B", data, self.modeOffset + 2, byte1, self.ref1, self.ref0)
-        # print("{}".format(data[self.modeOffset + 2:self.modeOffset+5]))
-        offset = self.modeOffset + 9
-        byte1 = data[offset] & 0xE0 | self.enableDepthUpdate << 4 | self.depthFunction << 1 | self.enableDepthTest
-        # print("===========> Packing depth function at {}".format(offset))
-        pack_into("> B", data, offset, byte1)
-        offset = self.modeOffset + 18
-        byte1 = self.blendlogic << 4 | self.srcFactor
-        byte2 =  self.dstFactor << 5 | self.subtract << 3 | self.enableBlendLogic << 1 | self.enableBlend
-        # print("===========> Packing blend logic at {}".format(offset))
-        pack_into("> 2B", data, offset, byte1, byte2)
-        # print("===========> Packing const alpha at {}".format(offset + 5))
-        pack_into("> 2B", data, offset + 5, self.constAlphaEnable, self.constAlpha)
-        offset = self.modeOffset + 34
-        for i in range(3):
-            color = self.colors[i]
-            byte1 = color[3] >> 4 & 0x0f | data[offset] & 0xf0
-            byte2 = color[3] << 4 & 0xf0 | data[offset + 1] & 0x0f
-            pack_into("> 3B", data, offset, byte1, byte2, color[0])
-            byte1 = color[1] >> 4 & 0x0f | data[offset + 5] & 0xf0
-            byte2 = color[1] << 4 & 0xf0 | data[offset + 6] & 0x0f
-            pack_into("> 3B", data, offset + 5, byte1, byte2, color[2])
-            offset += 20
-        offset += 4
-        for i in range(4):
-            color = self.constantColors[i]
-            byte1 = color[3] >> 4 & 0xf | data[offset] & 0xf0
-            byte2 = color[3] << 4 & 0xf0 | data[offset + 1] & 0xf
-            pack_into("> 3B", data, offset, byte1, byte2, color[0])
-            byte1 = color[1] >> 4 & 0xf | data[offset + 5]  & 0xf0
-            byte2 = color[1] << 4 & 0xf0 | data[offset + 6] & 0xf
-            pack_into("> 3B", data, offset + 5, byte1, byte2, color[2])
-            offset+=10
-        # layers
-        # xf flags
-        file.offset = self.modeOffset + 0xe5
-        # print("===========> Packing xfFlags at {}".format(file.offset))
-        for i in range(len(self.layers)):
-            self.layers[i].pack_xfFlags(file)
-            file.offset += 18
-        # texref
-        file.offset = self.layerOffset + self.offset
-        # print("===========> Packing layer at {}".format(file.offset))
-        for i in range(len(self.layers)):
-            self.layers[i].pack_texRef(file)
-            file.offset += 52
+        binfile.write("I", 0)   # fur not supported
+        if self.version >= 10:
+            binfile.advance(4)
+            binfile.mark()  # matgx
+        else:
+            binfile.mark()  #matgx
+            binfile.advance(4)
+        # ignore precompiled code space
+        binfile.advance(360)
         # layer flags
-        offset = self.offset + 0x1a8
-        layerIndex = 0
-        for i in range(3, -1, -1): # read it backwards
-            layer = self.getLayer(layerIndex)
-            if layer:
-                flags = layer.enable | layer.scaleDefault << 1 | layer.rotationDefault << 2 | layer.translationDefault << 3
-            else:
-                flags = 0
-            layerIndex += 1
-            layer = self.getLayer(layerIndex)
-            if layer:
-                flags = flags | (layer.enable | layer.scaleDefault << 1 | layer.rotationDefault << 2 | layer.translationDefault << 3) << 4
-            pack_into("> B", data, offset + i, flags)
-            layerIndex += 1
-        offset += 4
-        pack_into("> B", data, offset, self.textureMatrixMode)
-        offset += 4
-        # layer scale / Rotation
-        for layer in self.layers:
-            pack_into("> 5f", data, offset, layer.scale[0], layer.scale[1], layer.rotation,
-            layer.translation[0], layer.translation[1])
-            offset += 20
-        offset = self.offset + 0x250
-        # texture matrix - ignores the actual matrix part
-        for layer in self.layers:
-            pack_into("> 4B", data, offset, layer.scn0CameraRef, layer.scn0LightRef, layer.mapMode, layer.enableIdentityMatrix)
-            offset += 52
-        # Light channel
-        file.offset = self.offset + 0x3f0
-        self.lightChannels[0].pack(file)
-        file.offset += 20
-        self.lightChannels[1].pack(file)
+        x = layerI = bitshift = 0
+        while layerI < len(self.layers):
+            x |= self.layers[layerI].getFlagNibble << bitshift
+            layerI += 1
+            bitshift += 4
+        binfile.write("2I", x, self.MATRIXMODE)
+        binfile.createRef(1)
+        for l in self.layers:
+            l.pack_srt(binfile)
+        for l in self.layers:
+            l.pack_textureMatrix(binfile)
+        for l in self.lightChannels:
+            l.pack(binfile)
+        for l in self.layers:
+            l.pack(binfile)
+        binfile.align()
+        binfile.start() # MatGX section
+        binfile.createRef(1)
+        self.matGX.pack()
+        offset = binfile.offset
+        for l in self.layers:
+            l.pack_xf(binfile)
+        binfile.advance(0xa0 - (binfile.offset - offset))
+        binfile.end()
+        binfile.end()
 
     def unpackLayers(self, binfile, startLayerInfo, numlayers):
         ''' unpacks the material layers '''
@@ -596,31 +565,29 @@ class Material:
 
 
     def unpack(self, binfile):
+        ''' Unpacks material '''
         binfile.start()
         offset = binfile.offset
         l, mdOff = binfile.read("Ii", 8)
-        print("Length {} mdl0 {} offset {}".format(l, mdOff, offset))
-        # self.name = binfile.unpack_name()
         binfile.advance(4)
-        self.id, xluFlags, nlayers, nlights, \
+        self.id, xluFlags, ntexgens, nlights, \
             self.shaderStages, self.indirectStages, \
             self.cullmode, self.compareBeforeTexture, \
             self.lightset, self.fogset, pad  = binfile.read("2I2B2BI4B", 20)
         self.xlu = xluFlags >> 31 & 1
-        print("id {} xlu {} layers{} lights {}".format(self.id, xluFlags, nlayers, nlights))
+        if __debug__:
+            print("id {} xlu {} layers{} lights {}".format(self.id, xluFlags, ntexgens, nlights))
         binfile.advance(8)
-        self.shaderOffset, self.numTextures = binfile.read("2I", 8)
+        self.shaderOffset, nlayers = binfile.read("2I", 8)
         binfile.store() #  layer offset
         if self.parent.version >= 10:
             binfile.advance(8)
             bo = binfile.offset
             [dpo] = binfile.readOffset("I", binfile.offset)
-            binfile.store() # store display mode offset
+            binfile.store() # store matgx offset
         else:
             binfile.advance(4)
-            binfile.store()
-            # bo = binfile.offset
-            # dpo = binfile.read("I", 4)
+            binfile.store() # store matgx offset
             binfile.advance(4)
         # ignore precompiled code space
         binfile.advance(360)
@@ -629,92 +596,15 @@ class Material:
         self.textureMatrixMode = binfile.read("I", 4)
         binfile.advance(576)
         self.unpackLightChannels(binfile)
-        # binfile.advance(0x34 * nlayers)
-        # binfile.advance(0x40)
         binfile.recall()
-        print("BO {} DPO: {}".format(bo + dpo, dpo + binfile.beginOffset))
-        print("Layer Offset {}, current {}".format(offset, binfile.offset))
-        remaining = binfile.readRemaining(l)
-        xftexgens = remaining[0xe0:]
-        layerI = 0
-        for i in range(len(xftexgens)):
-            c = xftexgens[i]
-            if c == 0x10 and xftexgens[i + 1] >= 0x50:
-                if xftexgens[i + 2] or xftexgens[i + 3] or xftexgens[i + 4] \
-                    or xftexgens[i + 5]:
-                    m = ""
-                    for he in xftexgens[i:i+6]:
-                        m += "{:02X} ".format(he)
-                    name = self.layers[layerI].name
-                    if not name:
-                        name = str(layerI)
-                    ANALYSIS.write(self.name + "->" + name + "\t" + m)
-                    # printCollectionHex(xftexgens)
-                layerI += 1
+        binfile.start() # Mat wii graphics
+        self.matGX.unpack(binfile)
+        for layer in self.layers:
+            layer.unpackXF(binfile)
+
         binfile.end()
-        # binfile.recall()
-        # self.modeOffset = file.offset
-        #
-        # oset = file.offset
-        #
-        # mode = file.read(Struct("32B"), 32)
-        # print("\t{} MODE: {}".format(oset, mode))
-        # self.comp0 = mode[2] & 7
-        # self.comp1 = mode[2] >> 3 & 7
-        # self.logic = (mode[2] >> 6) & 3 # always 0 (and)
-        # self.ref1 = mode[3]
-        # self.ref0 = mode[4]
-        # depthfunction = mode[9]
-        # self.enableDepthTest = depthfunction & 1
-        # self.depthFunction = (depthfunction >> 1) & 0x7
-        # self.enableDepthUpdate = (depthfunction >> 4) & 1
-        # self.srcFactor = mode[18] & 7
-        # self.blendlogic = mode[18] >> 4 & 0xf
-        # self.dstFactor = mode[19] >> 5 & 7
-        # self.enableBlend = mode[19] & 1
-        # self.enableBlendLogic = mode[19] >> 1 & 1
-        # self.subtract = mode[19] >> 3 & 1
-        # self.constAlphaEnable = mode[23]
-        # self.constAlpha = mode[24]
-        # tev = file.read(Struct("128B"), 128)
-        # A tev[2-3] R tev[4] G tev[7-8] B tev[9]
-        # G and B are repeated 3 times for some reason
-        # j = 2
-        # for i in range(3):
-        #     self.colors.append((tev[2 + j], (tev[5 + j] << 4) | (tev[6 + j] >> 4), tev[7 + j], (tev[j] << 4) | (tev[1 + j] >> 4)))
-        #     j += 20
-            # print("Color: {}".format(self.colors[i]))
-        # j += 4
-        # for i in range(4):
-        #     self.constantColors.append((tev[2 + j], ((tev[5 + j] & 0xf) << 4) | (tev[6 + j] >> 4), tev[7 + j], ((tev[j] & 0xf) << 4) | (tev[1 + j] >> 4)))
-        #     j+=10
-        # shaderTex = file.read(Struct("64B"), 64)
-        # xfFlags = file.read(Struct("160B"), 160)
-        # j = 0
-        # 18 width
-        # byte 5-6 r-shifted 1 short emboss light
-        # byte 7 msb 1-3 emboss source
-        # 3 lsb and msb of 8 are coordinates (geometry 0 normals 1 colors 10 binfileormalsT 11 binfileormalsB 100 TexCoord0 101 TexCoord1 110 TexCoord2 111 TexCoord3 1000 TexCoord4 1001 TexCoord5 1010 TexCoord6 1011 TexCoord 7 1111)
-        # byte 8 lsb bit 2 is projection (STU 1 ST 0)
-        # bit 3 inputform (AB11 0 ABC1 1)
-        # bit 5-6 type (regular 0 embossmap1 color0 10 color1 11)
-        # byte 16 lsb normalize
-        # for i in range(len(self.layers)):
-        #     layer = self.getLayer(i)
-        #     layer.embossLight = (xfFlags[j + 5] << 8 | xfFlags[j + 6]) << 1 | (xfFlags[j + 7] >> 7 & 1)
-        #     layer.embossSource = xfFlags[j + 7] >> 4 & 7
-        #     layer.coordinates = xfFlags[j + 7] << 1 & 0xe | (xfFlags[j + 8] >> 7 & 1)
-        #     layer.projection = xfFlags[j + 8] >> 1 & 1
-        #     layer.inputform = xfFlags[j + 8] >> 2 & 1
-        #     layer.type = xfFlags[j + 8] >> 4 & 3
-        #     layer.normalize = xfFlags[j + 16]
-        #     j += 18
-        #
-        # file.offset = self.offset + 0x1a8
-        # matData = file.read(Struct("< 4B I"), 8)
-        # layerIndex = 0
-        # # print("Mat Flags {}".format(matData))
-        # Texture Position
+        binfile.end()
+
 
 # LIGHT CHANNEL ----------------------------------------------------
         # LC flags bits
@@ -754,9 +644,6 @@ class LightChannel:
         self.colorLightControl = data[9:13]
         self.alphaLightControl = data[13:17]
 
-    def pack(self, file):
-        pack_into("> I 16B", file.file, file.offset,
-        self.materialColor[0], self.materialColor[1], self.materialColor[2], self.materialColor[3],
-        self.ambientColor[0], self.ambientColor[1], self.ambientColor[2], self.ambientColor[3],
-        self.colorLightControl[0],  self.colorLightControl[1], self.colorLightControl[2], self.colorLightControl[3],
-        self.alphaLightControl[0], self.alphaLightControl[1], self.alphaLightControl[2], self.alphaLightControl[3])
+    def pack(self, binfile):
+        pack_into("I16B", binfile, self.materialColor, self.ambientColor,
+                  self.colorLightControl, self.alphaLightControl)

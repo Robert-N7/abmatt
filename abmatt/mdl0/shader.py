@@ -4,7 +4,8 @@
 from struct import *
 
 class Shader:
-    def __init__(self, file):
+    def __init__(self, file, parent):
+        self.parent = parent
         self.offset = file.offset
         data = file.read(Struct("> 3I 4B 8B 2I"), 0x20)
         self.length = data[0]

@@ -264,9 +264,9 @@ class BinFile:
         return self.write("{}B".format(len), len)
 
     # Names
-    def unpack_name(self):
+    def unpack_name(self, advance = True):
         ''' Unpacks a single name from a pointer '''
-        [ptr] = self.read("I", 4)
+        [ptr] = self.read("I", 4 * advance)
         if not ptr:
             return None
         offset = self.beginOffset + ptr

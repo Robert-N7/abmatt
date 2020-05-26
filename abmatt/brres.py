@@ -7,6 +7,7 @@ import os
 import binascii
 sys.path.insert(1, 'mdl0')
 sys.path.insert(1, 'srt0')
+sys.path.insert(1, 'mdl0/wiigraphics')
 from mdl0 import *
 from subfile import *
 from srt0 import *

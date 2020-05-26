@@ -1,4 +1,5 @@
 ''' Layer class '''
+from xf import XFTexMatrix, XFDualTex
 from matching import *
 
 def validBool(str):
@@ -48,10 +49,24 @@ class Layer:
     "texcoord0", "texcoord1", "texcoord2", "texcoord3", "texcoord4", "texcoord5", "texcoord6", "texcoord7")
 
     def __init__(self, id, name, parent):
-        ''' Initializes id (position of layer), name, and parent material '''
+        ''' Initializes, id (position of layer), name, and parent material '''
         self.id = id
         self.parent = parent
         self.name = name
+        self.scaleDefault = self.rotationDefault = self.translationDefault = True
+        self.scale = (1, 1)
+        self.rotation = 0
+        self.translation = (0, 0)
+        self.scn0LightRef = self.scn0CameraRef = -1
+        self.mapMode = 0
+        self.vwrap = self.uwrap = 1
+        self.minfilter = 5
+        self.magfilter = 1
+        self.LODBias = 0
+        self.maxAnisotrophy = 0
+        self.texelInterpolate = self.clampBias = False
+        self.xfTexMatrix = XFTexMatrix(id)
+        self.xfDualTex = XFDualTex(id)
 
     def __str__(self):
         return "Layer {}: scale {} rot {} trans {} uwrap {} vwrap {} minfilter {}".format(self.name,
@@ -95,19 +110,19 @@ class Layer:
     def getTexelInterpolate(self):
         return self.texelInterpolate
     def getProjection(self):
-        return self.PROJECTION[self.projection]
+        return self.PROJECTION[self.xfTexMatrix["projection"]]
     def getInputform(self):
-        return self.INPUTFORM[self.inputform]
+        return self.INPUTFORM[self.xfTexMatrix["inputform"]]
     def getType(self):
-        return self.TYPE[self.type]
+        return self.TYPE[self.xfTexMatrix["type"]]
     def getCoordinates(self):
-        return self.COORDINATES[self.coordinates]
+        return self.COORDINATES[self.xfTexMatrix["coordinates"]]
     def getEmbossLight(self):
-        return self.embossLight
+        return self.xfTexMatrix["embosslight"]
     def getEmbossSource(self):
-        return self.embossSource
+        return self.xfTexMatrix["embosssource"]
     def getNormalize(self):
-        return self.normalize
+        return self.xfDualTex.normalize
 
     def getFlagNibble(self):
         return self.enable | self.scaleDefault << 1 \
@@ -140,9 +155,9 @@ class Layer:
         i2 = float(values[1])
         if self.scale[0] != i1 or self.scale[1] != i2:
             if i1 != 1 or i2 != 1:
-                self.scaleFixed = 0
+                self.scaleDefault = False
             else:
-                self.scaleFixed = 1
+                self.scaleDefault = True
             self.scale = (i1, i2)
             self.isModified = True
 
@@ -150,7 +165,7 @@ class Layer:
         f = float(str)
         if f != self.rotation:
             self.rotation = f
-            self.rotationFixed = 0 if self.rotation == 0 else 1
+            self.rotationDefault = False if self.rotation == 0 else True
             self.isModified = True
 
     def setTranslationStr(self, str):
@@ -161,7 +176,7 @@ class Layer:
         i2 = float(values[1])
         if self.translation[0] != i1 or self.translation[1] != i2:
             self.translation = (i1, i2)
-            self.translationFixed = 1 if i1 == 1 and i2 == 1 else 0
+            self.translationDefault = 1 if i1 == 1 and i2 == 1 else 0
             self.isModified = True
 
     def setCameraRefStr(self, str):
@@ -251,43 +266,43 @@ class Layer:
     def setProjectionStr(self, str):
         i = indexListItem(self.PROJECTION, str, self.projection)
         if i >= 0:
-            self.projection = i
+            self.xfTexMatrix["projection"] = i
             self.isModified = True
 
     def setInputFormStr(self, str):
         i = indexListItem(self.INPUTFORM, str, self.inputform)
         if i >= 0:
-            self.inputform = i
+            self.xfTexMatrix["inputform"] = i
             self.isModified = True
     def setTypeStr(self, str):
         i = indexListItem(self.TYPE, str, self.type)
         if i >= 0:
-            self.type = i
+            self.xfTexMatrix["type"] = i
             self.isModified = True
 
     def setCoordinatesStr(self, str):
         i = indexListItem(self.COORDINATES, str, self.coordinates)
         if i >= 0:
-            self.coordinates = i
+            self.xfTexMatrix["coordinates"] = i
             self.isModified = True
     def setEmbossSourceStr(self, str):
         i = int(str)
         if not 0 <= i <= 7:
             raise ValueError("Value '" + str + "' out of range for emboss source")
-        if self.embossSource != i:
-            self.embossSource = i
+        if self.xfTexMatrix["embossSource"] != i:
+            self.xfTexMatrix["embossSource"] = i
             self.isModified = True
     def setEmbossLightStr(self, str):
         i = int(str)
         if not 0 <= i <= 255:
             raise ValueError("Value '" + str + "' out of range for emboss light")
-        if self.embossLight != i:
-            self.embossLight = i
+        if self.xfTexMatrix["embossLight"] != i:
+            self.xfTexMatrix["embossLight"] = i
             self.isModified = True
     def setNormalizeStr(self, str):
         val = validBool(str)
-        if val != self.normalize:
-            self.normalize = val
+        if val != self.xfDualTex.normalize:
+            self.xfDualTex.normalize = val
             self.isModified = True
 
     def setLayerFlags(self, nibble):
@@ -314,33 +329,45 @@ class Layer:
         binfile.advance(12)
         self.texDataID, self.palleteDataID, self.uwrap, self.vwrap, \
             self.minFilter, self.magFilter, self.LODBias, self.maxAnisotrophy, \
-            self.clampBias, self.texelInterpolate, pad = binfile.read("6IfI2BH", 48)
+            self.clampBias, self.texelInterpolate, pad = binfile.read("6IfI2BH", 0x24)
         transforms = binfile.readOffset("5f", scaleOffset)
         self.scale = transforms[0:2]
         self.rotation = transforms[2]
         self.translation = transforms[3:]
+        print("Texid {} palleteid {} uwrap {} vwrap {} scale {} rot {} trans{}"\
+        .format(self.texDataID, self.palleteDataID, self.uwrap, \
+                       self.vwrap, self.scale, self.rotation, self.translation))
         self.scn0CameraRef, self.scn0LightRef, self.mapMode, \
             self.enableIdentityMatrix = binfile.readOffset("4B", scaleOffset + 160)
         self.texMatrix = binfile.readOffset("12f", scaleOffset + 164)
 
+    def unpackXF(self, binfile):
+        '''Unpacks Wii graphics '''
+        self.xfTexMatrix.unpack(binfile)
+        self.xfDualTex.unpack(binfile)
+
     def pack(self, binfile):
-        binfile.advance(12)
-        binfile.write("10IfI4BH", self.texDataID, self.palleteDataID,
+        binfile.start()
+        binfile.storeNameRef(self.name)
+        binfile.advance(12) # ignoring pallete name / offsets
+        binfile.write("10IfI4BH", self.id, self.id,
             self.uwrap, self.vwrap, self.minFilter, self.getMagfilter,
             self.LODBias, self.maxAnisotrophy, self.clampBias,
             self.texelInterpolate, 0)
+        binfile.end()
 
-    def pack_texRef(self, file):
-        pack_into("> 10I f I 2B", file.file, file.offset, self.nameOffset, self.palettenameOffset,
-        self.textureDataOffset, self.palleteOffset, self.texDataID, self.palleteDataID,
-        self.uwrap, self.vwrap, self.minFilter, self.magFilter, self.LODBias, self.maxAnisotrophy,
-        self.clampBias, self.texelInterpolate)
+    def pack_srt(self, binfile):
+        ''' packs scale rotation translation data '''
+        binfile.write("5f", self.scale, self.rotation, self.translation)
 
-    def pack_xfFlags(self, file): # aka texture matrices
-        pack_into("> 4B", file.file, file.offset, self.embossLight >> 8, self.embossLight >> 1,
-        self.embossLight << 7 & 0x80 | self.embossSource << 4 & 0x70 | self.coordinates >> 1 & 7,
-        (self.coordinates & 1) << 7 | (self.projection & 1) << 1 | (self.inputform & 1) << 2 | (self.type & 3) << 4)
-        pack_into("> B", file.file, file.offset + 11, self.normalize)
+    def pack_textureMatrix(self, binfile):
+        ''' packs texture matrix '''
+        binfile.write("4B12f", self.scn0CameraRef, self.scn0LightRef, self.mapMode,
+                      self.enableIdentityMatrix, self.texMatrix)
+
+    def pack_xf(self, binfile):
+        self.xfTexMatrix.pack(binfile)
+        self.xfDualTex.pack(binfile)
 
     def info(self, command, trace):
         trace += "->" + self.name
@@ -353,4 +380,4 @@ class Layer:
                 print("{}:\tScale:{} Rot:{} Trans:{} UWrap:{} VWrap:{} MinFilter:{} map:{} coord: {}".format(trace,
                 self.scale, self.rotation, self.translation,
                 self.WRAP[self.uwrap], self.WRAP[self.vwrap], self.FILTER[self.minFilter],
-                self.MAPMODE[self.mapMode], self.COORDINATES[self.coordinates]))
+                self.MAPMODE[self.mapMode], self.COORDINATES[self.xfTexMatrix["coordinates"]]))

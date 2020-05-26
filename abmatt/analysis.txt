@@ -9,3 +9,14 @@ ef_dushBoard->1	10 51 00 00 00 03
 ef_dushBoard->2	10 52 00 00 00 06
 kinoko_m->1	10 51 00 00 01 03
 lugcap_m->1	10 51 00 00 01 03
+a_MainRoad_m->1	10 51 00 00 00 03 
+a_SAND_m->1	10 51 00 00 00 03 
+a_bc_enseki_m->1	10 51 00 00 00 03 
+a_bc_kankyakuseat_m->1	10 51 00 00 00 03 
+a_kusa_soto->1	10 51 00 00 00 03 
+a_kusa_waki_m->1	10 51 00 00 00 03 
+ef_dushBoard->ef_rainbowRed2	10 50 00 00 01 00 
+ef_dushBoard->1	10 51 00 00 00 03 
+ef_dushBoard->2	10 52 00 00 00 06 
+kinoko_m->1	10 51 00 00 01 03 
+lugcap_m->1	10 51 00 00 01 03 
