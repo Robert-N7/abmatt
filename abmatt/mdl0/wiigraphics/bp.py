@@ -1,4 +1,4 @@
-''' Dealing with Wii graphics, much of which courtesy of Brawlbox
+''' Dealing with Wii graphics, the constants courtesy of Brawlbox
     https://github.com/libertyernie/brawltools
 '''
 
@@ -451,19 +451,48 @@ class AlphaEnv(BPCommand):
 
 class RAS1_IRef(BPCommand):
     def __init__(self):
-        pass
+        super(RAS1_IRef, self).__init__(BPCommand.BPMEM_IREF, -1)
+    def getTexMap(self, index):
+        return self.data >> (index * 6) & 7
+    def getTexCoord(self, index):
+        return self.data >> ((index * 6) + 3) & 7
+    def setTexMap(self, index, val):
+        val |= 0xfffff8
+        for i in range(index * 6):
+            val = val << 1 | 1
+        self.data = self.data & val
+    def setTexCoord(self, index, val):
+        val |= 0xfffff8
+        for i in range(index * 6 + 3):
+            val = val << 1 | 1
+        self.data = self.data & val
+
 
 class RAS1_SS(BPCommand):
     def __init__(self, registerN):
         super(RAS1_SS, self).__init__(BPCommand.BPMEM_RAS1_SS0 + registerN)
 
 class IndMatrix():
-    ''' Indirect matrices are typically used with bump map materials '''
+    ''' Indirect matrices are typically used with bump map materials
+        id: 0 -2
+        scale: 6-bit value that controls outgoing coordinate scale (2^scale)
+    '''
     SIZE = 15
-    def __init__(self, id, scale = 0x2e, enable = False):
+    def __init__(self, id, scale = 46, enable = False):
         ''' Indirect 2x3 matrix that blit processor loads
+            the matrix has two rows and three columns, and it appears on the
+            left side of the multiply. On the right side is a column vector
+            consisting of the (s, t, u) offsets. You may choose a scale value by
+            specifying an exponent of 2 in the range of (-17.. 46).
+            This scale value can be used to stretch the offsets over the size
+            of the regular texture map that will be associated with this indirect
+            operation. You can also think of the scale as the fixed-point exponent
+            for the matrix values. Since a value equal to +1.0 cannot be stored in the
+            matrix, you can store 0.5 and use an exponent of 1 greater than the desired
+            value in order to compensate
             id: 0-2
-            scale:  6 bit value
+            scale: -17-46   (2^scale)
+            matrix values: -1 to 1
         '''
         self.enabled = enable
         self.scale = scale
@@ -477,9 +506,42 @@ class IndMatrix():
     def __getitem__(self, key):
         return self.matrix[key]
     def __setitem__(self, key, val):
+        if val > 1 or val < -1:
+            print("Warning: Ind matrix {} value {} out of range! Should be between -1 and 1".format(self.id, val))
         self.matrix[key] = val
 
+    def force11bitFloat(self, val):
+        '''Forces 10 bit to float '''
+        # There's probably a better way to do this
+        base = 2
+        f = 0.0
+        bitn = 10
+        while bitn > 0:
+            if val & 1:
+                f += 1 / (base ^ bitn)
+            val >>= 1
+            bitn -= 1
+        if val & 1: # sign
+            f *= -1
+        return f
+
+    def encode11bitFloat(self, val):
+        '''Encodes to 10bit float '''
+        e = 1 if val < 0 else 0 # sign
+        base = 2
+        bitn = 1
+        val = abs(val)
+        while bitn <= 10:
+            e <<= 1
+            subtractee = 1 / base ^ bitn
+            if val >= subtractee:
+                val -= subtractee
+                e |= 1
+            bitn += 1
+        return e
+
     def unpack(self, binfile):
+        ''' unpacks ind matrix '''
         self.scale = 0  # reset scale
         c = BPCommand(0)
         for i in range(3):
@@ -491,23 +553,22 @@ class IndMatrix():
             if i == 0:
                 self.id = (c.bpmem - BPCommand.BPMEM_IND_MTXA0) / 3
             self.scale = self.scale | (c.data >> 22 & 3) << (2 * i)
-            self.matrix[0][i] = c.data & 0x3ff
-            self.matrix[1][i] = c.data >> 11 & 0x3ff
+            self.matrix[0][i] = self.force11bitFloat(c.data & 0x3ff)
+            self.matrix[1][i] = self.force11bitFloat(c.data >> 11 & 0x3ff)
 
     def pack(self, binfile):
+        '''Packs the ind matrix '''
         if not self.enabled:
             binfile.advance(self.SIZE)
             return
         c = BPCommand(self.BPCommand.BPMEM_IND_MTXA0 + self.id * 3)
         for i in range(3):
             sbits = (self.scale >> (2 * i) & 3)
-            r0 = self.matrix[0][i]
-            r1 = self.matrix[1][i]
+            r0 = self.encode11bitFloat(self.matrix[0][i])
+            r1 = self.encode11bitFloat(self.matrix[1][i])
             c.data = sbits << 22 | r1 << 11 | r0
             c.pack(binfile)
             c.bpmem += 1
-
-
 
 
 class ColorReg(BPCommand):

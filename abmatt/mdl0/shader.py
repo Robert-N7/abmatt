@@ -1,36 +1,76 @@
 # ------------------------------------------------------------------------
 #   Shader Class
 # ------------------------------------------------------------------------
-from struct import *
+from binfile import printCollectionHex
+from bp import *
 
-class Shader:
-    def __init__(self, file, parent):
+class Shader():
+    BYTESIZE = 512
+    def __init__(self, name, parent):
         self.parent = parent
-        self.offset = file.offset
-        data = file.read(Struct("> 3I 4B 8B 2I"), 0x20)
-        self.length = data[0]
-        self.mdl0Offset = data[1]
-        self.id = data[2]
-        self.layercount = data[3]
-        self.res = data[4:7]
-        self.references = data[7:15]
-        # print("\t{}\tShader {} length {} layercount {}".format(self.offset, self.id, self.length, self.layercount))
-        self.swapTable = file.read(Struct("> 80B"), 0x50)
-        # print("Swap table: {}".format(self.swapTable))
-        data = file.read(Struct("> 16B"), 16)
-        # print("Data is {}".format(data))
-        self.indirectTexMaps = []
-        self.indirectTexCoords = []
-        self.indirectTexMaps.append(data[4] & 7)
-        self.indirectTexCoords.append(data[4] >> 3 & 7)
-        self.indirectTexMaps.append(data[4] >> 6 & 3 | data[3] << 2 & 4)
-        self.indirectTexCoords.append(data[3] >> 1 & 7)
-        self.indirectTexMaps.append(data[3] >> 4 & 7)
-        self.indirectTexCoords.append(data[3] >> 7 & 1 | data[2] << 1 & 6)
-        self.indirectTexMaps.append(data[2] >> 2 & 7)
-        self.indirectTexCoords.append(data[2] >> 5 & 7)
-        data = file.read(Struct("> 384B"), 384)
-        # print("Shader stage Data: {}".format(data))
+        self.name = name
+        self.init_bp()
+
+    def init_bp(self):
+        ''' initializes blit processing commands '''
+        self.bpmask0 = BPCommand(0xFE, 0xF)
+        self.bpkcels = (BPCommand(0xF6, 0x4), BPCommand(0xF7, 0xE), BPCommand(0xF8, 0x0) \
+                       BPCommand(0xF9, 0xC), BPCommand(0xFA, 0x5), BPCommand(0xFB, 0xD) \
+                       BPCommand(0xFC, 0xA), BPCommand(0xFD, 0xE))
+        self.ras1_Iref = RAS1_IRef()
+        self.bpmask1 = BPCommand(0xFE, 0xFFFFF0)
+        self.kcel1 = BPCommand(0xF6, 0x38c0)
+        self.tref = BPCommand(0x28, 0x3BF040)
+        self.color_env0 = BPCommand(0xC0, 0x18F8AF)
+        self.color_env1 = BPCommand(0xC2, 0x088ff0, False)
+        self.alpha_env0 = BPCommand(0xC1, 0x08F2F0)
+        self.alpha_env1 = BPCommand(0xC3, 0x089f00, False)
+        self.indirect0 = BPCommand(0x10)
+        self.indirect1 = BPCommand(0x11, 0, False)
+
+
+
+    def unpack(self, binfile):
+        ''' Unpacks shader TEV '''
+        binfile.start()
+        len, outer, self.id, self.layercount, res0, res1, res2, = binfile.read("3I4B", 16)
+        self.layerIndices = binfile.read("8B", 8)
+        binfile.advance(8)
+        for kcel in self.bpkcels:
+            binfile.advance(5)  # skip extra masks
+            kcel.unpack(binfile)
+        self.ras1_Iref.unpack(binfile)
+        binfile.align()
+        self.tref.unpack(binfile)
+        self.color_env0.unpack(binfile)
+        self.color_env1.unpack(binfile)
+        self.alpha_env0.unpack(binfile)
+        self.alpha_env1.unpack(binfile)
+        self.indirect0.unpack(binfile)
+        self.indirect1.unpack(binfile)
+        binfile.advanceAndEnd(self.BYTESIZE)
+
+
+    def pack(self, binfile):
+        ''' Packs the shader '''
+        binfile.start()
+        binfile.write("3I4B", self.BYTESIZE, binfile.getOuterOffset(), self.id, \
+                      self.layercount, 0, 0, 0)
+        binfile.write("8B", self.layerIndices)
+        binfile.advance(8)
+        for kcel in self.bpkcels:
+            self.bpmask0.pack(binfile)
+            kcel.pack(binfile)
+        self.ras1_Iref.pack(binfile)
+        binfile.align()
+        self.tref.pack(binfile)
+        self.color_env0.pack(binfile)
+        self.color_env1.pack(binfile)
+        self.alpha_env0.pack(binfile)
+        self.alpha_env1.pack(binfile)
+        self.indirect0.pack(binfile)
+        self.indirect1.pack(binfile)
+        binfile.advanceAndEnd(self.BYTESIZE)
 
     def __str__(self):
         return "shdr {} layers {} stages {}: {}".format(self.id, self.layercount, self.countDirectStages(), self.countIndirectStages())

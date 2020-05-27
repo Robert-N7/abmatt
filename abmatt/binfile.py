@@ -203,6 +203,10 @@ class BinFile:
             if m > 0:
                 self.file.extend(b'\0' * m)
 
+    def advanceAndEnd(self, length):
+        self.advance(length - (self.offset - self.beginOffset))
+        self.end()
+
     def getParentOffset(self):
         ''' Gets the parent offset off the stack'''
         l = len(self.stack)
