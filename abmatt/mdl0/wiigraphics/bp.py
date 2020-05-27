@@ -513,13 +513,16 @@ class IndMatrix():
     def force11bitFloat(self, val):
         '''Forces 10 bit to float '''
         # There's probably a better way to do this
-        base = 2
         f = 0.0
         bitn = 10
+        start = 2 << bitn
         while bitn > 0:
+            print("divisor {} bitn {}".format(start, bitn))
             if val & 1:
-                f += 1 / (base ^ bitn)
+                f += 1.0/start
+                print(f)
             val >>= 1
+            start <<= 1
             bitn -= 1
         if val & 1: # sign
             f *= -1

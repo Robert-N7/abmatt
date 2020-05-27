@@ -230,7 +230,7 @@ class BinFile:
         magic = unpack_from(self.bom + "4s", self.file, self.offset)
         if advance:
             self.offset += 4
-        return magic[0]
+        return magic[0].decode()
 
     def read(self, fmt, len):
         read = unpack_from(self.bom + fmt, self.file, self.offset)

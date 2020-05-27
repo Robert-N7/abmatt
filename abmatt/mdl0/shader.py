@@ -4,6 +4,90 @@
 from binfile import printCollectionHex
 from bp import *
 
+class Stage():
+    ''' Single shader stage '''
+    # COLOR STRINGS
+    RASTER_COLORS = ("lightchannel0", "lightchannel1", "bumpalpha", "normalizedbumpalpha", "zero")
+    COLOR_CONSTANTS = ("1_1", "7_8", "3_4", "5_8", "1_2", "3_8", "1_4", "1_8",
+                        "color0_rgb", "color1_rgb", "color2_rgb", "color3_rgb",
+                        "color0_rrr", "color1_rrr", "color2_rrr", "color3_rrr",
+                        "color0_ggg", "color1_ggg", "color2_ggg", "color3_ggg",
+                        "color0_bbb", "color1_bbb", "color2_bbb", "color3_bbb",
+                        "color0_aaa", "color1_aaa", "color2_aaa", "color3_aaa")
+    COLOR_SELS = ("outputcolor", "outputalpha", "color0", "alpha0", "color1",
+                  "alpha1", "color2", "alpha2", "texturecolor", "texturealpha",
+                  "rastercolor", "rasteralpha", "one", "half",
+                  "constantcolorselection", "zero")
+    BIAS = ("zero", "addhalf", "subhalf")
+    OPER = ("add", "subtract", "compr8greater", "compr8equal", "compgr16greater",
+            "compgr16equal", "compbgr24greater", "compbgr24equal",
+            "compa8greater", "compa8equal")
+    SCALE = ("multiplyby1", "multiplyby2", "multiplyby4", "divideby2")
+    SCALEN = (1, 2, 4, 1/2)
+    COLOR_DEST = ("outputcolor", "color0", "color1", "color2")
+
+    # ALPHA
+    ALPHA_CONSTANTS = ("1_1", "7_8", "3_4", "5_8", "1_2", "3_8", "1_4", "1_8",
+                       "color0_red", "color1_red", "color2_red", "color3_red",
+                       "color0_green", "color1_green", "color2_green", "color3_green",
+                       "color0_blue", "color1_blue", "color2_blue", "color3_blue",
+                       "color0_alpha", "color1_alpha", "color2_alpha", "color3_alpha")
+    ALPHA_SELS = ("outputalpha", "alpha0", "alpha1", "alpha2", "texturealpha",
+                  "rasteralpha", "constantalphaselection", "zero")
+    ALPHA_DEST = ("outputalpha", "alpha0", "alpha1", "alpha2")
+
+    # INDIRECT TEVS
+    TEX_FORMAT = ("f_8_bit_offsets", "f_5_bit_offsets", "f_4_bit_offsets", "f_3_bit_offsets")
+    IND_BIAS = ("none", "s", "t", "st", "u", "su", "tu", "stu")
+    IND_ALPHA = ("off", "s", "t", "u")
+    IND_MATRIX = ("nomatrix", "matrix0", "matrix1", "matrix2", "matrixs0",
+                  "matrixs1", "matrixs2", "matrixt0", "matrixt1", "matrixt2")
+    WRAP = ("nowrap", "wrap256", "wrap128", "wrap64", "wrap16", "wrap0")
+
+    def __init__(self, id):
+        self.enabled = True
+        self.mapID = id
+        self.coordinateID = id
+        self.texSwapSel = 0
+        self.rasterColor = 0
+        self.colorConstSel = 8
+        self.colorA = -1
+        self.colorB = 8
+        self.colorC = 10
+        self.colorD = -1
+        self.colorBias = 0
+        self.colorOper = 0
+        self.colorClamp = True
+        self.colorScale = 0
+        self.colorDest = 0
+        self.alphaConstSel = 20
+        self.alphaA = -1
+        self.alphaB = 4
+        self.alphaC = 5
+        self.alphaD = -1
+        self.alphaBias = 0
+        self.alphaOper = 0
+        self.alphaClamp = True
+        self.alphaScale = 0
+        self.alphaDest = 0
+        self.indStage = 0
+        self.indFormat = 0
+        self.indBias = 0
+        self.indAlpha = 0
+        self.indMatrix = 0
+        self.swrawp = 0
+        self.twrap = 0
+        self.usePrevStage = False
+        self.unmodifiedLOD = False
+
+    def unpack(self, binfile):
+        ''' Unpacks the shader stage '''
+        pass
+        
+    def pack(self, binfile):
+        ''' packs the shader stage '''
+        pass
+
 class Shader():
     BYTESIZE = 512
     def __init__(self, name, parent):
@@ -14,8 +98,8 @@ class Shader():
     def init_bp(self):
         ''' initializes blit processing commands '''
         self.bpmask0 = BPCommand(0xFE, 0xF)
-        self.bpkcels = (BPCommand(0xF6, 0x4), BPCommand(0xF7, 0xE), BPCommand(0xF8, 0x0) \
-                       BPCommand(0xF9, 0xC), BPCommand(0xFA, 0x5), BPCommand(0xFB, 0xD) \
+        self.bpkcels = (BPCommand(0xF6, 0x4), BPCommand(0xF7, 0xE), BPCommand(0xF8, 0x0), \
+                       BPCommand(0xF9, 0xC), BPCommand(0xFA, 0x5), BPCommand(0xFB, 0xD), \
                        BPCommand(0xFC, 0xA), BPCommand(0xFD, 0xE))
         self.ras1_Iref = RAS1_IRef()
         self.bpmask1 = BPCommand(0xFE, 0xFFFFF0)
@@ -36,6 +120,9 @@ class Shader():
         len, outer, self.id, self.layercount, res0, res1, res2, = binfile.read("3I4B", 16)
         self.layerIndices = binfile.read("8B", 8)
         binfile.advance(8)
+        remaining = binfile.readRemaining(self.BYTESIZE)
+        printCollectionHex(remaining)
+        return
         for kcel in self.bpkcels:
             binfile.advance(5)  # skip extra masks
             kcel.unpack(binfile)
