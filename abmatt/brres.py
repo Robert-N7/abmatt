@@ -2,6 +2,7 @@
 #--------------------------------------------------------
 #   Brres Class
 #--------------------------------------------------------
+import string
 import sys
 import os
 import binascii
@@ -14,7 +15,7 @@ from srt0 import *
 from material import *
 from layer import *
 from shader import *
-from binfile import BinFile
+from binfile import BinFile, Folder
 
 
 class Brres():
@@ -23,6 +24,8 @@ class Brres():
     CLASSES = [Mdl0, Tex0, Srt0, Chr0, Pat0, Scn0, Shp0, Clr0]
     MAGIC = "bres"
     ROOTMAGIC = "root"
+    OVERWRITE = False
+    DESTINATION = None
 
     def __init__(self, name, parent=None, readFile = True):
         '''
@@ -51,6 +54,10 @@ class Brres():
     def getModelsByName(self, name):
         return findAll(name, self.models)
 
+
+    def close(self):
+        self.save(self.DESTINATION, self.OVERWRITE)
+
     def save(self, filename, overwrite):
         if not filename:
             filename = self.name
@@ -60,9 +67,9 @@ class Brres():
             print("File '{}' already exists!".format(filename))
             return False
         else:
-            binfilefile = binfile(filename, mode="w")
-            self.pack(binfilefile)
-            binfilefile.commitWrite()
+            f = binfile(filename, mode="w")
+            self.pack(f)
+            f.commitWrite()
             print("Wrote file '{}'".format(filename))
             return True
 
@@ -185,9 +192,19 @@ class Brres():
                 count += 1
         return count
 
+    # ----------------- HOOKING REFERENCES ----------------------------------
+    def hookAnimationRefs(self):
+        """Hooks up references from materials to animations"""
+        for x in self.anmSrt:
+            name = x.name.rstrip(string.digits)
+            for mdl in self.models:
+                if name == mdl.name:
+                    mdl.hookSRT0ToMats(x)
+
     # -------------------------------------------------------------------------
     #   PACKING / UNPACKING
     # -------------------------------------------------------------------------
+
     def unpackFolder(self, binfile, root, folderIndex):
         ''' Unpacks the folder folderIndex '''
         name = self.FOLDERS[folderIndex]
@@ -232,6 +249,7 @@ class Brres():
         if __debug__:
             print("Finished unpacking brres.")
         binfile.end()
+        self.hookAnimationRefs()
 
     def generateRoot(self, binfile):
         ''' Generates the root folders
@@ -262,14 +280,14 @@ class Brres():
         for i in range(len(offsets)):
             entries[i].dataPtr = offsets[i] + rtsize
         byteSize += rtsize + 8  # add first folder to bytsize, and header len
-        return rootFolders, bytesize
+        return rootFolders, byteSize
 
     def packRoot(self, binfile):
         ''' Packs the root section, returns root folders that need data ptrs'''
         binfile.start()
         binfile.writeMagic("root")
         rtFolders, rtSize = self.generateRoot(binfile)
-        binfile.write("I", rtsize)
+        binfile.write("I", rtSize)
         for f in rtFolders:
             f.pack()
         binfile.end()
@@ -292,7 +310,7 @@ class Brres():
                 refGroup = folders[folderIndex]
                 for file in subfolder:
                     refGroup.createEntryRefI()  # create the dataptr
-                    entry.pack(binfile)
+                    file.pack(binfile)
                 folderIndex += 1
         binfile.packNames()
         binfile.end()

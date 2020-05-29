@@ -4,7 +4,7 @@
 
 
 class BPCommand(object):
-    def __init__(self, bpmem, data=0, enabled = True):
+    def __init__(self, bpmem, data=0, enabled=True):
         self.bpmem = bpmem
         self.data = data
         self.enabled = 0x61 & enabled
@@ -25,9 +25,9 @@ class BPCommand(object):
 
     def isEnabled(self):
         return self.enabled > 0
+
     def setEnabled(self, enable):
         self.enabled = 0x61 & enable
-
 
     # bpmem Constants
     BPMEM_GENMODE = 0x00
@@ -289,29 +289,35 @@ class BPCommand(object):
 
 class ZMode(BPCommand):
     ''' Depth settings '''
-    def __init__(self, enableDepthTest = True, enableDepthUpdate = True):
+
+    def __init__(self, enableDepthTest=True, enableDepthUpdate=True):
         super(ZMode, self).__init__(BPCommand.BPMEM_ZMODE,
-            enableDepthUpdate << 4 | 0xe | enableDepthTest)
+                                    enableDepthUpdate << 4 | 0xe | enableDepthTest)
 
     def getDepthTest(self):
         return self.data & 1
+
     def setDepthTest(self, enable):
         self.data = (enable | 0xfe) & self.data
 
     def getDepthUpdate(self):
         return self.data >> 4 & 1
+
     def setDepthUpdate(self, enable):
         self.data = self.data & (enable << 4 | 0xf)
 
     def getDepthFunction(self):
         return self.data >> 1 & 7
+
     def setDepthFunction(self, ival):
         ''' never 0, < 1, = 2, <= 3, > 4, != 5, >= 6, always 7 '''
         self.data = self.data & (ival << 1 | 0xf1)
 
+
 class AlphaFunction(BPCommand):
     ''' Alpha function '''
-    def __init__(self, xlu = False):
+
+    def __init__(self, xlu=False):
         data = 0x1eff80 if xlu else 0x3f0000
         super(AlphaFunction, self).__init__(BPCommand.BPMEM_ALPHACOMPARE, data)
 
@@ -332,135 +338,211 @@ class AlphaFunction(BPCommand):
 
     def getRef0(self):
         return self.data & 0xff
+
     def setRef0(self, val):
         self.data = self.data & 0xffff00 | val
 
     def getRef1(self):
         return self.data >> 8 & 0xff
+
     def setRef1(self, val):
         self.data = self.data & 0xff00ff | val << 8
 
     def getComp0(self):
         return self.data >> 16 & 0x7
+
     def setComp0(self, val):
         ''' never 0, < 1, = 2, <= 3, > 4, != 5, >= 6, always 7 '''
         self.data = self.data & 0xf8ffff | val << 16
 
     def getComp1(self):
         return self.data >> 19 & 0x7
+
     def setComp1(self, val):
         self.data = self.data & 0xc7ffff | val << 19
 
     def getLogic(self):
         return self.data >> 22 & 0x3
+
     def setLogic(self, val):
         ''' and 0, or 1, exclusiveor 2, inverseExclusiveOr 3 '''
         self.data = self.data & 0x3fffff | val << 22
 
+
 class BlendMode(BPCommand):
     ''' Blend Mode '''
-    def __init__(self, enabled = False):
+
+    def __init__(self, enabled=False):
         super(BlendMode, self).__init__(BPCommand.BPMEM_BLENDMODE, 0x34A0 | enabled)
 
     def isEnabled(self):
         return self.data & 1
+
     def setEnabled(self, enable):
         self.data = self.data & 0xfffffe | enable
 
     def getBlendLogic(self):
         return self.data >> 12 & 0xf
+
     def setBlendLogic(self, ival):
         self.data = self.data & 0x0fff | ival << 12
+
     def getSrcFactor(self):
         return self.data >> 8 & 7
+
     def setSrcFactor(self, ival):
         self.data = self.data & 0xf8ff | ival << 8
+
     def getDstFactor(self):
         return self.data >> 5 & 7
+
     def setDstFactor(self, ival):
         self.data = self.data & 0xff1f | ival << 5
 
 
 class ConstantAlpha(BPCommand):
     ''' constant alpha '''
-    def __init__(self, enabled = False):
+
+    def __init__(self, enabled=False):
         data = 0 if not enabled else 0x1ff
         super(ConstantAlpha, self).__init__(BPCommand.BPMEM_CONSTANTALPHA, data)
 
     def isEnabled(self):
         return self.data >> 8 & 1
+
     def setEnabled(self, enable):
         self.data = self.data & 0xff | enable << 8
+
     def get(self):
         return self.data & 0xff
+
     def set(self, v):
         self.data = self.data & 0x100 | v
 
 
 class ColorEnv(BPCommand):
     ''' Dealing with color shader ops '''
-    def __init__(self):
-        super(ColorEnv, self).__init__(0x00)    # todo
+
+    def __init__(self, id):
+        super(ColorEnv, self).__init__(0xC0 + (id * 2), 0x18f8af)
 
     def getSelA(self):
         return self.data >> 12 & 0xf
+
     def setSelA(self, ival):
         self.data = self.data & 0xff0fff | ival << 12
+
     def getSelB(self):
         return self.data >> 8 & 0xf
+
     def setSelB(self, ival):
         self.data = self.data & 0xfff0ff | ival << 8
+
     def getSelC(self):
         return self.data >> 4 & 0xf
+
     def setSelC(self, ival):
         self.data = self.data & 0xffff0f | ival << 4
+
     def getSelD(self):
         return self.data & 0xf
-    def setSelD(sef, ival):
+
+    def setSelD(self, ival):
         self.data = self.data & 0xfffff0 | ival
+
     def getDest(self):
         return self.data >> 22 & 0x3
+
     def setDest(self, ival):
         self.data = self.data & 0x3fffff | ival << 22
+
+    def getBias(self):
+        return self.data >> 16 & 3
+
+    def getSub(self):
+        return self.data >> 18 & 1
+
+    def getClamp(self):
+        return self.data >> 19 & 1
+
+    def getShift(self):
+        return self.data >> 20 & 3
+
 
 class AlphaEnv(BPCommand):
     ''' Dealing with alpha shader ops '''
-    def __init__(self):
-        super(AlphaEnv, self).__init__(0x00)    # todo
+
+    def __init__(self, id):
+        super(AlphaEnv, self).__init__(0xc1 + (id * 2), 0x08f2f0)
 
     def getSelA(self):
         return self.data >> 13 & 0x7
+
     def setSelA(self, ival):
         self.data = self.data & 0xff1fff | ival << 13
+
     def getSelB(self):
         return self.data >> 10 & 0x7
+
     def setSelB(self, ival):
         self.data = self.data & 0xffe3ff | ival << 10
+
     def getSelC(self):
         return self.data >> 7 & 0x7
+
     def setSelC(self, ival):
         self.data = self.data & 0xfffc7f | ival << 7
+
     def getSelD(self):
         return self.data >> 4 & 0x7
-    def setSelD(sef, ival):
+
+    def setSelD(self, ival):
         self.data = self.data & 0xffff8f | ival << 4
+
+    def getBias(self):
+        return self.data >> 16 & 3
+
+    def setBias(self, val):
+        self.data = self.data & 0xfcffff | val << 16
+
+    def getSub(self):
+        return self.data >> 18 & 1
+
+    def getClamp(self):
+        return self.data >> 19 & 1
+
+    def getShift(self):
+        return self.data >> 20 & 3
+
+    def getRSwap(self):
+        return self.data & 3
+
+    def getTSwap(self):
+        return self.data >> 2 & 3
+
     def getDest(self):
         return self.data >> 22 & 0x3
+
     def setDest(self, ival):
         self.data = self.data & 0x3fffff | ival << 22
+
 
 class RAS1_IRef(BPCommand):
     def __init__(self):
         super(RAS1_IRef, self).__init__(BPCommand.BPMEM_IREF, -1)
+
     def getTexMap(self, index):
         return self.data >> (index * 6) & 7
+
     def getTexCoord(self, index):
         return self.data >> ((index * 6) + 3) & 7
+
     def setTexMap(self, index, val):
         val |= 0xfffff8
         for i in range(index * 6):
             val = val << 1 | 1
         self.data = self.data & val
+
     def setTexCoord(self, index, val):
         val |= 0xfffff8
         for i in range(index * 6 + 3):
@@ -468,9 +550,39 @@ class RAS1_IRef(BPCommand):
         self.data = self.data & val
 
 
+class RAS1_TRef(BPCommand):
+    def __init__(self, id):
+        super(RAS1_TRef, self).__init__(BPCommand.BPMEM_TREF0 + id, -1)
+
+    def getTexMapID0(self):
+        return self.data & 7
+
+    def getTexCoordID0(self):
+        return self.data >> 3 & 7
+
+    def getTexEnabled0(self):
+        return self.data >> 6 & 1
+
+    def getColorChannel0(self):
+        return self.data >> 7 & 7
+
+    def getTexMapID1(self):
+        return self.data >> 12 & 7
+
+    def getTexCoordID1(self):
+        return self.data >> 15 & 7
+
+    def getTexEnabled1(self):
+        return self.data >> 18 & 1
+
+    def getColorChannel1(self):
+        return self.data >> 19 & 7
+
+
 class RAS1_SS(BPCommand):
     def __init__(self, registerN):
         super(RAS1_SS, self).__init__(BPCommand.BPMEM_RAS1_SS0 + registerN)
+
 
 class IndMatrix():
     ''' Indirect matrices are typically used with bump map materials
@@ -478,7 +590,8 @@ class IndMatrix():
         scale: 6-bit value that controls outgoing coordinate scale (2^scale)
     '''
     SIZE = 15
-    def __init__(self, id, scale = 46, enable = False):
+
+    def __init__(self, id, scale=46, enable=False):
         ''' Indirect 2x3 matrix that blit processor loads
             the matrix has two rows and three columns, and it appears on the
             left side of the multiply. On the right side is a column vector
@@ -497,14 +610,17 @@ class IndMatrix():
         self.enabled = enable
         self.scale = scale
         self.matrix = [[0] * 3, [0] * 3]
-        self.id = id    # typically 0
+        self.id = id  # typically 0
 
     def getScale(self):
         return self.scale
+
     def setScale(self, val):
         self.scale = val
+
     def __getitem__(self, key):
         return self.matrix[key]
+
     def __setitem__(self, key, val):
         if val > 1 or val < -1:
             print("Warning: Ind matrix {} value {} out of range! Should be between -1 and 1".format(self.id, val))
@@ -519,28 +635,28 @@ class IndMatrix():
         while bitn > 0:
             print("divisor {} bitn {}".format(start, bitn))
             if val & 1:
-                f += 1.0/start
+                f += 1.0 / start
                 print(f)
             val >>= 1
-            start <<= 1
+            start >>= 1
             bitn -= 1
-        if val & 1: # sign
+        if val & 1:  # sign
             f *= -1
         return f
 
     def encode11bitFloat(self, val):
         '''Encodes to 10bit float '''
-        e = 1 if val < 0 else 0 # sign
-        base = 2
-        bitn = 1
+        e = 1 if val < 0 else 0  # sign
+        start = bitn = 1
         val = abs(val)
         while bitn <= 10:
             e <<= 1
-            subtractee = 1 / base ^ bitn
+            subtractee = 1 / start
             if val >= subtractee:
                 val -= subtractee
                 e |= 1
             bitn += 1
+            start <<= 1
         return e
 
     def unpack(self, binfile):
@@ -550,7 +666,7 @@ class IndMatrix():
         for i in range(3):
             if not c.unpack(binfile):
                 self.enabled = False
-                binfile.advance(10) # skip ahead
+                binfile.advance(10)  # skip ahead
                 break
             # parse data
             if i == 0:
@@ -564,7 +680,7 @@ class IndMatrix():
         if not self.enabled:
             binfile.advance(self.SIZE)
             return
-        c = BPCommand(self.BPCommand.BPMEM_IND_MTXA0 + self.id * 3)
+        c = BPCommand(BPCommand.BPMEM_IND_MTXA0 + self.id * 3)
         for i in range(3):
             sbits = (self.scale >> (2 * i) & 3)
             r0 = self.encode11bitFloat(self.matrix[0][i])
@@ -576,7 +692,8 @@ class IndMatrix():
 
 class ColorReg(BPCommand):
     ''' Tev registers '''
-    def __init__(self, register, high, type, data = 0):
+
+    def __init__(self, register, high, type, data=0):
         ''' Color register
             register: 0-4
             high: 0- low, 1 - high
@@ -586,9 +703,68 @@ class ColorReg(BPCommand):
                 //0111 1111 1111 0000 0000 0000 Alpha (Lo) /Green (Hi)
         '''
         super(ColorReg, self).__init__(0xE0 + (2 * register) + high, data)
+
     def getColor(self):
         ''' returns (alpha, red) if low, (green, blue) if high. '''
         return [self.data >> 12 & 0x7ff, self.data & 0xfff]
+
     def setColor(self, color):
         ''' color: (alpha, red) | (green, blue) '''
         self.data = self.data & 0x800000 | color[0] << 12 | color[1]
+
+
+class IndCmd(BPCommand):
+    ''' Indirect stage command '''
+
+    def __init__(self, id):
+        super(IndCmd, self).__init__(0x10 + id)  # possibly varying order?
+
+    def getStage(self):
+        return self.data & 3
+
+    def getFormat(self):
+        return self.data >> 2 & 3
+
+    def getBias(self):
+        return self.data >> 4 & 7
+
+    def getAlpha(self):
+        return self.data >> 7 & 3
+
+    def getMtx(self):
+        return self.data >> 9 & 7
+
+    def getSWrap(self):
+        return self.data >> 13 & 7
+
+    def getTWrap(self):
+        return self.data >> 16 & 7
+
+    def getUsePrevStage(self):
+        return self.data >> 19 & 1
+
+    def getUnmodifiedLOD(self):
+        return self.data >> 20 & 1
+
+
+class KCel(BPCommand):
+    def __init__(self, id):
+        super(KCel, self).__init__(0xf6 + id)
+
+    def getXRGB(self):
+        return self.data & 3
+
+    def getXGA(self):
+        return self.data >> 2 & 3
+
+    def getCSel0(self):
+        return self.data >> 4 & 0x1F
+
+    def getASel0(self):
+        return self.data >> 9 & 0x1F
+
+    def getCSel1(self):
+        return self.data >> 14 & 0x1F
+
+    def getASel1(self):
+        return self.data >> 19 & 0x1F

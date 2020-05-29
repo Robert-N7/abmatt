@@ -37,21 +37,43 @@ This next command would update all materials starting with the prefix xlu to tra
 ## File Format
 ABMatT supports reading in external commands from files which have a specified extended BNF format.
 ```
-command = set | info;
-set   = 'set' space key ':' value [space 'for' space name] [space 'in' space container] EOL;
-info  = 'info' [space key] [space 'for' space name] [space 'in' space container] EOL;
-key   = 'xlu' | 'transparent' | 'ref0' | 'ref1' |
-  'comp0' | 'comp1' | 'comparebeforetexture' | 'blend' |
-  'blendsrc' | 'blendlogic' | 'blenddest' | 'constantalpha' |
-  'cullmode' | 'shader' | 'shadercolor' | 'lightchannel' |
-  'lightset' | 'fogset' | 'matrixmode' | 'enabledepthtest' |
-  'enabledepthupdate' | 'depthfunction' | 'drawpriority' |
-  'scale' | 'rotation' | 'translation' | 'scn0cameraref' |
+command = (set | add | remove | select | info) ['for' selection] EOL;
+set   = 'set' space type space setting;
+add   = 'add' space type;
+remove = 'remove' space type;
+select = 'select' space type;
+info  = 'info' space type [space key];
+selection = [name] [space 'in' container]
+container = ['file' space filename] ['model' space name];
+type = 'material' | 'layer' [number] | 'shader' | 'stage' [number] | 'srt0' [number];
+setting =  key ':' value;
+key = materialkey | layerkey | shaderkey | stagekey | srt0key;
+
+materialkey = 'xlu' | 'transparent' | 'ref0' | 'ref1' |
+ 'comp0' | 'comp1' | 'comparebeforetexture' | 'blend' |
+ 'blendsrc' | 'blendlogic' | 'blenddest' | 'constantalpha' |
+ 'cullmode' | 'shader' | 'shadercolor' | 'lightchannel' |
+ 'lightset' | 'fogset' | 'matrixmode' | 'enabledepthtest' |
+ 'enabledepthupdate' | 'depthfunction' | 'drawpriority';
+
+layerkey = 'scale' | 'rotation' | 'translation' | 'scn0cameraref' |
   'scn0lightref' | 'mapmode' | 'uwrap' | 'vwrap' |    
   'minfilter' | 'magfilter' | 'lodbias' | 'anisotrophy' |
   'clampbias' | 'texelinterpolate' | 'projection' | 'inputform' |
   'type' | 'coordinates' | 'embosssource' | 'embosslight' |
-  'normalize';
+  'normalize' | 'indirectmatrix';
+
+shaderkey = 'texturerefcount' | 'indirectmap' | 'indirectcoord';
+
+stagekey = 'enabled' | 'mapid' | 'coordinateid' | 'textureswapselection' |
+   'rastercolor' | 'rasterswapselection' | 'colorconstantselection' |
+   'colora' | 'colorb' | 'colorc' | 'colord' | 'colorbias' |
+   'coloroperation' | 'colorclamp' | 'colorscale' | 'colordestination' |
+   'alphaconstantselection' | 'alphaa' | 'alphab' | 'alphac' | 'alphad' |
+   'alphabias' | 'alphaoperation' | 'alphaclamp' | 'alphascale' | 'alphadestination' | 'indirectstage' | 'indirectformat' | 'indirectalpha' | 'indirectbias' | 'indirectmatrix' | 'indirectswrap' | 'indirecttwrap' | 'indirectuseprevstage' | 'indirectunmodifiedlod';
+
+srt0key = 'framecount' | 'looping' | 'keyframe'
+
 value     = 'true' | 'false' | number-list | cull-mode | light-channel | const-alpha | matrix-mode | blend-logic | blend-factor | wrap-mode | minfilter | map-mode | projection | inputform | type | coordinates;
   number-list   = number {, number};
   cull-mode     = 'all' | 'inside' | 'outside' | 'none';
@@ -75,9 +97,7 @@ value     = 'true' | 'false' | number-list | cull-mode | light-channel | const-a
   coordinates   = 'geometry' | 'normals' | 'colors' | 'binfileormalst' |    
     'binfileormalsb' | 'texcoord0' | 'texcoord1' | 'texcoord2' | 'texcoord3'  | 'texcoord4' | 'texcoord5' | 'texcoord6' | 'texcoord7';
 
-container = ['file' space filename] ['model' space name] ['material' space name];
 name      = string | regex {',' space string | regex};
-space     = ? US-ASCII character 32 ?;
 EOL       = [\r] \n | EOF;
 ```
 

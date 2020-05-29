@@ -78,7 +78,7 @@ class BinFile:
         '''
         li = self.refMarker
         for i in range(numRefs):
-            li.append(file.offset - self.beginOffset)
+            li.append(self.offset - self.beginOffset)
         self.advance(4 * numRefs)
 
     def createRefFromStored(self, refIndex = 0, pop = True):
@@ -185,7 +185,7 @@ class BinFile:
             self.offset = offset + startOffset
             return offset
         except:
-            raise("Stored index from {} at {} does not exist!".format(startOffset, index))
+            raise ValueError("Stored index from {} at {} does not exist!".format(startOffset, index))
 
     def recallAll(self):
         ''' retrieves all refs at current start, removing them '''
@@ -199,7 +199,7 @@ class BinFile:
         ''' advances offset pointer, possibly padding with 0's in write mode '''
         self.offset += step
         if self.isWriteMode:
-            m = file.offset - len(self.file)
+            m = self.offset - len(self.file)
             if m > 0:
                 self.file.extend(b'\0' * m)
 
@@ -218,9 +218,9 @@ class BinFile:
     # get outer (file/container) offset
     def getOuterOffset(self):
         ''' Gets the negative offset to the outer file in relation to current start'''
-        len = len(self.stack)
-        if len > 1:
-            return self.stack[len - 2] - self.beginOffset
+        l = len(self.stack)
+        if l > 1:
+            return self.stack[l - 2] - self.beginOffset
         else:
             return 0
 
@@ -264,8 +264,8 @@ class BinFile:
 
     def writeRemaining(self, bytes):
         ''' writes the remaining bytes at current offset '''
-        len = len(bytes)
-        return self.write("{}B".format(len), len)
+        l = len(bytes)
+        return self.write("{}B".format(l), l)
 
     # Names
     def unpack_name(self, advance = True):
@@ -278,7 +278,7 @@ class BinFile:
         if nameLens[0] > 256:
             print("Name length too long!")
         else:
-            name = self.readOffset(str(nameLens[0]) + "s", offset);
+            name = self.readOffset(str(nameLens[0]) + "s", offset)
             # print("Name: {}".format(name[0]))
             return name[0].decode()
 
@@ -289,30 +289,25 @@ class BinFile:
             and advances the file offset
         '''
         map = self.nameRefMap
-        if not map.has_key(name):
-            map[name] = [(self.beginOffset, file.offset)]
+        if not name in map:
+            map[name] = [(self.beginOffset, self.offset)]
         else:
-            map[name].append((self.beginOffset, file.offset))
+            map[name].append((self.beginOffset, self.offset))
         self.advance(4)
 
-    def pack_name(self, offset, name):
-        ''' packs a single name '''
-        len = len(name)
-        self.writeOffset("I{}s".format(len), offset -4, len, name)
-
-    def packNames():
+    def packNames(self):
         '''packs in the names'''
         map = self.nameRefMap
         names = map.keys()
         names.sort()
-        for name in names:
-            offset = file.offset + 4
-            len = len(name)
-            self.write("I{}s".format(len), len + 4, len, name)
+        for x in names:
+            offset = self.offset + 4
+            l = len(x)
+            self.write("I{}s".format(l), l, x)
             # write name reference pointers
-            reflist = map.get(name)
+            reflist = map.get(x)
             if not reflist:
-                print("Unused name: {}".format(name))
+                print("Unused name: {}".format(x))
             else:
                 for ref in reflist:
                     self.writeOffset("I", ref[1], offset - ref[0])
@@ -337,9 +332,9 @@ class FolderEntry:
     def getName(self):
         return self.name
     def getOffset(self):
-        return self.datapointer
+        return self.dataPtr
     def follow(self, binfile):
-        binfile.offset = self.datapointer
+        binfile.offset = self.dataPtr
 
     def unpack(self, binfile):
         self.id, u, self.left, self.right = binfile.read("4H", 8)
@@ -347,7 +342,7 @@ class FolderEntry:
         binfile.store()
 
     def pack(self, binfile):
-        self.binfile.write("4H", self.id, 0, self.left, self.right)
+        binfile.write("4H", self.id, 0, self.left, self.right)
         binfile.storeNameRef(self.name)
         if self.dataPtr:
             binfile.write("I", self.dataPtr)
@@ -372,7 +367,7 @@ class FolderEntry:
                     break
         return self.id
 
-    def getHighestBit(val):
+    def getHighestBit(self, val):
         start = 0x80
         i = 7
         while start and not (val & start):
@@ -380,11 +375,11 @@ class FolderEntry:
             start >>= 1
         return i
 
-    def get_brres_id_bit(id):
+    def get_brres_id_bit(self, id):
         idx = id >> 3
         return idx < len(self.name) and self.name[idx] >> (id & 7) & 1
 
-    def calc_brres_entry(entrylist):
+    def calc_brres_entry(self, entrylist):
         ''' calculates brres entry, given an entry array'''
         head = entrylist[0]
         self.id = self.calc_brres_id("")
@@ -463,8 +458,8 @@ class Folder:
         binfile.start()
         self.offset = binfile.offset
         entries = self.calcEntries()
-        len = len(entries)
-        binfile.write("2I", len * 16, len - 1) # -1 to ignore reference entry
+        l = len(entries)
+        binfile.write("2I", l * 16, l - 1) # -1 to ignore reference entry
         for x in entries:
             x.pack(binfile)
         binfile.end()

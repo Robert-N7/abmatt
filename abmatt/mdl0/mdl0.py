@@ -1,6 +1,7 @@
 ''' MDL0 Models '''
 from material import Material
 from matching import *
+from mdl0.drawlist import DrawList, Definition
 from shader import Shader
 from subfile import SubFile
 from binfile import *
@@ -44,13 +45,15 @@ class ModelGeneric(object):
         binfile.writeRemaining(self.data)
         binfile.end()
 
-class TextureLink:
+class TextureLink():
     ''' Links from materials to layers '''
-    def __init__(self):
+    def __init__(self, name, parent = None):
+        self.name = name
+        self.parent = parent
         self.links = []
 
     def unpack(self, binfile):
-        length = binfile.read("I", 4)
+        [length] = binfile.read("I", 4)
         for i in range(length):
             self.links.append(binfile.read("2I", 8))
             # todo: what does this actually do/how to rebuild
@@ -112,44 +115,7 @@ class BoneTable:
         binfile.write("I", length)
         binfile.write("{}I".format(length), length * 4, self.entries)
 
-class DrawList:
-    ''' Drawlist, controls drawing commands such as opacity'''
-    names = ["drawOpa", "drawXlu", "mixNode", "boneTree"] # todo check these
-    def __init__(self, name, parent):
-        self.name = name
-        self.parent = parent
-        self.list = []
 
-    def unpack(self, binfile):
-        ''' unpacks draw list '''
-        currentList = self.list
-        while True:
-            [byte] = binfile.read("B", 1)
-            currentList.append(byte)
-            if byte == 0x01: # end list
-                break
-            elif byte == 0x4:
-                currentList.append(binfile.read("7B", 7))
-            elif byte == 0x3:
-                weightId, weigthCount, tableId = binfile.read("3H", 6)
-                bytes = 4 * weigthCount
-                weights = binfile.read("{}B".format(bytes), bytes) # not sure if these are ints
-                drawl = [weightId, weigthCount, tableId] + list(weights)
-                currentList.append(drawl)
-            elif byte > 0x6: # error reading list?
-                print("Error unpacking list {}".format(currentList))
-                break
-            else:
-                currentList.append(binfile.read("4B", 4))
-
-    def pack(self, binfile):
-        ''' packs the draw list '''
-        for i in range(len(self.list)):
-            x = self.list[i]
-            if i % 2 == 0: # cmd
-                binfile.write("B", x)
-            else:   # list
-                binfile.write("{}B".format(len(x)), x)
 
 # ---------------------------------------------------------------------
 
@@ -172,7 +138,9 @@ class Mdl0(SubFile):
     def __init__(self, name, parent):
         ''' initialize with name and parent '''
         super(Mdl0, self).__init__(name, parent)
-        self.drawlists = []
+        self.definitions = []
+        self.drawXLU = None
+        self.drawOpa = None
         self.bones = []
         self.vertices = []
         self.normals = []
@@ -186,10 +154,20 @@ class Mdl0(SubFile):
         self.paletteLinks = []
         self.textureLinks = []
         self.version = 11
-        self.sections = [self.drawlists, self.bones, self.vertices, self.normals,
+        self.sections = [self.definitions, self.bones, self.vertices, self.normals,
                          self.colors, self.texCoords, self.furVectors, self.furLayers,
                          self.materials, self.shaders, self.objects,
                          self.textureLinks, self.paletteLinks]
+
+    def getMaterialsByName(self, name):
+        return findAll(name, self.materials)
+
+    def getMaterialByName(self, name):
+        """Exact naming"""
+        for m in self.materials:
+            if m.name == name:
+                return m
+        return None
 
     def info(self, command, trace):
         if __debug__:
@@ -206,6 +184,18 @@ class Mdl0(SubFile):
             for x in self.materials:
                 x.info(command, trace)
 
+    #---------------HOOK REFERENCES -----------------------------------------
+    def hookSRT0ToMats(self, srt0):
+        for animation in srt0.matAnimations:
+            m = self.getMaterialByName(animation.name)
+            if m:
+                m.srt0 = animation
+
+    def hookShadersToMats(self):
+        for x in self.shaders:
+            mat = self.getMaterialByName(x.name)
+            mat.shader = x
+            x.material = mat
 
     #---------------START PACKING STUFF -------------------------------------
     def unpackSection(self, binfile, sectionIndex):
@@ -228,6 +218,23 @@ class Mdl0(SubFile):
                 section.append(d)
             return len(section)
 
+    def unpackDefinitions(self, binfile):
+        binfile.recallParent()
+        folder = Folder(binfile, self.SECTION_NAMES[0])
+        folder.unpack(binfile)
+        while len(folder.entries):
+            name = folder.recallEntryI()
+            if 'Draw' in name:
+                d = DrawList(name, self)
+                if 'Xlu' in name:
+                    self.drawXLU = d
+                elif 'Opa' in name:
+                    self.drawOpa = d
+            else:
+                d = Definition(name, self)
+            d.unpack(binfile)
+            self.definitions.append(d)
+
     def unpack(self, binfile):
         ''' unpacks model data '''
         self._unpack(binfile)
@@ -243,7 +250,8 @@ class Mdl0(SubFile):
         self.boneTable = BoneTable()
         self.boneTable.unpack(binfile)
         # unpack sections
-        for i in range(self._getNumSections()):
+        self.unpackDefinitions(binfile)
+        for i in range(1, self._getNumSections()):
             self.unpackSection(binfile, i)
         binfile.end()
         binfile.end()   # end file

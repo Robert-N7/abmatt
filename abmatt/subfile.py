@@ -24,8 +24,7 @@ class SubFile(object):
 
     def _unpackData(self, binfile):
         ''' should be overriden if modifying or has changeable offsets, unpacks the data after header '''
-        remaining = self.len - (binfile.offset - binfile.start)
-        self.data = binfile.read("{}B".format(remaining), remaining)
+        self.data = binfile.readRemaining(self.len)
         binfile.end()
 
     def _packData(self, binfile):
@@ -114,7 +113,7 @@ Pat0 Brres subfile
 '''
 class Pat0(SubFile):
     ''' Pat0 animation class '''
-    MAGIC = "pat0"
+    MAGIC = "PAT0"
     VERSION_SECTIONCOUNT = {4:6}
     def __init__(self, name, parent):
         super(Pat0, self).__init__(name, parent)
@@ -166,7 +165,7 @@ Tex0 texture file representation
 '''
 class Tex0(SubFile):
     ''' Tex Class '''
-    MAGIC = 'tex0'
+    MAGIC = 'TEX0'
     VERSION_SECTIONCOUNT = {1:1, 2:2, 3:1}
     def __init__(self, name, parent):
         super(Tex0, self).__init__(name, parent)

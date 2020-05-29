@@ -2,28 +2,6 @@
 from xf import XFTexMatrix, XFDualTex
 from matching import *
 
-def validBool(str):
-    if str == "false" or not str or str == "0" or str == "disable":
-        return False
-    elif str == "true" or str == "1" or str == "enable":
-        return True
-    raise ValueError("Not a boolean '" + str + "', expected true|false")
-
-# finds index of item, if it is equal to compare index returns -1
-# raises error if not found
-def indexListItem(list, item, compareIndex):
-    for i in range(len(list)):
-        if list[i] == item:
-            if i != compareIndex:
-                return i
-            else:
-                return -1
-    raise ValueError("Invalid setting '" + item + "', Options are: " + str(list))
-
-def parseValStr(value):
-    if value[0] == "(" and value[-1] == ")":
-        value = value[1:-1]
-    return value.split(",")
 
 
 class Layer:
@@ -75,9 +53,9 @@ class Layer:
     # ----------------------------------------------------------------------------------
     #   GETTERS
     # ----------------------------------------------------------------------------------
-    def getKey(self, key):
+    def __getitem__(self, item):
         for i in range(self.NUM_SETTINGS):
-            if self.SETTINGS[i] == key:
+            if self.SETTINGS[i] == item:
                 func = self.GET_SETTINGS[i]
                 return func(self)
 
@@ -143,9 +121,9 @@ class Layer:
 #   SETTERS
 # ----------------------------------------------------------------------------------
 
-    def setKey(self, key, strValue):
+    def __setitem__(self, key, value):
         fun = self.getSetter( key)
-        return self.fun(strValue)
+        return fun(value)
 
     def setScaleStr(self, str):
         values = parseValStr(str)

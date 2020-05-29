@@ -3,13 +3,11 @@
 #   Robert Nelson
 #  Structure for working with materials
 #---------------------------------------------------------------------
-import re
 from struct import *
-from layer import *
-from matgx import MatGX
-from bp import *
-from binfile import printCollectionHex
-BOOLABLE = ["False", "True"]
+
+from matching import validBool, indexListItem, matches
+from mdl0.layer import Layer
+from mdl0.wiigraphics.matgx import MatGX
 
 if __debug__:
     class OutAnalysis():
@@ -60,12 +58,13 @@ class Material:
         self.lightChannels = []
         self.shader = None      # to be hooked up
         self.drawlist = None    # to be hooked up
+        self.srt0 = None        # to be hooked up
         self.matGX = MatGX()
 
     def __str__(self):
         # print("Cull mode is {}".format(self.cullmode))
         return  "Mt{} {}: xlu {} layers {} culling {} blend {}".format(self.id, self.name,
-        self.xlu, self.numLayers, self.CULL_STRINGS[self.cullmode], self.enableBlend)
+        self.xlu, len(self.layers), self.CULL_STRINGS[self.cullmode], self.getBlend())
 
 # ==========================================================================
 # Getters
@@ -154,10 +153,6 @@ class Material:
     def getDrawPriority(self):
         return self.drawPriority
 
-    def getMdlOffset(self):
-        # print("Mdl0 offset {}\t my offset {} ".format(self.mdl0Offset, self.offset))
-        return self.mdl0Offset + self.offset
-
     def getLayer(self, i):
         if i < len(self.layers):
             return self.layers[i]
@@ -169,7 +164,7 @@ class Material:
     getShaderColor, getLightChannel, getLightset, getFogset, getMatrixMode, getEnableDepthTest,
     getEnableDepthUpdate, getDepthFunction, getDrawPriority)
 
-    def getSetter(self, key):
+    def __getitem__(self, key):
         for i in range(self.NUM_SETTINGS):
             if key == self.SETTINGS[i]:
                 return self.SET_SETTING[i]
@@ -179,11 +174,11 @@ class Material:
 #   SETTERS
 # ---------------------------------------------------------------------------
 
-    def setKey(self, key, strvalue):
+    def __setitem__(self, key, value):
         for i in range(self.NUM_SETTINGS):
             if key == self.SETTINGS[i]:
                 func = self.SET_SETTING[i]
-                return func(strvalue)
+                return func(value)
 
     def setTransparent(self):
         af = self.matGX.alphafunction
@@ -196,6 +191,7 @@ class Material:
         if not self.xlu or self.compareBeforeTexture:
             self.compareBeforeTexture = False
             self.xlu = True
+            self.parent.drawXLU.insert(self.parent.drawOpa.pop(self.id))
             self.isModified = True
 
     def setOpaque(self):
@@ -207,6 +203,7 @@ class Material:
             af.setComp1(self.COMP_ALWAYS)
             self.compareBeforeTexture = True
             self.xlu = False
+            self.parent.drawOpa.insert(self.parent.drawXLU.pop(self.id))
             self.isModified = True
 
     def setTransparentStr(self, str):
@@ -221,7 +218,7 @@ class Material:
             return False
         shader = self.parent.getTev(shaderindex)
         if not shader:
-            raise ValueError("Shader '{}' does not exist in model '{}'!".format(shaderindex, mdl.name))
+            raise ValueError("Shader '{}' does not exist in model '{}'!".format(shaderindex, self.parent.name))
         if self.setShader(shader):
             # update shader material entry
             self.parent.updateTevEntry(shader, self)
@@ -579,6 +576,7 @@ class Material:
             print("id {} xlu {} layers{} lights {}".format(self.id, xluFlags, ntexgens, nlights))
         binfile.advance(8)
         self.shaderOffset, nlayers = binfile.read("2I", 8)
+        self.shaderOffset += binfile.beginOffset
         binfile.store() #  layer offset
         if self.parent.version >= 10:
             binfile.advance(8)
