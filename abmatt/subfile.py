@@ -24,16 +24,22 @@ class SubFile(object):
 
     def _unpackData(self, binfile):
         ''' should be overriden if modifying or has changeable offsets, unpacks the data after header '''
-        self.data = binfile.readRemaining(self.len)
+        self.data = binfile.readRemaining(self.byte_len)
+        offsets = []
+        for i in range(self._getNumSections()):
+            offsets.append(binfile.recall())
+        self.offsets = offsets
         binfile.end()
 
     def _packData(self, binfile):
         ''' should be overriden if modifying or has changeable offsets, packs the data after header
             must handle packing the marked offset sections in binfile file
         '''
-        remaining = self.len - (binfile.offset - binfile.start)
-        binfile.write("{}B".format(remaining), remaining, self.data)
-        file.end()
+        binfile.writeRemaining(self.data)
+        # create the offsets
+        for i in self.offsets:
+            binfile.writeOffset("I", binfile.unmark(), i)
+        binfile.end()
 
 
     def _getNumSections(self):
@@ -48,22 +54,22 @@ class SubFile(object):
         binfile.start()
         magic = binfile.readMagic()
         assert(magic == self.MAGIC)
-        self.len, self.version, outerOffset = binfile.read("2Ii", 12)
+        self.byte_len, self.version, outerOffset = binfile.read("2Ii", 12)
         self.numSections = self._getNumSections()
         binfile.store(self.numSections) # store section offsets
         self.name = binfile.unpack_name()
         if __debug__:
             print("Unpacking {} {} len {} v{} at offset {}".format(magic,
-                self.name, self.len, self.version, binfile.offset))
+                self.name, self.byte_len, self.version, binfile.offset))
 
     def _pack(self, binfile):
         ''' packs sub file into binfile, subclass must use binfile.end() '''
         binfile.start()
-        binfile.write("4s", self.MAGIC)
+        binfile.writeMagic(self.MAGIC)
         binfile.markLen()
         binfile.write("Ii", self.version, binfile.getOuterOffset())
         # mark section offsets to be added later
-        binfile.mark(self.getNumSections())
+        binfile.mark(self._getNumSections())
         # name offset to be packed separately
         binfile.storeNameRef(self.name)
 
@@ -124,7 +130,7 @@ class Pat0(SubFile):
 
     def pack(self, binfile):
         self._pack(binfile)
-        self._unpackData(binfile)
+        self._packData(binfile)
 
 '''
 Scn0 Brres subfile
@@ -176,7 +182,7 @@ class Tex0(SubFile):
 
     def pack(self, binfile):
         self._pack(binfile)
-        self._unpackData(binfile)
+        self._packData(binfile)
 
     # def unpackData(self, binfile):
     #     ''' Unpacks tex0 from binfile '''

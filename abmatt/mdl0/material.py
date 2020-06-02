@@ -1,9 +1,8 @@
 #!/usr/bin/Python
-#---------------------------------------------------------------------
+# ---------------------------------------------------------------------
 #   Robert Nelson
 #  Structure for working with materials
-#---------------------------------------------------------------------
-from struct import *
+# ---------------------------------------------------------------------
 
 from matching import validBool, indexListItem, matches
 from mdl0.layer import Layer
@@ -14,22 +13,25 @@ if __debug__:
         def __init__(self):
             self.fname = "analysis.txt"
             self.file = open(self.fname, "a")
+
         def write(self, text):
             self.file.write(text + "\n")
 
+
     ANALYSIS = OutAnalysis()
 
+
 class Material:
-# -----------------------------------------------------------------------
-#   CONSTANTS
-# -----------------------------------------------------------------------
+    # -----------------------------------------------------------------------
+    #   CONSTANTS
+    # -----------------------------------------------------------------------
     NUM_SETTINGS = 23
-    SETTINGS = ("xlu", "transparent", "ref0", "ref1", #4
-    "comp0", "comp1", "comparebeforetexture", "blend", #8
-    "blendsrc", "blendlogic", "blenddest", "constantalpha",
-    "cullmode", "shader", "shadercolor", "lightchannel", #16
-    "lightset", "fogset", "matrixmode", "enabledepthtest",
-    "enabledepthupdate", "depthfunction", "drawpriority") #23
+    SETTINGS = ("xlu", "ref0", "ref1",
+                "comp0", "comp1", "comparebeforetexture", "blend",
+                "blendsrc", "blendlogic", "blenddest", "constantalpha",
+                "cullmode", "shader", "shadercolor", "lightchannel",
+                "lightset", "fogset", "matrixmode", "enabledepthtest",
+                "enabledepthupdate", "depthfunction", "drawpriority", "drawxlu")
 
     # CULL MODES
     CULL_STRINGS = ("none", "outside", "inside", "all")
@@ -40,15 +42,14 @@ class Material:
     COMP_ALWAYS = 7
     # Blend factor
     BLLOGIC_STRINGS = ("clear", "and", "reverseand", "copy",
-    "inverseand", "nooperation", "exclusiveor", "or", "notor", "equivalent", "inverse",
-    "reverseor", "inversecopy", "inverseor", "notand", "set")
+                       "inverseand", "nooperation", "exclusiveor", "or", "notor", "equivalent", "inverse",
+                       "reverseor", "inversecopy", "inverseor", "notand", "set")
     BLFACTOR_STRINGS = ("zero", "one", "sourcecolor", "inversesourcecolor",
-     "sourcealpha", "inversesourcealpha", "destinationalpha", "inversedestinationalpha")
+                        "sourcealpha", "inversesourcealpha", "destinationalpha", "inversedestinationalpha")
     # Matrix mode
     MATRIXMODE = ("maya", "xsi", "3dsmax")
 
     SHADERCOLOR_ERROR = "Invalid color '{}', Expected [constant]color<i>=<r>,<g>,<b>,<a>"
-
 
     def __init__(self, name, parent=None):
         self.parent = parent
@@ -56,19 +57,20 @@ class Material:
         self.name = name
         self.layers = []
         self.lightChannels = []
-        self.shader = None      # to be hooked up
-        self.drawlist = None    # to be hooked up
-        self.srt0 = None        # to be hooked up
+        self.shader = None  # to be hooked up
+        self.drawlist = None  # to be hooked up
+        self.srt0 = None  # to be hooked up
         self.matGX = MatGX()
 
     def __str__(self):
         # print("Cull mode is {}".format(self.cullmode))
-        return  "Mt{} {}: xlu {} layers {} culling {} blend {}".format(self.id, self.name,
-        self.xlu, len(self.layers), self.CULL_STRINGS[self.cullmode], self.getBlend())
+        return "Mt{} {}: xlu {} layers {} culling {} blend {}".format(self.id, self.name,
+                                                                      self.xlu, len(self.layers),
+                                                                      self.CULL_STRINGS[self.cullmode], self.getBlend())
 
-# ==========================================================================
-# Getters
-# ==========================================================================
+    # ==========================================================================
+    # Getters
+    # ==========================================================================
     def getKey(self, key):
         for i in range(len(self.SETTINGS)):
             if self.SETTINGS[i] == key:
@@ -138,7 +140,7 @@ class Material:
             str += "Const{}: {}\t".format(i, self.matGX.cctevRegs[i].getColor())
         return str
 
-    def  getMatrixMode(self):
+    def getMatrixMode(self):
         return self.MATRIXMODE[self.textureMatrixMode]
 
     def getEnableDepthTest(self):
@@ -158,21 +160,23 @@ class Material:
             return self.layers[i]
         return None
 
+    def getDrawXLU(self):
+        return self.parent.isMaterialDrawXLU(self.id)
+
     # Get Functions
-    GET_SETTING = ( getXlu, getXlu, getRef0, getRef1, getComp0, getComp1, getCompareBeforeTexture,
-    getBlend, getBlendSrc, getBlendLogic, getBlendDest, getConstantAlpha, getCullMode, getShader,
-    getShaderColor, getLightChannel, getLightset, getFogset, getMatrixMode, getEnableDepthTest,
-    getEnableDepthUpdate, getDepthFunction, getDrawPriority)
+    GET_SETTING = (getXlu, getRef0, getRef1, getComp0, getComp1, getCompareBeforeTexture,
+                   getBlend, getBlendSrc, getBlendLogic, getBlendDest, getConstantAlpha, getCullMode, getShader,
+                   getShaderColor, getLightChannel, getLightset, getFogset, getMatrixMode, getEnableDepthTest,
+                   getEnableDepthUpdate, getDepthFunction, getDrawPriority, getDrawXLU)
 
     def __getitem__(self, key):
         for i in range(self.NUM_SETTINGS):
             if key == self.SETTINGS[i]:
                 return self.SET_SETTING[i]
 
-
-# ---------------------------------------------------------------------------
-#   SETTERS
-# ---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
+    #   SETTERS
+    # ---------------------------------------------------------------------------
 
     def __setitem__(self, key, value):
         for i in range(self.NUM_SETTINGS):
@@ -180,35 +184,10 @@ class Material:
                 func = self.SET_SETTING[i]
                 return func(value)
 
-    def setTransparent(self):
-        af = self.matGX.alphafunction
-        if not af.getRef0() or af.getComp0() == self.COMP_ALWAYS:
-            af.setRef0(128)
-            af.setRef1(255)
-            af.setComp0(self.COMP_GREATEROREQUAL)
-            af.setComp1(self.COMP_LESSOREQUAL)
-            self.isModified = True
-        if not self.xlu or self.compareBeforeTexture:
-            self.compareBeforeTexture = False
-            self.xlu = True
-            self.parent.drawXLU.insert(self.parent.drawOpa.pop(self.id))
-            self.isModified = True
-
-    def setOpaque(self):
-        af = self.matGX.alphafunction
-        if not self.xlu or af.getComp0() != self.COMP_ALWAYS or af.getComp1() != self.COMP_ALWAYS:
-            af.setRef0(0)
-            af.setRef1(0)
-            af.setComp0(self.COMP_ALWAYS)
-            af.setComp1(self.COMP_ALWAYS)
-            self.compareBeforeTexture = True
-            self.xlu = False
-            self.parent.drawOpa.insert(self.parent.drawXLU.pop(self.id))
-            self.isModified = True
-
-    def setTransparentStr(self, str):
-        val = validBool(str)
-        self.setTransparent() if val else self.setOpaque()
+    def setXluStr(self, str_value):
+        val = validBool(str_value)
+        if self.xlu != val:
+            self.xlu = val
 
     def setShaderStr(self, str):
         try:
@@ -223,9 +202,8 @@ class Material:
             # update shader material entry
             self.parent.updateTevEntry(shader, self)
 
-
     def setShader(self, shader):
-        if shader.offset !=  self.shaderOffset + self.offset:
+        if shader.offset != self.shaderOffset + self.offset:
             self.shaderOffset = shader.offset - self.offset
             self.shaderStages = shader.countDirectStages()
             self.indirectStages = shader.countIndirectStages()
@@ -248,7 +226,7 @@ class Material:
         if not 0 <= index <= 3 or (not isConstant) and index == 3:
             # print("Color Selection index out of range (0-3)")
             raise ValueError(self.SHADERCOLOR_ERROR.format(str))
-        str = str[splitIndex+2:]
+        str = str[splitIndex + 2:]
         colors = str.split(",")
         if len(colors) < 4:
             raise ValueError(self.SHADERCOLOR_ERROR.format(str))
@@ -314,23 +292,23 @@ class Material:
                 ca.setEnabled(True)
                 self.isModified = True
         else:
-            if not enabled  or ca.get() != val:
+            if not enabled or ca.get() != val:
                 ca.setEnabled(True)
                 ca.set(val)
                 self.isModified = True
 
     def setMatrixModeStr(self, str):
         if "maya" in str:
-            if self.textureMatrixMode != self.MATRIXMODE_MAYA:
-                self.textureMatrixMode = self.MATRIXMODE_MAYA
+            if self.textureMatrixMode != 0:
+                self.textureMatrixMode = 0
                 self.isModified = True
         elif "xsi" in str:
-            if self.textureMatrixMode != self.MATRIXMODE_XSI:
-                self.textureMatrixMode = self.MATRIXMODE_XSI
+            if self.textureMatrixMode != 1:
+                self.textureMatrixMode = 1
                 self.isModified = True
         elif "3dsmax" in str:
-            if self.textureMatrixMode != self.MATRIXMODE_3DSMAX:
-                self.textureMatrixMode = self.MATRIXMODE_3DSMAX
+            if self.textureMatrixMode != 2:
+                self.textureMatrixMode = 2
                 self.isModified = True
         else:
             raise ValueError("Invalid Matrix Mode " + str + ", Expected Maya|XSI|3DSMax")
@@ -354,13 +332,13 @@ class Material:
             self.isModified = True
 
     def setComp0Str(self, str):
-        i = indexListItem(self.COMP_STRINGS, str, self.comp0)
+        i = indexListItem(self.COMP_STRINGS, str, self.matGX.alphafunction.getComp0())
         if i >= 0:
             self.matGX.alphafunction.setComp0(i)
             self.isModified = True
 
     def setComp1Str(self, str):
-        i = indexListItem(self.COMP_STRINGS, str, self.comp1)
+        i = indexListItem(self.COMP_STRINGS, str, self.matGX.alphafunction.getComp1())
         if i >= 0:
             self.matGX.alphafunction.setComp1(i)
             self.isModified = True
@@ -414,7 +392,7 @@ class Material:
             self.isModified = True
 
     def setDepthFunctionStr(self, str):
-        i = indexListItem(self.COMP_STRINGS, str, self.depthFunction)
+        i = indexListItem(self.COMP_STRINGS, str, self.matGX.zmode.getDepthFunction())
         d = self.matGX.zmode
         if i >= 0:
             d.setDepthFunction(i)
@@ -428,29 +406,34 @@ class Material:
             self.drawPriority = i
             self.isModified = True
 
+    def setDrawXLUStr(self, str_value):
+        val = validBool(str_value)
+        if val:
+            self.parent.setMaterialDrawXLU(self.id)
+        else:
+            self.parent.setMaterialDrawOpa(self.id)
+
     # Set functions
-    SET_SETTING= ( setTransparentStr, setTransparentStr, setRef0Str, setRef1Str,
-    setComp0Str, setComp1Str, setCompareBeforeTexStr, setBlendStr, setBlendSrcStr,
-    setBlendLogicStr, setBlendDestStr, setConstantAlphaStr, setCullModeStr,
-    setShaderStr, setShaderColorStr, setLightChannelStr, setLightsetStr,
-    setFogsetStr, setMatrixModeStr, setEnableDepthTestStr,
-    setEnableDepthUpdateStr, setDepthFunctionStr, setDrawPriorityStr )
+    SET_SETTING = (setXluStr, setRef0Str, setRef1Str,
+                   setComp0Str, setComp1Str, setCompareBeforeTexStr, setBlendStr, setBlendSrcStr,
+                   setBlendLogicStr, setBlendDestStr, setConstantAlphaStr, setCullModeStr,
+                   setShaderStr, setShaderColorStr, setLightChannelStr, setLightsetStr,
+                   setFogsetStr, setMatrixModeStr, setEnableDepthTestStr,
+                   setEnableDepthUpdateStr, setDepthFunctionStr, setDrawPriorityStr, setDrawXLUStr)
 
     def info(self, command, trace):
-        trace += "->" + self.name
-        shindex = self.shader.id if self.shader else -1
-        if not command.materialname and matches(command.name, self.name):
+        trace = self.parent.getTrace() + "->" + self.name
+        if matches(command.name, self.name):
             if command.key:
                 val = self.getKey(command.key)
                 if val is not None:
                     print("{}\t{}:{}".format(trace, command.key, val))
             else:
-                print("{} {}\tlayers:{} xlu:{} cull:{} blend:{} light:{} shader:{}".format(trace, self.id,
-                self.numLayers, self.xlu, self.CULL_STRINGS[self.cullmode], self.enableBlend,
-                self.lightChannels[0].getLight(), shindex))
-        # pass it along
-        for layer in self.layers:
-            layer.info(command, trace)
+                print("{} {}\tlayers:{} xlu:{} cull:{} blend:{}".format(trace, self.id,
+                                                                                 len(self.layers), self.xlu,
+                                                                                 self.CULL_STRINGS[
+                                                                                     self.cullmode],
+                                                                                 self.getBlend()))
 
     def isChanged(self):
         if self.isModified:
@@ -473,76 +456,84 @@ class Material:
         self.layers.append(l)
         return l
 
-# -----------------------------------------------------------------------------
-# PACKING
-# -----------------------------------------------------------------------------
+    # -----------------------------------------------------------------------------
+    # PACKING
+    # -----------------------------------------------------------------------------
     def pack(self, binfile):
         ''' Packs the material '''
-        if not self.isChanged():
-            return
-        binfile.start()
-        self.offset = binfile.offset    # for backtracking offsets like shaders
+        self.offset = binfile.start()
         binfile.markLen()
-        binfile.write("I", binfile.getOuterOffset())
-        binfile.storeNameRef()
+        binfile.write("i", binfile.getOuterOffset())
+        binfile.storeNameRef(self.name)
         binfile.write("2I4BI3B", self.id, self.xlu << 31, len(self.layers), len(self.lightChannels),
                       self.shaderStages, self.indirectStages, self.cullmode,
                       self.compareBeforeTexture, self.lightset, self.fogset)
         # print("===========> Packing mat flags at {}:\n{}".format(self.offset, data[self.offset:31 + self.offset]))
-        binfile.write("BI4B", 0, 0, [0xff] * 4) # padding, indirect method, light normal map
+        binfile.write("BI4B", 0, 0, 0xff, 0xff, 0xff, 0xff)  # padding, indirect method, light normal map
         binfile.mark()  # shader offset, to be filled
         binfile.write("I", len(self.layers))
         binfile.mark()  # layer offset
-        binfile.write("I", 0)   # fur not supported
-        if self.version >= 10:
+        binfile.write("I", 0)  # fur not supported
+        if self.parent.version >= 10:
             binfile.advance(4)
             binfile.mark()  # matgx
         else:
-            binfile.mark()  #matgx
+            binfile.mark()  # matgx
             binfile.advance(4)
+        print("{} precompiled space".format(binfile.offset))
         # ignore precompiled code space
         binfile.advance(360)
         # layer flags
         x = layerI = bitshift = 0
+        layers = self.layers
+        empty_layer_count = 8 - len(layers)
         while layerI < len(self.layers):
-            x |= self.layers[layerI].getFlagNibble << bitshift
+            x |= layers[layerI].getFlagNibble() << bitshift
             layerI += 1
             bitshift += 4
-        binfile.write("2I", x, self.MATRIXMODE)
-        binfile.createRef(1)
-        for l in self.layers:
+        binfile.write("2I", x, self.textureMatrixMode)
+        print("{} SRT".format(binfile.offset))
+        for l in layers:
             l.pack_srt(binfile)
-        for l in self.layers:
+        binfile.advance(empty_layer_count * 20)
+        for l in layers:
             l.pack_textureMatrix(binfile)
+        binfile.advance(empty_layer_count * 52)
         for l in self.lightChannels:
             l.pack(binfile)
-        for l in self.layers:
-            l.pack(binfile)
-        binfile.align()
-        binfile.start() # MatGX section
         binfile.createRef(1)
-        self.matGX.pack()
+        print("{} layer offset".format(binfile.offset))
+        for l in layers:
+            l.pack(binfile)
+        print('{} end layers'.format(binfile.offset))
+        binfile.align()
+        binfile.createRef(1)
+        binfile.start()  # MatGX section
+        print("{} matgx".format(binfile.offset))
+        self.matGX.pack(binfile)
         offset = binfile.offset
-        for l in self.layers:
+        print("{} xf layer flags".format(binfile.offset))
+        for l in layers:
             l.pack_xf(binfile)
         binfile.advance(0xa0 - (binfile.offset - offset))
+        print("{} end".format(binfile.offset))
         binfile.end()
         binfile.end()
 
     def unpackLayers(self, binfile, startLayerInfo, numlayers):
         ''' unpacks the material layers '''
-        binfile.recall() # layers
+        binfile.recall()  # layers
         offset = binfile.offset
+        print("{} layer offset".format(binfile.offset))
         for i in range(numlayers):
             binfile.start()
-            scaleoffset = startLayerInfo + 8 + i * 20
-            self.addLayer(binfile.unpack_name()).unpack(binfile, scaleoffset)
+            scale_offset = startLayerInfo + 8 + i * 20
+            self.addLayer(binfile.unpack_name()).unpack(binfile, scale_offset)
             print("Layer: {} ".format(self.layers[-1].name))
             binfile.end()
         # Layer Flags
         binfile.offset = startLayerInfo
         flags = binfile.read("4B", 4)
-        layerIndex = 0
         i = 3
         for li in range(len(self.layers)):
             if li % 2 == 0:
@@ -560,88 +551,193 @@ class Material:
             self.lightChannels.append(lc)
             lc.unpack(binfile)
 
-
     def unpack(self, binfile):
-        ''' Unpacks material '''
+        """ Unpacks material """
         binfile.start()
         offset = binfile.offset
         l, mdOff = binfile.read("Ii", 8)
         binfile.advance(4)
         self.id, xluFlags, ntexgens, nlights, \
-            self.shaderStages, self.indirectStages, \
-            self.cullmode, self.compareBeforeTexture, \
-            self.lightset, self.fogset, pad  = binfile.read("2I2B2BI4B", 20)
+        self.shaderStages, self.indirectStages, \
+        self.cullmode, self.compareBeforeTexture, \
+        self.lightset, self.fogset, pad = binfile.read("2I2B2BI4B", 20)
         self.xlu = xluFlags >> 31 & 1
         if __debug__:
             print("id {} xlu {} layers{} lights {}".format(self.id, xluFlags, ntexgens, nlights))
         binfile.advance(8)
-        self.shaderOffset, nlayers = binfile.read("2I", 8)
+        self.shaderOffset, nlayers = binfile.read("2i", 8)
         self.shaderOffset += binfile.beginOffset
-        binfile.store() #  layer offset
+        binfile.store()  # layer offset
         if self.parent.version >= 10:
             binfile.advance(8)
             bo = binfile.offset
             [dpo] = binfile.readOffset("I", binfile.offset)
-            binfile.store() # store matgx offset
+            binfile.store()  # store matgx offset
         else:
             binfile.advance(4)
-            binfile.store() # store matgx offset
+            binfile.store()  # store matgx offset
             binfile.advance(4)
+        print("{} precompiled space".format(binfile.offset))
         # ignore precompiled code space
         binfile.advance(360)
         startlayerInfo = binfile.offset
         offset = self.unpackLayers(binfile, startlayerInfo, nlayers)
-        self.textureMatrixMode = binfile.read("I", 4)
+        [self.textureMatrixMode] = binfile.read("I", 4)
+        print("{} SRT".format(binfile.offset))
         binfile.advance(576)
         self.unpackLightChannels(binfile)
         binfile.recall()
-        binfile.start() # Mat wii graphics
+        print("{} matgx".format(binfile.offset))
+        binfile.start()  # Mat wii graphics
         self.matGX.unpack(binfile)
+        print("{} xf Flags".format(binfile.offset))
         for layer in self.layers:
             layer.unpackXF(binfile)
-
+        print("{} end".format(binfile.offset))
         binfile.end()
         binfile.end()
 
 
 # LIGHT CHANNEL ----------------------------------------------------
-        # LC flags bits
-        # 0	Material color enabled
-        # 1	Material alpha enabled
-        # 2	Ambient color enabled
-        # 3	Ambient alpha enabled
-        # 4	Raster color enabled
-        # 5	Raster alpha enabled
-# Light Controls
-#   3rd byte 7 for activated, 4th 0-1 for register or vertex color
 class LightChannel:
-    LIGHTS = ["register", "vertex"]
-    def __init__(self, enabled = True):
-        self.flags =  0xff # todo
 
-    def getLight(self):
-        return self.LIGHTS[(self.colorLightControl[3] & 1)]
+    def __init__(self):
+        self.materialColorEnabled = False
+        self.materialAlphaEnabled = False
+        self.ambientColorEnabled = False
+        self.ambientAlphaEnabled = False
+        self.rasterColorEnabled = False
+        self.rasterAlphaEnabled = False
 
-    def isRegister(self):
-        return self.colorLightControl[3] == 0
+    def __getitem__(self, item):
+        is_color = True if "color" in item else False
+        if "control" in item:
+            return self.colorLightControl[item] if is_color else self.alphaLightControl[item]
+        else:
+            if "material" in item:
+                return self.materialColorEnabled if is_color else self.materialAlphaEnabled
+            elif "ambient" in item:
+                return self.ambientColorEnabled if is_color else self.ambientAlphaEnabled
+            elif "raster" in item:
+                return self.rasterColorEnabled if is_color else self.rasterAlphaEnabled
+        raise ValueError('Unknown key {} for light channel'.format(item))
 
-    def isVertex(self):
-        return self.colorLightControl[3] == 1
+    def __setitem__(self, key, value):
+        is_color = True if "color" in key else False
+        if "control" in key:
+            if is_color:
+                self.colorLightControl[key] = value
+            else:
+                self.alphaLightControl[key] = value
+        else:
+            val = validBool(value)
+            if "material" in key:
+                if is_color:
+                    self.materialColorEnabled = val
+                else:
+                    self.materialAlphaEnabled = val
+            elif "ambient" in key:
+                if is_color:
+                    self.ambientColorEnabled = val
+                else:
+                    self.ambientAlphaEnabled = val
+            elif "raster" in key:
+                if is_color:
+                    self.rasterColorEnabled = val
+                else:
+                    self.rasterAlphaEnabled = val
+        raise ValueError('Unknown key {} for light channel'.format(key))
 
+    class LightChannelControl:
+        LIGHT_SOURCE = ("register", "vertex")
+        DIFFUSE_FUNCTION = ("disabled", "enabled", "clamped")
+        ATTENUATION = ("specular", "spotlight")
 
-    def setVertex(self, vertexEnabled):
-        self.colorLightControl[3] = self.colorLightControl[3] & 1 if vertexEnabled else self.colorLightControl[3] & 2
-        self.alphaLightControl[3] = self.alphaLightControl[3] & 1 if vertexEnabled else self.alphaLightControl[3] & 2
+        #   Channel control
+        #         //0000 0000 0000 0000 0000 0000 0000 0001   Material Source (GXColorSrc)
+        #         //0000 0000 0000 0000 0000 0000 0000 0010   Light Enabled
+        #         //0000 0000 0000 0000 0000 0000 0011 1100   Light 0123
+        #         //0000 0000 0000 0000 0000 0000 0100 0000   Ambient Source (GXColorSrc)
+        #         //0000 0000 0000 0000 0000 0001 1000 0000   Diffuse Func
+        #         //0000 0000 0000 0000 0000 0010 0000 0000   Attenuation Enable
+        #         //0000 0000 0000 0000 0000 0100 0000 0000   Attenuation Function (0 = Specular)
+        #         //0000 0000 0000 0000 0111 1000 0000 0000   Light 4567
+
+        def __init__(self, flags):
+            self.materialSourceVertex = flags & 1
+            self.enabled = flags >> 1 & 1
+            self.light0123 = flags >> 2 & 0xf
+            self.ambientSourceVertex = flags >> 6 & 1
+            self.diffuseFunction = flags >> 7 & 3
+            self.attenuationEnabled = flags >> 9 & 1
+            self.attenuationFunction = flags >> 10 & 1
+            self.light4567 = flags >> 11 & 0xf
+
+        def __getitem__(self, item):
+            if 'material' in item:
+                return self.LIGHT_SOURCE[self.materialSourceVertex]
+            elif 'enabled' in item:
+                return self.enabled
+            elif 'ambient' in item:
+                return self.LIGHT_SOURCE[self.ambientSourceVertex]
+            elif 'diffuse' in item:
+                return self.DIFFUSE_FUNCTION[self.diffuseFunction]
+            elif 'attenuation' in item:
+                return 'None' if not self.attenuationEnabled else self.ATTENUATION[self.attenuationFunction]
+            else:
+                raise ValueError('Unknown Light Control key {}'.format(item))
+
+        def __setitem__(self, key, value):
+            if 'material' in key:
+                i = indexListItem(self.LIGHT_SOURCE, value, self.materialSourceVertex)
+                if i > 0:
+                    self.materialSourceVertex = i
+            elif 'enabled' in key:
+                val = validBool(value)
+                self.enabled = val
+            elif 'ambient' in key:
+                i = indexListItem(self.LIGHT_SOURCE, value, self.ambientSourceVertex)
+                if i >= 0:
+                    self.ambientSourceVertex = i
+            elif 'diffuse' in key:
+                i = indexListItem(self.DIFFUSE_FUNCTION, value, self.diffuseFunction)
+                if i >= 0:
+                    self.diffuseFunction = i
+            elif 'attenuation' in key:
+                try:
+                    i = indexListItem(self.ATTENUATION, value, self.attenuationFunction)
+                    if i >= 0:
+                        self.attenuationFunction = i
+                    if not self.attenuationEnabled:
+                        self.attenuationEnabled = True
+                except ValueError:
+                    val = validBool(value)
+                    self.attenuationEnabled = val
+            else:
+                raise ValueError('Unknown Light Control key {}'.format(key))
+
+        def getFlagsAsInt(self):
+            return self.materialSourceVertex | self.enabled << 1 | self.light0123 << 2 | self.ambientSourceVertex << 6 \
+                | self.diffuseFunction << 7 | self.attenuationEnabled << 9 | self.attenuationFunction << 10 \
+                | self.light4567
 
     def unpack(self, binfile):
-        data = binfile.read("I16B", 20)
+        data = binfile.read("I8B2I", 20)
         # print("Light Channel data {}".format(data))
-        self.flags = data[0]
+        flags = data[0]
+        self.materialColorEnabled = flags & 1
+        self.materialAlphaEnabled = flags >> 1 & 1
+        self.ambientColorEnabled = flags >> 2 & 1
+        self.ambientAlphaEnabled = flags >> 3 & 1
+        self.rasterColorEnabled = flags >> 4 & 1
+        self.rasterAlphaEnabled = flags >> 5 & 1
         self.materialColor = data[1:5]
         self.ambientColor = data[5:9]
-        self.colorLightControl = data[9:13]
-        self.alphaLightControl = data[13:17]
+        self.colorLightControl = self.LightChannelControl(data[9])
+        self.alphaLightControl = self.LightChannelControl(data[10])
 
     def pack(self, binfile):
-        pack_into("I16B", binfile, self.materialColor, self.ambientColor,
-                  self.colorLightControl, self.alphaLightControl)
+        flags = self.materialColorEnabled | self.materialAlphaEnabled << 1 | self.ambientColorEnabled << 2 \
+                | self.ambientAlphaEnabled << 3 | self.rasterColorEnabled << 4 | self.rasterAlphaEnabled << 5
+        binfile.write("I8B2I", flags, *self.materialColor, *self.ambientColor,
+                      self.colorLightControl.getFlagsAsInt(), self.alphaLightControl.getFlagsAsInt())

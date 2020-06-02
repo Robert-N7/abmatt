@@ -1,7 +1,9 @@
 ''' Matching functions '''
 
 import re
+
 BOOLABLE = ["False", "True"]
+
 
 def validFloat(str, min, max):
     f = float(str)
@@ -9,25 +11,28 @@ def validFloat(str, min, max):
         raise ValueError("{} is out of range, min: {} max: {}".format(str, min, max))
     return f
 
+
 def validInt(str, min, max):
-    ''' checks if a string is a valid integer '''
+    """ checks if a string is a valid integer """
     i = int(str)
     if not min <= i < max:
         raise ValueError("{} is out of range, min: {} max: {}".format(str, min, max))
     return i
 
+
 def validBool(str):
-    ''' Checks if its a valid boolean string '''
-    if str == "false" or not str or str == "0" or str == "disable":
+    """ Checks if its a valid boolean string """
+    if str == "false" or not str or str == "0" or str == "disable" or str == "none":
         return False
     elif str == "true" or str == "1" or str == "enable":
         return True
     raise ValueError("Not a boolean '" + str + "', expected true|false")
 
+
 # finds index of item, if it is equal to compare index returns -1
 # raises error if not found
-def indexListItem(list, item, compareIndex = -2):
-    ''' checks for item in list, indexing it '''
+def indexListItem(list, item, compareIndex=-2):
+    """ checks for item in list, indexing it """
     for i in range(len(list)):
         if list[i] == item:
             if i != compareIndex:
@@ -35,6 +40,7 @@ def indexListItem(list, item, compareIndex = -2):
             else:
                 return -1
     raise ValueError("Invalid setting '" + item + "', Options are: " + str(list))
+
 
 def parseValStr(value):
     ''' Parses tuple formed string with no spaces '''
@@ -62,6 +68,7 @@ def findAll(name, group):
         except re.error:
             pass
     return items
+
 
 def matches(regexname, name):
     ''' checks if two names match by direct or regex matching '''

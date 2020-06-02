@@ -15,6 +15,15 @@ class ShaderList():
     def __init__(self):
         self.list = []  # shaders
 
+    def __len__(self):
+        return len(self.list)
+
+    def __getitem__(self, item):
+        return self.list[item]
+
+    def __setitem__(self, key, value):
+        self.list[key] = value
+
     def splitShaderOnMaterials(self, shader, material_list):
         """Splits the shader based on the materials in material list"""
         new_shader = deepcopy(shader)
@@ -90,18 +99,15 @@ class ShaderList():
                 list.append(d)
         return offsets
 
-    def pack(self, binfile):
+    def pack(self, binfile, folder):
+        """Packs the shader data, generating material and index group references"""
         li = self.list
-        folder = Folder(binfile, self.FOLDER)
-        for x in li:
-            for m in x.materials:
-                folder.addEntry(m.name)
-        folder.pack(binfile)
         # now pack the data
         for i in range(len(li)):
             x = li[i]
             for m in x.materials:
-                folder.createEntryRefI()  # create reference to current data location
+                folder.createEntryRef(m.name)  # create index group reference
+                binfile.createRefFrom(m.offset) # create the material shader reference
             x.pack(binfile, i)
 
 
@@ -337,7 +343,7 @@ class Stage():
         c = IndCmd(self.id)
         c.unpack(binfile)
         self.map["indirectstage"] = c.getStage()
-        self.map["indirectFormat"] = self.TEX_FORMAT[c.getFormat()]
+        self.map["indirectformat"] = self.TEX_FORMAT[c.getFormat()]
         self.map["indirectbias"] = self.IND_BIAS[c.getBias()]
         self.setIndTexMtxI(c.getMtx())
         self.map["indirectswrap"] = self.WRAP[c.getSWrap()]
@@ -377,7 +383,7 @@ class Stage():
 
     def packIndirect(self, binfile):
         c = IndCmd(self.id)
-        f = self.TEX_FORMAT.index(self["indirectFormat"])
+        f = self.TEX_FORMAT.index(self["indirectformat"])
         b = self.IND_BIAS.index(self["indirectbias"])
         a = self.IND_ALPHA.index(self["indirectalpha"])
         m = self.getIndMtxI()
@@ -385,7 +391,7 @@ class Stage():
         tw = self.WRAP.index(self["indirecttwrap"])
         c.data = self["indirectunmodifiedlod"] << 20 | self["indirectuseprevstage"] << 19 \
                  | tw << 16 | sw << 13 | m << 9 | a << 7 | b << 4 | f << 2 \
-                 | self["indirectStage"]
+                 | self["indirectstage"]
         c.pack(binfile)
 
 
@@ -403,6 +409,7 @@ class Shader():
         self.parent = parent
         self.name = name
         self.stages = []
+        self.swap_table = deepcopy(self.SWAP_TABLE)
         self.materials = []  # materials to be hooked
         self.texRefCount = 1  # Number of texture references
         self.indTexMaps = [-1] * 4
@@ -440,15 +447,13 @@ class Shader():
             return self.indTexCoords[self.detectIndirectIndex(key)]
 
     def __setitem__(self, key, value):
+        value = validInt(value, 0, 8)
         if key == self.SETTINGS[0]:  # texture refs
-            value = validInt(value, 0, 8)
             self.texRefCount = value
         elif self.SETTINGS[1] in key:  # indirect map
-            value = validInt(value, 0, 8)
             i = self.detectIndirectIndex(key)
             self.indTexMaps[i] = value
         elif self.SETTINGS[2] in key:  # indirect coord
-            value = validInt(value, 0, 8)
             self.indTexCoords[self.detectIndirectIndex(key)] = value
 
     def getStage(self, n):
@@ -493,7 +498,7 @@ class Shader():
         binfile.advance(8)
         kcel = KCel(0)
         tref = RAS1_TRef(0)
-        for x in self.SWAP_TABLE:
+        for x in self.swap_table:
             binfile.advance(5)  # skip extra masks
             x.unpack(binfile)
         iref = RAS1_IRef()
@@ -516,8 +521,8 @@ class Shader():
                 has_next = False
             binfile.advance(5)  # skip mask
             kcel.unpack(binfile)
-            print("Color Selection index {}, data {}".format(kcel.getCSel0(), kcel.data))
-            print("Alpha Selection index {}".format(kcel.getASel0()))
+            # print("Color Selection index {}, data {}".format(kcel.getCSel0(), kcel.data))
+            # print("Alpha Selection index {}".format(kcel.getASel0()))
             tref.unpack(binfile)
             stage0.map["enabled"] = tref.getTexEnabled0()
             stage0.map["mapid"] = tref.getTexMapID0()
@@ -551,14 +556,14 @@ class Shader():
     def pack(self, binfile, id):
         """ Packs the shader """
         binfile.start()
-        binfile.write("3I4B", self.BYTESIZE, binfile.getOuterOffset(), id,
+        binfile.write("IiI4B", self.BYTESIZE, binfile.getOuterOffset(), id,
                       len(self.stages), 0, 0, 0)
-        layer_indices = [-1] * 8
+        layer_indices = [0xff] * 8
         for i in range(self.texRefCount):
             layer_indices[i] = i
-        binfile.write("8B", layer_indices)
+        binfile.write("8B", *layer_indices)
         binfile.advance(8)
-        for kcel in self.SWAP_TABLE:
+        for kcel in self.swap_table:
             self.SWAP_MASK.pack(binfile)
             kcel.pack(binfile)
         # Construct indirect data

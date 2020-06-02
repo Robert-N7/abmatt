@@ -18,31 +18,37 @@ class Definition():
         self.list = []
 
     def unpack(self, binfile):
-        ''' unpacks draw list '''
-        currentList = self.list
+        """ unpacks draw list """
+        current_list = self.list
         while True:
             [byte] = binfile.read("B", 1)
-            currentList.append(byte)
             if byte == 0x01:  # end list
                 break
-            elif byte == 0x4:
-                currentList.append(binfile.read("7B", 7))
-            elif byte == 0x3:
-                weightId, weigthCount, tableId = binfile.read("3H", 6)
-                bytes = 4 * weigthCount
-                weights = binfile.read("{}B".format(bytes), bytes)  # not sure if these are ints
-                drawl = [weightId, weigthCount, tableId] + list(weights)
-                currentList.append(drawl)
-            elif byte > 0x6:  # error reading list?
-                print("Error unpacking list {}".format(currentList))
-                break
             else:
-                currentList.append(binfile.read("4B", 4))
+                current_list.append(byte)
+                if byte == 0x4:
+                    current_list.append(binfile.read("7B", 7))
+                elif byte == 0x3:
+                    weight_id, weight_count, table_id = binfile.read("3H", 6)
+                    weights = 4 * weight_count
+                    weights = binfile.read("{}B".format(weights), weights)  # not sure if these are ints
+                    drawl = [weight_id, weight_count, table_id] + list(weights)
+                    current_list.append(drawl)
+                elif byte > 0x6:  # error reading list?
+                    print("Error unpacking list {}".format(current_list))
+                    break
+                else:
+                    current_list.append(binfile.read("4B", 4))
 
     def pack(self, binfile):
-        ''' packs the draw list '''
+        """ packs the definition"""
+        cmd = True
         for x in self.list:
-            binfile.write("{}B".format(len(x)), x)
+            if cmd:
+                binfile.write("B", x)
+            else:
+                binfile.write("{}B".format(len(x)), *x)
+            cmd = not cmd
         binfile.write("B", 0x01)  # end list command
 
 

@@ -1,33 +1,30 @@
 #!/usr/bin/python
-#--------------------------------------------------------
+# --------------------------------------------------------
 #   Brres Class
-#--------------------------------------------------------
+# --------------------------------------------------------
+import os
+import re
 import string
 import sys
-import os
-import binascii
-sys.path.insert(1, 'mdl0')
-sys.path.insert(1, 'srt0')
-sys.path.insert(1, 'mdl0/wiigraphics')
-from mdl0 import *
-from subfile import *
-from srt0 import *
-from material import *
-from layer import *
-from shader import *
+
 from binfile import BinFile, Folder
+from matching import findAll
+from mdl0.layer import Layer
+from mdl0.mdl0 import Mdl0
+from srt0.srt0 import Srt0
+from subfile import *
 
 
 class Brres():
-    FOLDERS = ["3DModels(NW4R)", "Textures(NW4R)", "AnmTexSrt(NW4R)", "AnmChr(NW4R)",
-                "AnmTexPat(NW4R)", "AnmScn(NW4R)", "AnmShp(NW4R)", "AnmClr(NW4R)"]
-    CLASSES = [Mdl0, Tex0, Srt0, Chr0, Pat0, Scn0, Shp0, Clr0]
+    FOLDERS = ["3DModels(NW4R)", "Textures(NW4R)", "AnmTexPat(NW4R)", "AnmTexSrt(NW4R)", "AnmChr(NW4R)",
+               "AnmScn(NW4R)", "AnmShp(NW4R)", "AnmClr(NW4R)"]
+    CLASSES = [Mdl0, Tex0, Pat0, Srt0, Chr0, Scn0, Shp0, Clr0]
     MAGIC = "bres"
     ROOTMAGIC = "root"
     OVERWRITE = False
     DESTINATION = None
 
-    def __init__(self, name, parent=None, readFile = True):
+    def __init__(self, name, parent=None, readFile=True):
         '''
             initialize brres
             name - the brres name, or filename
@@ -42,8 +39,8 @@ class Brres():
         self.anmClr = []
         self.anmShp = []
         self.anmScn = []
-        self.folders = [self.models, self.textures, self.anmSrt, self.anmChr,
-                        self.anmPat, self.anmClr, self.anmShp, self.anmScn]
+        self.folders = [self.models, self.textures, self.anmPat, self.anmSrt, self.anmChr,
+                        self.anmClr, self.anmShp, self.anmScn]
         self.isModified = False
         self.isUpdated = False
         self.parent = parent
@@ -53,7 +50,6 @@ class Brres():
 
     def getModelsByName(self, name):
         return findAll(name, self.models)
-
 
     def close(self):
         self.save(self.DESTINATION, self.OVERWRITE)
@@ -67,7 +63,7 @@ class Brres():
             print("File '{}' already exists!".format(filename))
             return False
         else:
-            f = binfile(filename, mode="w")
+            f = BinFile(filename, mode="w")
             self.pack(f)
             f.commitWrite()
             print("Wrote file '{}'".format(filename))
@@ -92,7 +88,12 @@ class Brres():
         elif command.cmd == command.COMMANDS[1]:
             self.info(command, "")
         else:
-            print("Unknown command: {}".format(self.cmd))
+            print("Unknown command: {}".format(command.cmd))
+
+    def getTrace(self):
+        if self.parent:
+            return self.parent.name + "->" + self.name
+        return self.name
 
     def info(self, command, trace):
         # todo trace?
@@ -120,12 +121,10 @@ class Brres():
             else:
                 print("No matches found for {}".format(command.name))
 
-
     def getModelByOffset(self, offset):
         for mdl in self.models:
             if offset == mdl.offset:
                 return mdl
-
 
     def getMatCollection(self, modelname, materialname):
         mdls = findAll(modelname, self.models)
@@ -139,7 +138,7 @@ class Brres():
     def getLayerCollection(self, mats, layername):
         layers = []
         for m in mats:
-            found =  findAll(layername, m.layers)
+            found = findAll(layername, m.layers)
             if found:
                 layers = layers + found
         return layers
@@ -164,7 +163,7 @@ class Brres():
             if not fun:
                 print("Unknown setting {}".format(setting))
                 return False
-            else: # FUN!
+            else:  # FUN!
                 for x in layers:
                     fun(x, value)
         except ValueError as e:
@@ -179,14 +178,14 @@ class Brres():
         if self.isUpdated:
             for mdl in self.models:
                 if mdl.isChanged():
-                    self.isModified = True # to prevent checking further
+                    self.isModified = True  # to prevent checking further
                     return True
         self.isUpdated = False
         return False
 
     def getNumSections(self):
         ''' gets the number of sections, including root'''
-        count = 1 # root
+        count = 1  # root
         for x in self.folders:
             if x:
                 count += 1
@@ -209,8 +208,7 @@ class Brres():
         ''' Unpacks the folder folderIndex '''
         name = self.FOLDERS[folderIndex]
         if root.open(name):
-            if __debug__:
-                print("Opened folder {}".format(name))
+
             container = self.folders[folderIndex]
             subFolder = Folder(binfile, name)
             subFolder.unpack(binfile)
@@ -222,7 +220,6 @@ class Brres():
                 obj = klass(nm, self)
                 container.append(obj)
                 obj.unpack(binfile)
-
 
     def unpack(self, binfile):
         ''' Unpacks the brres '''
@@ -237,7 +234,7 @@ class Brres():
         pad, self.length, rootoffset, self.numSections = binfile.read("hI2h", 10)
         binfile.offset = rootoffset
         root = binfile.readMagic()
-        assert(root == self.ROOTMAGIC)
+        assert (root == self.ROOTMAGIC)
         sectionLength = binfile.read("I", 4)
         root = Folder(binfile, root)
         root.unpack(binfile)
@@ -256,12 +253,12 @@ class Brres():
             Does not hook up data pointers except the head group,
             returns (rootFolders, bytesize)
         '''
-        rootFolders = [] # for storing Index Groups
+        rootFolders = []  # for storing Index Groups
         byteSize = 0
         # Create folder indexing folders
         rootFolder = Folder(binfile, self.ROOTMAGIC)
         rootFolders.append(rootFolder)
-        offsets = []    # for tracking offsets from first group to others
+        offsets = []  # for tracking offsets from first group to others
         # Create folder for each section the brres has
         for i in range(len(self.folders)):
             folder = self.folders[i]
@@ -289,7 +286,7 @@ class Brres():
         rtFolders, rtSize = self.generateRoot(binfile)
         binfile.write("I", rtSize)
         for f in rtFolders:
-            f.pack()
+            f.pack(binfile)
         binfile.end()
         return rtFolders[1:]
 
@@ -297,7 +294,7 @@ class Brres():
         ''' packs the brres '''
         binfile.start()
         binfile.writeMagic(self.MAGIC)
-        binfile.write("H", 0xfffe)   # BOM
+        binfile.write("H", 0xfffe)  # BOM
         binfile.advance(2)
         binfile.markLen()
         numSections = self.getNumSections()
@@ -308,6 +305,7 @@ class Brres():
         for subfolder in self.folders:
             if len(subfolder):
                 refGroup = folders[folderIndex]
+                print("Packing folder {}".format(refGroup.name))
                 for file in subfolder:
                     refGroup.createEntryRefI()  # create the dataptr
                     file.pack(binfile)

@@ -11,7 +11,7 @@ class BPCommand(object):
 
     def pack(self, binfile):
         if self.enabled:
-            binfile.write("3BH", self.enabled, self.bpmem, self.data >> 16, self.data)
+            binfile.write("3BH", self.enabled, self.bpmem, self.data >> 16, self.data & 0xffff)
         else:
             binfile.advance(5)
 
@@ -633,10 +633,10 @@ class IndMatrix():
         bitn = 10
         start = 2 << bitn
         while bitn > 0:
-            print("divisor {} bitn {}".format(start, bitn))
+            # print("divisor {} bitn {}".format(start, bitn))
             if val & 1:
                 f += 1.0 / start
-                print(f)
+                # print(f)
             val >>= 1
             start >>= 1
             bitn -= 1

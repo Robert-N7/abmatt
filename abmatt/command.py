@@ -1,16 +1,16 @@
 # ---------------------------------------------------------------------------
 # Command class and functions
 # ---------------------------------------------------------------------------
-import os
-import re
-import sys
 import fnmatch
-from matching import *
+import os
+import sys
+
 from brres import Brres
-from material import Material
+from matching import *
 from mdl0.layer import Layer
+from mdl0.material import Material
 from mdl0.shader import Shader, Stage
-from srt0 import Srt0
+from srt0.srt0 import Srt0
 
 
 class ParsingException(Exception):
@@ -48,7 +48,7 @@ class Command:
         self.hasSelection = False
         self.name = self.key = None
         self.txt = text
-        x = self.txt.split()
+        x = [x.strip() for x in text.split()]
         if len(x) < 2:
             raise ParsingException(self.txt, 'Not enough parameters')
         self.setCmd(x.pop(0).lower())
@@ -136,7 +136,7 @@ class Command:
                 print("Specify single file and destination, or no destination with overwrite option.")
                 return False
             else:
-                self.ACTIVE_FILES = openFiles(files, self.ACTIVE_FILES)
+                Command.ACTIVE_FILES = openFiles(files, self.ACTIVE_FILES)
                 self.MODELS = []  # clear models
         # Models
         if self.model or not self.MODELS:
@@ -173,12 +173,18 @@ class Command:
         if self.hasSelection:
             if not self.updateSelection():
                 sys.exit(1)
+        self.updateType()
         if not self.SELECTED:
             print("No items found in selection for '{}'".format(self.txt))
         else:
             if self.cmd == 'set':
                 for x in self.SELECTED:
-                    x.set(self.type, )
+                    x[self.key] = self.value
+            elif self.cmd == 'info':
+                for x in self.SELECTED:
+                    x.info(self, "")
+                for y in self.ACTIVE_FILES:
+                    print(y.name)
 
     def __str__(self):
         return "{} {}:{} for {} in file {} model {}".format(self.cmd,
@@ -186,16 +192,12 @@ class Command:
                                                                         self.model)
 
 
-def run_commands(commandlist, destination, overwrite):
+def run_commands(commandlist):
     files = {}
     for cmd in commandlist:
-        if cmd.filename:
-            filenames = getFiles(cmd.filename)
-            closeFiles(filenames, files, destination, overwrite)
-            openFiles(filenames, files)
-        for index in files:
-            files[index].parseCommand(cmd)
-    closeFiles(None, files, destination, overwrite)
+        cmd.runCmd()
+    for x in Command.ACTIVE_FILES:
+        x.close()
 
 
 def load_commandfile(filename):
@@ -204,7 +206,6 @@ def load_commandfile(filename):
         exit(2)
     f = open(filename, "r")
     lines = f.readlines()
-    # regex = re.compile("(?P<cmd>\w+)\s*(for\s+(?P<item>\S+)|(?P<key>\w+)?(\s*:(?P<value>\w+))?(\s+for\s+(?P<item2>\S+))?)(\s+in(\s+file\s+(?P<fname>\S+))?(\s+model\s+(?P<modelname>\S+))?(\s+material\s+(?P<matname>\S+))?)?$")
     commands = []
     for line in lines:
         if line[0].isalpha():
@@ -240,8 +241,6 @@ def openFiles(filenames, files):
     # open any that aren't opened
     for f in filenames:
         if not f in openedNames:
-            if __debug__:
-                print("Opening file {}".format(f))
             brres = Brres(f)
             opened.append(brres)
     return opened

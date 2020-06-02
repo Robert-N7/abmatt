@@ -1,23 +1,25 @@
 #!/usr/bin/python
-''' binary file read/writing operations '''
+""" binary file read/writing operations """
 from struct import *
+
 
 # -------------------------------------------------------------------------------
 class BinFile:
-    ''' BinFile class: for packing and unpacking binfileary files'''
+    """ BinFile class: for packing and unpacking binfileary files"""
+
     def __init__(self, filename, bom='>', mode='r'):
-        '''
+        """
         filename:   name of file to read/write
         bom:    byte order mark (>|<) Big endian or little endian
         mode:   (r|w)
         len:    initial length of file (write only)
-        '''
-        self.offset = 0
-        self.stack = [] # used for tracking depth in files
-        self.references = {}    # used for forward references in relation to start
-        self.bom  = bom     # byte order mark > | <
-        self.nameRefMap = {}    # for packing name references
-        self.lenMap = {}      # used for tracking length of files
+        """
+        self.beginOffset = self.offset = 0
+        self.stack = []  # used for tracking depth in files
+        self.references = {}  # used for forward references in relation to start
+        self.bom = bom  # byte order mark > | <
+        self.nameRefMap = {}  # for packing name references
+        self.lenMap = {}  # used for tracking length of files
         self.isWriteMode = (mode == 'w')
         if not self.isWriteMode:
             file = open(filename, "rb")
@@ -29,39 +31,48 @@ class BinFile:
         self.start()
 
     def commitWrite(self):
-        ''' writes the file '''
+        """ writes the file """
+        # check references
+        for x in self.references:
+            li = self.references[x]
+            for item in li:
+                print("Unused reference {} in relation to {}".format(item, x))
+
+        # write
         with open(self.filename, "wb") as f:
             f.write(self.file)
 
-    def align(self, alignment = 0x20):
-        ''' Aligns to the alignment relative to file start '''
-        pastAlign = (self.offset - self.beginOffset) % alignment
-        if pastAlign:
-            self.advance(alignment - pastAlign)
+    def align(self, alignment=0x20):
+        """ Aligns to the alignment of file """
+        past_align = self.offset  % alignment
+        if past_align:
+            self.advance(alignment - past_align)
 
     # start / marks offset which pointers are based
     def start(self):
-        ''' Starts reading a file, remembering the offset '''
+        """ Starts reading a file, remembering the offset """
         self.beginOffset = self.offset
         self.stack.append(self.offset)
         self.refMarker = []
         self.references[self.beginOffset] = self.refMarker
+        return self.offset
 
     #  end / pops last start offset off stack
     def end(self):
         # write file length?
         if self.isWriteMode:
-            lenOffset = self.lenMap.get(self.beginOffset)
-            if lenOffset:
-                self.writeOffset("I", lenOffset + self.beginOffset, self.offset - self.beginOffset)
+            len_offset = self.lenMap.get(self.beginOffset)
+            if len_offset:
+                self.writeOffset("I", len_offset, self.offset - self.beginOffset)
         self.stack.pop()
         self.beginOffset = self.stack[-1]
         self.refMarker = self.references[self.beginOffset]
+        return self.offset
 
     def markLen(self):
-        ''' Marks the current offset as length of file,
+        """ Marks the current offset as length of file,
             which gets filled in by binfile.end in write mode
-        '''
+        """
         self.lenMap[self.beginOffset] = self.offset
         if not self.isWriteMode:
             return self.read("I", 4)
@@ -71,92 +82,102 @@ class BinFile:
             self.offset += 4
 
     # Writing back ptrs, use mark and createref together, write mode
-    def mark(self, numRefs=1):
-        ''' Marks the current offset(s) relative to start as storage for ptrs,
+    def mark(self, num_refs=1):
+        """ Marks the current offset(s) relative to start as storage for ptrs,
             advancing the file offset
             Use in write mode with createRef
-        '''
+        """
         li = self.refMarker
-        for i in range(numRefs):
-            li.append(self.offset - self.beginOffset)
-        self.advance(4 * numRefs)
+        for i in range(num_refs):
+            li.append(self.offset)
+            self.advance(4)
 
-    def createRefFromStored(self, refIndex = 0, pop = True):
-        ''' Creates reference to the current file offset
-            in relation to the stored offset (not start!)
-        '''
+    def unmark(self, ref_index=0, pop=True):
+        """Retrieves marked offset"""
         try:
             if pop:
-                markedOffset = self.refMarker.pop(refIndex)
+                return self.refMarker.pop(ref_index)
             else:
-                markedOffset = self.refMarker[refIndex]
-            self.writeOffset("I", markedOffset, self.offset - markedOffset)
-            return markedOffset
-        except:
-            raise("Marked index from {} at {} does not exist!".format(self.beginOffset, refIndex))
+                return self.refMarker[ref_index]
+        except IndexError:
+            raise ("Marked index from {} at {} does not exist!".format(self.beginOffset, ref_index))
 
-    def createRef(self, refIndex = 0, pop = True):
-        '''
+    def createRefFromStored(self, ref_index=0, pop=True):
+        """ Creates reference to the current file offset
+            in relation to the stored offset (not start!)
+        """
+        try:
+            if pop:
+                marked_offset = self.refMarker.pop(ref_index)
+            else:
+                marked_offset = self.refMarker[ref_index]
+            self.writeOffset("I", marked_offset, self.offset - marked_offset)
+            return marked_offset
+        except IndexError:
+            raise ("Marked index from {} at {} does not exist!".format(self.beginOffset, ref_index))
+
+    def createRef(self, ref_index=0, pop=True):
+        """
          Creates a reference to the current file offset
          using the reference marked at refIndex relative to start
          pops and returns the marked offset
-        '''
+        """
         try:
             if pop:
-                markedOffset = self.refMarker.pop(refIndex)
+                marked_offset = self.refMarker.pop(ref_index)
             else:
-                markedOffset = self.refMarker[refIndex]
-            self.writeOffset("I", markedOffset, self.offset - self.beginOffset)
-            return markedOffset
-        except:
-            raise("Marked index from {} at {} does not exist!".format(self.beginOffset, refIndex))
+                marked_offset = self.refMarker[ref_index]
+            self.writeOffset("I", marked_offset, self.offset - self.beginOffset)
+            return marked_offset
+        except IndexError:
+            raise ValueError("Marked index from {} at {} does not exist!".format(self.beginOffset, ref_index))
 
-    def createParentRef(self, refIndex = 0, pop = True):
-        ''' Creates a reference from parent marked offset'''
-        return self.createRefFrom(self.getParentOffset(), refIndex, pop)
+    def createParentRef(self, ref_index=0, pop=True):
+        """ Creates a reference from parent marked offset"""
+        return self.createRefFrom(self.getParentOffset(), ref_index, pop)
 
-    def createRefFrom(self, startRef, index = 0, pop = True):
-        ''' Creates ref by getting marked offset, indexing from startRef, at the index '''
+    def createRefFrom(self, start_ref, index=0, pop=True):
+        """ Creates ref by getting marked offset, indexing from startRef, at the index """
         try:
-            refs = self.references[startRef]
+            refs = self.references[start_ref]
             if pop:
-                markedOffset = refs.pop(index)
+                marked_offset = refs.pop(index)
             else:
-                markedOffset = refs[index]
-            self.writeOffset("I", markedOffset, self.offset - startRef)
-            return markedOffset
-        except:
-            raise("Marked index from {} at {} does not exist!".format(startRef, index))
+                marked_offset = refs[index]
+            self.writeOffset("I", marked_offset, self.offset - start_ref)
+            return marked_offset
+        except IndexError:
+            raise ("Marked index from {} at {} does not exist!".format(start_ref, index))
 
     # Storing and recalling forward pointers - read mode
     def pushCurrentOffset(self):
-        ''' pushes current offset to come back to with recall in ref from start'''
+        """ pushes current offset to come back to with recall in ref from start"""
         offset = self.offset - self.beginOffset
         self.refMarker.append(offset)
 
-    def bl_unpack(self, obj, fromStart=True):
-        '''reads offset and unpacks object '''
-        off = self.read("I", 4)
+    def bl_unpack(self, obj, from_start=True):
+        """reads offset and unpacks object """
         offset = self.offset
-        self.offset = self.beginOffset + off[0] if fromStart else offset + off
+        [off] = self.read("I", 4)
+        self.offset = self.beginOffset + off if from_start else offset + off
         obj.unpack(self)
-        self.offset = offset
+        self.offset = offset + 4
         return obj
 
-    def store(self, numRefs = 1):
-        ''' Reads and stores a pointer relative to start
+    def store(self, num_refs=1):
+        """ Reads and stores a pointer relative to start
             Use in read mode with recallAndPop
-        '''
-        refs = self.read("I" * numRefs, numRefs * 4)
+        """
+        refs = self.read("I" * num_refs, num_refs * 4)
         ret = len(self.refMarker)
         self.refMarker.extend(list(refs))
         return ret
 
-    def recall(self, index = 0, pop = True):
-        '''
+    def recall(self, index=0, pop=True):
+        """
             Recalls a reference, advancing to it
             returns the reference offset relative to start
-        '''
+        """
         try:
             if pop:
                 offset = self.refMarker.pop(index)
@@ -164,39 +185,38 @@ class BinFile:
                 offset = self.refMarker[index]
             self.offset = offset + self.beginOffset
             return offset
-        except:
+        except IndexError:
             raise ValueError("Stored index from {} at {} does not exist!".format(self.beginOffset, index))
 
-    def recallParent(self, index = 0, pop = True):
-        ''' Recalls reference from parent
+    def recallParent(self, index=0, pop=True):
+        """ Recalls reference from parent
             returns offset in relation to current start
-        '''
+        """
         return self.recallOffset(self.getParentOffset(), index, pop)
 
-    def recallOffset(self, startOffset, index = 0, pop = True):
-        ''' recalls reference at specific offset '''
+    def recallOffset(self, start_offset, index=0, pop=True):
+        """ recalls reference at specific offset """
         # possible error if out of range startoffset or index
         try:
-            refs = self.references[startOffset]
+            refs = self.references[start_offset]
             if pop:
                 offset = refs.pop(index)
             else:
                 offset = refs[index]
-            self.offset = offset + startOffset
+            self.offset = offset + start_offset
             return offset
-        except:
-            raise ValueError("Stored index from {} at {} does not exist!".format(startOffset, index))
+        except IndexError:
+            raise ValueError("Stored index from {} at {} does not exist!".format(start_offset, index))
 
     def recallAll(self):
-        ''' retrieves all refs at current start, removing them '''
+        """ retrieves all refs at current start, removing them """
         refs = self.refMarker
         self.references[self.beginOffset] = self.refMarker = []
         return refs
 
-
     # advance
     def advance(self, step):
-        ''' advances offset pointer, possibly padding with 0's in write mode '''
+        """ advances offset pointer, possibly padding with 0's in write mode """
         self.offset += step
         if self.isWriteMode:
             m = self.offset - len(self.file)
@@ -208,7 +228,7 @@ class BinFile:
         self.end()
 
     def getParentOffset(self):
-        ''' Gets the parent offset off the stack'''
+        """ Gets the parent offset off the stack"""
         l = len(self.stack)
         if l > 1:
             return self.stack[l - 2]
@@ -217,147 +237,158 @@ class BinFile:
 
     # get outer (file/container) offset
     def getOuterOffset(self):
-        ''' Gets the negative offset to the outer file in relation to current start'''
-        l = len(self.stack)
-        if l > 1:
-            return self.stack[l - 2] - self.beginOffset
+        """ Gets the negative offset to the outer file in relation to current start"""
+        length = len(self.stack)
+        if length > 1:
+            return self.stack[length - 2] - self.beginOffset
         else:
             return 0
 
     # Reading / unpacking
-    def readMagic(self, advance = True):
-        ''' reads the magic from this file, optionally advancing '''
+    def readMagic(self, advance=True):
+        """ reads the magic from this file, optionally advancing """
         magic = unpack_from(self.bom + "4s", self.file, self.offset)
         if advance:
             self.offset += 4
         return magic[0].decode()
 
-    def read(self, fmt, len):
+    def read(self, fmt, length):
         read = unpack_from(self.bom + fmt, self.file, self.offset)
-        self.offset += len
+        self.offset += length
         return read
 
-    def readOffset(self, fmt, offset): # len not needed
+    def readOffset(self, fmt, offset):  # len not needed
         return unpack_from(self.bom + fmt, self.file, offset)
 
     def readRemaining(self, filelen):
-        ''' Reads and returns remaining data as bytes '''
+        """ Reads and returns remaining data as bytes """
         remainder = filelen - (self.offset - self.beginOffset)
         return self.read("{}B".format(remainder), remainder)
 
     # Writing/packing
     def writeMagic(self, magic):
-        self.write("4s", magic)
+        self.write("4s", magic.encode('ascii'))
 
-    def write(self, fmt, args):
-        ''' Packs data onto end of file, shifting the offset'''
-        self.file.extend(pack(self.bom + fmt, self.file, args))
+    def write(self, fmt, *args):
+        """ Packs data onto end of file, shifting the offset"""
+        self.file.extend(pack(self.bom + fmt, *args))
         self.offset = len(self.file)
         return len
 
-
     def writeOffset(self, fmt, offset, args):
-        ''' packs data at offset, must be less than file length '''
-        # possible todo... automatically extend if it exceeds length
+        """ packs data at offset, must be less than file length """
+        if self.file[offset] != 0:
+            raise BytesWarning('Overwriting bytes at {}'.format(offset))
         pack_into(self.bom + fmt, self.file, offset, args)
         return len
 
-    def writeRemaining(self, bytes):
-        ''' writes the remaining bytes at current offset '''
-        l = len(bytes)
-        return self.write("{}B".format(l), l)
+    def writeRemaining(self, data):
+        """ writes the remaining bytes at current offset """
+        length = len(data)
+        self.file.extend(pack(self.bom + str(length) + "B", *data))
+        self.offset = len(self.file)
+        return length
 
     # Names
-    def unpack_name(self, advance = True):
-        ''' Unpacks a single name from a pointer '''
+    def unpack_name(self, advance=True):
+        """ Unpacks a single name from a pointer """
         [ptr] = self.read("I", 4 * advance)
         if not ptr:
             return None
         offset = self.beginOffset + ptr
-        nameLens = self.readOffset("I", offset - 4)
-        if nameLens[0] > 256:
+        name_lens = self.readOffset("I", offset - 4)
+        if name_lens[0] > 256:
             print("Name length too long!")
         else:
-            name = self.readOffset(str(nameLens[0]) + "s", offset)
+            name = self.readOffset(str(name_lens[0]) + "s", offset)
             # print("Name: {}".format(name[0]))
             return name[0].decode()
 
-    def storeNameRef(self, name):
-        ''' Stores a name reference offset to be filled when packing names
+    def storeNameRef(self, name, is_encoded=False):
+        """ Stores a name reference offset to be filled when packing names
             assumes file to be at name offset to store
             assumes start to be at the parent relation offset
             and advances the file offset
-        '''
-        map = self.nameRefMap
-        if not name in map:
-            map[name] = [(self.beginOffset, self.offset)]
+        """
+        name_map = self.nameRefMap
+        if not is_encoded:
+            name = name.encode('Ascii')
+        if not name in name_map:
+            name_map[name] = [(self.beginOffset, self.offset)]
         else:
-            map[name].append((self.beginOffset, self.offset))
+            name_map[name].append((self.beginOffset, self.offset))
         self.advance(4)
 
     def packNames(self):
-        '''packs in the names'''
-        map = self.nameRefMap
-        names = map.keys()
-        names.sort()
-        for x in names:
-            offset = self.offset + 4
-            l = len(x)
-            self.write("I{}s".format(l), l, x)
-            # write name reference pointers
-            reflist = map.get(x)
-            if not reflist:
-                print("Unused name: {}".format(x))
-            else:
-                for ref in reflist:
-                    self.writeOffset("I", ref[1], offset - ref[0])
+        """packs in the names"""
+        names = self.nameRefMap
+        for key in sorted(names):
+            if key is not None and key != "":
+                offset = self.offset + 4
+                length = len(key)
+                self.write("I{}s".format(length), length, key)
+                # write name reference pointers
+                reflist = names[key]
+                if not reflist:
+                    print("Unused name: {}".format(key))
+                else:
+                    for ref in reflist:
+                        self.writeOffset("I", ref[1], offset - ref[0])
 
     def convertByteArr(self):
         if type(self.file) != bytearray:
             self.file = bytearray(self.file)
 
 
-
 class FolderEntry:
-    ''' A single entry in folder '''
-    def __init__(self, parent, idx, name = None, dataPtr = 0):
+    """ A single entry in folder """
+
+    def __init__(self, parent, idx, name="", data_ptr=0):
         self.parent = parent
-        self.idx = idx  #  id in relation to folder (first never a data entry)
-        self.id = 0xffff    # id, left, right as calculated by binfileary tree
+        self.idx = idx  # id in relation to folder (first never a data entry)
+        self.id = 0xffff  # id, left, right as calculated by binfileary tree
         self.left = 0
         self.right = 0
-        self.name = name
-        self.dataPtr = dataPtr
+        self.name = name.encode('Ascii')
+        # name.encode('Ascii')
+        self.dataPtr = data_ptr
 
     def getName(self):
         return self.name
+
     def getOffset(self):
         return self.dataPtr
+
     def follow(self, binfile):
         binfile.offset = self.dataPtr
 
     def unpack(self, binfile):
+        offset = binfile.offset
         self.id, u, self.left, self.right = binfile.read("4H", 8)
         self.name = binfile.unpack_name()
+        [dataptr] = binfile.read("I", 0)
+        # print("{} entry {}: id {} left {} right {} data ptr {}".format(offset, self.name, self.id, self.left,
+        #                                                                self.right, dataptr + binfile.beginOffset))
         binfile.store()
 
     def pack(self, binfile):
+        # print("{} : {} ID {} left {} right {}".format(binfile.offset, self.name, self.id, self.left, self.right))
         binfile.write("4H", self.id, 0, self.left, self.right)
-        binfile.storeNameRef(self.name)
+        binfile.storeNameRef(self.name, True)
         if self.dataPtr:
             binfile.write("I", self.dataPtr)
         else:
             binfile.mark()  # marks the ref for storing data
 
-#------------------------------------------------------------------------------
-# Most of this courtesy of Wiim http://wiki.tockdom.com/wiki/BRRES_Index_Group_(File_Format)
-#    modified slightly to accomodate
+    # ------------------------------------------------------------------------------
+    # Most of this courtesy of Wiim http://wiki.tockdom.com/wiki/BRRES_Index_Group_(File_Format)
+    #    modified slightly to accomodate
     def calc_brres_id(self, objectname):
-        ''' Calculates entry id '''
+        """ Calculates entry id """
         objlen = len(objectname)
         subjlen = len(self.name)
         if objlen < subjlen:
-            self.id =  subjlen - 1 << 3 | self.getHighestBit(self.name[subjlen])
+            self.id = subjlen - 1 << 3 | self.getHighestBit(self.name[subjlen - 1])
         else:
             while subjlen > 0:
                 subjlen -= 1
@@ -365,9 +396,9 @@ class FolderEntry:
                 if ch:
                     self.id = subjlen << 3 | self.getHighestBit(ch)
                     break
-        return self.id
 
-    def getHighestBit(self, val):
+    @staticmethod
+    def getHighestBit(val):
         start = 0x80
         i = 7
         while start and not (val & start):
@@ -380,15 +411,15 @@ class FolderEntry:
         return idx < len(self.name) and self.name[idx] >> (id & 7) & 1
 
     def calc_brres_entry(self, entrylist):
-        ''' calculates brres entry, given an entry array'''
+        """ calculates brres entry, given an entry array"""
         head = entrylist[0]
-        self.id = self.calc_brres_id("")
+        self.calc_brres_id("")
         self.left = self.right = self.idx
         prev = head
         current = entrylist[head.left]
         is_right = False
         # loop
-        while self.id <= current.id and current.id < prev.id:
+        while self.id <= current.id < prev.id:
             if self.id == current.id:
                 # calculate new brres entry
                 self.calc_brres_id(current.name)
@@ -412,12 +443,15 @@ class FolderEntry:
             prev.right = self.idx
         else:
             prev.left = self.idx
-#    Glad that's over
+
+
+#    Game over
 # --------------------------------------------------------------------------------
 
 
 class Folder:
-    ''' A folder for indexing files with a number of entries. (Index Group)'''
+    """ A folder for indexing files with a number of entries. (Index Group)"""
+
     def __init__(self, binfile, name):
         self.name = name
         self.binfile = binfile
@@ -430,23 +464,25 @@ class Folder:
         return self.entries[key]
 
     def byteSize(self):
-        ''' returns byte size of folder '''
+        """ returns byte size of folder """
         # headerlen + (numEntries + refEntry) * 16 bytes
         return 8 + (len(self.entries) + 1) * 16
 
-    def addEntry(self, name, dataPtr = 0):
-        '''Adds a named entry to folder'''
-        l = len(self.entries)
-        e = FolderEntry(self, l + 1, name, dataPtr)
+    def addEntry(self, name, dataPtr=0):
+        """Adds a named entry to folder"""
+        length = len(self.entries)
+        e = FolderEntry(self, length + 1, name, dataPtr)
         self.entries.append(e)
         return e
 
     def unpack(self, binfile):
-        ''' Unpacks folder '''
+        """ Unpacks folder """
         binfile.start()
         self.offset = binfile.offset
         len, numEntries = binfile.read("2I", 8)
-        binfile.advance(16) # skip first entry
+        binfile.advance(16)  # skip first entry
+        # first = FolderEntry(self, 0)
+        # first.unpack(binfile)
         for i in range(numEntries):
             sub = FolderEntry(self, i + 1)  # +1 because skips first entry
             sub.unpack(binfile)
@@ -454,68 +490,67 @@ class Folder:
         binfile.end()
 
     def pack(self, binfile):
-        ''' packs folder '''
+        """ packs folder """
         binfile.start()
         self.offset = binfile.offset
         entries = self.calcEntries()
-        l = len(entries)
-        binfile.write("2I", l * 16, l - 1) # -1 to ignore reference entry
+        length = len(entries)
+        binfile.write("2I", length * 16, length - 1)  # -1 to ignore reference entry
         for x in entries:
             x.pack(binfile)
         binfile.end()
 
     def calcEntries(self):
-        ''' Calculates the left, right, and id of entries, returns the entries plus the first reference entry '''
+        """ Calculates the left, right, and id of entries, returns the entries plus the first reference entry """
         # add on the first reference entry
         head = FolderEntry(self, 0)
-        li = [head]
-        for x in self.entries:
-            li.append(x)
+        li = [head] + self.entries
         for x in li:
             x.calc_brres_entry(li)
         return li
 
     def open(self, name):
-        ''' opens the entry with name '''
+        """ opens the entry with name """
         try:
             return self.recallEntry(name)
-        except:
+        except ValueError:
             return False
 
-    def openI(self, index = 0):
-        ''' opens entry at index, returns false on failure '''
+    def openI(self, index=0):
+        """ opens entry at index, returns false on failure """
         try:
             return self.recallEntryI(index)
-        except:
+        except IndexError:
             return False
 
-
     def recallEntry(self, name):
-        '''Advances to the file offset for unpacking (once only)'''
+        """Advances to the file offset for unpacking (once only)"""
         for i in range(len(self.entries)):
             if self.entries[i].name == name:
                 return self.recallEntryI(i)
         raise ValueError("Entry name {} not in folder {}".format(name, self.name))
 
-    def recallEntryI(self, index = 0):
-        ''' Recalls entry at index (once only)'''
+    def recallEntryI(self, index=0):
+        """ Recalls entry at index (once only)"""
         entry = self.entries.pop(index)
         self.binfile.recallOffset(self.offset, index)
         return entry.name
 
     def createEntryRef(self, name):
-        '''creates the reference in folder to the section (data pointer)'''
+        """creates the reference in folder to the section (data pointer)"""
         for i in range(len(self.entries)):
             if self.entries[i].name == name:
                 return self.createEntryRefI(i)
         raise ValueError("Entry name {} not in folder {}".format(name, self.name))
 
-    def createEntryRefI(self, index = 0):
-        ''' creates reference in folder to section at entry[index] (once only, pops)'''
-        self.entries.pop(index)
-        return self.binfile.createRefFrom(self.offset, index + 1)   # index + 1 ignoring the first ref entry
+    def createEntryRefI(self, index=0):
+        """ creates reference in folder to section at entry[index] (once only, pops)"""
+        entry = self.entries.pop(index)
+        print('{} {}'.format(self.binfile.offset, entry.name))
+        return self.binfile.createRefFrom(self.offset, index + 1)  # index + 1 ignoring the first ref entry
 
-def printCollectionHex(collection, prefix = ""):
+
+def printCollectionHex(collection):
     st = ""
     i = 0
     for x in collection:

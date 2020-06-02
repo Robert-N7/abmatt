@@ -1,22 +1,24 @@
 #!/usr/bin/python
-''' Material wii graphics'''
-from bp import *
+""" Material wii graphics"""
+from mdl0.wiigraphics.bp import ColorReg, AlphaFunction, ZMode, BPCommand, BlendMode, ConstantAlpha, IndMatrix
 
-class TevRegister():
-    def __init__(self, index, type):
-        ''' Type, enable for constant color '''
-        self.reglow = ColorReg(index, 0, type)
-        self.reghigh = ColorReg(index, 1, type)
-        self.type = type
+
+class TevRegister:
+    def __init__(self, index, reg_type):
+        """ Type, enable for constant color """
+        self.reglow = ColorReg(index, 0, reg_type)
+        self.reghigh = ColorReg(index, 1, reg_type)
+        self.type = reg_type
 
     def unpack(self, binfile):
-        ''' unpacks the tev register '''
+        """ unpacks the tev register """
         self.reglow.unpack(binfile)
         self.reghigh.unpack(binfile)
-        if not self.type:   # repeats 3x
+        if not self.type:  # repeats 3x
             binfile.advance(10)
+
     def pack(self, binfile):
-        ''' packs the tev register '''
+        """ packs the tev register """
         self.reglow.pack(binfile)
         if not self.type:
             self.reghigh.pack(binfile)
@@ -24,18 +26,19 @@ class TevRegister():
         self.reghigh.pack(binfile)
 
     def getColor(self):
-        ''' Gets the color (r,g,b,a) '''
-        c1 = reglow.getColor()
-        return c1[1] + reghigh.getColor() + c1[0]
+        """ Gets the color (r,g,b,a) """
+        c1 = self.reglow.getColor()
+        return c1[1] + self.reghigh.getColor() + c1[0]
 
     def setColor(self, rgba):
-        ''' Sets the color (r,g,b,a) '''
-        reglow.setColor(rgba[1:3])
-        reghigh.setColor(rgba[3], rgba[0])
+        """ Sets the color (r,g,b,a) """
+        self.reglow.setColor(rgba[1:3])
+        self.reghigh.setColor((rgba[3], rgba[0]))
 
 
-class MatGX():
-    ''' Material graphics codes '''
+class MatGX:
+    """ Material graphics codes """
+
     def __init__(self):
         self.alphafunction = AlphaFunction()
         self.zmode = ZMode()
@@ -53,9 +56,8 @@ class MatGX():
         for i in range(3):
             self.indMatrices.append(IndMatrix(i))
 
-
     def unpack(self, binfile):
-        ''' unpacks the mat graphic codes '''
+        """ unpacks the mat graphic codes """
         self.alphafunction.unpack(binfile)
         self.zmode.unpack(binfile)
         self.bpmask.unpack(binfile)
@@ -76,7 +78,7 @@ class MatGX():
         # should be at layer xf flags
 
     def pack(self, binfile):
-        ''' packs the mat graphic codes '''
+        """ packs the mat graphic codes """
         self.alphafunction.pack(binfile)
         self.zmode.pack(binfile)
         self.bpmask.pack(binfile)

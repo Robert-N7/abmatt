@@ -3,9 +3,10 @@
 ANoob's Brres Material Editor
 For editing Mario Kart Wii files
 """
-import sys
 import getopt
+
 from command import *
+
 __version__ = "0.1.0"
 USAGE = "{} -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value>\
  -n <name> -m <model> -i] "
@@ -129,11 +130,19 @@ def main(argv):
         sys.exit(2)
 
     cmds = []
+    if destination:
+        Command.DESTINATION = destination
+        Brres.DESTINATION = destination
+    if overwrite:
+        Command.OVERWRITE = overwrite
+        Brres.OVERWRITE = overwrite
     if setting:
-        cmd = "set"
-        cmds.append(Command(cmd, setting, value, name, filename, model, None))
+        cmd = "set material " + setting + ":" + value + " for " + name + " in file " + filename
+        if model:
+            cmd += " model " + model
+        cmds.append(Command(cmd))
         if info:
-            cmds.append(Command("info", setting, value, name, filename, model, None))
+            cmds.append(Command("info"))
     if commandfile:
         # print("command file exists ")
         filecmds = load_commandfile(commandfile)
@@ -146,12 +155,12 @@ def main(argv):
         else:
             cmds = cmds + filecmds
     if info:
-        cmd = "info"
-        cmds.append(Command(cmd, setting, value, name, filename, model, None))
+        cmd = "info material " + setting + " for " + name + " in file " + filename
+        cmds.append(Command(cmd))
     if not cmds:
         print(USAGE)
     else:
-        run_commands(cmds, destination, overwrite)
+        run_commands(cmds)
     # interactive mode maybe?
 
 

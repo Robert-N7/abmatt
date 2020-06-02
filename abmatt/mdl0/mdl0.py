@@ -1,40 +1,38 @@
-''' MDL0 Models '''
-from material import Material
+""" MDL0 Models """
 from matching import *
 from mdl0.drawlist import DrawList, Definition
-from shader import Shader
+from mdl0.material import Material
+from mdl0.shader import Shader, ShaderList
 from subfile import SubFile
 from binfile import *
 
-#----------------- Model sub files --------------------------------------------
-class ModelGeneric(object):
-    ''' A generic model class - most data structures have similar type of header'''
 
-    def __init__(self, name, parent, hasDataptr=True, hasNamePtr=True):
-        ''' Each model subfile has len, mdloffset, [dataptr], [nameptr], index'''
+# ----------------- Model sub files --------------------------------------------
+class ModelGeneric(object):
+    """ A generic model class - most data structures have similar type of header"""
+
+    def __init__(self, name, parent, has_data_ptr=True, has_name_ptr=True):
+        """ Each model subfile has len, mdloffset, [dataptr], [nameptr], index"""
         self.parent = parent
-        self.hasDataptr = hasDataptr
-        self.hasNamePtr = hasNamePtr
+        self.hasDataptr = has_data_ptr
+        self.hasNamePtr = has_name_ptr
         self.name = name
 
     def unpack(self, binfile):
-        ''' Unpacks some ptrs but mostly just leaves data as bytes '''
+        """ Unpacks some ptrs but mostly just leaves data as bytes """
         binfile.start()
         self.length, mdl = binfile.read("Ii", 8)
         if self.hasDataptr:
             [self.dataPtr] = binfile.read("I", 4)
         if self.hasNamePtr:
-            binfile.advance(4)   # ignore, we already have name
+            binfile.advance(4)  # ignore, we already have name
         [self.index] = binfile.read("I", 4)
-        if __debug__:
-            print("Subfile Len {} outer file {} index {}".format(self.length,
-                    mdl, self.index))
         # doesn't do much unpacking
         self.data = binfile.readRemaining(self.length)
         binfile.end()
 
     def pack(self, binfile):
-        ''' Packs into binfile '''
+        """ Packs into binfile """
         binfile.start()
         binfile.write("Ii", self.length, binfile.getOuterOffset())
         if self.hasDataptr:
@@ -45,9 +43,11 @@ class ModelGeneric(object):
         binfile.writeRemaining(self.data)
         binfile.end()
 
-class TextureLink():
-    ''' Links from materials to layers '''
-    def __init__(self, name, parent = None):
+
+class TextureLink:
+    """ Links from materials to layers """
+
+    def __init__(self, name, parent=None):
         self.name = name
         self.parent = parent
         self.links = []
@@ -61,60 +61,77 @@ class TextureLink():
     def pack(self, binfile):
         binfile.write("I", len(self.links))
         for i in range(len(self.links)):
-            binfile.write("2I", self.links[i])
+            binfile.write("2I", *self.links[i])
+
 
 class ModelObject(ModelGeneric):
-    ''' Object model data '''
-    def __init__(self, name, parent = None):
+    """ Object model data """
+
+    def __init__(self, name, parent=None):
         super(ModelObject, self).__init__(name, parent, False, False)
 
+
 class FurLayer(ModelGeneric):
-    ''' Fur Layer model data '''
-    def __init__(self, name, parent = None):
+    """ Fur Layer model data """
+
+    def __init__(self, name, parent=None):
         super(FurLayer, self).__init__(name, parent)
 
+
 class FurVector(ModelGeneric):
-    ''' Fur Vector model data '''
+    """ Fur Vector model data """
+
     def __init__(self, name, parent):
         super(FurVector, self).__init__(name, parent)
 
+
 class TexCoord(ModelGeneric):
-    ''' TexCoord model data'''
+    """ TexCoord model data"""
+
     def __init__(self, name, parent):
         super(TexCoord, self).__init__(name, parent)
 
+
 class Color(ModelGeneric):
-    ''' Colors model data '''
+    """ Colors model data """
+
     def __init__(self, name, parent):
         super(Color, self).__init__(name, parent)
 
+
 class Normal(ModelGeneric):
-    ''' Normals model data '''
+    """ Normals model data """
+
     def __init__(self, name, parent):
         super(Normal, self).__init__(name, parent)
 
+
 class Vertex(ModelGeneric):
-    ''' Vertex class for storing vertices data '''
+    """ Vertex class for storing vertices data """
+
     def __init__(self, name, parent):
         super(Vertex, self).__init__(name, parent)
 
+
 class Bone(ModelGeneric):
-    ''' Bone class '''
+    """ Bone class """
+
     def __init__(self, name, parent):
-        super(Bone, self).__init__(name, False)
+        super(Bone, self).__init__(name, parent)
+
 
 class BoneTable:
-    ''' Bonetable class '''
+    """ Bonetable class """
+
     def unpack(self, binfile):
-        ''' unpacks bonetable '''
+        """ unpacks bonetable """
         [length] = binfile.read("I", 4)
         self.entries = binfile.read("{}I".format(length), length * 4)
 
     def pack(self, binfile):
         length = len(self.entries)
         binfile.write("I", length)
-        binfile.write("{}I".format(length), length * 4, self.entries)
-
+        binfile.write("{}I".format(length), *self.entries)
 
 
 # ---------------------------------------------------------------------
@@ -123,9 +140,9 @@ class BoneTable:
 #   Model class
 # ---------------------------------------------------------------------
 class Mdl0(SubFile):
-    ''' Model Subfile '''
+    """ Model Subfile """
     MAGIC = "MDL0"
-    VERSION_SECTIONCOUNT = {8:11, 11:14}
+    VERSION_SECTIONCOUNT = {8: 11, 11: 14}
     SECTION_NAMES = ("Definitions", "Bones", "Vertices", "Normals", "Colors",
                      "UVs", "FurVectors", "FurLayers",
                      "Materials", "Shaders", "Objects", "Textures", "Palettes")
@@ -136,7 +153,7 @@ class Mdl0(SubFile):
                        FurLayer, Material, Shader, ModelObject, TextureLink, TextureLink)
 
     def __init__(self, name, parent):
-        ''' initialize with name and parent '''
+        """ initialize with name and parent """
         super(Mdl0, self).__init__(name, parent)
         self.definitions = []
         self.drawXLU = None
@@ -149,7 +166,7 @@ class Mdl0(SubFile):
         self.furVectors = []
         self.furLayers = []
         self.materials = []
-        self.shaders = []
+        self.shaders = ShaderList()
         self.objects = []
         self.paletteLinks = []
         self.textureLinks = []
@@ -169,22 +186,46 @@ class Mdl0(SubFile):
                 return m
         return None
 
+    def getMaterialByID(self, id):
+        for x in self.materials:
+            if x.id == id:
+                return x
+
+    def getTrace(self):
+        return self.parent.getTrace() + "->" + self.name
+
+    def isMaterialDrawXlu(self, material_id):
+        if self.drawXLU.getByMaterialID(material_id):
+            return True
+        return False
+
+    def setMaterialDrawXlu(self, material_id):
+        x = self.drawOpa.pop(material_id)
+        if x is not None:
+            self.drawXLU.insert(x)
+        return x
+
+    def setMaterialDrawOpa(self, material_id):
+        x = self.drawXLU.pop(material_id)
+        if x is not None:
+            self.drawOpa.insert(x)
+        return x
+
     def info(self, command, trace):
-        if __debug__:
-            print("MODEL INFO CALLED {}".format(self.name))
         trace += "->" + self.name
-        if command.modelname or command.materialname: # pass it down
+        if command.modelname or command.materialname:  # pass it down
             matching = findAll(command.materialname, self.materials)
             for m in matching:
                 m.info(command, trace)
         else:
             if matches(command.name, self.name):
-                print("{} Mdl0 {}:\t materials: {} shaders: {}".format(trace, self.version, len(self.materials), len(self.shaders)))
+                print("{} Mdl0 {}:\t materials: {} shaders: {}".format(trace, self.version, len(self.materials),
+                                                                       len(self.shaders)))
             # pass it along
             for x in self.materials:
                 x.info(command, trace)
 
-    #---------------HOOK REFERENCES -----------------------------------------
+    # ---------------HOOK REFERENCES -----------------------------------------
     def hookSRT0ToMats(self, srt0):
         for animation in srt0.matAnimations:
             m = self.getMaterialByName(animation.name)
@@ -197,23 +238,21 @@ class Mdl0(SubFile):
             mat.shader = x
             x.material = mat
 
-    #---------------START PACKING STUFF -------------------------------------
-    def unpackSection(self, binfile, sectionIndex):
-        ''' unpacks section by creating items  of type sectionKlass
+    # ---------------START PACKING STUFF -------------------------------------
+    def unpackSection(self, binfile, section_index):
+        """ unpacks section by creating items  of type section_klass
             and adding them to section list index
-        '''
-        if binfile.recallParent(): # from offset header
-            sectionKlass = self.SECTION_CLASSES[sectionIndex]
-            folder = Folder(binfile, self.SECTION_NAMES[sectionIndex])
+        """
+        if section_index == 9:
+            self.shaders.unpack(binfile)
+        elif binfile.recallParent():  # from offset header
+            section_klass = self.SECTION_CLASSES[section_index]
+            folder = Folder(binfile, self.SECTION_NAMES[section_index])
             folder.unpack(binfile)
-            if __debug__:
-                print("Unpacking section {} of mdl0 {} with {} entries".format(self.SECTION_NAMES[sectionIndex], self.name, len(folder)))
-            section = self.sections[sectionIndex]
+            section = self.sections[section_index]
             while len(folder.entries):
                 name = folder.recallEntryI()
-                if __debug__:
-                    print("Unpacking {} in section {}".format(name, sectionIndex))
-                d = sectionKlass(name, self)
+                d = section_klass(name, self)
                 d.unpack(binfile)
                 section.append(d)
             return len(section)
@@ -236,14 +275,12 @@ class Mdl0(SubFile):
             self.definitions.append(d)
 
     def unpack(self, binfile):
-        ''' unpacks model data '''
+        """ unpacks model data """
         self._unpack(binfile)
         binfile.start()
         # Header
-        if __debug__:
-            print("Unpacking model data")
-        len, fh, _, _, self.vertexCount, self.faceCount, _, self.boneCount, _  = binfile.read("Ii7I", 36)
-        binfile.store() # bone table offset
+        ln, fh, _, _, self.vertexCount, self.faceCount, _, self.boneCount, _ = binfile.read("Ii7I", 36)
+        binfile.store()  # bone table offset
         self.minimum = binfile.read("3f", 12)
         self.maximum = binfile.read("3f", 12)
         binfile.recall()
@@ -254,39 +291,62 @@ class Mdl0(SubFile):
         for i in range(1, self._getNumSections()):
             self.unpackSection(binfile, i)
         binfile.end()
-        binfile.end()   # end file
+        binfile.end()  # end file
 
-    def packSection(self, binfile, sectionIndex):
-        ''' Packs a model section '''
-        section = self.sections[sectionIndex]
-        if section:
-            binfile.createParentRef(sectionIndex, False)
-            # Create index group
-            folder = Folder(binfile, self.SECTION_NAMES[sectionIndex])
-            for x in section:
-                folder.addEntry(x.name)
-            folder.pack()
+    def packSection(self, binfile, section_index, folder):
+        """ Packs a model section """
+        section = self.sections[section_index]
+        if section_index == 9:
+            section.pack(binfile, folder)
+        elif section:
+            print('Packing section {}'.format(self.SECTION_NAMES[section_index]))
             # now pack the data
             for x in section:
-                folder.createEntryRefI() # create reference to current data location
-                x.pack()
+                folder.createEntryRefI()  # create reference to current data location
+                x.pack(binfile)
 
-    def packData(self, binfile):
-        ''' Packs the model data '''
+    def packFolders(self, binfile):
+        """ Generates the root folders
+            Does not hook up data pointers except the head group,
+            returns rootFolders
+        """
+        root_folders = []  # for storing Index Groups
+        sections = self.sections
+        # Create folder for each section the MDL0 has
+        for i in range(len(sections)):
+            section = sections[i]
+            if i == 9:  # special case for shaders: must add entry for each material
+                section = sections[i - 1]
+            if section:
+                f = Folder(binfile, self.SECTION_NAMES[i])
+                for j in range(len(section)):
+                    f.addEntry(section[j].name)
+                root_folders.append(f)
+                binfile.createParentRef() # create the ref from stored offsets
+                f.pack(binfile)
+            else:
+                root_folders.append(None) # create placeholder
+        return root_folders
+
+
+    def pack(self, binfile):
+        """ Packs the model data """
         if self.version != 11:
             raise ValueError("Unsupported mdl0 version {}".format(self.version))
         self._pack(binfile)
+        binfile.start()
         # header
-        fileoffset = (self.getNumSections() * 4 + 0x14) * -1
+        fileoffset = (self.VERSION_SECTIONCOUNT[self.version] * 4 + 0x14) * -1
         binfile.write("Ii7I", 0x40, fileoffset, 0, 0, self.vertexCount, self.faceCount,
-                  0, self.boneCount, 0)
-        binfile.mark() # bone table offset
-        binfile.write("6f", self.minimum, self.maximum)
-        binfile.createRef()
+                      0, self.boneCount, 0)
+        binfile.mark()  # bone table offset
+        binfile.write("6f", *self.minimum, *self.maximum)
+        binfile.createRef() # bone table
         self.boneTable.pack(binfile)
         # sections
+        folders = self.packFolders(binfile)
         for i in self.SECTION_ORDER:
-            self.packSection(binfile, i)
+            self.packSection(binfile, i, folders[i])
         binfile.end()
-        binfile.end()   # end file
-    #-------------- END PACKING STUFF ---------------------------------------
+        binfile.end()  # end file
+    # -------------- END PACKING STUFF ---------------------------------------
