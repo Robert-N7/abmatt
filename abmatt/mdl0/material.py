@@ -460,7 +460,7 @@ class Material:
     # PACKING
     # -----------------------------------------------------------------------------
     def pack(self, binfile):
-        ''' Packs the material '''
+        """ Packs the material """
         self.offset = binfile.start()
         binfile.markLen()
         binfile.write("i", binfile.getOuterOffset())
@@ -495,12 +495,16 @@ class Material:
         print("{} SRT".format(binfile.offset))
         for l in layers:
             l.pack_srt(binfile)
-        binfile.advance(empty_layer_count * 20)
+        # fill in defaults
+        Layer.pack_default_srt(binfile, empty_layer_count)
         for l in layers:
             l.pack_textureMatrix(binfile)
-        binfile.advance(empty_layer_count * 52)
+        Layer.pack_default_textureMatrix(binfile, empty_layer_count)
+        assert (len(self.lightChannels) == 1)
         for l in self.lightChannels:
             l.pack(binfile)
+        # pack 2nd lc padding
+        LightChannel.pack_default(binfile)
         binfile.createRef(1)
         print("{} layer offset".format(binfile.offset))
         for l in layers:
@@ -521,7 +525,7 @@ class Material:
         binfile.end()
 
     def unpackLayers(self, binfile, startLayerInfo, numlayers):
-        ''' unpacks the material layers '''
+        """ unpacks the material layers """
         binfile.recall()  # layers
         offset = binfile.offset
         print("{} layer offset".format(binfile.offset))
@@ -542,11 +546,15 @@ class Material:
                 f = flags[i] >> 4
                 i -= 1
             self.layers[li].setLayerFlags(f)
+        # Texture matrix
+        binfile.advance(164)
+        for layer in self.layers:
+            layer.unpack_textureMatrix(binfile)
         return offset
 
-    def unpackLightChannels(self, binfile):
+    def unpackLightChannels(self, binfile, nlights):
         ''' Unpacks the light channels '''
-        for i in range(2):
+        for i in range(nlights):
             lc = LightChannel()
             self.lightChannels.append(lc)
             lc.unpack(binfile)
@@ -562,10 +570,13 @@ class Material:
         self.cullmode, self.compareBeforeTexture, \
         self.lightset, self.fogset, pad = binfile.read("2I2B2BI4B", 20)
         self.xlu = xluFlags >> 31 & 1
-        if __debug__:
-            print("id {} xlu {} layers{} lights {}".format(self.id, xluFlags, ntexgens, nlights))
+        assert(nlights == 0x1)
+        # if __debug__:
+        #     print("id {} xlu {} layers{} lights {}".format(self.id, xluFlags, ntexgens, nlights))
         binfile.advance(8)
         self.shaderOffset, nlayers = binfile.read("2i", 8)
+        if nlayers != ntexgens:
+            raise Exception('Number of layers {} is different than number texgens {}'.format(nlayers, ntexgens))
         self.shaderOffset += binfile.beginOffset
         binfile.store()  # layer offset
         if self.parent.version >= 10:
@@ -581,11 +592,11 @@ class Material:
         # ignore precompiled code space
         binfile.advance(360)
         startlayerInfo = binfile.offset
-        offset = self.unpackLayers(binfile, startlayerInfo, nlayers)
-        [self.textureMatrixMode] = binfile.read("I", 4)
+        [self.textureMatrixMode] = binfile.readOffset('I', binfile.offset + 4)
+        self.unpackLayers(binfile, startlayerInfo, nlayers)
         print("{} SRT".format(binfile.offset))
-        binfile.advance(576)
-        self.unpackLightChannels(binfile)
+        binfile.offset = startlayerInfo + 584
+        self.unpackLightChannels(binfile, nlights)
         binfile.recall()
         print("{} matgx".format(binfile.offset))
         binfile.start()  # Mat wii graphics
@@ -741,3 +752,7 @@ class LightChannel:
                 | self.ambientAlphaEnabled << 3 | self.rasterColorEnabled << 4 | self.rasterAlphaEnabled << 5
         binfile.write("I8B2I", flags, *self.materialColor, *self.ambientColor,
                       self.colorLightControl.getFlagsAsInt(), self.alphaLightControl.getFlagsAsInt())
+
+    @staticmethod
+    def pack_default(binfile):
+        binfile.write('5I', 0xf, 0xff, 0, 0, 0)

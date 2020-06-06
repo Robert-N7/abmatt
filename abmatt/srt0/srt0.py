@@ -121,12 +121,12 @@ class SRTKeyFrameList:
             if entries[i].index == index:
                 prev = entries[i - 1]
                 if i == len(entries) - 1:  # last entry?
-                    next = entries[0]
+                    next_entry = entries[0]
                     next_id = self.frameCount
                 else:
-                    next = entries[i + 1]
-                    next_id = next.index
-                prev.value = self.calcDelta(prev.index, prev.value, next_id, next.value)
+                    next_entry = entries[i + 1]
+                    next_id = next_entry.index
+                prev.value = self.calcDelta(prev.index, prev.value, next_id, next_entry.value)
                 entries.pop(i)
                 break
 
@@ -483,10 +483,10 @@ class SRTTexAnim():
         # code = self.calculateCode()
         code = self.flagsToInt()
         binfile.write("I", code)
-        haveOffsets = self.packScale(binfile)
-        haveOffsets.append(self.packRotation(binfile))
-        haveOffsets.extend(self.packTranslation(binfile))
-        return haveOffsets
+        have_offsets = self.packScale(binfile)
+        have_offsets.append(self.packRotation(binfile))
+        have_offsets.extend(self.packTranslation(binfile))
+        return have_offsets
 
 
 class SRTMatAnim():
@@ -662,36 +662,40 @@ class Srt0(SubFile):
     #   PACKING
     def unpack(self, binfile):
         self._unpack(binfile)
-        uk, self.framecount, self.size, self.matrixmode, self.looping = binfile.read("I2H2I", 16)
-        # advance to section 0
-        binfile.recall()
-        folder = Folder(binfile, "scn0root")  # todo name here
-        folder.unpack(binfile)
-        while True:
-            e = folder.openI()
-            if not e:
-                break
-            mat = SRTMatAnim(e, self.framecount)
-            mat.unpack(binfile)
-            self.matAnimations.append(mat)
-        binfile.recall()  # section 1 (unknown)
-        self.section1 = binfile.readRemaining(self.byte_len)
-        binfile.end()
+        self._unpackData(binfile)
+        return
+        # uk, self.framecount, self.size, self.matrixmode, self.looping = binfile.read("I2H2I", 16)
+        # # advance to section 0
+        # binfile.recall()
+        # folder = Folder(binfile, "scn0root")  # todo name here
+        # folder.unpack(binfile)
+        # while True:
+        #     e = folder.openI()
+        #     if not e:
+        #         break
+        #     mat = SRTMatAnim(e, self.framecount)
+        #     mat.unpack(binfile)
+        #     self.matAnimations.append(mat)
+        # binfile.recall()  # section 1 (unknown)
+        # self.section1 = binfile.readRemaining(self.byte_len)
+        # binfile.end()
 
     def pack(self, binfile):
         """ Packs the data for SRT file """
         self._pack(binfile)
-        binfile.write("I2H2I", 0, self.framecount, len(self.matAnimations),
-                      self.matrixmode, self.looping)
-        binfile.createRef()  # create ref to section 0
-        # create index group
-        folder = Folder(binfile, "scn0root")
-        for x in self.matAnimations:
-            folder.addEntry(x.name)
-        folder.pack(binfile)
-        framescale = self.calcFrameScale(self.framecount)
-        for x in self.matAnimations:
-            folder.createEntryRefI()
-            x.pack(binfile, framescale)
-        binfile.createRef()  # section 1 (unknown)
-        binfile.writeRemaining(self.section1)
+        self._packData(binfile)
+        # binfile.write("I2H2I", 0, self.framecount, len(self.matAnimations),
+        #               self.matrixmode, self.looping)
+        # binfile.createRef()  # create ref to section 0
+        # # create index group
+        # folder = Folder(binfile, "scn0root")
+        # for x in self.matAnimations:
+        #     folder.addEntry(x.name)
+        # folder.pack(binfile)
+        # framescale = self.calcFrameScale(self.framecount)
+        # for x in self.matAnimations:
+        #     folder.createEntryRefI()
+        #     x.pack(binfile, framescale)
+        # binfile.createRef()  # section 1 (unknown)
+        # binfile.writeRemaining(self.section1)
+        # binfile.end()

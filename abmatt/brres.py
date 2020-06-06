@@ -183,12 +183,13 @@ class Brres():
         self.isUpdated = False
         return False
 
-    def getNumSections(self):
-        ''' gets the number of sections, including root'''
-        count = 1  # root
-        for x in self.folders:
+    def getNumSections(self, folders):
+        """ gets the number of sections, including root"""
+        count = 1   # root
+        for x in folders[count:]:
             if x:
-                count += 1
+                count += len(x)
+                print('Length of folder {} is {}'.format(x.name, len(x)))
         return count
 
     # ----------------- HOOKING REFERENCES ----------------------------------
@@ -222,7 +223,7 @@ class Brres():
                 obj.unpack(binfile)
 
     def unpack(self, binfile):
-        ''' Unpacks the brres '''
+        """ Unpacks the brres """
         if __debug__:
             print("Unpacking brres {}".format(self.name))
         binfile.start()
@@ -231,11 +232,11 @@ class Brres():
             raise ValueError("Magic {} does not match {}".format(magic, self.MAGIC))
         bom = binfile.read("H", 2)
         binfile.bom = "<" if bom == 0xfffe else ">"
-        pad, self.length, rootoffset, self.numSections = binfile.read("hI2h", 10)
+        pad, self.length, rootoffset, numSections = binfile.read("hI2h", 10)
         binfile.offset = rootoffset
         root = binfile.readMagic()
         assert (root == self.ROOTMAGIC)
-        sectionLength = binfile.read("I", 4)
+        section_length = binfile.read("I", 4)
         root = Folder(binfile, root)
         root.unpack(binfile)
         if __debug__:
@@ -249,10 +250,10 @@ class Brres():
         self.hookAnimationRefs()
 
     def generateRoot(self, binfile):
-        ''' Generates the root folders
+        """ Generates the root folders
             Does not hook up data pointers except the head group,
             returns (rootFolders, bytesize)
-        '''
+        """
         rootFolders = []  # for storing Index Groups
         byteSize = 0
         # Create folder indexing folders
@@ -276,40 +277,40 @@ class Brres():
         entries = rootFolder.entries
         for i in range(len(offsets)):
             entries[i].dataPtr = offsets[i] + rtsize
-        byteSize += rtsize + 8  # add first folder to bytsize, and header len
+        byteSize += rtsize + 8  # add first folder to bytesize, and header len
         return rootFolders, byteSize
 
-    def packRoot(self, binfile):
-        ''' Packs the root section, returns root folders that need data ptrs'''
-        binfile.start()
+    def packRoot(self, binfile, root):
+        """ Packs the root section, returns root folders that need data ptrs"""
         binfile.writeMagic("root")
-        rtFolders, rtSize = self.generateRoot(binfile)
+        rtFolders, rtSize = root[0], root[1]
         binfile.write("I", rtSize)
         for f in rtFolders:
             f.pack(binfile)
-        binfile.end()
         return rtFolders[1:]
 
     def pack(self, binfile):
-        ''' packs the brres '''
+        """ packs the brres """
         binfile.start()
+        root = self.generateRoot(binfile)
         binfile.writeMagic(self.MAGIC)
-        binfile.write("H", 0xfffe)  # BOM
+        binfile.write("H", 0xfeff)  # BOM
         binfile.advance(2)
         binfile.markLen()
-        numSections = self.getNumSections()
-        binfile.write("2H", 0x10, numSections)
-        folders = self.packRoot(binfile)
+        num_sections = self.getNumSections(root[0])
+        binfile.write("2H", 0x10, num_sections)
+        folders = self.packRoot(binfile, root)
         # now pack the folders
-        folderIndex = 0
+        folder_index = 0
         for subfolder in self.folders:
             if len(subfolder):
-                refGroup = folders[folderIndex]
+                refGroup = folders[folder_index]
                 print("Packing folder {}".format(refGroup.name))
                 for file in subfolder:
                     refGroup.createEntryRefI()  # create the dataptr
                     file.pack(binfile)
-                folderIndex += 1
+                folder_index += 1
         binfile.packNames()
+        binfile.align()
         binfile.end()
     # --------------------------------------------------------------------------

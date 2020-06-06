@@ -11,6 +11,7 @@ __version__ = "0.1.0"
 USAGE = "{} -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value>\
  -n <name> -m <model> -i] "
 
+
 def hlp():
     """ displays help message """
     helpstr = '''
@@ -83,9 +84,9 @@ def main(argv):
         sys.exit(0)
     try:
         opts, args = getopt.getopt(argv, "hf:d:ok:v:n:m:c:i",
-                             ["help", "file=", "destination=", "overwrite",
-                              "key=", "value=",
-                              "name=", "model=", "info", "commandfile="])
+                                   ["help", "file=", "destination=", "overwrite",
+                                    "key=", "value=",
+                                    "name=", "model=", "info", "commandfile="])
     except getopt.GetoptError:
         print(USAGE)
         sys.exit(2)
@@ -162,7 +163,6 @@ def main(argv):
     else:
         run_commands(cmds)
     # interactive mode maybe?
-
 
 
 if __name__ == "__main__":

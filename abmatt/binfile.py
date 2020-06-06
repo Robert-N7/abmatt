@@ -37,8 +37,10 @@ class BinFile:
             li = self.references[x]
             for item in li:
                 print("Unused reference {} in relation to {}".format(item, x))
-
+        if len(self.stack) > 1:
+            print('Incorrect stack, {} items still on'.format(len(self.stack) - 1))
         # write
+        print('Length of file is {}'.format(len(self.file)))
         with open(self.filename, "wb") as f:
             f.write(self.file)
 
@@ -88,9 +90,11 @@ class BinFile:
             Use in write mode with createRef
         """
         li = self.refMarker
+        offset = self.offset
         for i in range(num_refs):
-            li.append(self.offset)
-            self.advance(4)
+            li.append(offset)
+            offset += 4
+        self.advance(num_refs * 4)
 
     def unmark(self, ref_index=0, pop=True):
         """Retrieves marked offset"""
@@ -147,7 +151,7 @@ class BinFile:
             self.writeOffset("I", marked_offset, self.offset - start_ref)
             return marked_offset
         except IndexError:
-            raise ("Marked index from {} at {} does not exist!".format(start_ref, index))
+            raise ValueError("Marked index from {} at {} does not exist!".format(start_ref, index))
 
     # Storing and recalling forward pointers - read mode
     def pushCurrentOffset(self):
@@ -323,7 +327,7 @@ class BinFile:
         """packs in the names"""
         names = self.nameRefMap
         for key in sorted(names):
-            if key is not None and key != "":
+            if key is not None and key != b'':
                 offset = self.offset + 4
                 length = len(key)
                 self.write("I{}s".format(length), length, key)
@@ -495,7 +499,7 @@ class Folder:
         self.offset = binfile.offset
         entries = self.calcEntries()
         length = len(entries)
-        binfile.write("2I", length * 16, length - 1)  # -1 to ignore reference entry
+        binfile.write("2I", self.byteSize(), length - 1)  # -1 to ignore reference entry
         for x in entries:
             x.pack(binfile)
         binfile.end()
@@ -538,6 +542,7 @@ class Folder:
 
     def createEntryRef(self, name):
         """creates the reference in folder to the section (data pointer)"""
+        name = name.encode('Ascii')
         for i in range(len(self.entries)):
             if self.entries[i].name == name:
                 return self.createEntryRefI(i)

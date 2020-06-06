@@ -55,13 +55,13 @@ class TextureLink:
     def unpack(self, binfile):
         [length] = binfile.read("I", 4)
         for i in range(length):
-            self.links.append(binfile.read("2I", 8))
+            self.links.append(binfile.read("2i", 8))
             # todo: what does this actually do/how to rebuild
 
     def pack(self, binfile):
         binfile.write("I", len(self.links))
         for i in range(len(self.links)):
-            binfile.write("2I", *self.links[i])
+            binfile.write("2i", *self.links[i])
 
 
 class ModelObject(ModelGeneric):
@@ -232,20 +232,15 @@ class Mdl0(SubFile):
             if m:
                 m.srt0 = animation
 
-    def hookShadersToMats(self):
-        for x in self.shaders:
-            mat = self.getMaterialByName(x.name)
-            mat.shader = x
-            x.material = mat
-
     # ---------------START PACKING STUFF -------------------------------------
     def unpackSection(self, binfile, section_index):
         """ unpacks section by creating items  of type section_klass
             and adding them to section list index
         """
         if section_index == 9:
-            self.shaders.unpack(binfile)
-        elif binfile.recallParent():  # from offset header
+            # assumes materials are unpacked.. possible bug?
+            self.shaders.hookMatsToShaders(self.shaders.unpack(binfile), self.materials)
+        elif binfile.recall():  # from offset header
             section_klass = self.SECTION_CLASSES[section_index]
             folder = Folder(binfile, self.SECTION_NAMES[section_index])
             folder.unpack(binfile)
@@ -258,7 +253,7 @@ class Mdl0(SubFile):
             return len(section)
 
     def unpackDefinitions(self, binfile):
-        binfile.recallParent()
+        binfile.recall()
         folder = Folder(binfile, self.SECTION_NAMES[0])
         folder.unpack(binfile)
         while len(folder.entries):
@@ -277,8 +272,7 @@ class Mdl0(SubFile):
     def unpack(self, binfile):
         """ unpacks model data """
         self._unpack(binfile)
-        binfile.start()
-        # Header
+        binfile.start() # Header
         ln, fh, _, _, self.vertexCount, self.faceCount, _, self.boneCount, _ = binfile.read("Ii7I", 36)
         binfile.store()  # bone table offset
         self.minimum = binfile.read("3f", 12)
@@ -286,11 +280,11 @@ class Mdl0(SubFile):
         binfile.recall()
         self.boneTable = BoneTable()
         self.boneTable.unpack(binfile)
+        binfile.end() # end header
         # unpack sections
         self.unpackDefinitions(binfile)
         for i in range(1, self._getNumSections()):
             self.unpackSection(binfile, i)
-        binfile.end()
         binfile.end()  # end file
 
     def packSection(self, binfile, section_index, folder):
@@ -322,7 +316,7 @@ class Mdl0(SubFile):
                 for j in range(len(section)):
                     f.addEntry(section[j].name)
                 root_folders.append(f)
-                binfile.createParentRef() # create the ref from stored offsets
+                binfile.createRef(i, False) # create the ref from stored offsets
                 f.pack(binfile)
             else:
                 root_folders.append(None) # create placeholder
@@ -334,19 +328,17 @@ class Mdl0(SubFile):
         if self.version != 11:
             raise ValueError("Unsupported mdl0 version {}".format(self.version))
         self._pack(binfile)
-        binfile.start()
-        # header
-        fileoffset = (self.VERSION_SECTIONCOUNT[self.version] * 4 + 0x14) * -1
-        binfile.write("Ii7I", 0x40, fileoffset, 0, 0, self.vertexCount, self.faceCount,
-                      0, self.boneCount, 0)
+        binfile.start() # header
+        binfile.write("Ii7I", 0x40, binfile.getOuterOffset(), 0, 0, self.vertexCount, self.faceCount,
+                      0, self.boneCount, 0x01000000)
         binfile.mark()  # bone table offset
         binfile.write("6f", *self.minimum, *self.maximum)
         binfile.createRef() # bone table
         self.boneTable.pack(binfile)
+        binfile.end() # end header
         # sections
         folders = self.packFolders(binfile)
         for i in self.SECTION_ORDER:
             self.packSection(binfile, i, folders[i])
-        binfile.end()
         binfile.end()  # end file
     # -------------- END PACKING STUFF ---------------------------------------

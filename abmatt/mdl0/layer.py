@@ -342,9 +342,11 @@ class Layer:
         # print("Texid {} palleteid {} uwrap {} vwrap {} scale {} rot {} trans{}" \
         #       .format(self.texDataID, self.palleteDataID, self.uwrap, self.vwrap, self.scale, self.rotation,
         #               self.translation))
+
+    def unpack_textureMatrix(self, binfile):
         self.scn0CameraRef, self.scn0LightRef, self.mapMode, \
-        self.enableIdentityMatrix = binfile.readOffset("4B", scaleOffset + 160)
-        self.texMatrix = binfile.readOffset("12f", scaleOffset + 164)
+        self.enableIdentityMatrix = binfile.read("4B", 4)
+        self.texMatrix = binfile.read("12f", 48)
 
     def unpackXF(self, binfile):
         '''Unpacks Wii graphics '''
@@ -365,10 +367,23 @@ class Layer:
         ''' packs scale rotation translation data '''
         binfile.write("5f", *self.scale, self.rotation, *self.translation)
 
+    @staticmethod
+    def pack_default_srt(binfile, ntimes):
+        for i in range(ntimes):
+            binfile.write('5f', 1, 1, 0, 0, 0)
+
     def pack_textureMatrix(self, binfile):
-        ''' packs texture matrix '''
+        """ packs texture matrix """
         binfile.write("4B12f", self.scn0CameraRef, self.scn0LightRef, self.mapMode,
                       self.enableIdentityMatrix, *self.texMatrix)
+
+    @staticmethod
+    def pack_default_textureMatrix(binfile, ntimes):
+        for i in range(ntimes):
+            binfile.write("4B12f", 0xff, 0xff, 0, 1,
+                          1, 0, 0, 0,
+                          0, 1, 0, 0,
+                          0, 0, 1, 0)
 
     def pack_xf(self, binfile):
         self.xfTexMatrix.pack(binfile)

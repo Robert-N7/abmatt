@@ -85,7 +85,7 @@ class ShaderList():
             shader.materials.append(mat)
 
     def unpack(self, binfile):
-        binfile.recallParent()  # from offset header
+        binfile.recall()  # from offset header
         folder = Folder(binfile, self.FOLDER)
         folder.unpack(binfile)
         list = self.list
@@ -102,7 +102,6 @@ class ShaderList():
     def pack(self, binfile, folder):
         """Packs the shader data, generating material and index group references"""
         li = self.list
-        # now pack the data
         for i in range(len(li)):
             x = li[i]
             for m in x.materials:
@@ -246,7 +245,7 @@ class Stage():
     def setConstantColorI(self, index):
         if index >= 0xc:
             index -= 4
-        self.map["constantcolor"] = self.COLOR_CONSTANTS[index]
+        self.map["colorconstantselection"] = self.COLOR_CONSTANTS[index]
 
     def __setitem__(self, key, value):
         if not self.map.has_key(key):
@@ -513,7 +512,7 @@ class Shader():
         while i < stage_count:
             stage0 = self.stages[i]
             i += 1
-            if i < stage_count - 1:
+            if i < stage_count:
                 has_next = True
                 stage1 = self.stages[i]
                 i += 1
@@ -540,7 +539,7 @@ class Shader():
                 stage1.setRasterColorI(tref.getColorChannel1())
                 stage1.unpackColorEnv(binfile)
             else:
-                binfile.advance(5)
+                binfile.advance(5)      # skip unpack color env
             stage0.unpackAlphaEnv(binfile)
             if has_next:
                 stage1.unpackAlphaEnv(binfile)
@@ -562,14 +561,14 @@ class Shader():
         for i in range(self.texRefCount):
             layer_indices[i] = i
         binfile.write("8B", *layer_indices)
-        binfile.advance(8)
+        binfile.align()
         for kcel in self.swap_table:
             self.SWAP_MASK.pack(binfile)
             kcel.pack(binfile)
         # Construct indirect data
         iref = RAS1_IRef()
         data = 0
-        for i in range(3, -1):
+        for i in range(3, -1, -1):
             data <<= 3
             data |= self.indTexCoords[i] & 7
             data <<= 3
@@ -600,12 +599,14 @@ class Shader():
             # TREF
             tref = RAS1_TRef(j)
             cc = stage0.getRasterColorI()
-            tref.data = cc << 7 | stage0["enabled"] << 6 | stage0["mapid"] << 3 \
-                        | stage0["coordinateid"]
+            tref.data = cc << 7 | stage0["enabled"] << 6 | stage0["coordinateid"] << 3 \
+                        | stage0["mapid"]
             if hasNext:
                 cc = stage1.getRasterColorI()
                 tref.data |= cc << 19 | stage1["enabled"] << 18 \
-                             | stage1["mapid"] << 3 | stage1["coordinateid"]
+                             | stage1["coordinateid"] << 15 | stage1["mapid"] << 12
+            else:
+                tref.data |= 0x3bf000
             tref.pack(binfile)
             # all the rest
             stage0.packColorEnv(binfile)

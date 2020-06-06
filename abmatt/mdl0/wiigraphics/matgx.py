@@ -1,5 +1,6 @@
 #!/usr/bin/python
 """ Material wii graphics"""
+from binfile import printCollectionHex
 from mdl0.wiigraphics.bp import ColorReg, AlphaFunction, ZMode, BPCommand, BlendMode, ConstantAlpha, IndMatrix
 
 
@@ -64,10 +65,14 @@ class MatGX:
         self.blendmode.unpack(binfile)
         self.constantalpha.unpack(binfile)
         binfile.advance(7)  # pad - unknown?
+        hexData = binfile.read('100B', 0)
+        printCollectionHex(hexData)
         for i in range(len(self.tevRegs)):
             self.tevRegs[i].unpack(binfile)
+        binfile.advance(4)  # pad - unknown?
         for i in range(len(self.cctevRegs)):
             self.cctevRegs[i].unpack(binfile)
+        self.padding = binfile.read('4B', 4)
         binfile.align()  # pad
         for x in self.ras1:
             x.unpack(binfile)
@@ -87,6 +92,7 @@ class MatGX:
         binfile.advance(7)  # pad
         for i in range(len(self.tevRegs)):
             self.tevRegs[i].pack(binfile)
+        binfile.advance(4)  # pad
         for i in range(len(self.cctevRegs)):
             self.cctevRegs[i].pack(binfile)
         binfile.align()

@@ -57,7 +57,7 @@ class XFTexMatrix(XFCommand):
         if self.enabled:
             d = self["projection"] << 1 | self["inputform"] << 2 | self["type"] << 4 \
                 | self["coordinates"] << 7 | self["embosssource"] << 0xc \
-                | self["embosslight"] << 0xf | 1
+                | self["embosslight"] << 0xf
             self._pack(binfile, d)
         else:
             binfile.advance(9)
