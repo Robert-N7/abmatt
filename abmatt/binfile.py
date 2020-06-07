@@ -46,7 +46,7 @@ class BinFile:
 
     def align(self, alignment=0x20):
         """ Aligns to the alignment of file """
-        past_align = self.offset  % alignment
+        past_align = self.offset % alignment
         if past_align:
             self.advance(alignment - past_align)
 
@@ -233,9 +233,9 @@ class BinFile:
 
     def getParentOffset(self):
         """ Gets the parent offset off the stack"""
-        l = len(self.stack)
-        if l > 1:
-            return self.stack[l - 2]
+        length = len(self.stack)
+        if length > 1:
+            return self.stack[length - 2]
         else:
             return 0
 
@@ -317,7 +317,7 @@ class BinFile:
         name_map = self.nameRefMap
         if not is_encoded:
             name = name.encode('Ascii')
-        if not name in name_map:
+        if name not in name_map:
             name_map[name] = [(self.beginOffset, self.offset)]
         else:
             name_map[name].append((self.beginOffset, self.offset))
@@ -326,17 +326,11 @@ class BinFile:
     def packNames(self):
         """packs in the names"""
         names = self.nameRefMap
-        out = []
-        for key in names:
-            reflist = names[key]
-            for x in reflist:
-               out.append(x[1])
-        print(out)
         for key in sorted(names):
             if key is not None and key != b'':
                 offset = self.offset + 4
                 length = len(key)
-                self.write("I{}s".format(length), length, key)
+                self.write("I{}sB".format(length), length, key, 0)  # null terminate?
                 # write name reference pointers
                 reflist = names[key]
                 if not reflist:
@@ -373,7 +367,6 @@ class FolderEntry:
         binfile.offset = self.dataPtr
 
     def unpack(self, binfile):
-        offset = binfile.offset
         self.id, u, self.left, self.right = binfile.read("4H", 8)
         self.name = binfile.unpack_name()
         [dataptr] = binfile.read("I", 0)
@@ -489,11 +482,11 @@ class Folder:
         """ Unpacks folder """
         binfile.start()
         self.offset = binfile.offset
-        len, numEntries = binfile.read("2I", 8)
+        len, num_entries = binfile.read("2I", 8)
         binfile.advance(16)  # skip first entry
         # first = FolderEntry(self, 0)
         # first.unpack(binfile)
-        for i in range(numEntries):
+        for i in range(num_entries):
             sub = FolderEntry(self, i + 1)  # +1 because skips first entry
             sub.unpack(binfile)
             self.entries.append(sub)
