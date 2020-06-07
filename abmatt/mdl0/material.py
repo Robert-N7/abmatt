@@ -496,8 +496,7 @@ class Material:
             l.pack_textureMatrix(binfile)
         Layer.pack_default_textureMatrix(binfile, empty_layer_count)
         assert (len(self.lightChannels) == 1)
-        for l in self.lightChannels:
-            l.pack(binfile)
+        self.lightChannels[0].pack(binfile)
         # pack 2nd lc padding
         LightChannel.pack_default(binfile)
         binfile.createRef(1)
@@ -509,6 +508,7 @@ class Material:
             binfile.writeOffset('i', tex_link_offsets.pop(0), binfile.offset - start_offset) # layer offset
             l.pack(binfile)
 
+        binfile.align()
         binfile.createRef(1)
         binfile.start()  # MatGX section
         self.matGX.pack(binfile)

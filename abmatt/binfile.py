@@ -326,6 +326,12 @@ class BinFile:
     def packNames(self):
         """packs in the names"""
         names = self.nameRefMap
+        out = []
+        for key in names:
+            reflist = names[key]
+            for x in reflist:
+               out.append(x[1])
+        print(out)
         for key in sorted(names):
             if key is not None and key != b'':
                 offset = self.offset + 4

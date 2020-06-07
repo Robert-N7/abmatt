@@ -623,11 +623,14 @@ class IndMatrix():
         self.matrix[key] = val
 
     def force11bitFloat(self, val):
-        '''Forces 10 bit to float '''
+        """Forces 11 bit to float
+            100 0000 0000 sign
+            011 1111 1111 mantissa
+        """
         # There's probably a better way to do this
         f = 0.0
         bitn = 10
-        start = 2 << bitn
+        start = 1 << bitn
         while bitn > 0:
             # print("divisor {} bitn {}".format(start, bitn))
             if val & 1:
@@ -641,32 +644,36 @@ class IndMatrix():
         return f
 
     def encode11bitFloat(self, val):
-        '''Encodes to 10bit float '''
+        """Encodes the 10bit float as int
+            100 0000 0000 sign
+            011 1111 1111 mantissa
+        """
         e = 1 if val < 0 else 0  # sign
-        start = bitn = 1
+        start = 2
+        bitn = 1
         val = abs(val)
         while bitn <= 10:
-            e <<= 1
-            subtractee = 1 / start
-            if val >= subtractee:
+            e <<= 1     # make room
+            subtractee = 1 / start  # divide by exponent of 2
+            if val >= subtractee:   # can subtractee be taken out?
                 val -= subtractee
-                e |= 1
-            bitn += 1
+                e |= 1          # then place a bit
+            bitn += 1           # increase the number of bits
             start <<= 1
         return e
 
     def unpack(self, binfile):
-        ''' unpacks ind matrix '''
+        """ unpacks ind matrix """
         self.scale = 0  # reset scale
         c = BPCommand(0)
         for i in range(3):
-            if not c.unpack(binfile):
-                self.enabled = False
+            self.enabled = c.unpack(binfile)
+            if not self.enabled:
                 binfile.advance(10)  # skip ahead
                 break
             # parse data
             if i == 0:
-                self.id = (c.bpmem - BPCommand.BPMEM_IND_MTXA0) / 3
+                self.id = (c.bpmem - BPCommand.BPMEM_IND_MTXA0) // 3
             self.scale = self.scale | (c.data >> 22 & 3) << (2 * i)
             self.matrix[0][i] = self.force11bitFloat(c.data & 0x3ff)
             self.matrix[1][i] = self.force11bitFloat(c.data >> 11 & 0x3ff)
