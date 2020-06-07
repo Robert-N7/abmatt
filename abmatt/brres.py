@@ -245,13 +245,9 @@ class Brres():
         section_length = binfile.read("I", 4)
         root = Folder(binfile, root)
         root.unpack(binfile)
-        if __debug__:
-            print("{} folders detected".format(len(root)))
         # open all the folders
         for i in range(len(self.FOLDERS)):
             self.unpackFolder(binfile, root, i)
-        if __debug__:
-            print("Finished unpacking brres.")
         binfile.end()
         self.hookAnimationRefs()
 

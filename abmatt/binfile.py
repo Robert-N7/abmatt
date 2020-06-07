@@ -302,7 +302,7 @@ class BinFile:
         offset = self.beginOffset + ptr
         name_lens = self.readOffset("I", offset - 4)
         if name_lens[0] > 256:
-            print("Name length too long!")
+            raise ValueError("Name length too long!")
         else:
             name = self.readOffset(str(name_lens[0]) + "s", offset)
             # print("Name: {}".format(name[0]))
@@ -326,11 +326,20 @@ class BinFile:
     def packNames(self):
         """packs in the names"""
         names = self.nameRefMap
+        # out = []
+        # for key in names:
+        #     reflist = names[key]
+        #     for x in reflist:
+        #         out.append(x[1])
+        # print(out)
         for key in sorted(names):
             if key is not None and key != b'':
+                # self.advance(4)
+                self.align(4)
                 offset = self.offset + 4
                 length = len(key)
-                self.write("I{}sB".format(length), length, key, 0)  # null terminate?
+                # self.writeOffset('I', offset, length)
+                self.write("I{}s".format(length), length, key)
                 # write name reference pointers
                 reflist = names[key]
                 if not reflist:
