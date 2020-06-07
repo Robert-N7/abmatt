@@ -170,7 +170,7 @@ class Shp0(SubFile):
 Tex0 texture file representation
 '''
 class Tex0(SubFile):
-    ''' Tex Class '''
+    """ Tex Class """
     MAGIC = 'TEX0'
     VERSION_SECTIONCOUNT = {1:1, 2:2, 3:1}
     def __init__(self, name, parent):

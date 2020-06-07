@@ -147,8 +147,8 @@ class SRTKeyFrameList:
     def unpack(self, binfile):
         """ unpacks an animation entry list """
         self.entries = []
-        data = binfile.read('30B', 0)
-        printCollectionHex(data)
+        # data = binfile.read('30B', 0)
+        # printCollectionHex(data)
         # header
         size, uk, fs = binfile.read("2Hf", 8)
         for i in range(size):
@@ -422,8 +422,8 @@ class SRTTexAnim():
 
     def unpack(self, binfile):
         ''' unpacks SRT Texture animation data '''
-        m = binfile.read('200B', 0)
-        printCollectionHex(m)
+        # m = binfile.read('200B', 0)
+        # printCollectionHex(m)
         [code] = binfile.read("I", 4)
         self.parseIntCode(code)
         self.unpackScale(binfile)

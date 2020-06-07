@@ -63,7 +63,6 @@ class Material:
         self.matGX = MatGX()
 
     def __str__(self):
-        # print("Cull mode is {}".format(self.cullmode))
         return "Mt{} {}: xlu {} layers {} culling {} blend {}".format(self.id, self.name,
                                                                       self.xlu, len(self.layers),
                                                                       self.CULL_STRINGS[self.cullmode], self.getBlend())
@@ -224,7 +223,6 @@ class Material:
             raise ValueError(self.SHADERCOLOR_ERROR.format(str))
         index = int(str[splitIndex])
         if not 0 <= index <= 3 or (not isConstant) and index == 3:
-            # print("Color Selection index out of range (0-3)")
             raise ValueError(self.SHADERCOLOR_ERROR.format(str))
         str = str[splitIndex + 2:]
         colors = str.split(",")
@@ -459,7 +457,7 @@ class Material:
     # -----------------------------------------------------------------------------
     # PACKING
     # -----------------------------------------------------------------------------
-    def pack(self, binfile):
+    def pack(self, binfile, texture_link_map):
         """ Packs the material """
         self.offset = binfile.start()
         binfile.markLen()
@@ -468,7 +466,6 @@ class Material:
         binfile.write("2I4BI3B", self.id, self.xlu << 31, len(self.layers), len(self.lightChannels),
                       self.shaderStages, self.indirectStages, self.cullmode,
                       self.compareBeforeTexture, self.lightset, self.fogset)
-        # print("===========> Packing mat flags at {}:\n{}".format(self.offset, data[self.offset:31 + self.offset]))
         binfile.write("BI4B", 0, 0, 0xff, 0xff, 0xff, 0xff)  # padding, indirect method, light normal map
         binfile.mark()  # shader offset, to be filled
         binfile.write("I", len(self.layers))
@@ -480,7 +477,6 @@ class Material:
         else:
             binfile.mark()  # matgx
             binfile.advance(4)
-        print("{} precompiled space".format(binfile.offset))
         # ignore precompiled code space
         binfile.advance(360)
         # layer flags
@@ -492,7 +488,6 @@ class Material:
             layerI += 1
             bitshift += 4
         binfile.write("2I", x, self.textureMatrixMode)
-        print("{} SRT".format(binfile.offset))
         for l in layers:
             l.pack_srt(binfile)
         # fill in defaults
@@ -506,21 +501,21 @@ class Material:
         # pack 2nd lc padding
         LightChannel.pack_default(binfile)
         binfile.createRef(1)
-        print("{} layer offset".format(binfile.offset))
         for l in layers:
+            # Write Texture linker offsets
+            start_offset = texture_link_map[l.name]
+            tex_link_offsets = binfile.references[start_offset]
+            binfile.writeOffset('i', tex_link_offsets.pop(0), self.offset - start_offset) # material offset
+            binfile.writeOffset('i', tex_link_offsets.pop(0), binfile.offset - start_offset) # layer offset
             l.pack(binfile)
-        print('{} end layers'.format(binfile.offset))
-        binfile.align()
+
         binfile.createRef(1)
         binfile.start()  # MatGX section
-        print("{} matgx".format(binfile.offset))
         self.matGX.pack(binfile)
         offset = binfile.offset
-        print("{} xf layer flags".format(binfile.offset))
         for l in layers:
             l.pack_xf(binfile)
         binfile.advance(0xa0 - (binfile.offset - offset))
-        print("{} end".format(binfile.offset))
         binfile.end()
         binfile.end()
 
@@ -528,12 +523,10 @@ class Material:
         """ unpacks the material layers """
         binfile.recall()  # layers
         offset = binfile.offset
-        print("{} layer offset".format(binfile.offset))
         for i in range(numlayers):
             binfile.start()
             scale_offset = startLayerInfo + 8 + i * 20
             self.addLayer(binfile.unpack_name()).unpack(binfile, scale_offset)
-            print("Layer: {} ".format(self.layers[-1].name))
             binfile.end()
         # Layer Flags
         binfile.offset = startLayerInfo
@@ -562,7 +555,6 @@ class Material:
     def unpack(self, binfile):
         """ Unpacks material """
         binfile.start()
-        offset = binfile.offset
         l, mdOff = binfile.read("Ii", 8)
         binfile.advance(4)
         self.id, xluFlags, ntexgens, nlights, \
@@ -571,8 +563,6 @@ class Material:
         self.lightset, self.fogset, pad = binfile.read("2I2B2BI4B", 20)
         self.xlu = xluFlags >> 31 & 1
         assert(nlights == 0x1)
-        # if __debug__:
-        #     print("id {} xlu {} layers{} lights {}".format(self.id, xluFlags, ntexgens, nlights))
         binfile.advance(8)
         self.shaderOffset, nlayers = binfile.read("2i", 8)
         if nlayers != ntexgens:
@@ -588,23 +578,18 @@ class Material:
             binfile.advance(4)
             binfile.store()  # store matgx offset
             binfile.advance(4)
-        print("{} precompiled space".format(binfile.offset))
         # ignore precompiled code space
         binfile.advance(360)
         startlayerInfo = binfile.offset
         [self.textureMatrixMode] = binfile.readOffset('I', binfile.offset + 4)
         self.unpackLayers(binfile, startlayerInfo, nlayers)
-        print("{} SRT".format(binfile.offset))
         binfile.offset = startlayerInfo + 584
         self.unpackLightChannels(binfile, nlights)
         binfile.recall()
-        print("{} matgx".format(binfile.offset))
         binfile.start()  # Mat wii graphics
         self.matGX.unpack(binfile)
-        print("{} xf Flags".format(binfile.offset))
         for layer in self.layers:
             layer.unpackXF(binfile)
-        print("{} end".format(binfile.offset))
         binfile.end()
         binfile.end()
 
@@ -734,7 +719,6 @@ class LightChannel:
 
     def unpack(self, binfile):
         data = binfile.read("I8B2I", 20)
-        # print("Light Channel data {}".format(data))
         flags = data[0]
         self.materialColorEnabled = flags & 1
         self.materialAlphaEnabled = flags >> 1 & 1

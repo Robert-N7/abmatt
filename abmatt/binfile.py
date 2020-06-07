@@ -33,14 +33,14 @@ class BinFile:
     def commitWrite(self):
         """ writes the file """
         # check references
-        for x in self.references:
-            li = self.references[x]
-            for item in li:
-                print("Unused reference {} in relation to {}".format(item, x))
+        # for x in self.references:
+        #     li = self.references[x]
+        #     for item in li:
+        #         print("Unused reference {} in relation to {}".format(item, x))
         if len(self.stack) > 1:
             print('Incorrect stack, {} items still on'.format(len(self.stack) - 1))
         # write
-        print('Length of file is {}'.format(len(self.file)))
+        # print('Length of file is {}'.format(len(self.file)))
         with open(self.filename, "wb") as f:
             f.write(self.file)
 

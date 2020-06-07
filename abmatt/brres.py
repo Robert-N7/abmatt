@@ -192,6 +192,12 @@ class Brres():
                 print('Length of folder {} is {}'.format(x.name, len(x)))
         return count
 
+    def getTexture(self, name):
+        for x in self.textures:
+            if x.name == name:
+                return x
+        return None
+
     # ----------------- HOOKING REFERENCES ----------------------------------
     def hookAnimationRefs(self):
         """Hooks up references from materials to animations"""
