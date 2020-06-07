@@ -126,9 +126,8 @@ class Vertex(ModelGeneric):
 
 class Bone(ModelGeneric):
     """ Bone class """
-
     def __init__(self, name, parent):
-        super(Bone, self).__init__(name, parent)
+        super(Bone, self).__init__(name, parent, False)
 
 
 class BoneTable:
