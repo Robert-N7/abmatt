@@ -399,9 +399,9 @@ class Layer:
         if key:
             val = self[key]
             if val:
-                print("{}{}\t{}:{}".format('  ' * indentation_level, trace, key, val))
+                print("{}{}\t{}:{}".format('  ' * indentation_level + '>', trace, key, val))
         else:
-            print("{}{}:\tScale:{} Rot:{} Trans:{} UWrap:{} VWrap:{} MinFilter:{}".format('  ' * indentation_level,
+            print("{}{}:\tScale:{} Rot:{} Trans:{} UWrap:{} VWrap:{} MinFilter:{}".format('  ' * indentation_level + '>',
                                                          trace, self.scale, self.rotation, self.translation,
                                                          self.WRAP[self.uwrap], self.WRAP[self.vwrap],
                                                          self.FILTER[self.minfilter], self.MAPMODE[self.mapMode]))

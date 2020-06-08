@@ -25,12 +25,12 @@ class Brres():
     DESTINATION = None
 
     def __init__(self, name, parent=None, readFile=True):
-        '''
+        """
             initialize brres
             name - the brres name, or filename
             parent - optional for supporting containing files in future
             readfile - optional start reading and unpacking file
-        '''
+        """
         self.models = []
         self.textures = []
         self.anmSrt = []
@@ -57,8 +57,8 @@ class Brres():
     def save(self, filename, overwrite):
         if not filename:
             filename = self.name
-            if not self.isChanged():
-                return
+            # if not self.isChanged():
+            #     return
         if not overwrite and os.path.exists(filename):
             print("File '{}' already exists!".format(filename))
             return False
@@ -96,7 +96,7 @@ class Brres():
         return self.name
 
     def info(self, key=None, indentation_level=0):
-        print('{}{}:\t{} models\t{} textures'.format('  ' * indentation_level, self.name,
+        print('{}{}:\t{} models\t{} textures'.format('  ' * indentation_level + '>', self.name,
                                                      len(self.models), len(self.textures)))
         indentation_level += 1
         for x in self.models:

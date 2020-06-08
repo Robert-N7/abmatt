@@ -1,17 +1,24 @@
-# ANoobs Brres Material Tool (ABMatT)
+# ANoobs Brres Material Tool (ABMatt)
 This command line tool is for editing materials in _Brres_ files in _Mario Kart Wii_. Python is required to run it. The tool can do quick edits from the command line, or read in a command file for processing multiple setting adjustments. This is particularly useful for editing a large amount of materials or recreating a brres multiple times. Python regular expression matching is supported.
 
-## Known Limitations
-ABMatT currently only supports overwriting data, not additions or deletions.
+## Modes
+ABMatt can be used 
+* for quick command line edits, 
+* running commands from file, and/or 
+* running commands in interactive *shell* mode.
 
-## Transparency
-The tool is also smart about adjusting transparency. When setting materials to transparent it also updates the comparison and reference settings, and the draw list to be xlu (fixing Harry Potter effect). These settings can also be adjusted individually, including draw priority.
+## Editing Capabilities
+Currently the tool supports editing
+* materials,
+* material layers,
+* shaders, and
+* shader stages.
 
 ## Command Line Usage
 ```
-./AbMatT.py -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value> -n <name> -m <model> -i]
+./AbMatT.py -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value> -t <type> -n <name> -m <model> -i -s]
 ```
-| Flag |Long version| Description |
+| Flag |Expanded| Description |
 |---|---|---|
 | -c | --commandfile | File with ABMatT commands to be processed as specified in file format. |
 | -d | --destination | The file name to be written to. Mutliple destinations are not supported. |
@@ -22,6 +29,8 @@ The tool is also smart about adjusting transparency. When setting materials to t
 | -m | --model | The name of the model to search in. |
 | -n | --name | Material or layer name or regular expression to be found. |
 | -o | --overwrite | Overwrite existing files. The default is to not overwrite the input file or any other file unless this flag is used. |
+| -s | --shell | Interactive shell mode. |
+| -t | --type | Type value (material, layer, shader, stage) |
 | -v | --value | Setting value to be paired with a key. |
 
 ### Command Line Examples
@@ -31,7 +40,7 @@ This command would open *course_model.brres* in overwrite mode and run the comma
 ```
 This next command would update all materials starting with the prefix xlu to transparent settings.
 ```
-./AbMatT.py -f course_model.brres -o xlu.* -k xlu -v true
+./AbMatT.py -f course_model.brres -o -n xlu.* -k xlu -v true
 ```
 
 ## File Format

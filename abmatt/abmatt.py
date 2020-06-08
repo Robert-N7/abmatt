@@ -4,6 +4,7 @@ ANoob's Brres Material Editor
 For editing Mario Kart Wii files
 """
 import getopt
+import fileinput
 
 from command import *
 
@@ -77,28 +78,55 @@ For more Help or if you want to contribute visit https://github.com/Robert-N7/AB
     print("Usage: {}".format(USAGE))
 
 
+def interactiveShell():
+    """Runs in interactive mode"""
+    help_messsage = '''Supported commands:
+    q quit
+    h help
+    set <type> <key>:<value> [for <selection>]
+    add <type>[:<id>] [for <selection>]
+    remove <type>[:<id>] [for <selection>]
+    info <type> [<key>] [for <selection>]
+    preset <preset> [for <selection>]
+types: material|layer|shader|stage
+For more help visit https://github.com/Robert-N7/ABMatT'''
+    print('Interactive Shell Started...')
+    for line in sys.stdin:
+        first = line[0].lower()
+        if first == 'q':  # quit
+            break
+        elif first == 'h':
+            print(help_messsage)
+        else:
+            try:
+                run_commands([Command(line)])
+            except ParsingException as e:
+                print(e)
+                print(help_messsage)
+
+
 def main(argv):
-    ''' Main '''
+    """ Main """
     if not argv:
         hlp()
         sys.exit(0)
     try:
-        opts, args = getopt.getopt(argv, "hf:d:ok:v:n:m:c:i",
+        opts, args = getopt.getopt(argv, "hf:d:ok:v:n:m:c:t:is",
                                    ["help", "file=", "destination=", "overwrite",
-                                    "key=", "value=",
-                                    "name=", "model=", "info", "commandfile="])
+                                    "type=", "key=", "value=",
+                                    "name=", "model=", "info", "commandfile=", "shell"])
     except getopt.GetoptError:
         print(USAGE)
         sys.exit(2)
     filename = ""
     destination = ""
-    overwrite = False
+    shell_mode = info = overwrite = False
+    type = "material"
     setting = ""
     value = ""
     name = ".*"
     model = ""
     commandfile = ""
-    info = False
     for opt, arg in opts:
         if opt in ("-h", "--help"):
             hlp()
@@ -113,6 +141,8 @@ def main(argv):
             setting = arg
         elif opt in ("-v", "--value"):
             value = arg
+        elif opt in ("-t", "--type"):
+            type = arg
         elif opt in ("-n", "--name"):
             name = arg
         elif opt in ("-m", "--model"):
@@ -121,14 +151,12 @@ def main(argv):
             info = True
         elif opt in ("-c", "--commandfile"):
             commandfile = arg
+        elif opt in ("-s", "--shell"):
+            shell_mode = True
         else:
             print("Unknown option '{}'".format(opt))
             print(USAGE)
             sys.exit(2)
-    if not filename:
-        print("Filename is required")
-        print(USAGE)
-        sys.exit(2)
 
     cmds = []
     if destination:
@@ -138,7 +166,7 @@ def main(argv):
         Command.OVERWRITE = overwrite
         Brres.OVERWRITE = overwrite
     if setting:
-        cmd = "set material " + setting + ":" + value + " for " + name + " in file " + filename
+        cmd = "set " + type + setting + ":" + value + " for " + name
         if model:
             cmd += " model " + model
         cmds.append(Command(cmd))
@@ -148,7 +176,7 @@ def main(argv):
         filecmds = load_commandfile(commandfile)
         cmds = cmds + filecmds
     if info:
-        cmd = "info material " + setting + " for " + name + " in file " + filename
+        cmd = "info " + type + setting + " for " + name
         cmds.append(Command(cmd))
     if filename:
         Command.updateFile(filename)
@@ -156,9 +184,13 @@ def main(argv):
         print(USAGE)
     else:
         run_commands(cmds)
-    # interactive mode maybe?
+    if shell_mode:
+        interactiveShell()
 
 
 if __name__ == "__main__":
     USAGE = USAGE.format(sys.argv[0])
     main(sys.argv[1:])
+    # cleanup
+    for file in Command.ACTIVE_FILES:
+        file.close()

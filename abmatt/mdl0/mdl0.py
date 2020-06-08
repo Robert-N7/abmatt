@@ -186,6 +186,9 @@ class Mdl0(SubFile):
     def getMaterialsByName(self, name):
         return findAll(name, self.materials)
 
+    def getShaders(self, material_list, for_modification=True):
+        return self.shaders.getShaders(material_list, for_modification)
+
     def getMaterialByName(self, name):
         """Exact naming"""
         for m in self.materials:
@@ -252,11 +255,12 @@ class Mdl0(SubFile):
 
     def info(self, key=None, indentation_level=0):
         trace = self.parent.name + "->" + self.name
-        print("{}{}:\t{} materials\t{} shaders".format('  ' * indentation_level, trace, len(self.materials),
+        print("{}{}:\t{} materials\t{} shaders".format('  ' * indentation_level + '>', trace, len(self.materials),
                                                                    len(self.shaders)))
+        indentation_level += 1
         # pass it along
         for x in self.materials:
-            x.info(key)
+            x.info(key, indentation_level)
 
     # ---------------HOOK REFERENCES -----------------------------------------
     def hookSRT0ToMats(self, srt0):

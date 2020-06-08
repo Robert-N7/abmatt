@@ -424,15 +424,15 @@ class Material:
         if key in self.SETTINGS:
             val = self.getKey(key)
             if val is not None:
-                print("{}{}\t{}:{}".format(indentation_level * '  ', trace, key, val))
+                print("{}{}\t{}:{}".format(indentation_level * '  ' + '>', trace, key, val))
+            return
         elif not key:
-            print("{}{}\tlayers:{} xlu:{} cull:{} blend:{}".format(indentation_level * '\t',
-                                                                    trace, self.id, len(self.layers), self.xlu,
+            print("{}{}\tlayers:{} xlu:{} cull:{} blend:{}".format(indentation_level * '  ' + '>',
+                                                                    trace, len(self.layers), self.xlu,
                                                                     self.CULL_STRINGS[self.cullmode], self.getBlend()))
-        else:
-            indentation_level += 1
-            for x in self.layers:
-                x.info(key, indentation_level)
+        indentation_level += 1
+        for x in self.layers:
+            x.info(key, indentation_level)
 
     def isChanged(self):
         if self.isModified:
@@ -447,7 +447,8 @@ class Material:
         for i, x in enumerate(self.layers):
             if x.name == name:
                 del self.layers[i]
-                break
+                return
+        raise ValueError('Material "{}" has no layer "{}" to remove'.format(self.name, name))
 
     def addLayer(self, name):
         """ Creates and returns new layer """

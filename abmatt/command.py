@@ -15,15 +15,17 @@ from srt0.srt0 import Srt0
 
 class ParsingException(Exception):
     def __init__(self, txt, message=''):
-        super(ParsingException, self).__init__("Error parsing: '" + txt + "'' " + message)
+        super(ParsingException, self).__init__("Error parsing: '" + txt + "' " + message)
 
 
-def getShadersFromMaterials(materials, models):
+def getShadersFromMaterials(materials, models, for_modification=True):
     """Gets unique shaders from material list, where materials may come from different models,
         may have to detach if shared with material not in list
     """
-    pass  # todo
-
+    shaders = []
+    for x in models:
+        shaders.extend(x.getShaders(materials, for_modification))
+    return shaders
 
 class Command:
     COMMANDS = ["set", "add", "remove", "info", "select"]
@@ -50,9 +52,11 @@ class Command:
         self.txt = text.strip('\r\n')
         self.type_id = 0
         x = [x.strip() for x in text.split()]
-        if len(x) < 2:
-            raise ParsingException(self.txt, 'Not enough parameters')
+        if not x:
+            raise ParsingException(self.txt, 'No Command detected')
         self.setCmd(x.pop(0).lower())
+        if not x:
+            raise ParsingException(self.txt, 'Not enough parameters')
         self.setType(x.pop(0).lower())
         if 'for' in x:
             i = x.index('for')
@@ -88,7 +92,7 @@ class Command:
         elif 'stage' in val:
             self.type = 'stage'
             if self.type_id:
-                self.type_id = int(self.type_id)
+                self.type_id = validInt(self.type_id, 0, 15)
         # elif 'srt0' in val:
         #     self.type = 'srt0'
         else:
@@ -125,7 +129,7 @@ class Command:
 
     def setCmd(self, val):
         if not val in self.COMMANDS:
-            raise ValueError("Unknown command '{}'".format(val))
+            raise ParsingException(self.txt, "Unknown command '{}'".format(val))
         else:
             self.cmd = val
 
@@ -135,13 +139,18 @@ class Command:
         if not files:  # could possibly ignore error here for wildcard patterns?
             print("The file '{}' does not exist".format(filename))
             return False
-        elif Command.DESTINATION and len(files) > 1 or Command.ACTIVE_FILES and not files[0] in Command.ACTIVE_FILES:
-            print("Error: Multiple files for single destination!")
-            print("Specify single file and destination, or no destination with overwrite option.")
-            return False
-        else:
-            Command.ACTIVE_FILES = openFiles(files, Command.ACTIVE_FILES)
-            Command.MODELS = []  # clear models
+        if Command.DESTINATION:     # check for multiple files with single destination
+            outside_active = True
+            for x in Command.ACTIVE_FILES:
+                if files[0] == x.name:
+                    outside_active = False
+                    break
+            if len(files) > 1 or Command.ACTIVE_FILES and outside_active:
+                print("Error: Multiple files for single destination!")
+                print("Specify single file and destination, or no destination with overwrite option.")
+                return False
+        Command.ACTIVE_FILES = openFiles(files, Command.ACTIVE_FILES)
+        Command.MODELS = []  # clear models
 
     def updateSelection(self):
         """ updates container items """
@@ -149,13 +158,13 @@ class Command:
             self.updateFile(self.file)
         # Models
         if self.model or not self.MODELS:
-            self.MATERIALS = []  # reset materials
+            Command.MATERIALS = []  # reset materials
             for x in self.ACTIVE_FILES:
-                self.MODELS.extend(x.getModelsByName(self.model))
+                Command.MODELS.extend(x.getModelsByName(self.model))
         # Materials
         for x in self.MODELS:
-            self.MATERIALS = x.getMaterialsByName(self.name)
-        self.SELECT_TYPE = None  # reset selection
+            Command.MATERIALS = x.getMaterialsByName(self.name)
+        Command.SELECT_TYPE = None  # reset selection
         return True
 
     def updateType(self):
@@ -166,32 +175,35 @@ class Command:
             type = self.type
         if type != self.SELECT_TYPE:
             if type == 'material':
-                self.SELECTED = self.MATERIALS
+                Command.SELECTED = self.MATERIALS
             elif type == 'layer':
-                self.SELECTED = []
+                Command.SELECTED = []
                 for x in self.MATERIALS:
-                    self.SELECTED.append(x.getLayer(self.type_id))
+                    Command.SELECTED.append(x.getLayer(self.type_id))
             # elif self.type == 'srt0':
             #     pass # todo
             elif type == 'shader' or type == 'stage':
                 shaders = getShadersFromMaterials(self.MATERIALS, self.MODELS)
                 if type == 'shader':
-                    self.SELECTED = shaders
+                    Command.SELECTED = shaders
                 else:
-                    self.SELECTED = []
+                    Command.SELECTED = []
                     for x in shaders:
-                        self.SELECTED.append(x.getStage(self.type_id))
+                        Command.SELECTED.append(x.getStage(self.type_id))
             elif self.cmd == 'info':
                 if type == 'mdl0':
-                    self.SELECTED = self.MODELS
+                    Command.SELECTED = self.MODELS
                 elif type == 'brres':
-                    self.SELECTED = self.ACTIVE_FILES
+                    Command.SELECTED = self.ACTIVE_FILES
+            Command.SELECT_TYPE = type
 
     def runCmd(self):
         if self.hasSelection:
             if not self.updateSelection():
                 sys.exit(1)
         self.updateType()
+        if not self.ACTIVE_FILES:
+            raise ParsingException(self.txt, 'No file detected!')
         if not self.SELECTED:
             print("No items found in selection for '{}'".format(self.txt))
         else:
@@ -204,13 +216,38 @@ class Command:
                 # for y in self.ACTIVE_FILES:
                 #     print(y.name)
             elif self.cmd == 'add':
-                if self.type == 'layer':  # add layer case
-                    for x in self.SELECTED:
-                        x.addLayer(self.type_id)
-                elif self.type == 'stage':  # add stage case
-                    for x in self.SELECTED:
-                        for i in range(self.type_id):
-                            x.addStage()
+                self.add(self.type, self.type_id)
+            elif self.cmd == 'remove':
+                self.remove(self.type, self.type_id)
+
+    def add(self, type, type_id):
+        """Add command"""
+        if type == 'layer':  # add layer case
+            for x in self.SELECTED:
+                x.addLayer(type_id)
+        elif type == 'stage':  # add stage case
+            if type_id == 0:
+                type_id = 1  # assume 1
+            for x in self.SELECTED:
+                for i in range(type_id):
+                    x.addStage()
+        else:
+            raise ParsingException(self.txt, 'command "Add" not supported for type {}'.format(type))
+
+    def remove(self, type, type_id):
+        """Remove command"""
+        if type == 'layer':  # add layer case
+            for x in self.SELECTED:
+                x.removeLayer(type_id)
+        elif type == 'stage':  # add stage case
+            if type_id == 0:
+                type_id = 1  # assume 1
+            for x in self.SELECTED:
+                for i in range(type_id):
+                    x.removeStage()
+        else:
+            raise ParsingException(self.txt, 'command "Remove" not supported for type {}'.format(type))
+
 
     def __str__(self):
         return "{} {}:{} for {} in file {} model {}".format(self.cmd,
@@ -219,11 +256,11 @@ class Command:
 
 
 def run_commands(commandlist):
-    files = {}
     for cmd in commandlist:
-        cmd.runCmd()
-    for x in Command.ACTIVE_FILES:
-        x.close()
+        try:
+            cmd.runCmd()
+        except ValueError as e:
+            print(e)
 
 
 def load_commandfile(filename):

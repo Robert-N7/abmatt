@@ -3,7 +3,7 @@
 # ------------------------------------------------------------------------
 from copy import deepcopy, copy
 
-from binfile import printCollectionHex, Folder
+from binfile import Folder
 from matching import *
 from mdl0.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
 
@@ -42,18 +42,23 @@ class ShaderList():
         new_shader.materials = newMats
         return new_shader
 
-    def getShadersForModifying(self, material_list):
-        """Gets the shaders for modifying, possibly splitting/creating new ones as necessary"""
+    def getShaders(self, material_list, for_modification=True):
+        """Gets the shaders, if for modification possibly splitting/creating new ones as necessary"""
         shaders = []
         for m in material_list:
             sh = m.shader
             if sh not in shaders:  # need to add shader?
-                needs_split = False
-                for shader_mat in sh.materials:
-                    if shader_mat not in material_list:  # needs split?
-                        shaders.append(self.splitShaderOnMaterials(sh, material_list))
-                if not needs_split:
+                if not for_modification:
                     shaders.append(sh)
+                else:
+                    is_split = False
+                    for shader_mat in sh.materials:
+                        if shader_mat not in material_list:  # needs split?
+                            is_split = True
+                            shaders.append(self.splitShaderOnMaterials(sh, material_list))
+                            break
+                    if not is_split:
+                        shaders.append(sh)
         return shaders
 
     def consolidate(self):
@@ -64,7 +69,7 @@ class ShaderList():
             x = li[i]
             j = i + 1
             while j < len(li):
-                if i == li[j]:
+                if x == li[j]:
                     sh = li.pop(j)
                     x.materials.extend(sh.materials)
                     for mat in sh.materials:
@@ -101,12 +106,13 @@ class ShaderList():
 
     def pack(self, binfile, folder):
         """Packs the shader data, generating material and index group references"""
+        self.consolidate()
         li = self.list
         for i in range(len(li)):
             x = li[i]
             for m in x.materials:
                 folder.createEntryRef(m.name)  # create index group reference
-                binfile.createRefFrom(m.offset) # create the material shader reference
+                binfile.createRefFrom(m.offset)  # create the material shader reference
             x.pack(binfile, i)
 
 
@@ -166,8 +172,9 @@ class Stage():
                 "indirectswrap", "indirecttwrap",
                 "indirectuseprevstage", "indirectunmodifiedlod")
 
-    def __init__(self, id):
+    def __init__(self, id, parent):
         self.id = id
+        self.parent = parent
         self.map = {
             "enabled": True, "mapid": id, "coordinateid": id,
             "textureswapselection": 0, "rastercolor": self.RASTER_COLORS[0],
@@ -198,6 +205,15 @@ class Stage():
 
     def __getitem__(self, key):
         return self.map[key]
+
+    def info(self, key=None, indentation_level=0):
+        if key:
+            print('{}{}->Stage{}: {}:{}'.format('  ' * indentation_level + '>',
+                                                self.parent.getMaterialNames(), self.id, key, self[key]))
+        else:
+            print('{}Stage{}: MapId:{} CoordinateId:{} ColorScale:{} ColorDestination:{}'.format(
+                '  ' * indentation_level + '>', self.id, self['mapid'], self['coordinateid'],
+                self['colorscale'], self['colordestination']))
 
     def getRasterColorI(self):
         i = self.RASTER_COLORS.index(self.map["rastercolor"])
@@ -248,7 +264,7 @@ class Stage():
         self.map["colorconstantselection"] = self.COLOR_CONSTANTS[index]
 
     def __setitem__(self, key, value):
-        if not self.map.has_key(key):
+        if not key in self.map:
             raise ValueError("No such shader stage setting {}".format(key))
         # bools
         if key == "enabled" or "clamp" in key or key == "indirectuseprevstage" \
@@ -431,6 +447,14 @@ class Shader():
                 return False
         return True
 
+    def detect_unusedMapId(self):
+        """Attempts to find next available unused mapid"""
+        used = [x['mapid'] for x in self.stages]
+        for i in range(16):
+            if i not in used and i not in self.indTexMaps:
+                return i
+        return 0
+
     def detectIndirectIndex(self, key):
         i = 0 if not key[-1].isDigit() else int(key[-1])
         if not 0 <= i < 4:
@@ -455,6 +479,22 @@ class Shader():
         elif self.SETTINGS[2] in key:  # indirect coord
             self.indTexCoords[self.detectIndirectIndex(key)] = value
 
+    def getMaterialNames(self):
+        return [mat.name for mat in self.materials]
+
+    def info(self, key=None, indentation_level=0):
+        if not key:
+            print('{}Shader{}: {} stages, IndirectMap {} IndirectCoord {}'.format('  ' * indentation_level + '>',
+                                                                            self.getMaterialNames(), len(self.stages),
+                                                                            self.indTexMaps,
+                                                                            self.indTexCoords))
+            indentation_level += 1
+            for x in self.stages:
+                x.info(key, indentation_level)
+        else:
+            print('{}{}: {}:{} '.format('  ' * indentation_level + '>', self.getMaterialNames(), key, self[key]))
+            # todo, detect key wanted in stages
+
     def getStage(self, n):
         if not 0 <= n < len(self.stages):
             # todo: add shader stage?
@@ -462,7 +502,11 @@ class Shader():
         return self.stages[n]
 
     def addStage(self):
-        s = Stage(len(self.stages))
+        s = Stage(len(self.stages), self)
+        mapid = self.detect_unusedMapId()
+        s['mapid'] = mapid
+        s['coordinateid'] = mapid
+        self.texRefCount += 1
         self.stages.append(s)
         return s
 
@@ -470,8 +514,9 @@ class Shader():
         if len(self.stages) == 1:
             raise Exception('Shader must have at least 1 stage')
         self.stages.pop(id)
+        self.texRefCount -= 1
 
-    def __deepcopy__(self, memodict={}):
+    def __deepcopy__(self, memodict=None):
         ret = Shader(self.name, self.parent)
         for x in self.stages:
             s = deepcopy(x, memodict)
@@ -482,9 +527,9 @@ class Shader():
         return ret
 
     def unpack(self, binfile):
-        ''' Unpacks shader TEV '''
+        """ Unpacks shader TEV """
         binfile.start()
-        len, outer, id, stage_count, res0, res1, res2, = binfile.read("3I4B", 16)
+        length, outer, id, stage_count, res0, res1, res2, = binfile.read("3I4B", 16)
         layer_indices = binfile.read("8B", 8)
         self.texRefCount = 0
         for x in layer_indices:
@@ -494,7 +539,7 @@ class Shader():
         assert (stage_count <= 16)
         self.stages = []
         for i in range(stage_count):
-            self.addStage()
+            self.stages.append(Stage(len(self.stages), self))
 
         binfile.advance(8)
         kcel = KCel(0)
@@ -541,7 +586,7 @@ class Shader():
                 stage1.setRasterColorI(tref.getColorChannel1())
                 stage1.unpackColorEnv(binfile)
             else:
-                binfile.advance(5)      # skip unpack color env
+                binfile.advance(5)  # skip unpack color env
             stage0.unpackAlphaEnv(binfile)
             if has_next:
                 stage1.unpackAlphaEnv(binfile)
