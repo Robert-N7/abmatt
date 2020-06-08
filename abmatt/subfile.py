@@ -5,18 +5,16 @@ import binfile
 # Most Brres Subfiles
 # --------------------------------------------------------
 class SubFile(object):
-    '''
+    """
     Brres Sub file Class
     classes must implement the following:
     vars: MAGIC, VERSION_SECTIONCOUNT
     functions: byteSize, unpack, pack, unpackData, packData
-    '''
+    """
     def __init__(self, name, parent):
         ''' initialize with parent of this file '''
         self.name = name
         self.parent = parent
-        if __debug__:
-            print("Creating subfile {}".format(name))
 
     def _byteSize(self):
         ''' should be overriden if size changes '''
@@ -58,9 +56,6 @@ class SubFile(object):
         self.numSections = self._getNumSections()
         binfile.store(self.numSections) # store section offsets
         self.name = binfile.unpack_name()
-        if __debug__:
-            print("Unpacking {} {} len {} v{} at offset {}".format(magic,
-                self.name, self.byte_len, self.version, binfile.offset))
 
     def _pack(self, binfile):
         ''' packs sub file into binfile, subclass must use binfile.end() '''

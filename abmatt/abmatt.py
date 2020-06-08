@@ -145,19 +145,13 @@ def main(argv):
         if info:
             cmds.append(Command("info"))
     if commandfile:
-        # print("command file exists ")
         filecmds = load_commandfile(commandfile)
-        # check for filename
-        if not cmds and filecmds and filename:
-            cmds = filecmds
-            if not cmds[0].filename:
-                cmds[0].filename = filename
-        # print("File command length: {}".format(len(filecmds)))
-        else:
-            cmds = cmds + filecmds
+        cmds = cmds + filecmds
     if info:
         cmd = "info material " + setting + " for " + name + " in file " + filename
         cmds.append(Command(cmd))
+    if filename:
+        Command.updateFile(filename)
     if not cmds:
         print(USAGE)
     else:

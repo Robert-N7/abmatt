@@ -57,11 +57,8 @@ class TextureLink:
     def unpack(self, binfile):
         binfile.start()
         [self.num_references] = binfile.read("I", 4)
-        for i in range(self.num_references):
+        for i in range(self.num_references):    # ignore this?
             link = binfile.read("2i", 8)
-            mat_offset = link[0] + binfile.beginOffset
-            layer_offset = link[1] + binfile.beginOffset
-            print('{} links to {},{}'.format(self.name, mat_offset, layer_offset))
         binfile.end()
 
     def pack(self, binfile):
@@ -201,6 +198,18 @@ class Mdl0(SubFile):
             if x.id == id:
                 return x
 
+    def addLayerReference(self, name):
+        link = None
+        for x in self.textureLinks:
+            if x.name == name:
+                link = x
+        if not link:
+            if not self.parent.getTexture(name):
+                raise ValueError('No Texture found for {}'.format(name))
+            link = TextureLink(name, self)
+            self.textureLinks.append(link)
+        link.num_references += 1
+
     def renameLayer(self, layer, name):
         """Attempts to rename a layer, raises value error if the texture can't be found"""
         # first try to get texture link
@@ -241,19 +250,13 @@ class Mdl0(SubFile):
             self.drawOpa.insert(x)
         return x
 
-    def info(self, command, trace):
-        trace += "->" + self.name
-        if command.modelname or command.materialname:  # pass it down
-            matching = findAll(command.materialname, self.materials)
-            for m in matching:
-                m.info(command, trace)
-        else:
-            if matches(command.name, self.name):
-                print("{} Mdl0 {}:\t materials: {} shaders: {}".format(trace, self.version, len(self.materials),
-                                                                       len(self.shaders)))
-            # pass it along
-            for x in self.materials:
-                x.info(command, trace)
+    def info(self, key=None, indentation_level=0):
+        trace = self.parent.name + "->" + self.name
+        print("{}{}:\t{} materials\t{} shaders".format('  ' * indentation_level, trace, len(self.materials),
+                                                                   len(self.shaders)))
+        # pass it along
+        for x in self.materials:
+            x.info(key)
 
     # ---------------HOOK REFERENCES -----------------------------------------
     def hookSRT0ToMats(self, srt0):

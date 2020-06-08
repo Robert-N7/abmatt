@@ -467,6 +467,8 @@ class Shader():
         return s
 
     def removeStage(self, id=-1):
+        if len(self.stages) == 1:
+            raise Exception('Shader must have at least 1 stage')
         self.stages.pop(id)
 
     def __deepcopy__(self, memodict={}):

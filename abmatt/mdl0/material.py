@@ -419,19 +419,20 @@ class Material:
                    setFogsetStr, setMatrixModeStr, setEnableDepthTestStr,
                    setEnableDepthUpdateStr, setDepthFunctionStr, setDrawPriorityStr, setDrawXLUStr)
 
-    def info(self, command, trace):
-        trace = self.parent.getTrace() + "->" + self.name
-        if matches(command.name, self.name):
-            if command.key:
-                val = self.getKey(command.key)
-                if val is not None:
-                    print("{}\t{}:{}".format(trace, command.key, val))
-            else:
-                print("{} {}\tlayers:{} xlu:{} cull:{} blend:{}".format(trace, self.id,
-                                                                                 len(self.layers), self.xlu,
-                                                                                 self.CULL_STRINGS[
-                                                                                     self.cullmode],
-                                                                                 self.getBlend()))
+    def info(self, key=None, indentation_level=0):
+        trace = self.parent.name + "->" + self.name
+        if key in self.SETTINGS:
+            val = self.getKey(key)
+            if val is not None:
+                print("{}{}\t{}:{}".format(indentation_level * '  ', trace, key, val))
+        elif not key:
+            print("{}{}\tlayers:{} xlu:{} cull:{} blend:{}".format(indentation_level * '\t',
+                                                                    trace, self.id, len(self.layers), self.xlu,
+                                                                    self.CULL_STRINGS[self.cullmode], self.getBlend()))
+        else:
+            indentation_level += 1
+            for x in self.layers:
+                x.info(key, indentation_level)
 
     def isChanged(self):
         if self.isModified:
@@ -442,14 +443,15 @@ class Material:
         return False
 
     def removeLayer(self, name):
-        ''' Removes layer from material by name '''
+        """ Removes layer from material by name """
         for i, x in enumerate(self.layers):
             if x.name == name:
                 del self.layers[i]
                 break
 
     def addLayer(self, name):
-        ''' Creates and returns new layer '''
+        """ Creates and returns new layer """
+        self.parent.addLayerReference(name)  # update model texture link/check that exists
         l = Layer(len(self.layers), name, self)
         self.layers.append(l)
         return l
@@ -526,7 +528,9 @@ class Material:
         for i in range(numlayers):
             binfile.start()
             scale_offset = startLayerInfo + 8 + i * 20
-            self.addLayer(binfile.unpack_name()).unpack(binfile, scale_offset)
+            layer = Layer(len(self.layers), binfile.unpack_name(), self)
+            self.layers.append(layer)
+            layer.unpack(binfile, scale_offset)
             binfile.end()
         # Layer Flags
         binfile.offset = startLayerInfo

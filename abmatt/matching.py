@@ -1,4 +1,4 @@
-''' Matching functions '''
+""" Matching functions """
 
 import re
 
@@ -7,7 +7,7 @@ BOOLABLE = ["False", "True"]
 
 def validFloat(str, min, max):
     f = float(str)
-    if not min <= i < max:
+    if not min <= f < max:
         raise ValueError("{} is out of range, min: {} max: {}".format(str, min, max))
     return f
 
@@ -43,15 +43,16 @@ def indexListItem(list, item, compareIndex=-2):
 
 
 def parseValStr(value):
-    ''' Parses tuple formed string with no spaces '''
+    """ Parses tuple formed string with no spaces """
     if value[0] == "(" and value[-1] == ")":
         value = value[1:-1]
     return value.split(",")
 
 
 # finds a name in group, group instances must have .name
+# possible todo, fuzzy searching?
 def findAll(name, group):
-    ''' Finds all names matching in a group, either by direct matching or regex if direct fails.'''
+    """ Finds all names matching in a group, either by direct matching or regex if direct fails."""
     if not name or name == "*":
         return group
     items = []
@@ -71,7 +72,7 @@ def findAll(name, group):
 
 
 def matches(regexname, name):
-    ''' checks if two names match by direct or regex matching '''
+    """ checks if two names match by direct or regex matching """
     if not regexname or regexname == "*":
         return True
     if regexname == name:

@@ -95,16 +95,12 @@ class Brres():
             return self.parent.name + "->" + self.name
         return self.name
 
-    def info(self, command, trace):
-        # todo trace?
-        if command.modelname:  # narrow scope and pass
-            models = findAll(command.modelname, self.models)
-            if models:
-                for x in models:
-                    x.info(command, trace)
-        else:
-            for x in self.models:
-                x.info(command, trace)
+    def info(self, key=None, indentation_level=0):
+        print('{}{}:\t{} models\t{} textures'.format('  ' * indentation_level, self.name,
+                                                     len(self.models), len(self.textures)))
+        indentation_level += 1
+        for x in self.models:
+            x.info(key, indentation_level)
 
     def set(self, command):
         mats = self.getMatCollection(command.modelname, command.materialname)
@@ -189,7 +185,7 @@ class Brres():
         for x in folders[count:]:
             if x:
                 count += len(x)
-                print('Length of folder {} is {}'.format(x.name, len(x)))
+                # print('Length of folder {} is {}'.format(x.name, len(x)))
         return count
 
     def getTexture(self, name):
@@ -230,8 +226,6 @@ class Brres():
 
     def unpack(self, binfile):
         """ Unpacks the brres """
-        if __debug__:
-            print("Unpacking brres {}".format(self.name))
         binfile.start()
         magic = binfile.readMagic()
         if magic != self.MAGIC:
@@ -307,7 +301,6 @@ class Brres():
         for subfolder in self.folders:
             if len(subfolder):
                 refGroup = folders[folder_index]
-                print("Packing folder {}".format(refGroup.name))
                 for file in subfolder:
                     refGroup.createEntryRefI()  # create the dataptr
                     file.pack(binfile)

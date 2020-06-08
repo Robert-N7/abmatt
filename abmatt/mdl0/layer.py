@@ -32,6 +32,7 @@ class Layer:
         self.id = id
         self.parent = parent
         self.name = name
+        self.enable = True
         self.scaleDefault = self.rotationDefault = self.translationDefault = True
         self.scale = (1, 1)
         self.rotation = 0
@@ -46,12 +47,16 @@ class Layer:
         self.texelInterpolate = self.clampBias = False
         self.xfTexMatrix = XFTexMatrix(id)
         self.xfDualTex = XFDualTex(id)
+        self.enableIdentityMatrix = True
+        self.texMatrix = [1.0, 0, 0, 0,
+                          0, 1.0, 0, 0,
+                          0, 0, 1.0, 0]
 
     def __value__(self):
         return "Layer {}: scale {} rot {} trans {} uwrap {} vwrap {} minfilter {}".format(self.name,
                                                                                           self.scale, self.rotation,
                                                                                           self.translation, self.uwrap,
-                                                                                          self.vwrap, self.minFilter)
+                                                                                          self.vwrap, self.minfilter)
 
     # ----------------------------------------------------------------------------------
     #   GETTERS
@@ -87,10 +92,10 @@ class Layer:
         return self.WRAP[self.vwrap]
 
     def getMinfilter(self):
-        return self.FILTER[self.minFilter]
+        return self.FILTER[self.minfilter]
 
     def getMagfilter(self):
-        return self.FILTER[self.magFilter]
+        return self.FILTER[self.magfilter]
 
     def getLodbias(self):
         return self.LODBias
@@ -215,17 +220,17 @@ class Layer:
             self.isModified = True
 
     def setMinFilterStr(self, value):
-        i = indexListItem(self.FILTER, value, self.minFilter)
+        i = indexListItem(self.FILTER, value, self.minfilter)
         if i >= 0:
-            self.minFilter = i
+            self.minfilter = i
             self.isModified = True
 
     def setMagFilterStr(self, value):
-        i = indexListItem(self.FILTER, value, self.magFilter)
+        i = indexListItem(self.FILTER, value, self.magfilter)
         if i > 1:
             raise ValueError("MagFilter out of range (0-1)")
         elif i >= 0:
-            self.minFilter = i
+            self.minfilter = i
             self.isModified = True
 
     def setLodBiasStr(self, value):
@@ -333,7 +338,7 @@ class Layer:
         # assumes material already unpacked name
         binfile.advance(12)
         self.texDataID, self.palleteDataID, self.uwrap, self.vwrap, \
-        self.minFilter, self.magFilter, self.LODBias, self.maxAnisotrophy, \
+        self.minfilter, self.magfilter, self.LODBias, self.maxAnisotrophy, \
         self.clampBias, self.texelInterpolate, pad = binfile.read("6IfI2BH", 0x24)
         transforms = binfile.readOffset("5f", scaleOffset)
         self.scale = transforms[0:2]
@@ -345,7 +350,7 @@ class Layer:
 
     def unpack_textureMatrix(self, binfile):
         self.scn0CameraRef, self.scn0LightRef, self.mapMode, \
-        self.enableIdentityMatrix = binfile.read("4B", 4)
+        self.enableIdentityMatrix = binfile.read("4b", 4)
         self.texMatrix = binfile.read("12f", 48)
 
     def unpackXF(self, binfile):
@@ -358,7 +363,7 @@ class Layer:
         binfile.storeNameRef(self.name)
         binfile.advance(12)  # ignoring pallete name / offsets
         binfile.write("6IfI2BH", self.id, self.id,
-                      self.uwrap, self.vwrap, self.minFilter, self.magFilter,
+                      self.uwrap, self.vwrap, self.minfilter, self.magfilter,
                       self.LODBias, self.maxAnisotrophy, self.clampBias,
                       self.texelInterpolate, 0)
         binfile.end()
@@ -374,7 +379,7 @@ class Layer:
 
     def pack_textureMatrix(self, binfile):
         """ packs texture matrix """
-        binfile.write("4B12f", self.scn0CameraRef, self.scn0LightRef, self.mapMode,
+        binfile.write("4b12f", self.scn0CameraRef, self.scn0LightRef, self.mapMode,
                       self.enableIdentityMatrix, *self.texMatrix)
 
     @staticmethod
@@ -389,24 +394,14 @@ class Layer:
         self.xfTexMatrix.pack(binfile)
         self.xfDualTex.pack(binfile)
 
-    def info(self, command, trace):
-        trace += "->" + self.name
-        if matches(command.name, self.name):
-            if command.key:
-                val = self[command.key]
-                if val:
-                    print("{}\t{}:{}".format(trace, command.key, val))
-            else:
-                print("{}:\tScale:{} Rot:{} Trans:{} UWrap:{} VWrap:{} MinFilter:{}".format(trace,
-                                                                                            self.scale,
-                                                                                            self.rotation,
-                                                                                            self.translation,
-                                                                                            self.WRAP[
-                                                                                                self.uwrap],
-                                                                                            self.WRAP[
-                                                                                                self.vwrap],
-                                                                                            self.FILTER[
-                                                                                                self.minFilter],
-                                                                                            self.MAPMODE[
-                                                                                                self.mapMode]
-                                                                                            ))
+    def info(self, key=None, indentation_level=0):
+        trace = self.parent.name + "->" + self.name
+        if key:
+            val = self[key]
+            if val:
+                print("{}{}\t{}:{}".format('  ' * indentation_level, trace, key, val))
+        else:
+            print("{}{}:\tScale:{} Rot:{} Trans:{} UWrap:{} VWrap:{} MinFilter:{}".format('  ' * indentation_level,
+                                                         trace, self.scale, self.rotation, self.translation,
+                                                         self.WRAP[self.uwrap], self.WRAP[self.vwrap],
+                                                         self.FILTER[self.minfilter], self.MAPMODE[self.mapMode]))

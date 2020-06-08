@@ -45,9 +45,9 @@ select = 'select' space type;
 info  = 'info' space type [space key];
 selection = [name] [space 'in' container]
 container = ['file' space filename] ['model' space name];
-type = 'material' | 'layer' [number] | 'shader' | 'stage' [number] | 'srt0' [number];
+type = 'material' | 'layer' [':' name] | 'shader' | 'stage' [':' number];
 setting =  key ':' value;
-key = materialkey | layerkey | shaderkey | stagekey | srt0key;
+key = materialkey | layerkey | shaderkey | stagekey;
 
 materialkey = 'xlu' | 'transparent' | 'ref0' | 'ref1' |
  'comp0' | 'comp1' | 'comparebeforetexture' | 'blend' |
@@ -71,8 +71,6 @@ stagekey = 'enabled' | 'mapid' | 'coordinateid' | 'textureswapselection' |
    'coloroperation' | 'colorclamp' | 'colorscale' | 'colordestination' |
    'alphaconstantselection' | 'alphaa' | 'alphab' | 'alphac' | 'alphad' |
    'alphabias' | 'alphaoperation' | 'alphaclamp' | 'alphascale' | 'alphadestination' | 'indirectstage' | 'indirectformat' | 'indirectalpha' | 'indirectbias' | 'indirectmatrix' | 'indirectswrap' | 'indirecttwrap' | 'indirectuseprevstage' | 'indirectunmodifiedlod';
-
-srt0key = 'framecount' | 'looping' | 'keyframe'
 
 value     = 'true' | 'false' | number-list | cull-mode | light-channel | const-alpha | matrix-mode | blend-logic | blend-factor | wrap-mode | minfilter | map-mode | projection | inputform | type | coordinates;
   number-list   = number {, number};

@@ -559,7 +559,7 @@ class Folder:
     def createEntryRefI(self, index=0):
         """ creates reference in folder to section at entry[index] (once only, pops)"""
         entry = self.entries.pop(index)
-        print('{} {}'.format(self.binfile.offset, entry.name))
+        # print('{} {}'.format(self.binfile.offset, entry.name))
         return self.binfile.createRefFrom(self.offset, index + 1)  # index + 1 ignoring the first ref entry
 
 

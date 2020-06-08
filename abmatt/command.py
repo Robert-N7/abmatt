@@ -22,13 +22,13 @@ def getShadersFromMaterials(materials, models):
     """Gets unique shaders from material list, where materials may come from different models,
         may have to detach if shared with material not in list
     """
-    pass    # todo
+    pass  # todo
 
 
 class Command:
     COMMANDS = ["set", "add", "remove", "info", "select"]
     SELECTED = []  # selection list
-    SELECT_TYPE = None # current selection list type
+    SELECT_TYPE = None  # current selection list type
     DESTINATION = None
     OVERWRITE = False
     ACTIVE_FILES = []
@@ -44,10 +44,11 @@ class Command:
     }
 
     def __init__(self, text):
-        ''' parses the text as a command '''
+        """ parses the text as a command """
         self.hasSelection = False
         self.name = self.key = None
-        self.txt = text
+        self.txt = text.strip('\r\n')
+        self.type_id = 0
         x = [x.strip() for x in text.split()]
         if len(x) < 2:
             raise ParsingException(self.txt, 'Not enough parameters')
@@ -73,19 +74,23 @@ class Command:
             raise ParsingException(self.txt, "Unknown Key {} for {}".format(self.key, self.type))
 
     def setType(self, val):
-        self.typenum = 0
+        self.type_id = 0
         if val == 'material' or val == 'shader':
+            if self.cmd == 'add' or self.cmd == 'remove':
+                raise ParsingException(self.txt, 'Add/Remove not supported for materials and shaders.')
             self.type = val
             return True
-        r = re.match('.*?([0-9]+)$', val)
-        if r != None:
-            self.typenum = int(r.group(1))
+        i = val.find(':')
+        if i > 0 and len(val) > i + 1:
+            self.type_id = val[i + 1:]
         if 'layer' in val:
             self.type = 'layer'
         elif 'stage' in val:
             self.type = 'stage'
-        elif 'srt0' in val:
-            self.type = 'srt0'
+            if self.type_id:
+                self.type_id = int(self.type_id)
+        # elif 'srt0' in val:
+        #     self.type = 'srt0'
         else:
             raise ParsingException(self.txt, 'Invalid type {}'.format(val))
 
@@ -97,11 +102,11 @@ class Command:
             return False
         self.hasSelection = True
         self.name = li[1]
-        self.name = self.model = self.file = x = None
+        self.model = self.file = x = None
         if len(li) > 2:
             if li[2] != 'in':
                 raise ParsingException(self.txt, 'Expected "in"')
-            li = li [3:]
+            li = li[3:]
             i = 0
             try:  # to get args
                 while i < len(li):
@@ -124,20 +129,24 @@ class Command:
         else:
             self.cmd = val
 
+    @staticmethod
+    def updateFile(filename):
+        files = getFiles(filename)
+        if not files:  # could possibly ignore error here for wildcard patterns?
+            print("The file '{}' does not exist".format(filename))
+            return False
+        elif Command.DESTINATION and len(files) > 1 or Command.ACTIVE_FILES and not files[0] in Command.ACTIVE_FILES:
+            print("Error: Multiple files for single destination!")
+            print("Specify single file and destination, or no destination with overwrite option.")
+            return False
+        else:
+            Command.ACTIVE_FILES = openFiles(files, Command.ACTIVE_FILES)
+            Command.MODELS = []  # clear models
+
     def updateSelection(self):
         """ updates container items """
         if self.file:
-            files = getFiles(self.file)
-            if not files:  # could possibly ignore error here for wildcard patterns?
-                print("The file '{}' does not exist".format(self.file))
-                return False
-            elif self.DESTINATION and len(files) > 1 or self.ACTIVE_FILES and not files[0] in self.ACTIVE_FILES:
-                print("Error: Multiple files for single destination!")
-                print("Specify single file and destination, or no destination with overwrite option.")
-                return False
-            else:
-                Command.ACTIVE_FILES = openFiles(files, self.ACTIVE_FILES)
-                self.MODELS = []  # clear models
+            self.updateFile(self.file)
         # Models
         if self.model or not self.MODELS:
             self.MATERIALS = []  # reset materials
@@ -146,28 +155,37 @@ class Command:
         # Materials
         for x in self.MODELS:
             self.MATERIALS = x.getMaterialsByName(self.name)
-        self.SELECT_TYPE = None # reset selection
+        self.SELECT_TYPE = None  # reset selection
         return True
 
     def updateType(self):
-        """ Updates the current selection"""
-        if self.type != self.SELECT_TYPE:
-            if self.type == 'material' or self.cmd != 'set' and self.cmd != 'info': # use materials as selection
+        """ Updates the current selection by the type/cmd"""
+        if self.cmd == 'add' or self.cmd == 'remove':  # use parents as selection
+            type = 'material' if self.type == 'layer' else 'shader'
+        else:
+            type = self.type
+        if type != self.SELECT_TYPE:
+            if type == 'material':
                 self.SELECTED = self.MATERIALS
-            else:
+            elif type == 'layer':
                 self.SELECTED = []
-                if self.type == 'layer':
-                    for x in self.MATERIALS:
-                        self.SELECTED.append(x.getLayer(self.typenum))
-                elif self.type == 'srt0':
-                    pass # todo
+                for x in self.MATERIALS:
+                    self.SELECTED.append(x.getLayer(self.type_id))
+            # elif self.type == 'srt0':
+            #     pass # todo
+            elif type == 'shader' or type == 'stage':
+                shaders = getShadersFromMaterials(self.MATERIALS, self.MODELS)
+                if type == 'shader':
+                    self.SELECTED = shaders
                 else:
-                    shaders = getShadersFromMaterials(self.MATERIALS, self.MODELS)
-                    if self.type == 'stage':
-                        for x in shaders:
-                            self.SELECTED.append(x.getStage(self.typenum))
-                    else:
-                        self.SELECTED = shaders
+                    self.SELECTED = []
+                    for x in shaders:
+                        self.SELECTED.append(x.getStage(self.type_id))
+            elif self.cmd == 'info':
+                if type == 'mdl0':
+                    self.SELECTED = self.MODELS
+                elif type == 'brres':
+                    self.SELECTED = self.ACTIVE_FILES
 
     def runCmd(self):
         if self.hasSelection:
@@ -182,14 +200,22 @@ class Command:
                     x[self.key] = self.value
             elif self.cmd == 'info':
                 for x in self.SELECTED:
-                    x.info(self, "")
-                for y in self.ACTIVE_FILES:
-                    print(y.name)
+                    x.info(self.key)
+                # for y in self.ACTIVE_FILES:
+                #     print(y.name)
+            elif self.cmd == 'add':
+                if self.type == 'layer':  # add layer case
+                    for x in self.SELECTED:
+                        x.addLayer(self.type_id)
+                elif self.type == 'stage':  # add stage case
+                    for x in self.SELECTED:
+                        for i in range(self.type_id):
+                            x.addStage()
 
     def __str__(self):
         return "{} {}:{} for {} in file {} model {}".format(self.cmd,
-                                                                        self.key, self.value, self.name, self.file,
-                                                                        self.model)
+                                                            self.key, self.value, self.name, self.file,
+                                                            self.model)
 
 
 def run_commands(commandlist):

@@ -79,7 +79,6 @@ class MatGX:
         for x in self.indMatrices:
             x.unpack(binfile)
         binfile.align()
-        print("BO: {}".format(binfile.offset))
         # should be at layer xf flags
 
     def pack(self, binfile):

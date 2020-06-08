@@ -67,12 +67,7 @@ class PackBrres:
                     newOpa.append(entry)
         newXlu.sort(key = lambda item: item[6]) # sort by draw priority
         newOpa.sort(key = lambda item: item[6])
-        # print("New Xlu {}".format(newXlu))
-        # print("Old xlu {}".format(drawXlu))
-        # print("New opa {}".format(newOpa))
-        # print("Old opa {}".format(drawOpa))
         # rehook things
-        # print("Old length: {} new length {}".format(len(drawlists[1]) + len(drawlists[2]), (len(newOpa) + len(newXlu)) * 2 + 2))
         # assert(len(drawOpa) + len(drawXlu) == (len(newOpa) + len(newXlu)) * 2 + 2)
         # drawlists[1] = newOpa
         # drawlists[2] = newXlu

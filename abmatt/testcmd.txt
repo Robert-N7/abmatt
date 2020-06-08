@@ -1,1 +1,3 @@
-info shader
+Info material cullmode for *
+# Test add layers
+# ADD Layer:bc_kankyaku_mip for ef_.*
