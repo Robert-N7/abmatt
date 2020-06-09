@@ -75,7 +75,7 @@ layerkey = 'scale' | 'rotation' | 'translation' | 'scn0cameraref' |
   'type' | 'coordinates' | 'embosssource' | 'embosslight' |
   'normalize' | 'indirectmatrix';
 
-shaderkey = 'texturerefcount' | 'indirectmap' | 'indirectcoord';
+shaderkey = 'texturerefcount' | 'indirectmap' [<n>] | 'indirectcoord' [<n>];
 
 stagekey = 'enabled' | 'mapid' | 'coordinateid' | 'textureswapselection' |
    'rastercolor' | 'rasterswapselection' | 'colorconstantselection' |

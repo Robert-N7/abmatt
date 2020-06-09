@@ -129,7 +129,7 @@ class Stage():
     COLOR_SELS = ("outputcolor", "outputalpha", "color0", "alpha0", "color1",
                   "alpha1", "color2", "alpha2", "texturecolor", "texturealpha",
                   "rastercolor", "rasteralpha", "one", "half",
-                  "constantcolorselection", "zero")
+                  "colorconstantselection", "zero")
     BIAS = ("zero", "addhalf", "subhalf")
     OPER = ("add", "subtract")
     SCALE = ("multiplyby1", "multiplyby2", "multiplyby4", "divideby2")
@@ -143,7 +143,7 @@ class Stage():
                        "color0_blue", "color1_blue", "color2_blue", "color3_blue",
                        "color0_alpha", "color1_alpha", "color2_alpha", "color3_alpha")
     ALPHA_SELS = ("outputalpha", "alpha0", "alpha1", "alpha2", "texturealpha",
-                  "rasteralpha", "constantalphaselection", "zero")
+                  "rasteralpha", "alphaconstantselection", "zero")
     ALPHA_DEST = ("outputalpha", "alpha0", "alpha1", "alpha2")
 
     # INDIRECT TEVS
@@ -177,7 +177,7 @@ class Stage():
         self.parent = parent
         self.map = {
             "enabled": True, "mapid": id, "coordinateid": id,
-            "textureswapselection": 0, "rastercolor": self.RASTER_COLORS[0],
+            "textureswapselection": 0, "rastercolor": self.RASTER_COLORS[4],
             "rasterswapselection": 0,
             "colorconstantselection": self.COLOR_CONSTANTS[8], "colora": self.COLOR_SELS[-1],
             "colorb": self.COLOR_SELS[8], "colorc": self.COLOR_SELS[10],
@@ -204,6 +204,8 @@ class Stage():
         return str(self.map)
 
     def __getitem__(self, key):
+        if key not in self.map:
+            raise ValueError("No such shader stage setting {} possible keys are: \n\t{}".format(key, self.map.keys()))
         return self.map[key]
 
     def info(self, key=None, indentation_level=0):
@@ -263,9 +265,10 @@ class Stage():
             index -= 4
         self.map["colorconstantselection"] = self.COLOR_CONSTANTS[index]
 
+
     def __setitem__(self, key, value):
         if not key in self.map:
-            raise ValueError("No such shader stage setting {}".format(key))
+            raise ValueError("No such shader stage setting {} possible keys are: \n\t{}".format(key, self.map.keys()))
         # bools
         if key == "enabled" or "clamp" in key or key == "indirectuseprevstage" \
                 or key == "indirectunmodifiedlod":
@@ -282,46 +285,60 @@ class Stage():
                     pos = indexListItem(self.SCALEN, f)
                     value = self.SCALE[pos]
                 except:
-                    indexListItem(self.SCALE, key)
+                    indexListItem(self.SCALE, value)
             elif "color" in key:
                 if len(key) < 7:  # abcd
-                    indexListItem(self.COLOR_SELS, key)
+                    if value == '0':
+                        value = 'zero'
+                    elif value == '1':
+                        value = 'one'
+                    elif value == '0.5':
+                        value = 'half'
+                    else:
+                        indexListItem(self.COLOR_SELS, value)
                 elif key == "constantcolorselection":
-                    indexListItem(self.COLOR_CONSTANTS, key)
                     if "constant" in value:
                         value = value[8:]
+                    indexListItem(self.COLOR_CONSTANTS, value)
                 elif key == "colordestination":
-                    indexListItem(self.COLOR_DEST, key)
+                    indexListItem(self.COLOR_DEST, value)
                 elif key == "colorbias":
-                    indexListItem(self.BIAS, key)
+                    indexListItem(self.BIAS, value)
                 elif key == "coloroperation":
-                    indexListItem(self.OPER, key)
+                    indexListItem(self.OPER, value)
                 elif key == "rastercolor":
-                    indexListItem(self.RASTER_COLORS, key)
+                    if value == '0':
+                        value = 'zero'
+                    else:
+                        indexListItem(self.RASTER_COLORS, value)
             elif "alpha" in key:
                 if len(key) < 7:  # abcd
-                    indexListItem(self.ALPHA_SELS, key)
+                    if value == '0':
+                        value = 'zero'
+
+                    else:
+                        indexListItem(self.ALPHA_SELS, value)
                 elif key == "constantalphaselection":
                     if "constant" in value:
                         value = value[8:]
-                    indexListItem(self.ALPHA_CONSTANTS, key)
+                    indexListItem(self.ALPHA_CONSTANTS, value)
                 elif key == "alphadestination":
-                    indexListItem(self.ALPHA_DEST, key)
+                    indexListItem(self.ALPHA_DEST, value)
                 elif key == "alphabias":
-                    indexListItem(self.BIAS, key)
+                    indexListItem(self.BIAS, value)
                 elif key == "alphaoperation":
-                    indexListItem(self.OPER, key)
+                    indexListItem(self.OPER, value)
             elif "indirect" in key:
                 if key == "indirectformat":
-                    indexListItem(self.TEX_FORMAT, key)
+                    indexListItem(self.TEX_FORMAT, value)
                 elif key == "indirectmatrix":
-                    indexListItem(self.IND_MATRIX, key)
+                    indexListItem(self.IND_MATRIX, value)
                 elif key == "indirectalpha":
-                    indexListItem(self.IND_ALPHA, key)
+                    indexListItem(self.IND_ALPHA, value)
                 elif key == "indirectbias":
-                    indexListItem(self.IND_BIAS, key)
+                    indexListItem(self.IND_BIAS, value)
                 elif "wrap" in key:
-                    indexListItem(self.WRAP, key)
+                    indexListItem(self.WRAP, value)
             self.map[key] = value
 
     def unpackColorEnv(self, binfile):

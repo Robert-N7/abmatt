@@ -57,9 +57,12 @@ class Command:
         self.setCmd(x.pop(0).lower())
         if not x:
             raise ParsingException(self.txt, 'Not enough parameters')
-        self.setType(x.pop(0).lower())
-        if 'for' in x:
-            i = x.index('for')
+        if self.setType(x[0]):
+            x.pop(0)
+        i = x.index('for')
+        if i < 0:
+            i = x.index('For')
+        if i >= 0:
             self.setSelection(x[i:])
             x = x[0:i]
         if self.cmd == 'set':
@@ -67,36 +70,43 @@ class Command:
                 raise ParsingException(self.txt, 'Not enough parameters')
             if ':' not in x[0]:
                 raise ParsingException(self.txt, 'Set requires key:value pair')
-            self.key, self.value = x[0].split(':')
-            self.key = self.key.lower()
+            key, value = x[0].split(':', 1)
+            self.key = key.lower()
+            self.value = value.lower()
         elif len(x):
             if self.cmd != 'info':
                 print("Unknown parameter(s) {}".format(x))
             else:
                 self.key = x[0].lower()
         if self.key and not self.key in self.TYPE_SETTING_MAP[self.type]:
-            raise ParsingException(self.txt, "Unknown Key {} for {}".format(self.key, self.type))
+            raise ParsingException(self.txt, "Unknown Key {} for {}, possible keys:\n\t{}".format(self.key, self.type,
+                                                                                                  self.TYPE_SETTING_MAP[self.type]))
 
     def setType(self, val):
-        self.type_id = 0
+        """Returns true if the type is set by val"""
+        type_id = 0
+        i = val.find(':')
+        if i > 0 and len(val) > i + 1:
+            type_id = val[i+1:]
+            val = val[:i]
+        self.type = val.lower()
         if val == 'material' or val == 'shader':
             if self.cmd == 'add' or self.cmd == 'remove':
                 raise ParsingException(self.txt, 'Add/Remove not supported for materials and shaders.')
-            self.type = val
-            return True
-        i = val.find(':')
-        if i > 0 and len(val) > i + 1:
-            self.type_id = val[i + 1:]
-        if 'layer' in val:
-            self.type = 'layer'
-        elif 'stage' in val:
-            self.type = 'stage'
-            if self.type_id:
-                self.type_id = validInt(self.type_id, 0, 15)
+        elif val == 'layer':
+            if type_id:
+               self.type_id = type_id
+        elif val == 'stage':
+            if type_id:
+                self.type_id = validInt(type_id, 0, 15)
         # elif 'srt0' in val:
         #     self.type = 'srt0'
+        elif self.SELECT_TYPE:
+            self.type = self.SELECT_TYPE
+            return False
         else:
             raise ParsingException(self.txt, 'Invalid type {}'.format(val))
+        return True
 
     def setSelection(self, li):
         """ takes a list beginning with 'for' and parses selection """

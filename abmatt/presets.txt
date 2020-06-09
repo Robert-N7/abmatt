@@ -38,10 +38,38 @@ set layer:0 projection:stq
 set layer:0 InputForm:abc1
 set layer:0 coordinates:normals
 set layer:0 normalize:True
-add layer:ef_arrowBumpS
+set layer:1 name:ef_arrowBumpS
 set layer:1 uwrap:mirror
-add layer:ef_arrowGradS
+add layer:1 name:ef_arrowGradS
 # material settings
 preset opaque
 set material shadercolor:constant3:(0,0,0,128)
-set material indirectmatrix:
+set material indirectmatrix:0:scale14,(0.6396484375,0,0),(0,0.639648375,0)
+
+# shader
+set shader indirectmap:1
+set shader indirectcoord:1
+# stage 0
+set stage:0 mapid:2
+set stage:0 coordinateid:2
+set stage:0 rastercolor:zero
+set stage:0 colorConstantSelection:3_4
+set stage:0 colorB:ColorConstantSelection
+set stage:0 colorC:TextureColor
+set stage:0 colorScale:1
+# stage 1
+set stage:1 mapid:0
+set stage:1 coordinateid:0
+set stage:1 rastercolor:0
+set stage:1 colorConstantSelection:5_8
+set stage:1 colorA:TextureAlpha
+set stage:1 colorB:0
+set stage:1 colorC:0
+set stage:1 colorD:OutputColor
+set stage:1 alphaConstantSelection:color3_alpha
+set stage:1 alphaA:TextureAlpha
+set stage:1 alphaB:0
+set stage:1 alphaC:ConstantAlphaSelection
+set stage:1 alphaD:OutputAlpha
+set stage:1 indirectBias:stu
+set stage:1 indirectMatrix:Matrix0

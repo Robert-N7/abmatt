@@ -153,10 +153,21 @@ class Material:
     def getDrawPriority(self):
         return self.drawPriority
 
-    def getLayer(self, i):
-        if i < len(self.layers):
-            return self.layers[i]
-        return None
+    def getLayer(self, key):
+        """Attempts to get layer by string key, adding it if necessary"""
+        for x in self.layers:
+            if x.name == key:
+                return x
+        try:
+            layer_index = int(key)
+            if 0 <= layer_index < 8:
+                if layer_index >= len(self.layers):
+                    for i in range(layer_index + 1 - len(self.layers)):
+                        self.addLayer('Nil')
+                return self.layers[layer_index]
+        except ValueError as e:
+            pass
+        return self.addLayer(key)
 
     def getDrawXLU(self):
         return self.parent.isMaterialDrawXLU(self.id)
@@ -165,7 +176,7 @@ class Material:
         ret = ''
         for i in range(3):
             matrix = self.matGX.getIndMatrix(i)
-            ret += 'Ind_matrix{}: Scale {}, {}\n'.format(i, matrix.scale, matrix.matrix)
+            ret += '\n\t{}: Scale {}, {}'.format(i, matrix.scale, matrix.matrix)
         return ret
 
     # Get Functions
@@ -223,7 +234,6 @@ class Material:
             x = str[i]
             if x.isDigit():
                 index = int(x)
-                found = True
                 str = str[i+1:].strip(':()')
                 break
         if not 0 <= index <= 3 or (not isConstant) and index == 3:
@@ -421,11 +431,11 @@ class Material:
         if colon_index > -1:
             matrix_index = validInt(str_value[0], 0, 3)
             str_value = str_value[colon_index+1:]
-        str_values = str_value.strip('()').split(',')
+        str_values = str_value.replace('scale').split(',')
         if len(str_values) != 7:
             raise ValueError(self.MATRIX_ERR)
-        scale = validInt(str_values.pop(0), -17, 47)
-        matrix = [validFloat(x, -1, 1) for x in str_values]
+        scale = validInt(str_values.pop(0).strip(':'), -17, 47)
+        matrix = [validFloat(x.strip('()'), -1, 1) for x in str_values]
         self.matGX.setIndMatrix(matrix_index, scale, matrix)
 
 
