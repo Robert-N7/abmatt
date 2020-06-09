@@ -581,14 +581,14 @@ class RAS1_SS(BPCommand):
 
 
 class IndMatrix():
-    ''' Indirect matrices are typically used with bump map materials
+    """ Indirect matrices are typically used with bump map materials
         id: 0 -2
         scale: 6-bit value that controls outgoing coordinate scale (2^scale)
-    '''
+    """
     SIZE = 15
 
     def __init__(self, id, scale=46, enable=False):
-        ''' Indirect 2x3 matrix that blit processor loads
+        """ Indirect 2x3 matrix that blit processor loads
             the matrix has two rows and three columns, and it appears on the
             left side of the multiply. On the right side is a column vector
             consisting of the (s, t, u) offsets. You may choose a scale value by
@@ -602,10 +602,10 @@ class IndMatrix():
             id: 0-2
             scale: -17-46   (2^scale)
             matrix values: -1 to 1
-        '''
+        """
         self.enabled = enable
         self.scale = scale
-        self.matrix = [[0] * 3, [0] * 3]
+        self.matrix = [0] * 6
         self.id = id  # typically 0
 
     def getScale(self):
@@ -675,19 +675,19 @@ class IndMatrix():
             if i == 0:
                 self.id = (c.bpmem - BPCommand.BPMEM_IND_MTXA0) // 3
             self.scale = self.scale | (c.data >> 22 & 3) << (2 * i)
-            self.matrix[0][i] = self.force11bitFloat(c.data & 0x3ff)
-            self.matrix[1][i] = self.force11bitFloat(c.data >> 11 & 0x3ff)
+            self.matrix[i] = self.force11bitFloat(c.data & 0x3ff)
+            self.matrix[i+3] = self.force11bitFloat(c.data >> 11 & 0x3ff)
 
     def pack(self, binfile):
-        '''Packs the ind matrix '''
+        """Packs the ind matrix """
         if not self.enabled:
             binfile.advance(self.SIZE)
             return
         c = BPCommand(BPCommand.BPMEM_IND_MTXA0 + self.id * 3)
         for i in range(3):
             sbits = (self.scale >> (2 * i) & 3)
-            r0 = self.encode11bitFloat(self.matrix[0][i])
-            r1 = self.encode11bitFloat(self.matrix[1][i])
+            r0 = self.encode11bitFloat(self.matrix[i])
+            r1 = self.encode11bitFloat(self.matrix[i+3])
             c.data = sbits << 22 | r1 << 11 | r0
             c.pack(binfile)
             c.bpmem += 1

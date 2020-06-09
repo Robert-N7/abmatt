@@ -57,6 +57,15 @@ class MatGX:
         for i in range(3):
             self.indMatrices.append(IndMatrix(i))
 
+    def getIndMatrix(self, id):
+        return self.indMatrices[id]
+
+    def setIndMatrix(self, id, scale, matrix):
+        x = self.indMatrices[id]
+        x.scale = scale
+        assert(len(matrix) == 6)
+        x.matrix = matrix
+
     def unpack(self, binfile):
         """ unpacks the mat graphic codes """
         self.alphafunction.unpack(binfile)

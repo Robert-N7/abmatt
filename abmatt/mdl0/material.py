@@ -4,7 +4,7 @@
 #  Structure for working with materials
 # ---------------------------------------------------------------------
 
-from matching import validBool, indexListItem, matches
+from matching import validBool, indexListItem, matches, validInt, validFloat
 from mdl0.layer import Layer
 from mdl0.wiigraphics.matgx import MatGX
 
@@ -20,7 +20,6 @@ if __debug__:
 
     ANALYSIS = OutAnalysis()
 
-
 class Material:
     # -----------------------------------------------------------------------
     #   CONSTANTS
@@ -31,7 +30,7 @@ class Material:
                 "blendsrc", "blendlogic", "blenddest", "constantalpha",
                 "cullmode", "shader", "shadercolor", "lightchannel",
                 "lightset", "fogset", "matrixmode", "enabledepthtest",
-                "enabledepthupdate", "depthfunction", "drawpriority", "drawxlu")
+                "enabledepthupdate", "depthfunction", "drawpriority", "drawxlu", "indirectmatrix")
 
     # CULL MODES
     CULL_STRINGS = ("none", "outside", "inside", "all")
@@ -49,7 +48,7 @@ class Material:
     # Matrix mode
     MATRIXMODE = ("maya", "xsi", "3dsmax")
 
-    SHADERCOLOR_ERROR = "Invalid color '{}', Expected [constant]color<i>=<r>,<g>,<b>,<a>"
+    SHADERCOLOR_ERROR = "Invalid color '{}', Expected [constant]<i>:<r>,<g>,<b>,<a>"
 
     def __init__(self, name, parent=None):
         self.parent = parent
@@ -162,11 +161,18 @@ class Material:
     def getDrawXLU(self):
         return self.parent.isMaterialDrawXLU(self.id)
 
+    def getIndMatrix(self):
+        ret = ''
+        for i in range(3):
+            matrix = self.matGX.getIndMatrix(i)
+            ret += 'Ind_matrix{}: Scale {}, {}\n'.format(i, matrix.scale, matrix.matrix)
+        return ret
+
     # Get Functions
     GET_SETTING = (getXlu, getRef0, getRef1, getComp0, getComp1, getCompareBeforeTexture,
                    getBlend, getBlendSrc, getBlendLogic, getBlendDest, getConstantAlpha, getCullMode, getShader,
                    getShaderColor, getLightChannel, getLightset, getFogset, getMatrixMode, getEnableDepthTest,
-                   getEnableDepthUpdate, getDepthFunction, getDrawPriority, getDrawXLU)
+                   getEnableDepthUpdate, getDepthFunction, getDrawPriority, getDrawXLU, getIndMatrix)
 
     def __getitem__(self, key):
         for i in range(self.NUM_SETTINGS):
@@ -211,21 +217,18 @@ class Material:
         return self.isModified
 
     def setShaderColorStr(self, str):
-        const = "constantcolor"
-        non = "color"
-        isConstant = False
-        if const in str:
-            isConstant = True
-            splitIndex = len(const)
-        elif non in str:
-            splitIndex = len(non)
-        else:
-            raise ValueError(self.SHADERCOLOR_ERROR.format(str))
-        index = int(str[splitIndex])
+        isConstant = True if 'constant' in str else False
+        index = -1
+        for i in range(len(str)):
+            x = str[i]
+            if x.isDigit():
+                index = int(x)
+                found = True
+                str = str[i+1:].strip(':()')
+                break
         if not 0 <= index <= 3 or (not isConstant) and index == 3:
             raise ValueError(self.SHADERCOLOR_ERROR.format(str))
-        str = str[splitIndex + 2:]
-        colors = str.split(",")
+        colors = str.split(',')
         if len(colors) < 4:
             raise ValueError(self.SHADERCOLOR_ERROR.format(str))
         intVals = []
@@ -236,7 +239,6 @@ class Material:
             intVals.append(i)
         list = self.matGX.cctevRegs if isConstant else self.matGX.tevRegs
         list[index].setColor(intVals)
-        self.isModified = True
 
     def setCullModeStr(self, cullstr):
         i = indexListItem(self.CULL_STRINGS, cullstr, self.cullmode)
@@ -411,13 +413,30 @@ class Material:
         else:
             self.parent.setMaterialDrawOpa(self.id)
 
+    MATRIX_ERR = 'Error parsing Indirect Matrix, Usage: IndirectMatrix:[<i>:]<scale>,<r1c1>,<r1c2>,<r1c3>,<r2c1>,<r2c2>,<r2c3>'
+
+    def setIndirectMatrix(self, str_value):
+        matrix_index = 0
+        colon_index = str_value.find(':')
+        if colon_index > -1:
+            matrix_index = validInt(str_value[0], 0, 3)
+            str_value = str_value[colon_index+1:]
+        str_values = str_value.strip('()').split(',')
+        if len(str_values) != 7:
+            raise ValueError(self.MATRIX_ERR)
+        scale = validInt(str_values.pop(0), -17, 47)
+        matrix = [validFloat(x, -1, 1) for x in str_values]
+        self.matGX.setIndMatrix(matrix_index, scale, matrix)
+
+
     # Set functions
     SET_SETTING = (setXluStr, setRef0Str, setRef1Str,
                    setComp0Str, setComp1Str, setCompareBeforeTexStr, setBlendStr, setBlendSrcStr,
                    setBlendLogicStr, setBlendDestStr, setConstantAlphaStr, setCullModeStr,
                    setShaderStr, setShaderColorStr, setLightChannelStr, setLightsetStr,
                    setFogsetStr, setMatrixModeStr, setEnableDepthTestStr,
-                   setEnableDepthUpdateStr, setDepthFunctionStr, setDrawPriorityStr, setDrawXLUStr)
+                   setEnableDepthUpdateStr, setDepthFunctionStr, setDrawPriorityStr, setDrawXLUStr,
+                   setIndirectMatrix)
 
     def info(self, key=None, indentation_level=0):
         trace = self.parent.name + "->" + self.name
