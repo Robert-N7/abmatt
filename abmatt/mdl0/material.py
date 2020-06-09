@@ -4,33 +4,23 @@
 #  Structure for working with materials
 # ---------------------------------------------------------------------
 
-from matching import validBool, indexListItem, matches, validInt, validFloat
+from matching import validBool, indexListItem, validInt, validFloat, findAll
 from mdl0.layer import Layer
 from mdl0.wiigraphics.matgx import MatGX
 
-if __debug__:
-    class OutAnalysis():
-        def __init__(self):
-            self.fname = "analysis.txt"
-            self.file = open(self.fname, "a")
-
-        def write(self, text):
-            self.file.write(text + "\n")
-
-
-    ANALYSIS = OutAnalysis()
 
 class Material:
     # -----------------------------------------------------------------------
     #   CONSTANTS
     # -----------------------------------------------------------------------
-    NUM_SETTINGS = 23
+    NUM_SETTINGS = 25
     SETTINGS = ("xlu", "ref0", "ref1",
                 "comp0", "comp1", "comparebeforetexture", "blend",
                 "blendsrc", "blendlogic", "blenddest", "constantalpha",
                 "cullmode", "shader", "shadercolor", "lightchannel",
                 "lightset", "fogset", "matrixmode", "enabledepthtest",
-                "enabledepthupdate", "depthfunction", "drawpriority", "drawxlu", "indirectmatrix")
+                "enabledepthupdate", "depthfunction", "drawpriority", "drawxlu",
+                "indirectmatrix", "name")
 
     # CULL MODES
     CULL_STRINGS = ("none", "outside", "inside", "all")
@@ -130,13 +120,13 @@ class Material:
         return self.fogset
 
     def getShaderColor(self):
-        str = ""
+        ret = ""
         for i in range(3):
-            str += "Color{}: {}\t".format(i, self.matGX.tevRegs[i].getColor())
-        str += "\n\t"
+            ret += "Color{}: {}\t".format(i, self.matGX.tevRegs[i].getColor())
+        ret += "\n\t"
         for i in range(4):
-            str += "Const{}: {}\t".format(i, self.matGX.cctevRegs[i].getColor())
-        return str
+            ret += "Const{}: {}\t".format(i, self.matGX.cctevRegs[i].getColor())
+        return ret
 
     def getMatrixMode(self):
         return self.MATRIXMODE[self.textureMatrixMode]
@@ -153,24 +143,32 @@ class Material:
     def getDrawPriority(self):
         return self.drawPriority
 
-    def getLayer(self, key):
-        """Attempts to get layer by string key, adding it if necessary"""
-        for x in self.layers:
-            if x.name == key:
-                return x
-        try:
-            layer_index = int(key)
-            if 0 <= layer_index < 8:
-                if layer_index >= len(self.layers):
-                    for i in range(layer_index + 1 - len(self.layers)):
-                        self.addLayer('Nil')
-                return self.layers[layer_index]
-        except ValueError as e:
-            pass
+    def getName(self):
+        return self.name
+
+    def getLayerI(self, layer_index):
+        if 0 <= layer_index < 8:
+            if layer_index >= len(self.layers):
+                for i in range(layer_index + 1 - len(self.layers)):
+                    self.addLayer('Null')
+            return self.layers[layer_index]
+        raise IndexError('Layer index {}'.format(layer_index))
+
+    def getLayers(self, key, force_add=False):
+        """Attempts to get layer(s) by string key, adding it if force_add is set"""
+        layers = findAll(key, self.layers)
+        if layers or not force_add:
+            return layers
+        return [self.forceAdd(key)]
+
+    def forceAdd(self, key):
+        textures = self.parent.parent.getTextures(key)
+        if textures:
+            key = textures[0].name
         return self.addLayer(key)
 
     def getDrawXLU(self):
-        return self.parent.isMaterialDrawXLU(self.id)
+        return self.parent.isMaterialDrawXlu(self.id)
 
     def getIndMatrix(self):
         ret = ''
@@ -183,7 +181,7 @@ class Material:
     GET_SETTING = (getXlu, getRef0, getRef1, getComp0, getComp1, getCompareBeforeTexture,
                    getBlend, getBlendSrc, getBlendLogic, getBlendDest, getConstantAlpha, getCullMode, getShader,
                    getShaderColor, getLightChannel, getLightset, getFogset, getMatrixMode, getEnableDepthTest,
-                   getEnableDepthUpdate, getDepthFunction, getDrawPriority, getDrawXLU, getIndMatrix)
+                   getEnableDepthUpdate, getDepthFunction, getDrawPriority, getDrawXLU, getIndMatrix, getName)
 
     def __getitem__(self, key):
         for i in range(self.NUM_SETTINGS):
@@ -198,7 +196,10 @@ class Material:
         for i in range(self.NUM_SETTINGS):
             if key == self.SETTINGS[i]:
                 func = self.SET_SETTING[i]
-                return func(value)
+                return func(self, value)
+
+    def setName(self, value):
+        self.name = value
 
     def setXluStr(self, str_value):
         val = validBool(str_value)
@@ -232,7 +233,7 @@ class Material:
         index = -1
         for i in range(len(str)):
             x = str[i]
-            if x.isDigit():
+            if x.isdigit():
                 index = int(x)
                 str = str[i+1:].strip(':()')
                 break
@@ -431,7 +432,7 @@ class Material:
         if colon_index > -1:
             matrix_index = validInt(str_value[0], 0, 3)
             str_value = str_value[colon_index+1:]
-        str_values = str_value.replace('scale').split(',')
+        str_values = str_value.replace('scale', '').split(',')
         if len(str_values) != 7:
             raise ValueError(self.MATRIX_ERR)
         scale = validInt(str_values.pop(0).strip(':'), -17, 47)
@@ -446,7 +447,7 @@ class Material:
                    setShaderStr, setShaderColorStr, setLightChannelStr, setLightsetStr,
                    setFogsetStr, setMatrixModeStr, setEnableDepthTestStr,
                    setEnableDepthUpdateStr, setDepthFunctionStr, setDrawPriorityStr, setDrawXLUStr,
-                   setIndirectMatrix)
+                   setIndirectMatrix, setName)
 
     def info(self, key=None, indentation_level=0):
         trace = self.parent.name + "->" + self.name
@@ -479,8 +480,24 @@ class Material:
                 return
         raise ValueError('Material "{}" has no layer "{}" to remove'.format(self.name, name))
 
+    def addLayerI(self, index):
+        """Adds layers up to index, if index is 0 adds 1"""
+        layers = self.layers
+        if index == 0:
+            index = len(layers)
+        name = 'Null'
+        while len(layers) <= index:
+            self.parent.addLayerReference(name)
+            layers.append(Layer(len(self.layers), name, self))
+        return layers[index]
+
     def addLayer(self, name):
         """ Creates and returns new layer """
+        # check to see if we already have layer
+        for x in self.layers:
+            if x.name == name:
+                print('Layer {} already exists'.format(name))
+                return x
         self.parent.addLayerReference(name)  # update model texture link/check that exists
         l = Layer(len(self.layers), name, self)
         self.layers.append(l)

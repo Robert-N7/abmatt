@@ -7,14 +7,14 @@ class Layer:
     # ----------------------------------------------------------------------------
     #   Constants
     # ----------------------------------------------------------------------------
-    NUM_SETTINGS = 21
+    NUM_SETTINGS = 22
     SETTINGS = (
         "scale", "rotation", "translation", "scn0cameraref",
         "scn0lightref", "mapmode", "uwrap", "vwrap",
         "minfilter", "magfilter", "lodbias", "anisotrophy",
         "clampbias", "texelinterpolate", "projection", "inputform",
         "type", "coordinates", "embosssource", "embosslight",
-        "normalize")
+        "normalize", "name")
     WRAP = ("clamp", "repeat", "mirror")
     FILTER = ("nearest", "linear", "nearest_mipmap_nearest", "linear_mipmap_nearest", "nearest_mipmap_linear",
               "linear_mipmap_linear")
@@ -28,7 +28,7 @@ class Layer:
                    "texcoord7")
 
     def __init__(self, id, name, parent):
-        ''' Initializes, id (position of layer), name, and parent material '''
+        """ Initializes, id (position of layer), name, and parent material """
         self.id = id
         self.parent = parent
         self.name = name
@@ -134,11 +134,14 @@ class Layer:
         return self.enable | self.scaleDefault << 1 \
                | self.rotationDefault << 2 | self.translationDefault << 3
 
+    def getName(self):
+        return self.name
+
     GET_SETTINGS = (getScale, getRotation, getTranslation, getScn0CameraRef,
                     getScn0LightRef, getMapmode, getUwrap, getVwrap, getMinfilter, getMagfilter,
                     getLodbias, getAnisotrophy, getClampbias, getTexelInterpolate, getProjection,
                     getInputform, getType, getCoordinates, getEmbossSource, getEmbossLight,
-                    getNormalize)
+                    getNormalize, getName)
 
     def getSetter(self, key):
         for i in range(self.NUM_SETTINGS):
@@ -151,7 +154,7 @@ class Layer:
 
     def __setitem__(self, key, value):
         fun = self.getSetter(key)
-        return fun(value)
+        return fun(self, value)
 
     def setScaleStr(self, value):
         values = parseValStr(value)
@@ -316,18 +319,21 @@ class Layer:
             self.isModified = True
 
     def setLayerFlags(self, nibble):
-        ''' from lsb, enable, scaledefault, rotationdefault, transdefault '''
+        """ from lsb, enable, scaledefault, rotationdefault, transdefault """
         self.enable = nibble & 1
         self.scaleDefault = nibble >> 1 & 1
         self.rotationDefault = nibble >> 2 & 1
         self.translationDefault = nibble >> 3 & 1
         return self.enable
 
+    def setName(self, value):
+        self.name = self.parent.parent.renameLayer(self, value)
+
     SET_SETTING = (setScaleStr, setRotationStr, setTranslationStr, setCameraRefStr,
                    setLightRefStr, setMapmodeStr, setUWrapStr, setVWrapStr, setMinFilterStr, setMagFilterStr,
                    setLodBiasStr, setAnisotrophyStr, setClampBiasStr, setTexelInterpolateStr, setProjectionStr,
                    setInputFormStr, setTypeStr, setCoordinatesStr, setEmbossSourceStr, setEmbossLightStr,
-                   setNormalizeStr)
+                   setNormalizeStr, setName)
 
     # -------------------------------------------------------------------------
     # Packing things

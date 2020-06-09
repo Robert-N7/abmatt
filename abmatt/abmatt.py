@@ -4,7 +4,6 @@ ANoob's Brres Material Editor
 For editing Mario Kart Wii files
 """
 import getopt
-import fileinput
 
 from command import *
 
@@ -180,6 +179,12 @@ def main(argv):
         cmds.append(Command(cmd))
     if filename:
         Command.updateFile(filename)
+    # Load presets
+    preset_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'presets.txt')
+    if os.path.exists(preset_path):
+        load_commandfile(preset_path)
+
+    # Run Commands
     if not cmds:
         print(USAGE)
     else:

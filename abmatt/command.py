@@ -27,8 +27,9 @@ def getShadersFromMaterials(materials, models, for_modification=True):
         shaders.extend(x.getShaders(materials, for_modification))
     return shaders
 
+
 class Command:
-    COMMANDS = ["set", "add", "remove", "info", "select"]
+    COMMANDS = ["preset", "set", "add", "remove", "info", "select"]
     SELECTED = []  # selection list
     SELECT_TYPE = None  # current selection list type
     DESTINATION = None
@@ -36,6 +37,7 @@ class Command:
     ACTIVE_FILES = []
     MODELS = []
     MATERIALS = []
+    PRESETS = {}
 
     TYPE_SETTING_MAP = {
         "material": Material.SETTINGS,
@@ -51,21 +53,30 @@ class Command:
         self.name = self.key = None
         self.txt = text.strip('\r\n')
         self.type_id = 0
+        self.type_id_numeric = True
         x = [x.strip() for x in text.split()]
         if not x:
             raise ParsingException(self.txt, 'No Command detected')
-        self.setCmd(x.pop(0).lower())
+        is_preset = self.setCmd(x.pop(0).lower())
         if not x:
             raise ParsingException(self.txt, 'Not enough parameters')
         if self.setType(x[0]):
             x.pop(0)
-        i = x.index('for')
-        if i < 0:
-            i = x.index('For')
-        if i >= 0:
-            self.setSelection(x[i:])
-            x = x[0:i]
-        if self.cmd == 'set':
+        for_index = -1
+        for i in range(len(x)):
+            if x[i].lower() == 'for':
+                for_index = i
+                break
+        if for_index >= 0:
+            self.setSelection(x[for_index:])
+            x = x[0:for_index]
+        if is_preset:
+            key = x[0]
+            if key not in self.PRESETS:
+                raise ParsingException(self.txt, 'No such preset {}'.format(key))
+            self.key = key
+            return
+        elif self.cmd == 'set':
             if not x:
                 raise ParsingException(self.txt, 'Not enough parameters')
             if ':' not in x[0]:
@@ -78,34 +89,37 @@ class Command:
                 print("Unknown parameter(s) {}".format(x))
             else:
                 self.key = x[0].lower()
-        if self.key and not self.key in self.TYPE_SETTING_MAP[self.type]:
+        if self.key and self.type and self.key not in self.TYPE_SETTING_MAP[self.type]:
             raise ParsingException(self.txt, "Unknown Key {} for {}, possible keys:\n\t{}".format(self.key, self.type,
-                                                                                                  self.TYPE_SETTING_MAP[self.type]))
+                                                                                                  self.TYPE_SETTING_MAP[
+                                                                                                      self.type]))
 
     def setType(self, val):
         """Returns true if the type is set by val"""
-        type_id = 0
+        if self.cmd == 'preset':
+            self.type = 'material'
+            return False
         i = val.find(':')
         if i > 0 and len(val) > i + 1:
-            type_id = val[i+1:]
+            type_id = val[i + 1:]
+            try:
+                self.type_id = validInt(type_id, 0, 16)
+                self.type_id_numeric = True
+            except ValueError:
+                self.type_id = type_id
+                self.type_id_numeric = False
             val = val[:i]
         self.type = val.lower()
         if val == 'material' or val == 'shader':
             if self.cmd == 'add' or self.cmd == 'remove':
                 raise ParsingException(self.txt, 'Add/Remove not supported for materials and shaders.')
-        elif val == 'layer':
-            if type_id:
-               self.type_id = type_id
-        elif val == 'stage':
-            if type_id:
-                self.type_id = validInt(type_id, 0, 15)
+        elif val == 'layer' or val == 'stage':
+            pass
         # elif 'srt0' in val:
         #     self.type = 'srt0'
-        elif self.SELECT_TYPE:
-            self.type = self.SELECT_TYPE
-            return False
         else:
-            raise ParsingException(self.txt, 'Invalid type {}'.format(val))
+            self.type = None
+            return False
         return True
 
     def setSelection(self, li):
@@ -142,6 +156,7 @@ class Command:
             raise ParsingException(self.txt, "Unknown command '{}'".format(val))
         else:
             self.cmd = val
+        return self.cmd == 'preset'
 
     @staticmethod
     def updateFile(filename):
@@ -149,7 +164,7 @@ class Command:
         if not files:  # could possibly ignore error here for wildcard patterns?
             print("The file '{}' does not exist".format(filename))
             return False
-        if Command.DESTINATION:     # check for multiple files with single destination
+        if Command.DESTINATION:  # check for multiple files with single destination
             outside_active = True
             for x in Command.ACTIVE_FILES:
                 if files[0] == x.name:
@@ -173,23 +188,47 @@ class Command:
                 Command.MODELS.extend(x.getModelsByName(self.model))
         # Materials
         for x in self.MODELS:
-            Command.MATERIALS = x.getMaterialsByName(self.name)
+            Command.MATERIALS.extend(x.getMaterialsByName(self.name))
         Command.SELECT_TYPE = None  # reset selection
         return True
+
+    @staticmethod
+    def detectType(key):
+        map = Command.TYPE_SETTING_MAP
+        for x in map:
+            if key in map[x]:
+                return x
 
     def updateType(self):
         """ Updates the current selection by the type/cmd"""
         if self.cmd == 'add' or self.cmd == 'remove':  # use parents as selection
-            type = 'material' if self.type == 'layer' else 'shader'
+            type = 'shader' if self.type == 'stage' else 'material'
         else:
-            type = self.type
+            if self.type:
+                type = self.type
+            elif self.SELECT_TYPE:
+                type = self.SELECT_TYPE
+            else:  # auto detect
+                if self.key:
+                    type = self.detectType(self.key)  # possibly ambiguous for stages/layers?
+                    if not type:
+                        raise ParsingException(self.txt, 'Unknown key {}!'.format(self.key))
+                else:
+                    type = 'material'
         if type != self.SELECT_TYPE:
             if type == 'material':
                 Command.SELECTED = self.MATERIALS
             elif type == 'layer':
-                Command.SELECTED = []
-                for x in self.MATERIALS:
-                    Command.SELECTED.append(x.getLayer(self.type_id))
+                if self.type_id_numeric:
+                    Command.SELECTED = [x.getLayerI(self.type_id) for x in self.MATERIALS]
+                else:
+                    Command.SELECTED = []
+                    for x in self.MATERIALS:
+                        Command.SELECTED.extend(x.getLayers(self.type_id))
+                    if not Command.SELECTED:  # Forcibly adding case if no selected found
+                        # possible todo... make this optional?
+                        Command.Selected = [x.forceAdd(self.type_id) for x in self.MATERIALS]
+
             # elif self.type == 'srt0':
             #     pass # todo
             elif type == 'shader' or type == 'stage':
@@ -229,18 +268,27 @@ class Command:
                 self.add(self.type, self.type_id)
             elif self.cmd == 'remove':
                 self.remove(self.type, self.type_id)
+            elif self.cmd == 'preset':
+                self.runPreset(self.key)
+
+    def runPreset(self, key):
+        """Runs preset"""
+        cmds = self.PRESETS[key]
+        for x in cmds:
+            x.runCmd()
 
     def add(self, type, type_id):
         """Add command"""
         if type == 'layer':  # add layer case
-            for x in self.SELECTED:
-                x.addLayer(type_id)
+            if self.type_id_numeric:
+                for x in self.SELECTED:
+                    x.addLayerI(type_id)
+            else:
+                for x in self.SELECTED:
+                    x.addLayer(type_id)
         elif type == 'stage':  # add stage case
-            if type_id == 0:
-                type_id = 1  # assume 1
             for x in self.SELECTED:
-                for i in range(type_id):
-                    x.addStage()
+                x.addStage(type_id)
         else:
             raise ParsingException(self.txt, 'command "Add" not supported for type {}'.format(type))
 
@@ -257,7 +305,6 @@ class Command:
                     x.removeStage()
         else:
             raise ParsingException(self.txt, 'command "Remove" not supported for type {}'.format(type))
-
 
     def __str__(self):
         return "{} {}:{} for {} in file {} model {}".format(self.cmd,
@@ -280,12 +327,27 @@ def load_commandfile(filename):
     f = open(filename, "r")
     lines = f.readlines()
     commands = []
+    preset_begin = False
+    preset = []
     for line in lines:
         if line[0].isalpha():
             i = line.find("#")
             if i != -1:
                 line = line[0:i]
-            commands.append(Command(line))
+            if preset_begin:
+                preset.append(Command(line))
+            else:
+                commands.append(Command(line))
+        elif line[0] == '[':  # preset
+            i = line.find(']')
+            if i != -1:
+                if i > 1:
+                    preset_begin = True
+                    preset = []
+                    name = line[1:i]
+                    Command.PRESETS[name] = preset
+                else:
+                    preset_begin = False
     return commands
 
 

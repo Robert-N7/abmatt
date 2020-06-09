@@ -1,11 +1,11 @@
 """ MDL0 Models """
+from binfile import *
 from matching import *
 from mdl0.drawlist import DrawList, Definition
 from mdl0.material import Material
 from mdl0.polygon import Polygon
 from mdl0.shader import Shader, ShaderList
 from subfile import SubFile
-from binfile import *
 
 
 # ----------------- Model sub files --------------------------------------------
@@ -208,7 +208,7 @@ class Mdl0(SubFile):
                 link = x
         if not link:
             if not self.parent.getTexture(name):
-                raise ValueError('No Texture found for {}'.format(name))
+                print('WARNING: Adding reference to texture not found "{}"'.format(name))
             link = TextureLink(name, self)
             self.textureLinks.append(link)
         link.num_references += 1
@@ -225,13 +225,13 @@ class Mdl0(SubFile):
         assert(old_link)
         # No link found, try to find texture matching and create link
         if not new_link:
-            if not self.parent.getTexture(name):
-                raise ValueError('No Texture found for {}'.format(name))
+            if not self.parent.getTexture(name):  # possible todo, regex matching for name?
+                print('WARNING: Adding reference to texture not found "{}"'.format(name))
             new_link = TextureLink(name, self)
             self.textureLinks.append(new_link)
         old_link.num_references -= 1
         new_link.num_references += 1
-        layer.name = name
+        return name
 
     def getTrace(self):
         return self.parent.getTrace() + "->" + self.name

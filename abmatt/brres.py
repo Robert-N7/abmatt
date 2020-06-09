@@ -86,7 +86,7 @@ class Brres():
         if command.cmd == command.COMMANDS[0]:
             self.set(command)
         elif command.cmd == command.COMMANDS[1]:
-            self.info(command, "")
+            self.info(command)
         else:
             print("Unknown command: {}".format(command.cmd))
 
@@ -192,7 +192,9 @@ class Brres():
         for x in self.textures:
             if x.name == name:
                 return x
-        return None
+
+    def getTextures(self, name):
+        return findAll(name, self.textures)
 
     # ----------------- HOOKING REFERENCES ----------------------------------
     def hookAnimationRefs(self):

@@ -129,7 +129,7 @@ class Stage():
     COLOR_SELS = ("outputcolor", "outputalpha", "color0", "alpha0", "color1",
                   "alpha1", "color2", "alpha2", "texturecolor", "texturealpha",
                   "rastercolor", "rasteralpha", "one", "half",
-                  "colorconstantselection", "zero")
+                  "colorselection", "zero")
     BIAS = ("zero", "addhalf", "subhalf")
     OPER = ("add", "subtract")
     SCALE = ("multiplyby1", "multiplyby2", "multiplyby4", "divideby2")
@@ -143,7 +143,7 @@ class Stage():
                        "color0_blue", "color1_blue", "color2_blue", "color3_blue",
                        "color0_alpha", "color1_alpha", "color2_alpha", "color3_alpha")
     ALPHA_SELS = ("outputalpha", "alpha0", "alpha1", "alpha2", "texturealpha",
-                  "rasteralpha", "alphaconstantselection", "zero")
+                  "rasteralpha", "alphaselection", "zero")
     ALPHA_DEST = ("outputalpha", "alpha0", "alpha1", "alpha2")
 
     # INDIRECT TEVS
@@ -204,6 +204,13 @@ class Stage():
         return str(self.map)
 
     def __getitem__(self, key):
+        i = key.find('constant')
+        if i < 5:  # out of order
+            is_alpha = True if 'alpha' in key else False
+            if is_alpha:
+                key = 'alphaconstantselection'
+            else:
+                key = 'colorconstantselection'
         if key not in self.map:
             raise ValueError("No such shader stage setting {} possible keys are: \n\t{}".format(key, self.map.keys()))
         return self.map[key]
@@ -267,6 +274,13 @@ class Stage():
 
 
     def __setitem__(self, key, value):
+        i = key.find('constant')
+        is_alpha = True if 'alpha' in key else False
+        if i < 5:  # out of order
+            if is_alpha:
+                key = 'alphaconstantselection'
+            else:
+                key = 'colorconstantselection'
         if not key in self.map:
             raise ValueError("No such shader stage setting {} possible keys are: \n\t{}".format(key, self.map.keys()))
         # bools
@@ -296,9 +310,8 @@ class Stage():
                         value = 'half'
                     else:
                         indexListItem(self.COLOR_SELS, value)
-                elif key == "constantcolorselection":
-                    if "constant" in value:
-                        value = value[8:]
+                elif key == "colorconstantselection":
+                    value = value.replace('constant', '')
                     indexListItem(self.COLOR_CONSTANTS, value)
                 elif key == "colordestination":
                     indexListItem(self.COLOR_DEST, value)
@@ -311,16 +324,15 @@ class Stage():
                         value = 'zero'
                     else:
                         indexListItem(self.RASTER_COLORS, value)
-            elif "alpha" in key:
+            elif is_alpha:
                 if len(key) < 7:  # abcd
                     if value == '0':
                         value = 'zero'
 
                     else:
                         indexListItem(self.ALPHA_SELS, value)
-                elif key == "constantalphaselection":
-                    if "constant" in value:
-                        value = value[8:]
+                elif key == "alphaconstantselection":
+                    value = value.replace('constant', '')
                     indexListItem(self.ALPHA_CONSTANTS, value)
                 elif key == "alphadestination":
                     indexListItem(self.ALPHA_DEST, value)
@@ -473,7 +485,7 @@ class Shader():
         return 0
 
     def detectIndirectIndex(self, key):
-        i = 0 if not key[-1].isDigit() else int(key[-1])
+        i = 0 if not key[-1].isdigit() else int(key[-1])
         if not 0 <= i < 4:
             raise ValueError('Indirect index {} out of range (0-3).'.format(i))
         return i
@@ -518,14 +530,19 @@ class Shader():
             raise ValueError("Shader stage {} out of range, has {} stages".format(n, len(self.stages)))
         return self.stages[n]
 
-    def addStage(self):
-        s = Stage(len(self.stages), self)
-        mapid = self.detect_unusedMapId()
-        s['mapid'] = mapid
-        s['coordinateid'] = mapid
-        self.texRefCount += 1
-        self.stages.append(s)
-        return s
+    def addStage(self, id=0):
+        """Adds stages to shader up to id, if id is 0 adds one stage"""
+        stages = self.stages
+        if id == 0:
+            id = len(stages)
+        while len(stages) <= id:
+            s = Stage(len(stages), self)
+            mapid = self.detect_unusedMapId()
+            s['mapid'] = mapid
+            s['coordinateid'] = mapid
+            self.texRefCount += 1
+            self.stages.append(s)
+        return stages[id]
 
     def removeStage(self, id=-1):
         if len(self.stages) == 1:
@@ -533,10 +550,10 @@ class Shader():
         self.stages.pop(id)
         self.texRefCount -= 1
 
-    def __deepcopy__(self, memodict=None):
+    def __deepcopy__(self, memodict={}):
         ret = Shader(self.name, self.parent)
         for x in self.stages:
-            s = deepcopy(x, memodict)
+            s = deepcopy(x)
             ret.stages.append(s)
         ret.texRefCount = self.texRefCount
         ret.indTexMaps = copy(self.indTexMaps)
@@ -577,11 +594,10 @@ class Shader():
             stage0 = self.stages[i]
             i += 1
             if i < stage_count:
-                has_next = True
                 stage1 = self.stages[i]
                 i += 1
             else:
-                has_next = False
+                stage1 = None
             binfile.advance(5)  # skip mask
             kcel.unpack(binfile)
             # print("Color Selection index {}, data {}".format(kcel.getCSel0(), kcel.data))
@@ -594,7 +610,7 @@ class Shader():
             stage0.setConstantAlphaI(kcel.getASel0())
             stage0.setRasterColorI(tref.getColorChannel0())
             stage0.unpackColorEnv(binfile)
-            if has_next:
+            if stage1:
                 stage1.map["enabled"] = tref.getTexEnabled1()
                 stage1.map["mapid"] = tref.getTexMapID1()
                 stage1.map["coordinateid"] = tref.getTexCoordID1()
@@ -605,12 +621,12 @@ class Shader():
             else:
                 binfile.advance(5)  # skip unpack color env
             stage0.unpackAlphaEnv(binfile)
-            if has_next:
+            if stage1:
                 stage1.unpackAlphaEnv(binfile)
             else:
                 binfile.advance(5)
             stage0.unpackIndirect(binfile)
-            if has_next:
+            if stage1:
                 stage1.unpackIndirect(binfile)
             else:
                 binfile.advance(5)
@@ -645,17 +661,16 @@ class Shader():
             stage0 = self.stages[i]
             i += 1
             if i < len(self.stages):
-                hasNext = True
                 stage1 = self.stages[i]
                 i += 1
             else:
-                hasNext = False
+                stage1 = None
             self.SEL_MASK.pack(binfile)
             kcel = KCel(j)  # KCEL
             cc = stage0.getConstantColorI()
             ac = stage0.getConstantAlphaI()
             kcel.data = cc << 4 | ac << 9
-            if hasNext:
+            if stage1:
                 cc = stage1.getConstantColorI()
                 ac = stage1.getConstantAlphaI()
                 kcel.data |= cc << 14 | ac << 19
@@ -665,7 +680,7 @@ class Shader():
             cc = stage0.getRasterColorI()
             tref.data = cc << 7 | stage0["enabled"] << 6 | stage0["coordinateid"] << 3 \
                         | stage0["mapid"]
-            if hasNext:
+            if stage1:
                 cc = stage1.getRasterColorI()
                 tref.data |= cc << 19 | stage1["enabled"] << 18 \
                              | stage1["coordinateid"] << 15 | stage1["mapid"] << 12
@@ -674,17 +689,17 @@ class Shader():
             tref.pack(binfile)
             # all the rest
             stage0.packColorEnv(binfile)
-            if hasNext:
+            if stage1:
                 stage1.packColorEnv(binfile)
             else:
                 binfile.advance(5)
             stage0.packAlphaEnv(binfile)
-            if hasNext:
+            if stage1:
                 stage1.packAlphaEnv(binfile)
             else:
                 binfile.advance(5)
             stage0.packIndirect(binfile)
-            if hasNext:
+            if stage1:
                 stage1.packIndirect(binfile)
             else:
                 binfile.advance(5)
