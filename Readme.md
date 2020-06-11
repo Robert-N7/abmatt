@@ -45,19 +45,22 @@ This next command would update all materials starting with the prefix xlu to tra
 
 ## File Format
 ABMatT supports reading in external commands from files which have a specified extended BNF format.
+Parameters are delimited by spaces except where a ':' or ',' is specified.
 ```
 line = begin_preset | command;
 begin_preset = '[' <preset_name> ']' EOL; 
-command = (set | add | remove | select | info | preset) ['for' selection] EOL;
-set   = 'set' space type space setting;
-add   = 'add' space type;
-remove = 'remove' space type;
-select = 'select' selection;
-info  = 'info' space type [space key];
-preset = 'preset' space preset_name
-selection = [name] [space 'in' container]
-container = ['file' space filename] ['model' space name];
-type = 'material' | 'layer' [':' name] | 'shader' | 'stage' [':' number];
+
+command = (set | info | add | remove | select | preset) ['for' selection] EOL;
+set   = 'set' type setting;
+info  = 'info' type [key];
+add   = 'add' type;
+remove = 'remove' type;
+select = 'select' selection;    Note: does not support 'for' selection clause
+preset = 'preset' preset_name;
+
+selection = name ['in' container]
+container = ['file' filename] ['model' name];
+type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id];
 setting =  key ':' value;
 key = materialkey | layerkey | shaderkey | stagekey;
 
@@ -87,7 +90,7 @@ stagekey = 'enabled' | 'mapid' | 'coordinateid' | 'textureswapselection' |
 value     = 'true' | 'false' | number-list | cull-mode | light-channel | const-alpha | matrix-mode | blend-logic | blend-factor | wrap-mode | minfilter | map-mode | projection | inputform | type | coordinates;
   number-list   = number {, number};
   cull-mode     = 'all' | 'inside' | 'outside' | 'none';
-  light-channel = 'vertex' | 'ambient';
+  light-channel = ; todo
   const-alpha   = 'enable' | 'disable' | number;
   matrix-mode   = 'maya' | 'xsi' | '3dsmax';
   comparison    = 'never' | 'less' | 'equal' | 'lessorequal' |  
@@ -106,14 +109,14 @@ value     = 'true' | 'false' | number-list | cull-mode | light-channel | const-a
   type          = 'regular' | 'embossmap' | 'color0' | 'color1';
   coordinates   = 'geometry' | 'normals' | 'colors' | 'binfileormalst' |    
     'binfileormalsb' | 'texcoord0' | 'texcoord1' | 'texcoord2' | 'texcoord3'  | 'texcoord4' | 'texcoord5' | 'texcoord6' | 'texcoord7';
-  shadercolor   = '
+  shadercolor   =   ; todo - more values
 
 name      = string | regex {',' space string | regex};
 EOL       = [\r] \n | EOF;
 ```
 
 ### Example File Commands
-
+Todo: More examples.
 Example file commands:
 ```
 set transparent:true for xlu.* in model course      # Sets all materials in course starting with xlu to transparent

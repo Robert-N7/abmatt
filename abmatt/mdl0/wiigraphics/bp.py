@@ -14,6 +14,7 @@ class BPCommand(object):
 
     def unpack(self, binfile):
         bt = binfile.read("3BH", 5)
+        assert bt[0] == 0 or bt[0] == 0x61
         self.enabled = bt[0]
         self.bpmem = bt[1]
         self.data = bt[2] << 16 | bt[3]
@@ -664,19 +665,21 @@ class IndMatrix():
 
     def unpack(self, binfile):
         """ unpacks ind matrix """
-        self.scale = 0  # reset scale
+        scale = 0
         c = BPCommand(0)
         for i in range(3):
             self.enabled = c.unpack(binfile)
             if not self.enabled:
                 binfile.advance(10)  # skip ahead
-                break
+                self.scale = scale
+                return
             # parse data
             if i == 0:
                 self.id = (c.bpmem - BPCommand.BPMEM_IND_MTXA0) // 3
-            self.scale = self.scale | (c.data >> 22 & 3) << (2 * i)
-            self.matrix[i] = self.force11bitFloat(c.data & 0x3ff)
-            self.matrix[i+3] = self.force11bitFloat(c.data >> 11 & 0x3ff)
+            scale = scale | (c.data >> 22 & 3) << (2 * i)
+            self.matrix[i] = self.force11bitFloat(c.data & 0x7ff)   # row 0
+            self.matrix[i+3] = self.force11bitFloat(c.data >> 11 & 0x7ff)   # row 1
+        self.scale = scale - 17
 
     def pack(self, binfile):
         """Packs the ind matrix """
@@ -684,6 +687,7 @@ class IndMatrix():
             binfile.advance(self.SIZE)
             return
         c = BPCommand(BPCommand.BPMEM_IND_MTXA0 + self.id * 3)
+        scale = self.scale + 17
         for i in range(3):
             sbits = (self.scale >> (2 * i) & 3)
             r0 = self.encode11bitFloat(self.matrix[i])

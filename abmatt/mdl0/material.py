@@ -13,13 +13,13 @@ class Material:
     # -----------------------------------------------------------------------
     #   CONSTANTS
     # -----------------------------------------------------------------------
-    NUM_SETTINGS = 25
+    NUM_SETTINGS = 24
     SETTINGS = ("xlu", "ref0", "ref1",
                 "comp0", "comp1", "comparebeforetexture", "blend",
                 "blendsrc", "blendlogic", "blenddest", "constantalpha",
-                "cullmode", "shader", "shadercolor", "lightchannel",
-                "lightset", "fogset", "matrixmode", "enabledepthtest",
-                "enabledepthupdate", "depthfunction", "drawpriority", "drawxlu",
+                "cullmode", "shadercolor", "lightchannel", "lightset",
+                "fogset", "matrixmode", "enabledepthtest", "enabledepthupdate",
+                "depthfunction", "drawpriority", "drawxlu",
                 "indirectmatrix", "name")
 
     # CULL MODES
@@ -106,9 +106,7 @@ class Material:
         return self.CULL_STRINGS[self.cullmode]
 
     def getShader(self):
-        if not self.shader:
-            return -1
-        return self.shader.id
+        return self.shader
 
     def getLightChannel(self):
         return self.lightChannels[0].getLight()
@@ -179,7 +177,7 @@ class Material:
 
     # Get Functions
     GET_SETTING = (getXlu, getRef0, getRef1, getComp0, getComp1, getCompareBeforeTexture,
-                   getBlend, getBlendSrc, getBlendLogic, getBlendDest, getConstantAlpha, getCullMode, getShader,
+                   getBlend, getBlendSrc, getBlendLogic, getBlendDest, getConstantAlpha, getCullMode,
                    getShaderColor, getLightChannel, getLightset, getFogset, getMatrixMode, getEnableDepthTest,
                    getEnableDepthUpdate, getDepthFunction, getDrawPriority, getDrawXLU, getIndMatrix, getName)
 
@@ -207,6 +205,7 @@ class Material:
             self.xlu = val
 
     def setShaderStr(self, str):
+        # todo check this function/ fix it
         try:
             shaderindex = int(str)
         except TypeError:
@@ -219,14 +218,14 @@ class Material:
             # update shader material entry
             self.parent.updateTevEntry(shader, self)
 
-    def setShader(self, shader):
-        if shader.offset != self.shaderOffset + self.offset:
-            self.shaderOffset = shader.offset - self.offset
-            self.shaderStages = shader.countDirectStages()
-            self.indirectStages = shader.countIndirectStages()
-            self.isModified = True
-        self.shader = shader
-        return self.isModified
+    # def setShader(self, shader):
+    #     if shader.offset != self.shaderOffset + self.offset:
+    #         self.shaderOffset = shader.offset - self.offset
+    #         self.shaderStages = shader.countDirectStages()
+    #         self.indirectStages = shader.countIndirectStages()
+    #         self.isModified = True
+    #     self.shader = shader
+    #     return self.isModified
 
     def setShaderColorStr(self, str):
         isConstant = True if 'constant' in str else False
@@ -424,7 +423,7 @@ class Material:
         else:
             self.parent.setMaterialDrawOpa(self.id)
 
-    MATRIX_ERR = 'Error parsing Indirect Matrix, Usage: IndirectMatrix:[<i>:]<scale>,<r1c1>,<r1c2>,<r1c3>,<r2c1>,<r2c2>,<r2c3>'
+    MATRIX_ERR = 'Error parsing "{}", Usage: IndirectMatrix:[<i>:]<scale>,<r1c1>,<r1c2>,<r1c3>,<r2c1>,<r2c2>,<r2c3>'
 
     def setIndirectMatrix(self, str_value):
         matrix_index = 0
@@ -434,7 +433,7 @@ class Material:
             str_value = str_value[colon_index+1:]
         str_values = str_value.replace('scale', '').split(',')
         if len(str_values) != 7:
-            raise ValueError(self.MATRIX_ERR)
+            raise ValueError(self.MATRIX_ERR.format(str_value))
         scale = validInt(str_values.pop(0).strip(':'), -17, 47)
         matrix = [validFloat(x.strip('()'), -1, 1) for x in str_values]
         self.matGX.setIndMatrix(matrix_index, scale, matrix)
@@ -496,7 +495,7 @@ class Material:
         # check to see if we already have layer
         for x in self.layers:
             if x.name == name:
-                print('Layer {} already exists'.format(name))
+                print('Layer {} already exists in {}'.format(name, self.name))
                 return x
         self.parent.addLayerReference(name)  # update model texture link/check that exists
         l = Layer(len(self.layers), name, self)

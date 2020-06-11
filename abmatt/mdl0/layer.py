@@ -40,7 +40,7 @@ class Layer:
         self.scn0LightRef = self.scn0CameraRef = -1
         self.mapMode = 0
         self.vwrap = self.uwrap = 1
-        self.minfilter = 5
+        self.minfilter = 1
         self.magfilter = 1
         self.LODBias = 0
         self.maxAnisotrophy = 0

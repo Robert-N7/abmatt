@@ -100,8 +100,7 @@ For more help visit https://github.com/Robert-N7/ABMatT'''
             try:
                 run_commands([Command(line)])
             except ParsingException as e:
-                print(e)
-                print(help_messsage)
+                print('{} Type "h" for help'.format(e))
 
 
 def main(argv):
@@ -185,7 +184,7 @@ def main(argv):
         load_commandfile(preset_path)
 
     # Run Commands
-    if not cmds:
+    if not cmds and not shell_mode:
         print(USAGE)
     else:
         run_commands(cmds)

@@ -32,6 +32,8 @@ class Command:
     COMMANDS = ["preset", "set", "add", "remove", "info", "select"]
     SELECTED = []  # selection list
     SELECT_TYPE = None  # current selection list type
+    SELECT_ID = None    # current selection id
+    SELECT_ID_NUMERIC = False   # current id numeric
     DESTINATION = None
     OVERWRITE = False
     ACTIVE_FILES = []
@@ -49,26 +51,30 @@ class Command:
 
     def __init__(self, text):
         """ parses the text as a command """
-        self.hasSelection = False
+        self.has_type_id = self.hasSelection = False
         self.name = self.key = None
         self.txt = text.strip('\r\n')
-        self.type_id = 0
-        self.type_id_numeric = True
         x = [x.strip() for x in text.split()]
         if not x:
             raise ParsingException(self.txt, 'No Command detected')
         is_preset = self.setCmd(x.pop(0).lower())
         if not x:
-            raise ParsingException(self.txt, 'Not enough parameters')
+            if self.cmd != 'info':
+                raise ParsingException(self.txt, 'Not enough parameters')
+            else:
+                return
         if self.setType(x[0]):
             x.pop(0)
+        if self.cmd == 'select':
+            self.setSelection(x)
+            return
         for_index = -1
         for i in range(len(x)):
             if x[i].lower() == 'for':
                 for_index = i
                 break
         if for_index >= 0:
-            self.setSelection(x[for_index:])
+            self.setSelection(x[for_index+1:])
             x = x[0:for_index]
         if is_preset:
             key = x[0]
@@ -95,46 +101,50 @@ class Command:
                                                                                                       self.type]))
 
     def setType(self, val):
-        """Returns true if the type is set by val"""
+        """Returns true if the type is set by val (consumed)"""
         if self.cmd == 'preset':
             self.type = 'material'
             return False
+        elif self.cmd == 'select':
+            return False
         i = val.find(':')
-        if i > 0 and len(val) > i + 1:
-            type_id = val[i + 1:]
-            try:
-                self.type_id = validInt(type_id, 0, 16)
-                self.type_id_numeric = True
-            except ValueError:
-                self.type_id = type_id
-                self.type_id_numeric = False
+        type_id = None
+        if i >= 0:
+            type_id = val[i+1:]
             val = val[:i]
-        self.type = val.lower()
+        val = val.lower()
         if val == 'material' or val == 'shader':
             if self.cmd == 'add' or self.cmd == 'remove':
                 raise ParsingException(self.txt, 'Add/Remove not supported for materials and shaders.')
         elif val == 'layer' or val == 'stage':
-            pass
-        # elif 'srt0' in val:
+            self.has_type_id = True
+            try:
+                self.type_id = validInt(type_id, 0, 16) if type_id else None
+                self.type_id_numeric = True
+            except ValueError:
+                self.type_id = type_id
+                self.type_id_numeric = False
+            # elif 'srt0' in val:
         #     self.type = 'srt0'
         else:
             self.type = None
             return False
+        self.type = val
         return True
 
     def setSelection(self, li):
-        """ takes a list beginning with 'for' and parses selection """
-        if len(li) < 2:
+        """ takes a list and parses selection """
+        if not li:
             print("No selection given")
             self.hasSelection = False
             return False
         self.hasSelection = True
-        self.name = li[1]
+        self.name = li[0]
         self.model = self.file = x = None
-        if len(li) > 2:
-            if li[2] != 'in':
+        if len(li) > 1:
+            if li[1] != 'in':
                 raise ParsingException(self.txt, 'Expected "in"')
-            li = li[3:]
+            li = li[2:]
             i = 0
             try:  # to get args
                 while i < len(li):
@@ -176,58 +186,94 @@ class Command:
                 return False
         Command.ACTIVE_FILES = openFiles(files, Command.ACTIVE_FILES)
         Command.MODELS = []  # clear models
+        return True
 
     def updateSelection(self):
         """ updates container items """
         if self.file:
-            self.updateFile(self.file)
+            if not self.updateFile(self.file):
+                return False
         # Models
         if self.model or not self.MODELS:
-            Command.MATERIALS = []  # reset materials
             for x in self.ACTIVE_FILES:
                 Command.MODELS.extend(x.getModelsByName(self.model))
         # Materials
+        Command.MATERIALS = []  # reset materials
         for x in self.MODELS:
             Command.MATERIALS.extend(x.getMaterialsByName(self.name))
+        if not Command.MATERIALS:
+            print('No matches found for {}'.format(self.name))
         Command.SELECT_TYPE = None  # reset selection
         return True
 
     @staticmethod
     def detectType(key):
         map = Command.TYPE_SETTING_MAP
+        previous = Command.SELECT_TYPE  # try the previous type settings first
+        if previous and key in map[previous]:
+            return previous
         for x in map:
-            if key in map[x]:
+            if x != previous and key in map[x]:
                 return x
 
+    def updateTypeID(self, type_has_changed):
+        """Updates SELECT_ID, SELECT_ID_NUMERIC"""
+        has_changed = False
+        if not self.has_type_id:
+            Command.SELECT_ID = None # reset
+        elif self.type_id:    # explicit
+            if self.SELECT_ID_NUMERIC != self.type_id_numeric or self.type_id != self.SELECT_ID:
+                Command.SELECT_ID = self.type_id
+                Command.SELECT_ID_NUMERIC = self.type_id_numeric
+                has_changed = True
+        else:   # implicit
+            if type_has_changed or not Command.SELECT_ID:
+                Command.SELECT_ID = 0   # use defaults
+                Command.SELECT_ID_NUMERIC = True
+                has_changed = True
+            # else continue using current select_id
+        return has_changed
+
     def updateType(self):
-        """ Updates the current selection by the type/cmd"""
+        """Updates SELECT_TYPE, SELECT_ID, SELECT_ID_NUMERIC
+            returns true if modified
+        """
+        current = self.SELECT_TYPE
         if self.cmd == 'add' or self.cmd == 'remove':  # use parents as selection
-            type = 'shader' if self.type == 'stage' else 'material'
+            Command.SELECT_TYPE = 'shader' if self.type == 'stage' else 'material'
         else:
             if self.type:
-                type = self.type
-            elif self.SELECT_TYPE:
-                type = self.SELECT_TYPE
+                Command.SELECT_TYPE = self.type
             else:  # auto detect
                 if self.key:
-                    type = self.detectType(self.key)  # possibly ambiguous for stages/layers?
-                    if not type:
+                    Command.SELECT_TYPE = self.detectType(self.key)  # possibly ambiguous for stages/layers?
+                    if not Command.SELECT_TYPE:
                         raise ParsingException(self.txt, 'Unknown key {}!'.format(self.key))
-                else:
-                    type = 'material'
-        if type != self.SELECT_TYPE:
+                    if self.SELECT_TYPE == 'layer' or self.SELECT_TYPE == 'stage':
+                        self.has_type_id = True
+                        self.type_id = None
+                        self.type_id_numeric = False
+                elif not self.SELECT_TYPE:
+                    Command.SELECT_TYPE = 'material'
+        has_changed = current != self.SELECT_TYPE
+        return self.updateTypeID(has_changed) or has_changed
+
+    def updateTypeSelection(self):
+        """ Updates the current selection by the type"""
+        if self.updateType():
+            type = Command.SELECT_TYPE
             if type == 'material':
                 Command.SELECTED = self.MATERIALS
             elif type == 'layer':
-                if self.type_id_numeric:
-                    Command.SELECTED = [x.getLayerI(self.type_id) for x in self.MATERIALS]
+                if self.SELECT_ID_NUMERIC:
+                    Command.SELECTED = [x.getLayerI(self.SELECT_ID) for x in self.MATERIALS]
                 else:
                     Command.SELECTED = []
                     for x in self.MATERIALS:
-                        Command.SELECTED.extend(x.getLayers(self.type_id))
+                        Command.SELECTED.extend(x.getLayers(self.SELECT_ID))
                     if not Command.SELECTED:  # Forcibly adding case if no selected found
                         # possible todo... make this optional?
-                        Command.Selected = [x.forceAdd(self.type_id) for x in self.MATERIALS]
+                        Command.SELECTED = [x.forceAdd(self.SELECT_ID) for x in self.MATERIALS]
 
             # elif self.type == 'srt0':
             #     pass # todo
@@ -238,21 +284,25 @@ class Command:
                 else:
                     Command.SELECTED = []
                     for x in shaders:
-                        Command.SELECTED.append(x.getStage(self.type_id))
+                        Command.SELECTED.append(x.getStage(self.SELECT_ID))
             elif self.cmd == 'info':
                 if type == 'mdl0':
                     Command.SELECTED = self.MODELS
                 elif type == 'brres':
                     Command.SELECTED = self.ACTIVE_FILES
-            Command.SELECT_TYPE = type
 
     def runCmd(self):
         if self.hasSelection:
             if not self.updateSelection():
                 sys.exit(1)
-        self.updateType()
+            elif self.cmd == 'select':
+                return
+        if self.cmd == 'preset':
+            self.SELECTED = self.MATERIALS
+            return self.runPreset(self.key)
         if not self.ACTIVE_FILES:
             raise ParsingException(self.txt, 'No file detected!')
+        self.updateTypeSelection()
         if not self.SELECTED:
             print("No items found in selection for '{}'".format(self.txt))
         else:
@@ -268,8 +318,7 @@ class Command:
                 self.add(self.type, self.type_id)
             elif self.cmd == 'remove':
                 self.remove(self.type, self.type_id)
-            elif self.cmd == 'preset':
-                self.runPreset(self.key)
+
 
     def runPreset(self, key):
         """Runs preset"""

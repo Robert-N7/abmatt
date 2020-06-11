@@ -207,8 +207,8 @@ class Mdl0(SubFile):
             if x.name == name:
                 link = x
         if not link:
-            if not self.parent.getTexture(name):
-                print('WARNING: Adding reference to texture not found "{}"'.format(name))
+            if name != 'Null' and not self.parent.getTexture(name):
+                print('WARNING: Adding reference to unknown texture "{}"'.format(name))
             link = TextureLink(name, self)
             self.textureLinks.append(link)
         link.num_references += 1
@@ -225,8 +225,8 @@ class Mdl0(SubFile):
         assert(old_link)
         # No link found, try to find texture matching and create link
         if not new_link:
-            if not self.parent.getTexture(name):  # possible todo, regex matching for name?
-                print('WARNING: Adding reference to texture not found "{}"'.format(name))
+            if name != 'Null' and not self.parent.getTexture(name):  # possible todo, regex matching for name?
+                print('WARNING: Adding reference to unknown texture "{}"'.format(name))
             new_link = TextureLink(name, self)
             self.textureLinks.append(new_link)
         old_link.num_references -= 1
@@ -270,6 +270,15 @@ class Mdl0(SubFile):
                 m.srt0 = animation
 
     # ---------------START PACKING STUFF -------------------------------------
+    def clean(self):
+        """Cleans up references in preparation for packing"""
+        self.shaders.consolidate()
+        self.textureLinks = [x for x in self.textureLinks if x.num_references > 0]
+        parent = self.parent
+        for x in self.textureLinks:
+            if not parent.getTexture(x):
+                print('WARNING: Texture Reference "{}" not found.'.format(x))
+
     def unpackSection(self, binfile, section_index):
         """ unpacks section by creating items  of type section_klass
             and adding them to section list index
@@ -374,6 +383,7 @@ class Mdl0(SubFile):
         """ Packs the model data """
         if self.version != 11:
             raise ValueError("Unsupported mdl0 version {}".format(self.version))
+        self.clean()
         self._pack(binfile)
         binfile.start()  # header
         binfile.write("Ii7I", 0x40, binfile.getOuterOffset(), 0, 0, self.vertexCount, self.faceCount,

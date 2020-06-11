@@ -3,7 +3,7 @@
 # ------------------------------------------------------------------------
 from copy import deepcopy, copy
 
-from binfile import Folder
+from binfile import Folder, printCollectionHex
 from matching import *
 from mdl0.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
 
@@ -106,7 +106,6 @@ class ShaderList():
 
     def pack(self, binfile, folder):
         """Packs the shader data, generating material and index group references"""
-        self.consolidate()
         li = self.list
         for i in range(len(li)):
             x = li[i]
@@ -117,7 +116,7 @@ class ShaderList():
 
 
 class Stage():
-    ''' Single shader stage '''
+    """ Single shader stage """
     # COLOR STRINGS
     RASTER_COLORS = ("lightchannel0", "lightchannel1", "bumpalpha", "normalizedbumpalpha", "zero")
     COLOR_CONSTANTS = ("1_1", "7_8", "3_4", "5_8", "1_2", "3_8", "1_4", "1_8",
@@ -156,12 +155,12 @@ class Stage():
     SETTINGS = ("enabled", "mapid", "coordinateid",
                 "textureswapselection", "rastercolor",
                 "rasterswapselection",
-                "colorconstantselection", "colora",
+                "colorconstantselection", "constantcolorselection", "colora",
                 "colorb", "colorc",
                 "colord", "colorbias",
                 "coloroperation", "colorclamp",
                 "colorscale", "colordestination",
-                "alphaconstantselection", "alphaa",
+                "constantalphaselection", "alphaconstantselection", "alphaa",
                 "alphab", "alphac",
                 "alphad", "alphabias",
                 "alphaoperation", "alphaclamp",
@@ -205,7 +204,7 @@ class Stage():
 
     def __getitem__(self, key):
         i = key.find('constant')
-        if i < 5:  # out of order
+        if 0 <= i < 5:  # out of order
             is_alpha = True if 'alpha' in key else False
             if is_alpha:
                 key = 'alphaconstantselection'
@@ -276,7 +275,7 @@ class Stage():
     def __setitem__(self, key, value):
         i = key.find('constant')
         is_alpha = True if 'alpha' in key else False
-        if i < 5:  # out of order
+        if 0 <= i < 5:  # out of order
             if is_alpha:
                 key = 'alphaconstantselection'
             else:
@@ -293,6 +292,7 @@ class Stage():
         elif "id" in key:
             self.map[key] = validInt(value, 0, 7)
         else:  # list indexing ones
+            value = value.replace('constant', '')
             if "scale" in key:
                 try:
                     f = validFloat(value, 0.5, 4)
@@ -354,7 +354,7 @@ class Stage():
             self.map[key] = value
 
     def unpackColorEnv(self, binfile):
-        ''' Unpacks the color env '''
+        """ Unpacks the color env """
         ce = ColorEnv(self.id)
         ce.unpack(binfile)
         self.map["colora"] = self.COLOR_SELS[ce.getSelA()]
@@ -504,7 +504,11 @@ class Shader():
             self.texRefCount = value
         elif self.SETTINGS[1] in key:  # indirect map
             i = self.detectIndirectIndex(key)
-            self.indTexMaps[i] = value
+            current = self.indTexMaps[i]
+            if current != value:
+                self.indTexMaps[i] = value
+                if current == 7:
+                    pass # todo
         elif self.SETTINGS[2] in key:  # indirect coord
             self.indTexCoords[self.detectIndirectIndex(key)] = value
 
@@ -522,7 +526,6 @@ class Shader():
                 x.info(key, indentation_level)
         else:
             print('{}{}: {}:{} '.format('  ' * indentation_level + '>', self.getMaterialNames(), key, self[key]))
-            # todo, detect key wanted in stages
 
     def getStage(self, n):
         if not 0 <= n < len(self.stages):
@@ -544,16 +547,27 @@ class Shader():
             self.stages.append(s)
         return stages[id]
 
+    def onUpdateActiveStages(self, num_stages):
+        for x in self.materials:
+            x.shaderStages = num_stages
+
+    def onUpdateIndirectStages(self, num_stages):
+        for x in self.materials:
+            x.indirectStages = num_stages
+
     def removeStage(self, id=-1):
         if len(self.stages) == 1:
             raise Exception('Shader must have at least 1 stage')
         self.stages.pop(id)
         self.texRefCount -= 1
 
-    def __deepcopy__(self, memodict={}):
+    def __deepcopy__(self, memodict=None):
         ret = Shader(self.name, self.parent)
         for x in self.stages:
-            s = deepcopy(x)
+            s = Stage(x.id, ret)
+            map = s.map
+            for key, val in x.map.items():
+                map[key] = val
             ret.stages.append(s)
         ret.texRefCount = self.texRefCount
         ret.indTexMaps = copy(self.indTexMaps)
@@ -630,6 +644,7 @@ class Shader():
                 stage1.unpackIndirect(binfile)
             else:
                 binfile.advance(5)
+            binfile.align(16)
         binfile.advanceAndEnd(self.BYTESIZE)
 
     def pack(self, binfile, id):

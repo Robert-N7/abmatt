@@ -71,4 +71,4 @@ set alphaB:0
 set alphaC:ConstantAlphaSelection
 set alphaD:OutputAlpha
 set indirectBias:stu
-set indirectMatrix:Matrix0
+set stage:1 indirectMatrix:Matrix0
