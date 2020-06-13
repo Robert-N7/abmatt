@@ -1,11 +1,11 @@
 """ MDL0 Models """
-from ..binfile import *
-from ..matching import *
-from .drawlist import DrawList, Definition
-from .material import Material
-from .polygon import Polygon
-from .shader import Shader, ShaderList
-from ..subfile import SubFile
+from binfile import *
+from matching import *
+from mdl0.drawlist import DrawList, Definition
+from mdl0.material import Material
+from mdl0.polygon import Polygon
+from mdl0.shader import Shader, ShaderList
+from subfile import SubFile
 
 
 # ----------------- Model sub files --------------------------------------------

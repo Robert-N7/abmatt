@@ -4,7 +4,7 @@
 #  Structure for working with materials
 # ---------------------------------------------------------------------
 
-from ..matching import validBool, indexListItem, validInt, validFloat, findAll
+from matching import validBool, indexListItem, validInt, validFloat, findAll
 from .layer import Layer
 from .wiigraphics.matgx import MatGX
 

@@ -319,6 +319,8 @@ class Command:
             self.updateSelection()
         if self.cmd == 'preset':
             self.SELECTED = self.MATERIALS
+            if not self.SELECTED:
+                return
             return self.runPreset(self.key)
         if not self.ACTIVE_FILES:
             raise ParsingException(self.txt, 'No file detected!')

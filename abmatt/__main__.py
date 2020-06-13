@@ -4,11 +4,12 @@ ANoob's Brres Material Editor
 For editing Mario Kart Wii files
 """
 import getopt
+from cmd import Cmd
 
 from command import *
 
 __version__ = "0.2.0"
-USAGE = "{} -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value>\
+USAGE = "Usage: {} -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value>\
  -n <name> -m <model> -i -s] "
 
 
@@ -94,30 +95,65 @@ For more Help or if you want to contribute visit https://github.com/Robert-N7/AB
     print("Usage: {}".format(USAGE))
 
 
-def interactiveShell():
-    """Runs in interactive mode"""
-    help_messsage = '''Supported commands:
-    q quit
-    h help
-    set <type> <key>:<value> [for <selection>]
-    add <type>[:<id>] [for <selection>]
-    remove <type>[:<id>] [for <selection>]
-    info <type> [<key>] [for <selection>]
-    preset <preset> [for <selection>]
-types: material|layer|shader|stage
-For more help visit https://github.com/Robert-N7/ABMatT'''
-    print('Interactive Shell Started...')
-    for line in sys.stdin:
-        first = line[0].lower()
-        if first == 'q':  # quit
-            break
-        elif first == 'h':
-            print(help_messsage)
-        else:
-            try:
-                run_commands([Command(line)])
-            except ParsingException as e:
-                print('{} Type "h" for help'.format(e))
+class Shell(Cmd):
+    prompt = '>'
+
+    def run(self, prefix, cmd):
+        try:
+            run_commands([Command(prefix + ' ' + cmd)])
+        except ParsingException as e:
+            print('{} Type "?" for help'.format(e))
+
+    def do_quit(self, line):
+        print('Stopping shell...')
+        return True
+
+    def help_quit(self):
+        print('Ends the interractive shell.')
+
+    do_EOF = do_quit
+    help_EOF = help_quit
+
+    def do_set(self, line):
+        self.run('set', line)
+
+    def help_set(self):
+        print('set <type> <key>:<value> [for <selection>]')
+
+    def do_add(self, line):
+        self.run('add', line)
+
+    def help_add(self):
+        print('add <type>[:<id>] [for <selection>]')
+
+    def do_remove(self, line):
+        self.run('remove', line)
+
+    def help_remove(self):
+        print('remove <type>[:<id>] [for <selection>]')
+
+    def do_info(self, line):
+        self.run('info', line)
+
+    def help_info(self):
+        print('info <type> [<key>] [for <selection>]')
+
+    def do_preset(self, line):
+        self.run('preset', line)
+
+    def help_preset(self):
+        print('preset <preset> [for <selection>]')
+
+    def do_select(self, line):
+        self.run('select', line)
+
+    def help_select(self):
+        print('select <name> [in <container>]')
+
+    def default(self, line):
+        if line == 'x' or line == 'q':
+            return self.do_quit(line)
+        print('Syntax error, type ? for help')
 
 
 def main():
@@ -209,7 +245,7 @@ def main():
     else:
         run_commands(cmds)
     if shell_mode:
-        interactiveShell()
+        Shell().cmdloop('Interactive shell started...')
     # cleanup
     for file in Command.ACTIVE_FILES:
         file.close()
@@ -217,4 +253,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

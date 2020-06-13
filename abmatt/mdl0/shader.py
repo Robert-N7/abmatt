@@ -3,8 +3,8 @@
 # ------------------------------------------------------------------------
 from copy import deepcopy, copy
 
-from ..binfile import Folder, printCollectionHex
-from ..matching import *
+from binfile import Folder, printCollectionHex
+from matching import *
 from .wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
 
 

@@ -1,5 +1,5 @@
 """ Layer class """
-from ..matching import parseValStr
+from matching import parseValStr
 
 from .wiigraphics.xf import XFTexMatrix, XFDualTex
 
