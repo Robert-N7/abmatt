@@ -5,7 +5,7 @@ from .drawlist import DrawList, Definition
 from .material import Material
 from .polygon import Polygon
 from .shader import Shader, ShaderList
-from .subfile import SubFile
+from ..subfile import SubFile
 
 
 # ----------------- Model sub files --------------------------------------------
