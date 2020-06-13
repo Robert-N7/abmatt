@@ -1,11 +1,10 @@
 #!/usr/bin/python
-''' Srt0 Brres subfile '''
+""" Srt0 Brres subfile """
+import math
 import re
 
-from matching import validInt, validBool, validFloat
-from subfile import SubFile
-from binfile import Folder, printCollectionHex
-import math
+from ..matching import validInt, validBool, validFloat
+from ..subfile import SubFile
 
 
 # ---------------------------------------------------------
