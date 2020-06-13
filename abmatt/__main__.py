@@ -120,8 +120,11 @@ For more help visit https://github.com/Robert-N7/ABMatT'''
                 print('{} Type "h" for help'.format(e))
 
 
-def main(argv):
+def main():
     """ Main """
+    global USAGE
+    USAGE = USAGE.format(sys.argv[0])
+    argv = sys.argv[1:]
     if not argv:
         hlp()
         sys.exit(0)
@@ -207,12 +210,11 @@ def main(argv):
         run_commands(cmds)
     if shell_mode:
         interactiveShell()
-
-
-if __name__ == "__main__":
-    USAGE = USAGE.format(sys.argv[0])
-    main(sys.argv[1:])
     # cleanup
     for file in Command.ACTIVE_FILES:
         file.close()
+
+
+if __name__ == "__main__":
+    main()
 
