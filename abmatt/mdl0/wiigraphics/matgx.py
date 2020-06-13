@@ -1,7 +1,7 @@
 #!/usr/bin/python
 """ Material wii graphics"""
 from binfile import printCollectionHex
-from mdl0.wiigraphics.bp import ColorReg, AlphaFunction, ZMode, BPCommand, BlendMode, ConstantAlpha, IndMatrix
+from .bp import ColorReg, AlphaFunction, ZMode, BPCommand, BlendMode, ConstantAlpha, IndMatrix
 
 
 class TevRegister:

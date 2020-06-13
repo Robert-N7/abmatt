@@ -1,6 +1,6 @@
 """ MDL0 Models """
-from binfile import *
-from matching import *
+from ..binfile import *
+from ..matching import *
 from .drawlist import DrawList, Definition
 from .material import Material
 from .polygon import Polygon
