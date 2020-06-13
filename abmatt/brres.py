@@ -7,12 +7,12 @@ import re
 import string
 import sys
 
-from binfile import BinFile, Folder
-from matching import findAll
-from layer import Layer
-from mdl0 import Mdl0
-from srt0 import Srt0
-from subfile import *
+from .binfile import BinFile, Folder
+from .matching import findAll
+from .layer import Layer
+from .mdl0 import Mdl0
+from .srt0 import Srt0
+from .subfile import *
 
 
 class Brres():

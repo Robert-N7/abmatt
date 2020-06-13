@@ -1,6 +1,4 @@
-''' BRRES Subfiles '''
-import binfile
-
+""" BRRES Subfiles """
 
 # --------------------------------------------------------
 # Most Brres Subfiles

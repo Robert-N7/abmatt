@@ -1,7 +1,7 @@
 """ Layer class """
-from matching import parseValStr, indexListItem, validBool
+from .matching import parseValStr, indexListItem, validBool
 
-from wiigraphics.xf import XFTexMatrix, XFDualTex
+from .wiigraphics.xf import XFTexMatrix, XFDualTex
 
 
 class Layer:
