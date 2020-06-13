@@ -1,9 +1,14 @@
 # ANoobs Brres Material Tool (ABMatt)
 This command line tool is for editing materials in _Brres_ files in _Mario Kart Wii_. 
-*Python is required* to run it. 
 
 ## Installation
-TODO
+You can download one of the tagged releases, or install with python.
+```
+git clone https://github.com/Robert-N7/abmatt
+cd abmatt
+python setup.py install
+```
+You may need to run with root priveleges.
 
 ## Modes
 ABMatt can be used 

@@ -1,3 +1,4 @@
+import setuptools
 from setuptools import setup
 
 # reading long description from file
@@ -18,7 +19,7 @@ CLASSIFIERS = [
 
 # calling the setup function
 setup(name='abmatt',
-      version='0.1.0',
+      version='0.2.0',
       description='Brres file material editor',
       long_description=long_description,
       long_description_content_type="text/markdown",
