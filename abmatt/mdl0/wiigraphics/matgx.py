@@ -1,6 +1,5 @@
 #!/usr/bin/python
 """ Material wii graphics"""
-from binfile import printCollectionHex
 from .bp import ColorReg, AlphaFunction, ZMode, BPCommand, BlendMode, ConstantAlpha, IndMatrix
 
 
