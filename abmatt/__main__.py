@@ -3,13 +3,14 @@
 ANoob's Brres Material Editor
 For editing Mario Kart Wii files
 """
+
 import getopt
 import os
 import sys
 from cmd import Cmd
 
-from .brres import Brres
-from .command import Command, run_commands, ParsingException, load_commandfile
+from abmatt.brres import Brres
+from abmatt.command import Command, run_commands, ParsingException, load_commandfile
 
 __version__ = "0.2.0"
 USAGE = "Usage: {} -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value>\

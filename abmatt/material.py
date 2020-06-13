@@ -4,9 +4,9 @@
 #  Structure for working with materials
 # ---------------------------------------------------------------------
 
-from .matching import validBool, indexListItem, validInt, validFloat, findAll
-from .layer import Layer
-from .wiigraphics.matgx import MatGX
+from abmatt.matching import validBool, indexListItem, validInt, validFloat, findAll
+from abmatt.layer import Layer
+from abmatt.wiigraphics.matgx import MatGX
 
 
 def parse_color(color_str):

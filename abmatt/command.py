@@ -5,12 +5,12 @@ import fnmatch
 import os
 import sys
 
-from .brres import Brres
-from .layer import Layer
-from .matching import validInt, findAll
-from .material import Material
-from .shader import Shader, Stage
-from .srt0 import Srt0
+from abmatt.brres import Brres
+from abmatt.layer import Layer
+from abmatt.matching import validInt, findAll
+from abmatt.material import Material
+from abmatt.shader import Shader, Stage
+from abmatt.srt0 import Srt0
 
 
 class ParsingException(Exception):

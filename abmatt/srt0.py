@@ -3,8 +3,8 @@
 import math
 import re
 
-from .matching import validInt, validBool, validFloat
-from .subfile import SubFile
+from abmatt.matching import validInt, validBool, validFloat
+from abmatt.subfile import SubFile
 
 
 # ---------------------------------------------------------

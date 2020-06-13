@@ -3,9 +3,9 @@
 # ------------------------------------------------------------------------
 from copy import deepcopy, copy
 
-from .binfile import Folder
-from .matching import *
-from .wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
+from abmatt.binfile import Folder
+from abmatt.matching import *
+from abmatt.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
 
 
 class ShaderList():

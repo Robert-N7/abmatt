@@ -1,11 +1,11 @@
 """ MDL0 Models """
-from .binfile import Folder
-from .drawlist import DrawList, Definition
-from .matching import findAll
-from .material import Material
-from .polygon import Polygon
-from .shader import Shader, ShaderList
-from .subfile import SubFile
+from abmatt.binfile import Folder
+from abmatt.drawlist import DrawList, Definition
+from abmatt.matching import findAll
+from abmatt.material import Material
+from abmatt.polygon import Polygon
+from abmatt.shader import Shader, ShaderList
+from abmatt.subfile import SubFile
 
 
 # ----------------- Model sub files --------------------------------------------
