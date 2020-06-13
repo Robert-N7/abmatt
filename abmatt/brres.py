@@ -52,7 +52,8 @@ class Brres():
         return findAll(name, self.models)
 
     def close(self):
-        self.save(self.DESTINATION, self.OVERWRITE)
+        if self.isModified:
+            self.save(self.DESTINATION, self.OVERWRITE)
 
     def save(self, filename, overwrite):
         if not filename:
@@ -96,11 +97,17 @@ class Brres():
         return self.name
 
     def info(self, key=None, indentation_level=0):
-        print('{}{}:\t{} models\t{} textures'.format('  ' * indentation_level + '>', self.name,
+        print('{}{}:\t{} model(s)\t{} texture(s)'.format('  ' * indentation_level + '>', self.name,
                                                      len(self.models), len(self.textures)))
-        indentation_level += 1
-        for x in self.models:
-            x.info(key, indentation_level)
+        folder_indent = indentation_level + 1
+        indentation_level += 2
+        folders = self.folders
+        for i in range(len(folders)):
+            folder = folders[i]
+            if folder:
+                print('{}>{}'.format('  ' * folder_indent, self.FOLDERS[i]))
+                for x in folder:
+                    x.info(key, indentation_level)
 
     def set(self, command):
         mats = self.getMatCollection(command.modelname, command.materialname)

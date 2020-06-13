@@ -29,10 +29,9 @@ class Definition():
                 if byte == 0x4:
                     current_list.append(binfile.read("7B", 7))
                 elif byte == 0x3:
-                    weight_id, weight_count, table_id = binfile.read("3H", 6)
-                    weights = 4 * weight_count
-                    weights = binfile.read("{}B".format(weights), weights)  # not sure if these are ints
-                    drawl = [weight_id, weight_count, table_id] + list(weights)
+                    weight_id, weight_count = binfile.read("HB", 3)
+                    weights = [binfile.read('Hf', 6) for i in range(weight_count)]  # index, weight
+                    drawl = [weight_id, weight_count] + weights
                     current_list.append(drawl)
                 elif byte > 0x6:  # error reading list?
                     print("Error unpacking list {}".format(current_list))
@@ -61,10 +60,22 @@ class DrawList():
         def pack(self, binfile):
             binfile.write("3HB", self.matIndex, self.objIndex, self.boneIndex, self.priority)
 
+        def getPriority(self):
+            return self.priority
+
+        def setPriority(self, val):
+            self.priority = val
+
     def __init__(self, name, parent):
         self.name = name
         self.parent = parent
         self.list = []
+
+    def __len__(self):
+        return len(self.list)
+
+    def __bool__(self):
+        return self.list
 
     def pop(self, materialID):
         li = self.list
@@ -85,6 +96,14 @@ class DrawList():
         for x in self.list:
             if x.matIndex == id:
                 return x
+
+    def setPriority(self, id, priority):
+        definition = self.getByMaterialID(id)
+        if not definition:
+            return False
+        definition.setPriority(priority)
+        self.list.sort(key=lambda x: x.priority)
+        return True
 
     def unpack(self, binfile):
         li = self.list

@@ -32,11 +32,12 @@ class Command:
     COMMANDS = ["preset", "set", "add", "remove", "info", "select"]
     SELECTED = []  # selection list
     SELECT_TYPE = None  # current selection list type
-    SELECT_ID = None    # current selection id
-    SELECT_ID_NUMERIC = False   # current id numeric
+    SELECT_ID = None  # current selection id
+    SELECT_ID_NUMERIC = False  # current id numeric
     DESTINATION = None
     OVERWRITE = False
     ACTIVE_FILES = []
+    FILES_MARKED = False  # files marked as modified
     MODELS = []
     MATERIALS = []
     PRESETS = {}
@@ -62,6 +63,7 @@ class Command:
             if self.cmd != 'info':
                 raise ParsingException(self.txt, 'Not enough parameters')
             else:
+                self.type = None
                 return
         if self.setType(x[0]):
             x.pop(0)
@@ -74,7 +76,7 @@ class Command:
                 for_index = i
                 break
         if for_index >= 0:
-            self.setSelection(x[for_index+1:])
+            self.setSelection(x[for_index + 1:])
             x = x[0:for_index]
         if is_preset:
             key = x[0]
@@ -110,12 +112,12 @@ class Command:
         i = val.find(':')
         type_id = None
         if i >= 0:
-            type_id = val[i+1:]
+            type_id = val[i + 1:]
             val = val[:i]
         val = val.lower()
         if val == 'material' or val == 'shader':
             if self.cmd == 'add' or self.cmd == 'remove':
-                raise ParsingException(self.txt, 'Add/Remove not supported for materials and shaders.')
+                raise ParsingException(self.txt, 'Add/Remove not supported for {}.'.format(val))
         elif val == 'layer' or val == 'stage':
             self.has_type_id = True
             try:
@@ -126,6 +128,13 @@ class Command:
                 self.type_id_numeric = False
             # elif 'srt0' in val:
         #     self.type = 'srt0'
+        elif self.cmd == 'info' and (val == 'mdl0' or val == 'brres'):
+            if type_id:
+                self.has_type_id = True
+                self.type_id_numeric = False
+                self.type_id = type_id
+            else:
+                self.type_id = '*'
         else:
             self.type = None
             return False
@@ -186,6 +195,7 @@ class Command:
                 return False
         Command.ACTIVE_FILES = openFiles(files, Command.ACTIVE_FILES)
         Command.MODELS = []  # clear models
+        Command.FILES_MARKED = False
         return True
 
     def updateSelection(self):
@@ -220,15 +230,15 @@ class Command:
         """Updates SELECT_ID, SELECT_ID_NUMERIC"""
         has_changed = False
         if not self.has_type_id:
-            Command.SELECT_ID = None # reset
-        elif self.type_id:    # explicit
+            Command.SELECT_ID = None  # reset
+        elif self.type_id:  # explicit
             if self.SELECT_ID_NUMERIC != self.type_id_numeric or self.type_id != self.SELECT_ID:
                 Command.SELECT_ID = self.type_id
                 Command.SELECT_ID_NUMERIC = self.type_id_numeric
                 has_changed = True
-        else:   # implicit
+        else:  # implicit
             if type_has_changed or not Command.SELECT_ID:
-                Command.SELECT_ID = 0   # use defaults
+                Command.SELECT_ID = 0  # use defaults
                 Command.SELECT_ID_NUMERIC = True
                 has_changed = True
             # else continue using current select_id
@@ -287,9 +297,16 @@ class Command:
                         Command.SELECTED.append(x.getStage(self.SELECT_ID))
             elif self.cmd == 'info':
                 if type == 'mdl0':
-                    Command.SELECTED = self.MODELS
+                    Command.SELECTED = findAll(self.type_id, self.MODELS)
                 elif type == 'brres':
-                    Command.SELECTED = self.ACTIVE_FILES
+                    Command.SELECTED = findAll(self.type_id, self.ACTIVE_FILES)
+
+    @staticmethod
+    def markModified():
+        if not Command.FILES_MARKED:
+            for x in Command.ACTIVE_FILES:
+                x.isModified = True
+            Command.FILES_MARKED = True
 
     def runCmd(self):
         if self.hasSelection:
@@ -297,6 +314,9 @@ class Command:
                 sys.exit(1)
             elif self.cmd == 'select':
                 return
+        elif not self.MATERIALS and self.cmd == 'info':
+            self.file = self.model = self.name = None
+            self.updateSelection()
         if self.cmd == 'preset':
             self.SELECTED = self.MATERIALS
             return self.runPreset(self.key)
@@ -307,6 +327,7 @@ class Command:
             print("No items found in selection for '{}'".format(self.txt))
         else:
             if self.cmd == 'set':
+                self.markModified()
                 for x in self.SELECTED:
                     x[self.key] = self.value
             elif self.cmd == 'info':
@@ -315,10 +336,11 @@ class Command:
                 # for y in self.ACTIVE_FILES:
                 #     print(y.name)
             elif self.cmd == 'add':
-                self.add(self.type, self.type_id)
+                self.markModified()
+                self.add(self.SELECT_TYPE, self.SELECT_ID)
             elif self.cmd == 'remove':
-                self.remove(self.type, self.type_id)
-
+                self.markModified()
+                self.remove(self.SELECT_TYPE, self.SELECT_ID)
 
     def runPreset(self, key):
         """Runs preset"""
@@ -328,10 +350,13 @@ class Command:
 
     def add(self, type, type_id):
         """Add command"""
+        if self.SELECT_ID_NUMERIC and type_id == 0:
+            type_id = 1
         if type == 'layer':  # add layer case
-            if self.type_id_numeric:
+            if self.SELECT_ID_NUMERIC:
                 for x in self.SELECTED:
-                    x.addLayerI(type_id)
+                    for i in range(type_id):
+                        x.addEmptyLayer()
             else:
                 for x in self.SELECTED:
                     x.addLayer(type_id)
@@ -343,12 +368,17 @@ class Command:
 
     def remove(self, type, type_id):
         """Remove command"""
-        if type == 'layer':  # add layer case
-            for x in self.SELECTED:
-                x.removeLayer(type_id)
-        elif type == 'stage':  # add stage case
-            if type_id == 0:
-                type_id = 1  # assume 1
+        if self.SELECT_ID_NUMERIC and type_id == 0:
+            type_id = 1
+        if type == 'layer':  # remove layer case
+            if self.SELECT_ID_NUMERIC:
+                for x in self.SELECTED:
+                    for i in range(type_id):
+                        x.removeLayerI()
+            else:
+                for x in self.SELECTED:
+                    x.removeLayer(type_id)
+        elif type == 'stage':  # remove stage case
             for x in self.SELECTED:
                 for i in range(type_id):
                     x.removeStage()
@@ -384,7 +414,11 @@ def load_commandfile(filename):
             if i != -1:
                 line = line[0:i]
             if preset_begin:
-                preset.append(Command(line))
+                try:
+                    preset.append(Command(line))
+                except ParsingException as e:
+                    print('Error parsing preset {} : {}'.format(name, e))
+                    Command.PRESETS[name] = None
             else:
                 commands.append(Command(line))
         elif line[0] == '[':  # preset

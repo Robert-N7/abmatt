@@ -5,7 +5,6 @@
 [transparent]
 set material CompareBeforeTexture:False
 set material xlu:False
-set material drawxlu:False
 set material ref0:128
 set material comp0:LessOrEqual
 set material ref1:255
@@ -15,7 +14,6 @@ set material comp1:GreaterOrEqual
 set material CompareBeforeTexture:True
 set material blend:True
 set material xlu:True
-set material drawxlu:True
 set material ref0:0
 set material comp0:Always
 set material ref1:0
@@ -25,7 +23,6 @@ set material enableDepthUpdate:False
 [opaque]
 set material CompareBeforeTexture:True
 set material xlu:False
-set material drawxlu:False
 set material ref0:0
 set material comp0:Always
 set material ref1:0

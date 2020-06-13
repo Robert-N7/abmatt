@@ -5,7 +5,7 @@ from copy import deepcopy, copy
 
 from binfile import Folder, printCollectionHex
 from matching import *
-from mdl0.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
+from .wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
 
 
 class ShaderList():
@@ -215,12 +215,12 @@ class Stage():
         return self.map[key]
 
     def info(self, key=None, indentation_level=0):
+        trace = '  ' * indentation_level if indentation_level else '>' + self.parent.getMaterialNames()
         if key:
-            print('{}{}->Stage{}: {}:{}'.format('  ' * indentation_level + '>',
-                                                self.parent.getMaterialNames(), self.id, key, self[key]))
+            print('{}->Stage{}: {}:{}'.format(trace, self.id, key, self[key]))
         else:
             print('{}Stage{}: MapId:{} CoordinateId:{} ColorScale:{} ColorDestination:{}'.format(
-                '  ' * indentation_level + '>', self.id, self['mapid'], self['coordinateid'],
+                trace, self.id, self['mapid'], self['coordinateid'],
                 self['colorscale'], self['colordestination']))
 
     def getRasterColorI(self):
@@ -270,7 +270,6 @@ class Stage():
         if index >= 0xc:
             index -= 4
         self.map["colorconstantselection"] = self.COLOR_CONSTANTS[index]
-
 
     def __setitem__(self, key, value):
         i = key.find('constant')
@@ -447,7 +446,7 @@ class Shader():
                   BPCommand(0xF9, 0xC), BPCommand(0xFA, 0x5), BPCommand(0xFB, 0xD),
                   BPCommand(0xFC, 0xA), BPCommand(0xFD, 0xE))
     SEL_MASK = BPCommand(0xFE, 0xFFFFF0)
-    SETTINGS = ('texturerefcount', 'indirectmap', 'indirectcoord')
+    SETTINGS = ('texturerefcount', 'indirectmap', 'indirectcoord', 'stagecount')
 
     def __init__(self, name, parent):
         self.parent = parent
@@ -476,6 +475,14 @@ class Shader():
                 return False
         return True
 
+    def getIndirectMatricesUsed(self):
+        matrices_used = [False] * 3
+        for x in self.stages:
+            matrix = x['indirectmatrix'][-1]
+            if matrix.isdigit():
+                matrices_used[int(matrix)] = True
+        return matrices_used
+
     def detect_unusedMapId(self):
         """Attempts to find next available unused mapid"""
         used = [x['mapid'] for x in self.stages]
@@ -484,48 +491,60 @@ class Shader():
                 return i
         return 0
 
-    def detectIndirectIndex(self, key):
+    @staticmethod
+    def detectIndirectIndex(key):
         i = 0 if not key[-1].isdigit() else int(key[-1])
         if not 0 <= i < 4:
             raise ValueError('Indirect index {} out of range (0-3).'.format(i))
         return i
 
     def __getitem__(self, key):
-        if key == self.SETTINGS[0]:
+        if self.SETTINGS[0] == key:
             return self.texRefCount
         elif self.SETTINGS[1] in key:
             return self.indTexMaps[self.detectIndirectIndex(key)]
         elif self.SETTINGS[2] in key:
             return self.indTexCoords[self.detectIndirectIndex(key)]
+        elif self.SETTINGS[3] == key:  # stage count
+            return len(self.stages)
 
     def __setitem__(self, key, value):
         value = validInt(value, 0, 8)
-        if key == self.SETTINGS[0]:  # texture refs
+        if self.SETTINGS[0] == key:  # texture refs
             self.texRefCount = value
         elif self.SETTINGS[1] in key:  # indirect map
-            i = self.detectIndirectIndex(key)
-            current = self.indTexMaps[i]
-            if current != value:
-                self.indTexMaps[i] = value
-                if current == 7:
-                    pass # todo
+            self.indTexMaps[self.detectIndirectIndex(key)] = value
         elif self.SETTINGS[2] in key:  # indirect coord
             self.indTexCoords[self.detectIndirectIndex(key)] = value
+        elif self.SETTINGS[3] == key:   # stage count
+            current_len = len(self.stages)
+            if current_len < value:
+                while current_len < value:
+                    self.addStage()
+                    current_len += 1
+                self.onUpdateActiveStages(current_len)
+            elif current_len > value:
+                while current_len > value:
+                    self.removeStage()
+                    current_len -= 1
+                self.onUpdateActiveStages(current_len)
 
     def getMaterialNames(self):
         return [mat.name for mat in self.materials]
 
     def info(self, key=None, indentation_level=0):
+        trace = '  ' * indentation_level if indentation_level else '>'
         if not key:
-            print('{}Shader{}: {} stages, IndirectMap {} IndirectCoord {}'.format('  ' * indentation_level + '>',
-                                                                            self.getMaterialNames(), len(self.stages),
-                                                                            self.indTexMaps,
-                                                                            self.indTexCoords))
+            print('{}Shader{}: {} stages, IndirectMap {} IndirectCoord {}'.format(trace,
+                                                                                  self.getMaterialNames(),
+                                                                                  len(self.stages),
+                                                                                  self.indTexMaps,
+                                                                                  self.indTexCoords))
             indentation_level += 1
             for x in self.stages:
                 x.info(key, indentation_level)
         else:
-            print('{}{}: {}:{} '.format('  ' * indentation_level + '>', self.getMaterialNames(), key, self[key]))
+            print('{}{}: {}:{} '.format(trace, self.getMaterialNames(), key, self[key]))
 
     def getStage(self, n):
         if not 0 <= n < len(self.stages):
@@ -533,33 +552,24 @@ class Shader():
             raise ValueError("Shader stage {} out of range, has {} stages".format(n, len(self.stages)))
         return self.stages[n]
 
-    def addStage(self, id=0):
-        """Adds stages to shader up to id, if id is 0 adds one stage"""
+    def addStage(self):
+        """Adds stage to shader"""
         stages = self.stages
-        if id == 0:
-            id = len(stages)
-        while len(stages) <= id:
-            s = Stage(len(stages), self)
-            mapid = self.detect_unusedMapId()
-            s['mapid'] = mapid
-            s['coordinateid'] = mapid
-            self.texRefCount += 1
-            self.stages.append(s)
-        return stages[id]
+        s = Stage(len(stages), self)
+        mapid = self.detect_unusedMapId()
+        s['mapid'] = mapid
+        s['coordinateid'] = mapid
+        stages.append(s)
+        return s
 
     def onUpdateActiveStages(self, num_stages):
         for x in self.materials:
             x.shaderStages = num_stages
 
-    def onUpdateIndirectStages(self, num_stages):
-        for x in self.materials:
-            x.indirectStages = num_stages
-
     def removeStage(self, id=-1):
         if len(self.stages) == 1:
             raise Exception('Shader must have at least 1 stage')
         self.stages.pop(id)
-        self.texRefCount -= 1
 
     def __deepcopy__(self, memodict=None):
         ret = Shader(self.name, self.parent)
@@ -762,7 +772,7 @@ class Shader():
 #         self.minimum = data[10:12]
 #         self.maximum = data[12:14]
 #         file.offset = self.offset + self.dataOffset
-#         data = file.read(Struct("> " + str(self.length - 0x30) + "B"), self.length - 0x30)
+#         data = file.read(Struct("> " + color_str(self.length - 0x30) + "B"), self.length - 0x30)
 #         # print("TCoord: {}".format(data))
 #
 #     def __str__(self):

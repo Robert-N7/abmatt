@@ -689,7 +689,7 @@ class IndMatrix():
         c = BPCommand(BPCommand.BPMEM_IND_MTXA0 + self.id * 3)
         scale = self.scale + 17
         for i in range(3):
-            sbits = (self.scale >> (2 * i) & 3)
+            sbits = (scale >> (2 * i) & 3)
             r0 = self.encode11bitFloat(self.matrix[i])
             r1 = self.encode11bitFloat(self.matrix[i+3])
             c.data = sbits << 22 | r1 << 11 | r0
