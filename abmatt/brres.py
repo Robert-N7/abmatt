@@ -52,7 +52,7 @@ class Brres():
         return findAll(name, self.models)
 
     def close(self):
-        if self.isModified:
+        if self.isModified or self.DESTINATION != self.name:
             self.save(self.DESTINATION, self.OVERWRITE)
 
     def save(self, filename, overwrite):

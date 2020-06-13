@@ -75,7 +75,7 @@ class DrawList():
         return len(self.list)
 
     def __bool__(self):
-        return self.list
+        return len(self.list) > 0
 
     def pop(self, materialID):
         li = self.list

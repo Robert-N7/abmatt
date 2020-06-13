@@ -11,7 +11,7 @@ from abmatt.wiigraphics.matgx import MatGX
 
 def parse_color(color_str):
     """parses color string"""
-    color_str = color_str.trim('()')
+    color_str = color_str.strip('()')
     colors = color_str.split(',')
     if len(colors) < 4:
         return None

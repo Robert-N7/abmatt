@@ -215,7 +215,7 @@ class Stage():
         return self.map[key]
 
     def info(self, key=None, indentation_level=0):
-        trace = '  ' * indentation_level if indentation_level else '>' + self.parent.getMaterialNames()
+        trace = '  ' * indentation_level if indentation_level else '>' + str(self.parent.getMaterialNames())
         if key:
             print('{}->Stage{}: {}:{}'.format(trace, self.id, key, self[key]))
         else:

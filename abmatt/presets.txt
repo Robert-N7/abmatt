@@ -29,22 +29,26 @@ set material ref1:0
 set material comp1:Always
 
 [ef_dushboard]
+# material settings
+preset opaque
+set material shadercolor:constant3:(0,0,0,128)
+set material indirectmatrix:0:scale14,(0.6396484375,0,0),(0,0.639648375,0)
+set material layerCount:3
 # layers
+set layer:0 name:ef_rainbowRed2
 set layer:0 mapmode:EnvCamera
 set projection:stq
 set InputForm:abc1
 set coordinates:normals
 set normalize:True
-set layer:ef_arrowBumpS uwrap:mirror
-add layer:ef_arrowGradS
-# material settings
-preset opaque
-set material shadercolor:constant3:(0,0,0,128)
-set material indirectmatrix:0:scale14,(0.6396484375,0,0),(0,0.639648375,0)
+set layer:1 name:ef_arrowBumpS
+set layer:1 uwrap:mirror
+set layer:2 name:ef_arrowGradS
 
 # shader
 set shader indirectmap:1
 set shader indirectcoord:1
+set shader stageCount:2
 # stage 0
 set stage:0 mapid:2
 set coordinateid:2

@@ -12,7 +12,7 @@ from cmd import Cmd
 from abmatt.brres import Brres
 from abmatt.command import Command, run_commands, ParsingException, load_commandfile
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 USAGE = "Usage: {} -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value>\
  -n <name> -m <model> -i -s] "
 
@@ -96,7 +96,7 @@ This opens course_model.brres in overwrite mode and disables xlu for material 'o
 For more Help or if you want to contribute visit https://github.com/Robert-N7/ABMatT
     '''
     print(helpstr.format(__version__))
-    print("Usage: {}".format(USAGE))
+    print("{}".format(USAGE))
 
 
 class Shell(Cmd):
@@ -109,11 +109,10 @@ class Shell(Cmd):
             print('{}, Type "?" for help.'.format(e))
 
     def do_quit(self, line):
-        print('Stopping shell...')
         return True
 
     def help_quit(self):
-        print('Ends the interractive shell.')
+        print('Ends the interactive shell.')
 
     do_EOF = do_quit
     help_EOF = help_quit

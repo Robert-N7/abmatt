@@ -91,7 +91,10 @@ class Command:
                 raise ParsingException(self.txt, 'Set requires key:value pair')
             key, value = x[0].split(':', 1)
             self.key = key.lower()
-            self.value = value.lower()
+            if self.key != 'name':
+                self.value = value.lower()
+            else:
+                self.value = value
         elif len(x):
             if self.cmd != 'info':
                 print("Unknown parameter(s) {}".format(x))
