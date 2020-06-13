@@ -9,9 +9,9 @@ import sys
 
 from binfile import BinFile, Folder
 from matching import findAll
-from mdl0.layer import Layer
-from mdl0.mdl0 import Mdl0
-from srt0.srt0 import Srt0
+from layer import Layer
+from mdl0 import Mdl0
+from srt0 import Srt0
 from subfile import *
 
 

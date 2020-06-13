@@ -7,10 +7,10 @@ import sys
 
 from brres import Brres
 from matching import *
-from mdl0.layer import Layer
-from mdl0.material import Material
-from mdl0.shader import Shader, Stage
-from srt0.srt0 import Srt0
+from layer import Layer
+from material import Material
+from shader import Shader, Stage
+from srt0 import Srt0
 
 
 class ParsingException(Exception):

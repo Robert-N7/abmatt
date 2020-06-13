@@ -5,8 +5,8 @@
 # ---------------------------------------------------------------------
 
 from matching import validBool, indexListItem, validInt, validFloat, findAll
-from .layer import Layer
-from .wiigraphics.matgx import MatGX
+from layer import Layer
+from wiigraphics.matgx import MatGX
 
 
 def parse_color(color_str):

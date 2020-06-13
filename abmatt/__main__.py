@@ -102,7 +102,7 @@ class Shell(Cmd):
         try:
             run_commands([Command(prefix + ' ' + cmd)])
         except ParsingException as e:
-            print('{} Type "?" for help'.format(e))
+            print('{}, Type "?" for help.'.format(e))
 
     def do_quit(self, line):
         print('Stopping shell...')
