@@ -1,4 +1,5 @@
 """ BRRES Subfiles """
+# Todo, parse all name references so the offsets can be properly updated to the new string table
 
 # --------------------------------------------------------
 # Most Brres Subfiles

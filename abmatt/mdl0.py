@@ -288,6 +288,9 @@ class Mdl0(SubFile):
             m = self.getMaterialByName(animation.name)
             if m:
                 m.srt0 = animation
+                animation.material = m
+            else:
+                print('Unknown animation reference "{}"'.format(animation.name))
 
     def check(self):
         for x in self.materials:

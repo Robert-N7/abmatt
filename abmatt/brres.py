@@ -217,10 +217,9 @@ class Brres():
     # -------------------------------------------------------------------------
 
     def unpackFolder(self, binfile, root, folderIndex):
-        ''' Unpacks the folder folderIndex '''
+        """ Unpacks the folder folderIndex """
         name = self.FOLDERS[folderIndex]
         if root.open(name):
-
             container = self.folders[folderIndex]
             subFolder = Folder(binfile, name)
             subFolder.unpack(binfile)

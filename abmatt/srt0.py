@@ -5,9 +5,11 @@ import re
 
 from abmatt.matching import validInt, validBool, validFloat
 from abmatt.subfile import SubFile
-
+from abmatt.binfile import Folder
 
 # ---------------------------------------------------------
+
+
 
 class SRTKeyFrameList:
     ''' Representing an srt non-fixed animation list
@@ -493,6 +495,7 @@ class SRTMatAnim():
 
     def __init__(self, name, frame_count=1):
         self.name = name
+        self.material = None    # to be filled
         self.frameCount = frame_count
         self.tex_animations = []
         self.texEnabled = [False] * 8
@@ -531,7 +534,7 @@ class SRTMatAnim():
                     test_list = tex.animations[SRTKeyFrameList.TYPES[i]]
                     found = False
                     for x in frame_lists_offsets:
-                        if frame_lists_offsets[x] == test_list:  # move the offset to create the reference.. and move back
+                        if frame_lists_offsets[x] == test_list:  # move the offset to create the reference and move back
                             tmp = binfile.offset
                             binfile.offset = x
                             binfile.createRefFromStored()
@@ -564,9 +567,9 @@ class SRTMatAnim():
         binfile.end()
 
     def pack(self, binfile, framescale):
-        ''' Packs the material srt entry '''
+        """ Packs the material srt entry """
         binfile.start()
-        binfile.storeNameRef(self.name)
+        binfile.storeNameRef(self.material.name)
         # parse enabled
         i = 0
         count = 0
@@ -661,40 +664,42 @@ class Srt0(SubFile):
     #   PACKING
     def unpack(self, binfile):
         self._unpack(binfile)
-        self._unpackData(binfile)
-        return
-        # uk, self.framecount, self.size, self.matrixmode, self.looping = binfile.read("I2H2I", 16)
-        # # advance to section 0
-        # binfile.recall()
-        # folder = Folder(binfile, "scn0root")  # todo name here
-        # folder.unpack(binfile)
-        # while True:
-        #     e = folder.openI()
-        #     if not e:
-        #         break
-        #     mat = SRTMatAnim(e, self.framecount)
-        #     mat.unpack(binfile)
-        #     self.matAnimations.append(mat)
-        # binfile.recall()  # section 1 (unknown)
-        # self.section1 = binfile.readRemaining(self.byte_len)
-        # binfile.end()
+        # self._unpackData(binfile)
+        # return
+        uk, self.framecount, self.size, self.matrixmode, self.looping = binfile.read("I2H2I", 16)
+        # advance to section 0
+        binfile.recall()
+        folder = Folder(binfile, "srt0root")  # todo name here
+        folder.unpack(binfile)
+        while True:
+            e = folder.openI()
+            if not e:
+                break
+            mat = SRTMatAnim(e, self.framecount)
+            mat.unpack(binfile)
+            self.matAnimations.append(mat)
+        binfile.recall()  # section 1 (unknown)
+        self.section1 = binfile.readRemaining(self.byte_len)
+        binfile.end()
+        binfile.end()
 
     def pack(self, binfile):
         """ Packs the data for SRT file """
         self._pack(binfile)
-        self._packData(binfile)
-        # binfile.write("I2H2I", 0, self.framecount, len(self.matAnimations),
-        #               self.matrixmode, self.looping)
-        # binfile.createRef()  # create ref to section 0
-        # # create index group
-        # folder = Folder(binfile, "scn0root")
-        # for x in self.matAnimations:
-        #     folder.addEntry(x.name)
-        # folder.pack(binfile)
-        # framescale = self.calcFrameScale(self.framecount)
-        # for x in self.matAnimations:
-        #     folder.createEntryRefI()
-        #     x.pack(binfile, framescale)
-        # binfile.createRef()  # section 1 (unknown)
-        # binfile.writeRemaining(self.section1)
-        # binfile.end()
+        # self._packData(binfile)
+        binfile.write("I2H2I", 0, self.framecount, len(self.matAnimations),
+                      self.matrixmode, self.looping)
+        binfile.createRef()  # create ref to section 0
+        # create index group
+        folder = Folder(binfile, "scn0root")
+        for x in self.matAnimations:
+            folder.addEntry(x.name)
+        folder.pack(binfile)
+        framescale = self.calcFrameScale(self.framecount)
+        for x in self.matAnimations:
+            folder.createEntryRefI()
+            x.pack(binfile, framescale)
+        binfile.createRef()  # section 1 (unknown)
+        binfile.writeRemaining(self.section1)
+        binfile.end()
+        binfile.end()
