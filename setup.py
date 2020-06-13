@@ -20,6 +20,11 @@ CLASSIFIERS = [
 # calling the setup function
 setup(name='abmatt',
       version='0.2.0',
+      entry_points={
+          'console_scripts': [
+              'abmatt = abmatt.__main__:main'
+          ]
+      },
       description='Brres file material editor',
       long_description=long_description,
       long_description_content_type="text/markdown",

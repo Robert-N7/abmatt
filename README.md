@@ -26,7 +26,7 @@ ABMatt supports editing the following types:
 
 ## Command Line Usage
 ```
-./abmatt.py -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value> -t <type> -n <name> -m <model> -i -s]
+abmatt -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value> -t <type> -n <name> -m <model> -i -s]
 ```
 | Flag |Expanded| Description |
 |---|---|---|
@@ -46,15 +46,15 @@ ABMatt supports editing the following types:
 ### Command Line Examples
 This command would open *course_model.brres* in overwrite mode and run the commands stored in *my_commands.txt*
 ```
-./abmatt.py -f course_model.brres -o -c my_commands.txt
+abmatt -f course_model.brres -o -c my_commands.txt
 ```
 This next command would enable xlu for all materials starting with the prefix xlu.
 ```
-./abmatt.py -f course_model.brres -o -n xlu.* -k xlu -v true
+abmatt -f course_model.brres -o -n xlu.* -k xlu -v true
 ```
 
 ## File Format
-ABMatT supports reading in commands from files or in interactive mode which have a specified extended BNF format.
+ABMatt supports reading in commands from files or in interactive mode which have a specified extended BNF format.
 Parameters are delimited by spaces except where a ':' or ',' is specified. Case is insensitive for commands, keys, and values.
 ```
 line = begin_preset | command;
