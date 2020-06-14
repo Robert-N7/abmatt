@@ -3,9 +3,9 @@
 # ------------------------------------------------------------------------
 from copy import deepcopy, copy
 
-from binfile import Folder
-from matching import *
-from mdl0.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
+from abmatt.binfile import Folder
+from abmatt.matching import *
+from abmatt.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
 
 
 class ShaderList():
@@ -106,7 +106,6 @@ class ShaderList():
 
     def pack(self, binfile, folder):
         """Packs the shader data, generating material and index group references"""
-        self.consolidate()
         li = self.list
         for i in range(len(li)):
             x = li[i]
@@ -117,7 +116,7 @@ class ShaderList():
 
 
 class Stage():
-    ''' Single shader stage '''
+    """ Single shader stage """
     # COLOR STRINGS
     RASTER_COLORS = ("lightchannel0", "lightchannel1", "bumpalpha", "normalizedbumpalpha", "zero")
     COLOR_CONSTANTS = ("1_1", "7_8", "3_4", "5_8", "1_2", "3_8", "1_4", "1_8",
@@ -129,7 +128,7 @@ class Stage():
     COLOR_SELS = ("outputcolor", "outputalpha", "color0", "alpha0", "color1",
                   "alpha1", "color2", "alpha2", "texturecolor", "texturealpha",
                   "rastercolor", "rasteralpha", "one", "half",
-                  "constantcolorselection", "zero")
+                  "colorselection", "zero")
     BIAS = ("zero", "addhalf", "subhalf")
     OPER = ("add", "subtract")
     SCALE = ("multiplyby1", "multiplyby2", "multiplyby4", "divideby2")
@@ -143,7 +142,7 @@ class Stage():
                        "color0_blue", "color1_blue", "color2_blue", "color3_blue",
                        "color0_alpha", "color1_alpha", "color2_alpha", "color3_alpha")
     ALPHA_SELS = ("outputalpha", "alpha0", "alpha1", "alpha2", "texturealpha",
-                  "rasteralpha", "constantalphaselection", "zero")
+                  "rasteralpha", "alphaselection", "zero")
     ALPHA_DEST = ("outputalpha", "alpha0", "alpha1", "alpha2")
 
     # INDIRECT TEVS
@@ -156,12 +155,12 @@ class Stage():
     SETTINGS = ("enabled", "mapid", "coordinateid",
                 "textureswapselection", "rastercolor",
                 "rasterswapselection",
-                "colorconstantselection", "colora",
+                "colorconstantselection", "constantcolorselection", "colora",
                 "colorb", "colorc",
                 "colord", "colorbias",
                 "coloroperation", "colorclamp",
                 "colorscale", "colordestination",
-                "alphaconstantselection", "alphaa",
+                "constantalphaselection", "alphaconstantselection", "alphaa",
                 "alphab", "alphac",
                 "alphad", "alphabias",
                 "alphaoperation", "alphaclamp",
@@ -177,7 +176,7 @@ class Stage():
         self.parent = parent
         self.map = {
             "enabled": True, "mapid": id, "coordinateid": id,
-            "textureswapselection": 0, "rastercolor": self.RASTER_COLORS[0],
+            "textureswapselection": 0, "rastercolor": self.RASTER_COLORS[4],
             "rasterswapselection": 0,
             "colorconstantselection": self.COLOR_CONSTANTS[8], "colora": self.COLOR_SELS[-1],
             "colorb": self.COLOR_SELS[8], "colorc": self.COLOR_SELS[10],
@@ -204,15 +203,24 @@ class Stage():
         return str(self.map)
 
     def __getitem__(self, key):
+        i = key.find('constant')
+        if 0 <= i < 5:  # out of order
+            is_alpha = True if 'alpha' in key else False
+            if is_alpha:
+                key = 'alphaconstantselection'
+            else:
+                key = 'colorconstantselection'
+        if key not in self.map:
+            raise ValueError("No such shader stage setting {} possible keys are: \n\t{}".format(key, self.map.keys()))
         return self.map[key]
 
     def info(self, key=None, indentation_level=0):
+        trace = '  ' * indentation_level if indentation_level else '>' + str(self.parent.getMaterialNames())
         if key:
-            print('{}{}->Stage{}: {}:{}'.format('  ' * indentation_level + '>',
-                                                self.parent.getMaterialNames(), self.id, key, self[key]))
+            print('{}->Stage{}: {}:{}'.format(trace, self.id, key, self[key]))
         else:
             print('{}Stage{}: MapId:{} CoordinateId:{} ColorScale:{} ColorDestination:{}'.format(
-                '  ' * indentation_level + '>', self.id, self['mapid'], self['coordinateid'],
+                trace, self.id, self['mapid'], self['coordinateid'],
                 self['colorscale'], self['colordestination']))
 
     def getRasterColorI(self):
@@ -264,8 +272,15 @@ class Stage():
         self.map["colorconstantselection"] = self.COLOR_CONSTANTS[index]
 
     def __setitem__(self, key, value):
+        i = key.find('constant')
+        is_alpha = True if 'alpha' in key else False
+        if 0 <= i < 5:  # out of order
+            if is_alpha:
+                key = 'alphaconstantselection'
+            else:
+                key = 'colorconstantselection'
         if not key in self.map:
-            raise ValueError("No such shader stage setting {}".format(key))
+            raise ValueError("No such shader stage setting {} possible keys are: \n\t{}".format(key, self.map.keys()))
         # bools
         if key == "enabled" or "clamp" in key or key == "indirectuseprevstage" \
                 or key == "indirectunmodifiedlod":
@@ -276,56 +291,69 @@ class Stage():
         elif "id" in key:
             self.map[key] = validInt(value, 0, 7)
         else:  # list indexing ones
+            value = value.replace('constant', '')
             if "scale" in key:
                 try:
                     f = validFloat(value, 0.5, 4)
                     pos = indexListItem(self.SCALEN, f)
                     value = self.SCALE[pos]
                 except:
-                    indexListItem(self.SCALE, key)
+                    indexListItem(self.SCALE, value)
             elif "color" in key:
                 if len(key) < 7:  # abcd
-                    indexListItem(self.COLOR_SELS, key)
-                elif key == "constantcolorselection":
-                    indexListItem(self.COLOR_CONSTANTS, key)
-                    if "constant" in value:
-                        value = value[8:]
+                    if value == '0':
+                        value = 'zero'
+                    elif value == '1':
+                        value = 'one'
+                    elif value == '0.5':
+                        value = 'half'
+                    else:
+                        indexListItem(self.COLOR_SELS, value)
+                elif key == "colorconstantselection":
+                    value = value.replace('constant', '')
+                    indexListItem(self.COLOR_CONSTANTS, value)
                 elif key == "colordestination":
-                    indexListItem(self.COLOR_DEST, key)
+                    indexListItem(self.COLOR_DEST, value)
                 elif key == "colorbias":
-                    indexListItem(self.BIAS, key)
+                    indexListItem(self.BIAS, value)
                 elif key == "coloroperation":
-                    indexListItem(self.OPER, key)
+                    indexListItem(self.OPER, value)
                 elif key == "rastercolor":
-                    indexListItem(self.RASTER_COLORS, key)
-            elif "alpha" in key:
+                    if value == '0':
+                        value = 'zero'
+                    else:
+                        indexListItem(self.RASTER_COLORS, value)
+            elif is_alpha:
                 if len(key) < 7:  # abcd
-                    indexListItem(self.ALPHA_SELS, key)
-                elif key == "constantalphaselection":
-                    if "constant" in value:
-                        value = value[8:]
-                    indexListItem(self.ALPHA_CONSTANTS, key)
+                    if value == '0':
+                        value = 'zero'
+
+                    else:
+                        indexListItem(self.ALPHA_SELS, value)
+                elif key == "alphaconstantselection":
+                    value = value.replace('constant', '')
+                    indexListItem(self.ALPHA_CONSTANTS, value)
                 elif key == "alphadestination":
-                    indexListItem(self.ALPHA_DEST, key)
+                    indexListItem(self.ALPHA_DEST, value)
                 elif key == "alphabias":
-                    indexListItem(self.BIAS, key)
+                    indexListItem(self.BIAS, value)
                 elif key == "alphaoperation":
-                    indexListItem(self.OPER, key)
+                    indexListItem(self.OPER, value)
             elif "indirect" in key:
                 if key == "indirectformat":
-                    indexListItem(self.TEX_FORMAT, key)
+                    indexListItem(self.TEX_FORMAT, value)
                 elif key == "indirectmatrix":
-                    indexListItem(self.IND_MATRIX, key)
+                    indexListItem(self.IND_MATRIX, value)
                 elif key == "indirectalpha":
-                    indexListItem(self.IND_ALPHA, key)
+                    indexListItem(self.IND_ALPHA, value)
                 elif key == "indirectbias":
-                    indexListItem(self.IND_BIAS, key)
+                    indexListItem(self.IND_BIAS, value)
                 elif "wrap" in key:
-                    indexListItem(self.WRAP, key)
+                    indexListItem(self.WRAP, value)
             self.map[key] = value
 
     def unpackColorEnv(self, binfile):
-        ''' Unpacks the color env '''
+        """ Unpacks the color env """
         ce = ColorEnv(self.id)
         ce.unpack(binfile)
         self.map["colora"] = self.COLOR_SELS[ce.getSelA()]
@@ -418,7 +446,7 @@ class Shader():
                   BPCommand(0xF9, 0xC), BPCommand(0xFA, 0x5), BPCommand(0xFB, 0xD),
                   BPCommand(0xFC, 0xA), BPCommand(0xFD, 0xE))
     SEL_MASK = BPCommand(0xFE, 0xFFFFF0)
-    SETTINGS = ('texturerefcount', 'indirectmap', 'indirectcoord')
+    SETTINGS = ('texturerefcount', 'indirectmap', 'indirectcoord', 'stagecount')
 
     def __init__(self, name, parent):
         self.parent = parent
@@ -447,6 +475,14 @@ class Shader():
                 return False
         return True
 
+    def getIndirectMatricesUsed(self):
+        matrices_used = [False] * 3
+        for x in self.stages:
+            matrix = x['indirectmatrix'][-1]
+            if matrix.isdigit():
+                matrices_used[int(matrix)] = True
+        return matrices_used
+
     def detect_unusedMapId(self):
         """Attempts to find next available unused mapid"""
         used = [x['mapid'] for x in self.stages]
@@ -455,45 +491,60 @@ class Shader():
                 return i
         return 0
 
-    def detectIndirectIndex(self, key):
-        i = 0 if not key[-1].isDigit() else int(key[-1])
+    @staticmethod
+    def detectIndirectIndex(key):
+        i = 0 if not key[-1].isdigit() else int(key[-1])
         if not 0 <= i < 4:
             raise ValueError('Indirect index {} out of range (0-3).'.format(i))
         return i
 
     def __getitem__(self, key):
-        if key == self.SETTINGS[0]:
+        if self.SETTINGS[0] == key:
             return self.texRefCount
         elif self.SETTINGS[1] in key:
             return self.indTexMaps[self.detectIndirectIndex(key)]
         elif self.SETTINGS[2] in key:
             return self.indTexCoords[self.detectIndirectIndex(key)]
+        elif self.SETTINGS[3] == key:  # stage count
+            return len(self.stages)
 
     def __setitem__(self, key, value):
         value = validInt(value, 0, 8)
-        if key == self.SETTINGS[0]:  # texture refs
+        if self.SETTINGS[0] == key:  # texture refs
             self.texRefCount = value
         elif self.SETTINGS[1] in key:  # indirect map
-            i = self.detectIndirectIndex(key)
-            self.indTexMaps[i] = value
+            self.indTexMaps[self.detectIndirectIndex(key)] = value
         elif self.SETTINGS[2] in key:  # indirect coord
             self.indTexCoords[self.detectIndirectIndex(key)] = value
+        elif self.SETTINGS[3] == key:   # stage count
+            current_len = len(self.stages)
+            if current_len < value:
+                while current_len < value:
+                    self.addStage()
+                    current_len += 1
+                self.onUpdateActiveStages(current_len)
+            elif current_len > value:
+                while current_len > value:
+                    self.removeStage()
+                    current_len -= 1
+                self.onUpdateActiveStages(current_len)
 
     def getMaterialNames(self):
         return [mat.name for mat in self.materials]
 
     def info(self, key=None, indentation_level=0):
+        trace = '  ' * indentation_level if indentation_level else '>'
         if not key:
-            print('{}Shader{}: {} stages, IndirectMap {} IndirectCoord {}'.format('  ' * indentation_level + '>',
-                                                                            self.getMaterialNames(), len(self.stages),
-                                                                            self.indTexMaps,
-                                                                            self.indTexCoords))
+            print('{}Shader{}: {} stages, IndirectMap {} IndirectCoord {}'.format(trace,
+                                                                                  self.getMaterialNames(),
+                                                                                  len(self.stages),
+                                                                                  self.indTexMaps,
+                                                                                  self.indTexCoords))
             indentation_level += 1
             for x in self.stages:
                 x.info(key, indentation_level)
         else:
-            print('{}{}: {}:{} '.format('  ' * indentation_level + '>', self.getMaterialNames(), key, self[key]))
-            # todo, detect key wanted in stages
+            print('{}{}: {}:{} '.format(trace, self.getMaterialNames(), key, self[key]))
 
     def getStage(self, n):
         if not 0 <= n < len(self.stages):
@@ -502,24 +553,31 @@ class Shader():
         return self.stages[n]
 
     def addStage(self):
-        s = Stage(len(self.stages), self)
+        """Adds stage to shader"""
+        stages = self.stages
+        s = Stage(len(stages), self)
         mapid = self.detect_unusedMapId()
         s['mapid'] = mapid
         s['coordinateid'] = mapid
-        self.texRefCount += 1
-        self.stages.append(s)
+        stages.append(s)
         return s
+
+    def onUpdateActiveStages(self, num_stages):
+        for x in self.materials:
+            x.shaderStages = num_stages
 
     def removeStage(self, id=-1):
         if len(self.stages) == 1:
             raise Exception('Shader must have at least 1 stage')
         self.stages.pop(id)
-        self.texRefCount -= 1
 
     def __deepcopy__(self, memodict=None):
         ret = Shader(self.name, self.parent)
         for x in self.stages:
-            s = deepcopy(x, memodict)
+            s = Stage(x.id, ret)
+            map = s.map
+            for key, val in x.map.items():
+                map[key] = val
             ret.stages.append(s)
         ret.texRefCount = self.texRefCount
         ret.indTexMaps = copy(self.indTexMaps)
@@ -560,11 +618,10 @@ class Shader():
             stage0 = self.stages[i]
             i += 1
             if i < stage_count:
-                has_next = True
                 stage1 = self.stages[i]
                 i += 1
             else:
-                has_next = False
+                stage1 = None
             binfile.advance(5)  # skip mask
             kcel.unpack(binfile)
             # print("Color Selection index {}, data {}".format(kcel.getCSel0(), kcel.data))
@@ -577,7 +634,7 @@ class Shader():
             stage0.setConstantAlphaI(kcel.getASel0())
             stage0.setRasterColorI(tref.getColorChannel0())
             stage0.unpackColorEnv(binfile)
-            if has_next:
+            if stage1:
                 stage1.map["enabled"] = tref.getTexEnabled1()
                 stage1.map["mapid"] = tref.getTexMapID1()
                 stage1.map["coordinateid"] = tref.getTexCoordID1()
@@ -588,15 +645,16 @@ class Shader():
             else:
                 binfile.advance(5)  # skip unpack color env
             stage0.unpackAlphaEnv(binfile)
-            if has_next:
+            if stage1:
                 stage1.unpackAlphaEnv(binfile)
             else:
                 binfile.advance(5)
             stage0.unpackIndirect(binfile)
-            if has_next:
+            if stage1:
                 stage1.unpackIndirect(binfile)
             else:
                 binfile.advance(5)
+            binfile.align(16)
         binfile.advanceAndEnd(self.BYTESIZE)
 
     def pack(self, binfile, id):
@@ -628,17 +686,16 @@ class Shader():
             stage0 = self.stages[i]
             i += 1
             if i < len(self.stages):
-                hasNext = True
                 stage1 = self.stages[i]
                 i += 1
             else:
-                hasNext = False
+                stage1 = None
             self.SEL_MASK.pack(binfile)
             kcel = KCel(j)  # KCEL
             cc = stage0.getConstantColorI()
             ac = stage0.getConstantAlphaI()
             kcel.data = cc << 4 | ac << 9
-            if hasNext:
+            if stage1:
                 cc = stage1.getConstantColorI()
                 ac = stage1.getConstantAlphaI()
                 kcel.data |= cc << 14 | ac << 19
@@ -648,7 +705,7 @@ class Shader():
             cc = stage0.getRasterColorI()
             tref.data = cc << 7 | stage0["enabled"] << 6 | stage0["coordinateid"] << 3 \
                         | stage0["mapid"]
-            if hasNext:
+            if stage1:
                 cc = stage1.getRasterColorI()
                 tref.data |= cc << 19 | stage1["enabled"] << 18 \
                              | stage1["coordinateid"] << 15 | stage1["mapid"] << 12
@@ -657,17 +714,17 @@ class Shader():
             tref.pack(binfile)
             # all the rest
             stage0.packColorEnv(binfile)
-            if hasNext:
+            if stage1:
                 stage1.packColorEnv(binfile)
             else:
                 binfile.advance(5)
             stage0.packAlphaEnv(binfile)
-            if hasNext:
+            if stage1:
                 stage1.packAlphaEnv(binfile)
             else:
                 binfile.advance(5)
             stage0.packIndirect(binfile)
-            if hasNext:
+            if stage1:
                 stage1.packIndirect(binfile)
             else:
                 binfile.advance(5)
@@ -715,7 +772,7 @@ class Shader():
 #         self.minimum = data[10:12]
 #         self.maximum = data[12:14]
 #         file.offset = self.offset + self.dataOffset
-#         data = file.read(Struct("> " + str(self.length - 0x30) + "B"), self.length - 0x30)
+#         data = file.read(Struct("> " + color_str(self.length - 0x30) + "B"), self.length - 0x30)
 #         # print("TCoord: {}".format(data))
 #
 #     def __str__(self):

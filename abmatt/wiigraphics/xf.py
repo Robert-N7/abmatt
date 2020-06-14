@@ -1,5 +1,5 @@
 #!/usr/bin/python
-''' XF (Transform Unit) Register '''
+""" XF (Transform Unit) Register """
 class XFCommand(object):
     def __init__(self, enabled, address):
         self.enabled = 0x10 if enabled else 0

@@ -1,0 +1,75 @@
+# ----------------------------------------------------------
+# Presets file, you are encouraged to edit/add your own
+# ----------------------------------------------------------
+
+[transparent]
+set material CompareBeforeTexture:False
+set material xlu:False
+set material ref0:128
+set material comp0:LessOrEqual
+set material ref1:255
+set material comp1:GreaterOrEqual
+
+[blend]
+set material CompareBeforeTexture:True
+set material blend:True
+set material xlu:True
+set material ref0:0
+set material comp0:Always
+set material ref1:0
+set material comp1:Always
+set material enableDepthUpdate:False
+
+[opaque]
+set material CompareBeforeTexture:True
+set material xlu:False
+set material ref0:0
+set material comp0:Always
+set material ref1:0
+set material comp1:Always
+
+[ef_dushboard]
+# material settings
+preset opaque
+set material shadercolor:constant3:(0,0,0,128)
+set material indirectmatrix:0:scale14,(0.6396484375,0,0),(0,0.639648375,0)
+set material layerCount:3
+# layers
+set layer:0 name:ef_rainbowRed2
+set layer:0 mapmode:EnvCamera
+set projection:stq
+set InputForm:abc1
+set coordinates:normals
+set normalize:True
+set layer:1 name:ef_arrowBumpS
+set layer:1 uwrap:mirror
+set layer:2 name:ef_arrowGradS
+
+# shader
+set shader indirectmap:1
+set shader indirectcoord:1
+set shader stageCount:2
+# stage 0
+set stage:0 mapid:2
+set coordinateid:2
+set rastercolor:zero
+set colorConstantSelection:3_4
+set colorB:ColorConstantSelection
+set colorC:TextureColor
+set colorScale:1
+# stage 1
+set stage:1 mapid:0
+set coordinateid:0
+set rastercolor:0
+set colorConstantSelection:5_8
+set colorA:TextureAlpha
+set colorB:0
+set colorC:0
+set colorD:OutputColor
+set alphaConstantSelection:color3_alpha
+set alphaA:TextureAlpha
+set alphaB:0
+set alphaC:ConstantAlphaSelection
+set alphaD:OutputAlpha
+set indirectBias:stu
+set stage:1 indirectMatrix:Matrix0

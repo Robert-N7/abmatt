@@ -1,7 +1,6 @@
 #!/usr/bin/python
 """ Material wii graphics"""
-from binfile import printCollectionHex
-from mdl0.wiigraphics.bp import ColorReg, AlphaFunction, ZMode, BPCommand, BlendMode, ConstantAlpha, IndMatrix
+from abmatt.wiigraphics.bp import ColorReg, AlphaFunction, ZMode, BPCommand, BlendMode, ConstantAlpha, IndMatrix
 
 
 class TevRegister:
@@ -56,6 +55,15 @@ class MatGX:
         self.indMatrices = []
         for i in range(3):
             self.indMatrices.append(IndMatrix(i))
+
+    def getIndMatrix(self, id):
+        return self.indMatrices[id]
+
+    def setIndMatrix(self, id, scale, matrix):
+        x = self.indMatrices[id]
+        x.scale = scale
+        assert(len(matrix) == 6)
+        x.matrix = matrix
 
     def unpack(self, binfile):
         """ unpacks the mat graphic codes """

@@ -1,14 +1,16 @@
 #!/usr/bin/python
-''' Srt0 Brres subfile '''
+""" Srt0 Brres subfile """
+import math
 import re
 
-from matching import validInt, validBool, validFloat
-from subfile import SubFile
-from binfile import Folder, printCollectionHex
-import math
+from abmatt.binfile import Folder
+from abmatt.matching import validInt, validBool, validFloat
+from abmatt.subfile import SubFile
 
 
 # ---------------------------------------------------------
+
+
 
 class SRTKeyFrameList:
     ''' Representing an srt non-fixed animation list
@@ -147,8 +149,6 @@ class SRTKeyFrameList:
     def unpack(self, binfile):
         """ unpacks an animation entry list """
         self.entries = []
-        # data = binfile.read('30B', 0)
-        # printCollectionHex(data)
         # header
         size, uk, fs = binfile.read("2Hf", 8)
         for i in range(size):
@@ -156,7 +156,7 @@ class SRTKeyFrameList:
             self.entries.append(self.SRTKeyFrame(value, index, delta))
 
     def pack(self, binfile, framescale):
-        ''' packs an animation entry list '''
+        """ packs an animation entry list """
         binfile.write("2Hf", len(self.entries), 0, framescale)
         for x in self.entries:
             binfile.write("3f", x.index, x.value, x.delta)
@@ -251,6 +251,7 @@ class SRTTexAnim():
             elif 'fixed' in key:
                 if value == 'none' or value == 'false' or value == 'disable':
                     disable = True
+                    val = 0
                 else:
                     disable = False
                     val = validFloat(value, -math.inf, math.inf)
@@ -381,20 +382,20 @@ class SRTTexAnim():
             else:
                 offset = binfile.offset
                 [binfile.offset] = binfile.read("I", 4)
-                self.animations['xscale'].unpack(binfile, False)
-                self.animations['yscale'].unpack(binfile, False)
+                self.animations['xscale'].unpack(binfile)
+                self.animations['yscale'].unpack(binfile)
                 binfile.offset = offset + 4
         else:  # not isotropic
             if self.xScaleFixed:
                 [val] = binfile.read("f", 4)
                 self.xScale = val
             else:
-                binfile.bl_unpack(self.animations['xscale'], False)
+                binfile.bl_unpack(self.animations['xscale'].unpack, False)
             if self.yScaleFixed:
                 [val] = binfile.read("f", 4)
                 self.yScale = val
             else:
-                binfile.bl_unpack(self.animations['yscale'], False)
+                binfile.bl_unpack(self.animations['yscale'].unpack, False)
 
     def unpackTranslation(self, binfile):
         """ unpacks translation data """
@@ -404,21 +405,21 @@ class SRTTexAnim():
             [val] = binfile.read("f", 4)
             self.xTranslation = val
         else:
-            binfile.bl_unpack(self.animations['xtranslation'], False)
+            binfile.bl_unpack(self.animations['xtranslation'].unpack, False)
         if self.yTranslationFixed:
             [val] = binfile.read("f", 4)
             self.yTranslation = val
         else:
-            binfile.bl_unpack(self.animations['ytranslation'], False)
+            binfile.bl_unpack(self.animations['ytranslation'].unpack, False)
 
     def unpackRotation(self, binfile):
-        ''' unpacks rotation '''
+        """ unpacks rotation """
         if not self.rotationDefault:
             if self.rotationFixed:
                 [val] = binfile.read("f", 4)
                 self.rotation = val
             else:
-                binfile.bl_unpack(self.animations['rotation'])
+                binfile.bl_unpack(self.animations['rotation'].unpack, False)
 
     def unpack(self, binfile):
         ''' unpacks SRT Texture animation data '''
@@ -494,6 +495,7 @@ class SRTMatAnim():
 
     def __init__(self, name, frame_count=1):
         self.name = name
+        self.material = None    # to be filled
         self.frameCount = frame_count
         self.tex_animations = []
         self.texEnabled = [False] * 8
@@ -522,7 +524,7 @@ class SRTMatAnim():
     #  Packing
     def consolidate(self, binfile, has_key_frames):
         """consolidates and packs the frame lists based on the animations that have key frames"""
-        frame_lists_offsets = {} # dictionary to track offsets of frame lists
+        frame_lists_offsets = {}    # dictionary to track offsets of frame lists
         frame_scale = Srt0.calcFrameScale(self.frameCount)
         for j in range(len(self.tex_animations)):
             has_frames = has_key_frames[j]
@@ -532,7 +534,7 @@ class SRTMatAnim():
                     test_list = tex.animations[SRTKeyFrameList.TYPES[i]]
                     found = False
                     for x in frame_lists_offsets:
-                        if frame_lists_offsets[x] == test_list:  # move the offset to create the reference.. and move back
+                        if frame_lists_offsets[x] == test_list:  # move the offset to create the reference and move back
                             tmp = binfile.offset
                             binfile.offset = x
                             binfile.createRefFromStored()
@@ -547,6 +549,9 @@ class SRTMatAnim():
     def unpack(self, binfile):
         """ unpacks the material srt entry """
         binfile.start()
+        # data = binfile.read('200B', 0)
+        # print('Mat Anim {}'.format(self.name))
+        # printCollectionHex(data)
         nameoff, enableFlag, uk = binfile.read("3I", 12)
         bit = 1
         count = 0
@@ -556,7 +561,7 @@ class SRTMatAnim():
                 self.tex_animations.append(SRTTexAnim(i, self.frameCount))
                 count += 1
             else:
-                self.texEnabled.append(False)
+                self.texEnabled[i] = False
             bit <<= 1
         binfile.store(count)  # offsets
         for tex in self.tex_animations:
@@ -565,17 +570,17 @@ class SRTMatAnim():
         binfile.end()
 
     def pack(self, binfile, framescale):
-        ''' Packs the material srt entry '''
+        """ Packs the material srt entry """
         binfile.start()
         binfile.storeNameRef(self.name)
         # parse enabled
-        i = 0
-        count = 0
+        i = count = 0
+        bit = 1
         for x in self.texEnabled:
-            i <<= 1
             if x:
-                i |= 1
+                i |= bit
                 count += 1
+            bit <<= 1
         binfile.write("2I", i, 0)
         binfile.mark(count)
         offsets = []
@@ -660,42 +665,48 @@ class Srt0(SubFile):
 
     # ----------------------------------------------------------------------
     #   PACKING
+    def updateNames(self):
+        """Updates the mat animation names based on what material it's linked to"""
+        for x in self.matAnimations:
+            x.name = x.material.name
+
     def unpack(self, binfile):
         self._unpack(binfile)
-        self._unpackData(binfile)
-        return
-        # uk, self.framecount, self.size, self.matrixmode, self.looping = binfile.read("I2H2I", 16)
-        # # advance to section 0
-        # binfile.recall()
-        # folder = Folder(binfile, "scn0root")  # todo name here
-        # folder.unpack(binfile)
-        # while True:
-        #     e = folder.openI()
-        #     if not e:
-        #         break
-        #     mat = SRTMatAnim(e, self.framecount)
-        #     mat.unpack(binfile)
-        #     self.matAnimations.append(mat)
+        # self._unpackData(binfile)
+        # return
+        uk, self.framecount, self.size, self.matrixmode, self.looping = binfile.read("I2H2I", 16)
+        # advance to section 0
+        binfile.recall()
+        folder = Folder(binfile, "srt0root")  # todo name here
+        folder.unpack(binfile)
+        while True:
+            e = folder.openI()
+            if not e:
+                break
+            mat = SRTMatAnim(e, self.framecount)
+            mat.unpack(binfile)
+            self.matAnimations.append(mat)
         # binfile.recall()  # section 1 (unknown)
         # self.section1 = binfile.readRemaining(self.byte_len)
-        # binfile.end()
+        binfile.end()
 
     def pack(self, binfile):
         """ Packs the data for SRT file """
+        self.updateNames()
         self._pack(binfile)
-        self._packData(binfile)
-        # binfile.write("I2H2I", 0, self.framecount, len(self.matAnimations),
-        #               self.matrixmode, self.looping)
-        # binfile.createRef()  # create ref to section 0
-        # # create index group
-        # folder = Folder(binfile, "scn0root")
-        # for x in self.matAnimations:
-        #     folder.addEntry(x.name)
-        # folder.pack(binfile)
-        # framescale = self.calcFrameScale(self.framecount)
-        # for x in self.matAnimations:
-        #     folder.createEntryRefI()
-        #     x.pack(binfile, framescale)
+        # self._packData(binfile)
+        binfile.write("I2H2I", 0, self.framecount, len(self.matAnimations),
+                      self.matrixmode, self.looping)
+        binfile.createRef()  # create ref to section 0
+        # create index group
+        folder = Folder(binfile, "srt0root")
+        for x in self.matAnimations:
+            folder.addEntry(x.name)
+        folder.pack(binfile)
+        framescale = self.calcFrameScale(self.framecount)
+        for x in self.matAnimations:
+            folder.createEntryRefI()
+            x.pack(binfile, framescale)
         # binfile.createRef()  # section 1 (unknown)
         # binfile.writeRemaining(self.section1)
-        # binfile.end()
+        binfile.end()

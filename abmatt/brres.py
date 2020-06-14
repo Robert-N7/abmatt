@@ -7,12 +7,13 @@ import re
 import string
 import sys
 
-from binfile import BinFile, Folder
-from matching import findAll
-from mdl0.layer import Layer
-from mdl0.mdl0 import Mdl0
-from srt0.srt0 import Srt0
-from subfile import *
+from abmatt.binfile import BinFile, Folder, UnpackingError
+from abmatt.layer import Layer
+from abmatt.matching import findAll
+from abmatt.mdl0 import Mdl0
+from abmatt.pat0 import Pat0
+from abmatt.srt0 import Srt0
+from abmatt.subfile import *
 
 
 class Brres():
@@ -52,7 +53,8 @@ class Brres():
         return findAll(name, self.models)
 
     def close(self):
-        self.save(self.DESTINATION, self.OVERWRITE)
+        if self.isModified or self.DESTINATION != self.name:
+            self.save(self.DESTINATION, self.OVERWRITE)
 
     def save(self, filename, overwrite):
         if not filename:
@@ -86,7 +88,7 @@ class Brres():
         if command.cmd == command.COMMANDS[0]:
             self.set(command)
         elif command.cmd == command.COMMANDS[1]:
-            self.info(command, "")
+            self.info(command)
         else:
             print("Unknown command: {}".format(command.cmd))
 
@@ -96,11 +98,17 @@ class Brres():
         return self.name
 
     def info(self, key=None, indentation_level=0):
-        print('{}{}:\t{} models\t{} textures'.format('  ' * indentation_level + '>', self.name,
+        print('{}{}:\t{} model(s)\t{} texture(s)'.format('  ' * indentation_level + '>', self.name,
                                                      len(self.models), len(self.textures)))
-        indentation_level += 1
-        for x in self.models:
-            x.info(key, indentation_level)
+        folder_indent = indentation_level + 1
+        indentation_level += 2
+        folders = self.folders
+        for i in range(len(folders)):
+            folder = folders[i]
+            if folder:
+                print('{}>{}'.format('  ' * folder_indent, self.FOLDERS[i]))
+                for x in folder:
+                    x.info(key, indentation_level)
 
     def set(self, command):
         mats = self.getMatCollection(command.modelname, command.materialname)
@@ -192,7 +200,9 @@ class Brres():
         for x in self.textures:
             if x.name == name:
                 return x
-        return None
+
+    def getTextures(self, name):
+        return findAll(name, self.textures)
 
     # ----------------- HOOKING REFERENCES ----------------------------------
     def hookAnimationRefs(self):
@@ -208,10 +218,9 @@ class Brres():
     # -------------------------------------------------------------------------
 
     def unpackFolder(self, binfile, root, folderIndex):
-        ''' Unpacks the folder folderIndex '''
+        """ Unpacks the folder folderIndex """
         name = self.FOLDERS[folderIndex]
         if root.open(name):
-
             container = self.folders[folderIndex]
             subFolder = Folder(binfile, name)
             subFolder.unpack(binfile)
@@ -229,10 +238,10 @@ class Brres():
         binfile.start()
         magic = binfile.readMagic()
         if magic != self.MAGIC:
-            raise ValueError("Magic {} does not match {}".format(magic, self.MAGIC))
+            raise UnpackingError(self, "Magic {} does not match {}".format(magic, self.MAGIC))
         bom = binfile.read("H", 2)
         binfile.bom = "<" if bom == 0xfffe else ">"
-        pad, self.length, rootoffset, numSections = binfile.read("hI2h", 10)
+        pad, length, rootoffset, numSections = binfile.read("hI2h", 10)
         binfile.offset = rootoffset
         root = binfile.readMagic()
         assert (root == self.ROOTMAGIC)

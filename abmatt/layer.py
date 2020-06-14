@@ -1,20 +1,21 @@
 """ Layer class """
-from matching import *
-from mdl0.wiigraphics.xf import XFTexMatrix, XFDualTex
+from abmatt.matching import parseValStr, indexListItem, validBool
+
+from abmatt.wiigraphics.xf import XFTexMatrix, XFDualTex
 
 
 class Layer:
     # ----------------------------------------------------------------------------
     #   Constants
     # ----------------------------------------------------------------------------
-    NUM_SETTINGS = 21
+    NUM_SETTINGS = 22
     SETTINGS = (
         "scale", "rotation", "translation", "scn0cameraref",
         "scn0lightref", "mapmode", "uwrap", "vwrap",
         "minfilter", "magfilter", "lodbias", "anisotrophy",
         "clampbias", "texelinterpolate", "projection", "inputform",
         "type", "coordinates", "embosssource", "embosslight",
-        "normalize")
+        "normalize", "name")
     WRAP = ("clamp", "repeat", "mirror")
     FILTER = ("nearest", "linear", "nearest_mipmap_nearest", "linear_mipmap_nearest", "nearest_mipmap_linear",
               "linear_mipmap_linear")
@@ -28,7 +29,7 @@ class Layer:
                    "texcoord7")
 
     def __init__(self, id, name, parent):
-        ''' Initializes, id (position of layer), name, and parent material '''
+        """ Initializes, id (position of layer), name, and parent material """
         self.id = id
         self.parent = parent
         self.name = name
@@ -40,7 +41,7 @@ class Layer:
         self.scn0LightRef = self.scn0CameraRef = -1
         self.mapMode = 0
         self.vwrap = self.uwrap = 1
-        self.minfilter = 5
+        self.minfilter = 1
         self.magfilter = 1
         self.LODBias = 0
         self.maxAnisotrophy = 0
@@ -134,11 +135,14 @@ class Layer:
         return self.enable | self.scaleDefault << 1 \
                | self.rotationDefault << 2 | self.translationDefault << 3
 
+    def getName(self):
+        return self.name
+
     GET_SETTINGS = (getScale, getRotation, getTranslation, getScn0CameraRef,
                     getScn0LightRef, getMapmode, getUwrap, getVwrap, getMinfilter, getMagfilter,
                     getLodbias, getAnisotrophy, getClampbias, getTexelInterpolate, getProjection,
                     getInputform, getType, getCoordinates, getEmbossSource, getEmbossLight,
-                    getNormalize)
+                    getNormalize, getName)
 
     def getSetter(self, key):
         for i in range(self.NUM_SETTINGS):
@@ -151,7 +155,7 @@ class Layer:
 
     def __setitem__(self, key, value):
         fun = self.getSetter(key)
-        return fun(value)
+        return fun(self, value)
 
     def setScaleStr(self, value):
         values = parseValStr(value)
@@ -165,14 +169,12 @@ class Layer:
             else:
                 self.scaleDefault = True
             self.scale = (i1, i2)
-            self.isModified = True
 
     def setRotationStr(self, value):
         f = float(value)
         if f != self.rotation:
             self.rotation = f
             self.rotationDefault = False if self.rotation == 0 else True
-            self.isModified = True
 
     def setTranslationStr(self, value):
         values = parseValStr(value)
@@ -183,7 +185,6 @@ class Layer:
         if self.translation[0] != i1 or self.translation[1] != i2:
             self.translation = (i1, i2)
             self.translationDefault = 1 if i1 == 1 and i2 == 1 else 0
-            self.isModified = True
 
     def setCameraRefStr(self, value):
         i = int(value)
@@ -191,7 +192,6 @@ class Layer:
             raise ValueError("Expected -1 or 0 for camera reference")
         if self.scn0CameraRef != i:
             self.scn0CameraRef = i
-            self.isModified = True
 
     def setLightRefStr(self, value):
         i = int(value)
@@ -199,31 +199,26 @@ class Layer:
             raise ValueError("Expected -1 for light reference")
         if self.scn0LightRef != i:
             self.scn0LightRef = i
-            self.isModified = True
 
     def setMapmodeStr(self, value):
         i = indexListItem(self.MAPMODE, value, self.mapMode)
         if i >= 0:
             self.mapMode = i
-            self.isModified = True
 
     def setUWrapStr(self, value):
         i = indexListItem(self.WRAP, value, self.uwrap)
         if i >= 0:
             self.uwrap = i
-            self.isModified = True
 
     def setVWrapStr(self, value):
         i = indexListItem(self.WRAP, value, self.vrap)
         if i >= 0:
             self.vrap = i
-            self.isModified = True
 
     def setMinFilterStr(self, value):
         i = indexListItem(self.FILTER, value, self.minfilter)
         if i >= 0:
             self.minfilter = i
-            self.isModified = True
 
     def setMagFilterStr(self, value):
         i = indexListItem(self.FILTER, value, self.magfilter)
@@ -231,13 +226,11 @@ class Layer:
             raise ValueError("MagFilter out of range (0-1)")
         elif i >= 0:
             self.minfilter = i
-            self.isModified = True
 
     def setLodBiasStr(self, value):
         f = float(value)
         if f != self.LODBias:
             self.LODBias = f
-            self.isModified = True
 
     def setAnisotrophyStr(self, value):
         invalidI = False
@@ -255,43 +248,36 @@ class Layer:
             raise ValueError("Invalid: '" + value + "', Anisotrophy expects 1|2|4")
         if i >= 0 and i != self.maxAnisotrophy:
             self.maxAnisotrophy = i
-            self.isModified = True
 
     def setClampBiasStr(self, value):
         val = validBool(value)
         if val != self.clampBias:
             self.clampBias = val
-            self.isModified = True
 
     def setTexelInterpolateStr(self, value):
         val = validBool(value)
         if val != self.texelInterpolate:
             self.texelInterpolate = val
-            self.isModified = True
 
     def setProjectionStr(self, value):
         i = indexListItem(self.PROJECTION, value, self.xfTexMatrix["projection"])
         if i >= 0:
             self.xfTexMatrix["projection"] = i
-            self.isModified = True
 
     def setInputFormStr(self, value):
         i = indexListItem(self.INPUTFORM, value, self.xfTexMatrix["inputform"])
         if i >= 0:
             self.xfTexMatrix["inputform"] = i
-            self.isModified = True
 
     def setTypeStr(self, value):
         i = indexListItem(self.TYPE, value, self.xfTexMatrix["type"])
         if i >= 0:
             self.xfTexMatrix["type"] = i
-            self.isModified = True
 
     def setCoordinatesStr(self, value):
         i = indexListItem(self.COORDINATES, value, self.xfTexMatrix["coordinates"])
         if i >= 0:
             self.xfTexMatrix["coordinates"] = i
-            self.isModified = True
 
     def setEmbossSourceStr(self, value):
         i = int(value)
@@ -299,7 +285,6 @@ class Layer:
             raise ValueError("Value '" + value + "' out of range for emboss source")
         if self.xfTexMatrix["embossSource"] != i:
             self.xfTexMatrix["embossSource"] = i
-            self.isModified = True
 
     def setEmbossLightStr(self, value):
         i = int(value)
@@ -307,37 +292,38 @@ class Layer:
             raise ValueError("Value '" + value + "' out of range for emboss light")
         if self.xfTexMatrix["embossLight"] != i:
             self.xfTexMatrix["embossLight"] = i
-            self.isModified = True
 
     def setNormalizeStr(self, value):
         val = validBool(value)
         if val != self.xfDualTex.normalize:
             self.xfDualTex.normalize = val
-            self.isModified = True
 
     def setLayerFlags(self, nibble):
-        ''' from lsb, enable, scaledefault, rotationdefault, transdefault '''
+        """ from lsb, enable, scaledefault, rotationdefault, transdefault """
         self.enable = nibble & 1
         self.scaleDefault = nibble >> 1 & 1
         self.rotationDefault = nibble >> 2 & 1
         self.translationDefault = nibble >> 3 & 1
         return self.enable
 
+    def setName(self, value):
+        self.name = self.parent.parent.renameLayer(self, value)
+
     SET_SETTING = (setScaleStr, setRotationStr, setTranslationStr, setCameraRefStr,
                    setLightRefStr, setMapmodeStr, setUWrapStr, setVWrapStr, setMinFilterStr, setMagFilterStr,
                    setLodBiasStr, setAnisotrophyStr, setClampBiasStr, setTexelInterpolateStr, setProjectionStr,
                    setInputFormStr, setTypeStr, setCoordinatesStr, setEmbossSourceStr, setEmbossLightStr,
-                   setNormalizeStr)
+                   setNormalizeStr, setName)
 
     # -------------------------------------------------------------------------
     # Packing things
     # -------------------------------------------------------------------------
 
     def unpack(self, binfile, scaleOffset):
-        ''' unpacks layer information '''
+        """ unpacks layer information """
         # assumes material already unpacked name
         binfile.advance(12)
-        self.texDataID, self.palleteDataID, self.uwrap, self.vwrap, \
+        texDataID, palleteDataID, self.uwrap, self.vwrap, \
         self.minfilter, self.magfilter, self.LODBias, self.maxAnisotrophy, \
         self.clampBias, self.texelInterpolate, pad = binfile.read("6IfI2BH", 0x24)
         transforms = binfile.readOffset("5f", scaleOffset)
@@ -369,8 +355,8 @@ class Layer:
         binfile.end()
 
     def pack_srt(self, binfile):
-        ''' packs scale rotation translation data '''
-        binfile.write("5f", *self.scale, self.rotation, *self.translation)
+        """ packs scale rotation translation data """
+        binfile.write("5f", self.scale[0], self.scale[1], self.rotation, self.translation[0], self.translation[1])
 
     @staticmethod
     def pack_default_srt(binfile, ntimes):
@@ -395,13 +381,13 @@ class Layer:
         self.xfDualTex.pack(binfile)
 
     def info(self, key=None, indentation_level=0):
-        trace = self.parent.name + "->" + self.name
+        trace = '  ' * indentation_level + self.name if indentation_level else '>' + self.parent.name + "->" + self.name
         if key:
             val = self[key]
             if val:
-                print("{}{}\t{}:{}".format('  ' * indentation_level + '>', trace, key, val))
+                print("{}\t{}:{}".format(trace, key, val))
         else:
-            print("{}{}:\tScale:{} Rot:{} Trans:{} UWrap:{} VWrap:{} MinFilter:{}".format('  ' * indentation_level + '>',
+            print("{}:\tScale:{} Rot:{} Trans:{} UWrap:{} VWrap:{} MinFilter:{}".format(
                                                          trace, self.scale, self.rotation, self.translation,
                                                          self.WRAP[self.uwrap], self.WRAP[self.vwrap],
                                                          self.FILTER[self.minfilter], self.MAPMODE[self.mapMode]))
