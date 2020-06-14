@@ -1,4 +1,6 @@
 """ BRRES Subfiles """
+
+
 # Todo, parse all name references so the offsets can be properly updated to the new string table
 
 # --------------------------------------------------------
@@ -11,6 +13,8 @@ class SubFile(object):
     vars: MAGIC, VERSION_SECTIONCOUNT
     functions: byteSize, unpack, pack, unpackData, packData
     """
+    MAGIC = 'NONE'
+    VERSION_SECTIONCOUNT = {}
 
     def __init__(self, name, parent):
         """ initialize with parent of this file """
@@ -72,7 +76,6 @@ class SubFile(object):
         print('{}: {} v{}\tbyte_size {}'.format(trace, self.MAGIC, self.version, self._byteSize()))
 
 
-
 '''
 Chr0 Brres subfile
 '''
@@ -115,28 +118,6 @@ class Clr0(SubFile):
     def pack(self, binfile):
         self._pack(binfile)
         self._unpackData(binfile)
-
-
-'''
-Pat0 Brres subfile
-'''
-
-
-class Pat0(SubFile):
-    ''' Pat0 animation class '''
-    MAGIC = "PAT0"
-    VERSION_SECTIONCOUNT = {4: 6}
-
-    def __init__(self, name, parent):
-        super(Pat0, self).__init__(name, parent)
-
-    def unpack(self, binfile):
-        self._unpack(binfile)
-        self._unpackData(binfile)
-
-    def pack(self, binfile):
-        self._pack(binfile)
-        self._packData(binfile)
 
 
 '''

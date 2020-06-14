@@ -1,2 +1,0 @@
-# Info commands for checking brres edits
-info shader for ef_*

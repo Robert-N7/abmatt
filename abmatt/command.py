@@ -1,5 +1,6 @@
 # ---------------------------------------------------------------------------
 # Command class and functions
+#   todo: info for settings of each type
 # ---------------------------------------------------------------------------
 import fnmatch
 import os
@@ -413,6 +414,7 @@ def load_commandfile(filename):
     commands = []
     preset_begin = False
     preset = []
+    name = None
     for line in lines:
         if line[0].isalpha():
             i = line.find("#")

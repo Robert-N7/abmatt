@@ -7,10 +7,11 @@ import re
 import string
 import sys
 
-from abmatt.binfile import BinFile, Folder
-from abmatt.matching import findAll
+from abmatt.binfile import BinFile, Folder, UnpackingError
 from abmatt.layer import Layer
+from abmatt.matching import findAll
 from abmatt.mdl0 import Mdl0
+from abmatt.pat0 import Pat0
 from abmatt.srt0 import Srt0
 from abmatt.subfile import *
 
@@ -237,10 +238,10 @@ class Brres():
         binfile.start()
         magic = binfile.readMagic()
         if magic != self.MAGIC:
-            raise ValueError("Magic {} does not match {}".format(magic, self.MAGIC))
+            raise UnpackingError(self, "Magic {} does not match {}".format(magic, self.MAGIC))
         bom = binfile.read("H", 2)
         binfile.bom = "<" if bom == 0xfffe else ">"
-        pad, self.length, rootoffset, numSections = binfile.read("hI2h", 10)
+        pad, length, rootoffset, numSections = binfile.read("hI2h", 10)
         binfile.offset = rootoffset
         root = binfile.readMagic()
         assert (root == self.ROOTMAGIC)
