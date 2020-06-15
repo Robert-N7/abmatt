@@ -55,9 +55,6 @@ class TextureLink:
         self.parent = parent
         self.num_references = 0
 
-    def __bool__(self):
-        return self.num_references > 0
-
     def unpack(self, binfile):
         binfile.start()
         [self.num_references] = binfile.read("I", 4)
@@ -316,7 +313,7 @@ class Mdl0(SubFile):
             x.check()
         expected_name = self.parent.getExpectedMdl()
         if expected_name and expected_name != self.name:
-            print('Warning: Model name {} does not match expected {}'.format(self.name, expected_name))
+            print('WARNING: Model name {} does not match expected {}'.format(self.name, expected_name))
 
     def checkDrawXLU(self):
         count = 0
@@ -339,7 +336,7 @@ class Mdl0(SubFile):
         """Cleans up references in preparation for packing"""
         self.sections[0] = self.definitions = [x for x in self.definitions if x]
         self.shaders.consolidate()
-        self.sections[11] = self.textureLinks = [x for x in self.textureLinks if x]
+        self.sections[11] = self.textureLinks = [x for x in self.textureLinks if x.num_references > 0]
         parent = self.parent
         for x in self.textureLinks:
             if not parent.getTexture(x.name):

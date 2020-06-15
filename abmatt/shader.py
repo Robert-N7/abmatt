@@ -217,9 +217,9 @@ class Stage():
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level if indentation_level else '>' + str(self.parent.getMaterialNames())
         if key:
-            print('{}->Stage{}: {}:{}'.format(trace, self.id, key, self[key]))
+            print('{}->Stage:{}\t{}:{}'.format(trace, self.id, key, self[key]))
         else:
-            print('{}Stage{}: MapId:{} CoordinateId:{} ColorScale:{} ColorDestination:{}'.format(
+            print('{}Stage:{}\tMapId:{} CoordinateId:{} ColorScale:{} ColorDestination:{}'.format(
                 trace, self.id, self['mapid'], self['coordinateid'],
                 self['colorscale'], self['colordestination']))
 
@@ -535,16 +535,16 @@ class Shader():
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level if indentation_level else '>'
         if not key:
-            print('{}Shader{}: {} stages, IndirectMap {} IndirectCoord {}'.format(trace,
+            print('{}Shader{}: TextureRefCount:{} IndirectMap:{} IndirectCoord:{}'.format(trace,
                                                                                   self.getMaterialNames(),
-                                                                                  len(self.stages),
+                                                                                  self.texRefCount,
                                                                                   self.indTexMaps,
                                                                                   self.indTexCoords))
             indentation_level += 1
             for x in self.stages:
                 x.info(key, indentation_level)
         else:
-            print('{}{}: {}:{} '.format(trace, self.getMaterialNames(), key, self[key]))
+            print('{}Shader{}: {}:{} '.format(trace, self.getMaterialNames(), key, self[key]))
 
     def getStage(self, n):
         if not 0 <= n < len(self.stages):

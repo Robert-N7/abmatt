@@ -250,7 +250,7 @@ class Material:
         list[index].setColor(intVals)
 
     def setCullModeStr(self, cullstr):
-        cullstr = cullstr.replace('cull')
+        cullstr = cullstr.replace('cull', '')
         i = indexListItem(self.CULL_STRINGS, cullstr, self.cullmode)
         if i >= 0:
             self.cullmode = i
@@ -445,7 +445,7 @@ class Material:
                 print("{}\t{}:{}".format(trace, key, val))
             return
         elif not key:
-            print("{}\tlayers:{} xlu:{} cull:{} blend:{}".format(trace, len(self.layers), self.xlu,
+            print("{}\tLayerCount:{} Xlu:{} CullMode:{} Blend:{}".format(trace, len(self.layers), self.xlu,
                                                                  self.CULL_STRINGS[self.cullmode], self.getBlend()))
         indentation_level += 1
         for x in self.layers:
@@ -453,7 +453,7 @@ class Material:
 
     def check(self):
         if self.shader.texRefCount != len(self.layers):
-            print('check {}: {} layers and shader has {} layer refs'.format(self.name, len(self.layers),
+            print('CHECK: {} has {} layer(s) and shader has {} layer ref(s)'.format(self.name, len(self.layers),
                                                                             self.shader.texRefCount))
         matrices_used = self.shader.getIndirectMatricesUsed()
         for i in range(2):
@@ -505,15 +505,6 @@ class Material:
         l = Layer(len(self.layers), name, self)
         self.layers.append(l)
         return l
-
-    def checkAnalysis(self):
-        if self.xlu:
-            if not self.getDrawXLU():
-                print('XLU but not draw xlu')
-            if not self.getBlend():
-                print('XLU but not blended')
-        elif self.getBlend():
-            print('Blend but not xlu')
 
     # -----------------------------------------------------------------------------
     # PACKING
@@ -658,7 +649,6 @@ class Material:
             layer.unpackXF(binfile)
         binfile.end()
         binfile.end()
-        self.checkAnalysis()
 
 
 # LIGHT CHANNEL ----------------------------------------------------

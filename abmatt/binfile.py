@@ -334,7 +334,7 @@ class BinFile:
         offset = self.beginOffset + ptr
         name_lens = self.readOffset("I", offset - 4)
         if name_lens[0] > 256:
-            raise UnpackingError(self, "Incorrect name offset".format(self.filename))  # todo, make a file error?
+            raise UnpackingError(self, "Incorrect name offset".format(self.filename))
         else:
             name = self.readOffset(str(name_lens[0]) + "s", offset)
             # print("Name: {}".format(name[0]))

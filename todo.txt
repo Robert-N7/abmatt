@@ -7,3 +7,4 @@
 - Support for editing SRT0
 - Support for editing PAT0
 - ignore case matching
+- better info amounts, detect singles vs groups

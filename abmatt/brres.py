@@ -77,7 +77,7 @@ class Brres():
         return findAll(name, self.models)
 
     def close(self):
-        if self.isModified or self.DESTINATION != self.name:
+        if self.isModified or self.DESTINATION and self.DESTINATION != self.name:
             self.save(self.DESTINATION, self.OVERWRITE)
 
     def save(self, filename, overwrite):
@@ -94,6 +94,7 @@ class Brres():
             f.commitWrite()
             print("Wrote file '{}'".format(filename))
             self.name = filename
+            self.isModified = False
             return True
 
     def setModel(self, modelname):

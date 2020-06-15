@@ -12,6 +12,7 @@ from abmatt.material import Material
 from abmatt.shader import Shader, Stage
 from abmatt.srt0 import Srt0
 from abmatt.mdl0 import Mdl0
+from abmatt.binfile import UnpackingError
 
 
 class ParsingException(Exception):
@@ -355,9 +356,6 @@ class Command:
             self.file = self.model = self.name = None
             self.updateSelection()
         if self.cmd == 'preset':
-            self.SELECTED = self.MATERIALS
-            if not self.SELECTED:
-                return True
             return self.runPreset(self.key)
         if not self.ACTIVE_FILES:
             raise ParsingException(self.txt, 'No file detected!')
@@ -376,8 +374,9 @@ class Command:
             elif self.cmd == 'info':
                 if self.key == 'keys':
                     self.info_keys(self.SELECT_TYPE)
-                for x in self.SELECTED:
-                    x.info(self.key)
+                else:
+                    for x in self.SELECTED:
+                        x.info(self.key)
                 # for y in self.ACTIVE_FILES:
                 #     print(y.name)
             elif self.cmd == 'add':
@@ -409,7 +408,7 @@ class Command:
         """Add command"""
         if self.SELECT_ID_NUMERIC and type_id == 0:
             type_id = 1
-        if type == 'layer':  # add layer case
+        if type == 'material':  # add layer case
             if self.SELECT_ID_NUMERIC:
                 for x in self.SELECTED:
                     for i in range(type_id):
@@ -417,7 +416,7 @@ class Command:
             else:
                 for x in self.SELECTED:
                     x.addLayer(type_id)
-        elif type == 'stage':  # add stage case
+        elif type == 'shader':  # add stage case
             for x in self.SELECTED:
                 x.addStage(type_id)
         else:
@@ -427,7 +426,7 @@ class Command:
         """Remove command"""
         if self.SELECT_ID_NUMERIC and type_id == 0:
             type_id = 1
-        if type == 'layer':  # remove layer case
+        if type == 'material':  # remove layer case
             if self.SELECT_ID_NUMERIC:
                 for x in self.SELECTED:
                     for i in range(type_id):
@@ -435,7 +434,7 @@ class Command:
             else:
                 for x in self.SELECTED:
                     x.removeLayer(type_id)
-        elif type == 'stage':  # remove stage case
+        elif type == 'shader':  # remove stage case
             for x in self.SELECTED:
                 for i in range(type_id):
                     x.removeStage()
@@ -516,7 +515,10 @@ def openFiles(filenames, files):
             openedNames.append(openedFile.name)
     # open any that aren't opened
     for f in filenames:
-        if not f in openedNames:
-            brres = Brres(f)
-            opened.append(brres)
+        if f not in openedNames:
+            try:
+                brres = Brres(f)
+                opened.append(brres)
+            except UnpackingError as e:
+                print(e)
     return opened
