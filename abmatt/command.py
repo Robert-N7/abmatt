@@ -1,6 +1,5 @@
 # ---------------------------------------------------------------------------
 # Command class and functions
-#   todo: info for settings of each type
 # ---------------------------------------------------------------------------
 import fnmatch
 import os
@@ -12,6 +11,7 @@ from abmatt.matching import validInt, findAll
 from abmatt.material import Material
 from abmatt.shader import Shader, Stage
 from abmatt.srt0 import Srt0
+from abmatt.mdl0 import Mdl0
 
 
 class ParsingException(Exception):
@@ -48,6 +48,8 @@ class Command:
         "layer": Layer.SETTINGS,
         "shader": Shader.SETTINGS,
         "stage": Stage.SETTINGS,
+        "mdl0": Mdl0.SETTINGS,
+        "brres": Brres.SETTINGS,
         # "srt0": Srt0.SETTINGS
     }
 
@@ -155,7 +157,7 @@ class Command:
                 self.type_id_numeric = False
             # elif 'srt0' in val:
         #     self.type = 'srt0'
-        elif self.cmd == 'info' and (val == 'mdl0' or val == 'brres'):
+        elif val == 'mdl0' or val == 'brres':
             if type_id:
                 self.has_type_id = True
                 self.type_id_numeric = False
@@ -327,11 +329,10 @@ class Command:
                     Command.SELECTED = []
                     for x in shaders:
                         Command.SELECTED.append(x.getStage(self.SELECT_ID))
-            elif self.cmd == 'info':
-                if type == 'mdl0':
-                    Command.SELECTED = findAll(self.type_id, self.MODELS)
-                elif type == 'brres':
-                    Command.SELECTED = findAll(self.type_id, self.ACTIVE_FILES)
+            elif type == 'mdl0':
+                    Command.SELECTED = findAll(self.SELECT_ID, self.MODELS)
+            elif type == 'brres':
+                    Command.SELECTED = findAll(self.SELECT_ID, self.ACTIVE_FILES)
 
     @staticmethod
     def markModified():

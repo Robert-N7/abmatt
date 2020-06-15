@@ -20,6 +20,7 @@ class Brres():
     FOLDERS = ["3DModels(NW4R)", "Textures(NW4R)", "AnmTexPat(NW4R)", "AnmTexSrt(NW4R)", "AnmChr(NW4R)",
                "AnmScn(NW4R)", "AnmShp(NW4R)", "AnmClr(NW4R)"]
     CLASSES = [Mdl0, Tex0, Pat0, Srt0, Chr0, Scn0, Shp0, Clr0]
+    SETTINGS = ('name')
     MAGIC = "bres"
     ROOTMAGIC = "root"
     OVERWRITE = False
@@ -48,6 +49,29 @@ class Brres():
         self.name = name
         if readFile:
             self.unpack(BinFile(self.name))
+
+    def __getitem__(self, key):
+        if key == 'name':
+            return self.name
+        else:
+            raise ValueError('Unknown key "{}"'.format(key))
+
+    def __setitem__(self, key, value):
+        if key == 'name':
+            self.name = value
+        else:
+            raise ValueError('Unknown key "{}"'.format(key))
+
+    def getExpectedMdl(self):
+        filename = os.path.basename(self.name)
+        if filename in ('course_model', 'map_model', 'vrcorn_model'):
+            return filename.replace('_model', '')
+
+    def updateModelName(self, old_name, new_name):
+        for folder in self.folders[2:]:
+            for x in folder:
+                if old_name in x.name:
+                    x.name = x.name.replace(old_name, new_name)
 
     def getModelsByName(self, name):
         return findAll(name, self.models)

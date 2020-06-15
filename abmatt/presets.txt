@@ -113,10 +113,14 @@ set shader indirectmap:1
 set shader indirectcoord:1
 set shader stagecount:3
 # stage 0
-set stage:0 colora:color2
+set stage:0 mapID:0
+set coordinateID:0
+set rastercolor:zero
+set colora:color2
 set colorb:color0
 set colorc:textureColor
 set colord:zero
+set colorscale:multiplyby1
 set alphaB:TextureAlpha
 set alphaC:TextureAlpha
 set alphadestination:alpha1
@@ -125,8 +129,12 @@ set stage:0 indirectmatrix:matrix0
 # stage 1
 set stage:1 MapID:2
 set CoordinateID:2
+set rastercolor:zero
+set colorConstantSelection:color0_rgb
 set colorB:textureColor
 set colorC:outputColor
+set colorscale:multiplyby1
+set alphaConstantSelection:color0_alpha
 set alphaB:alpha0
 set alphaC:alpha1
 set indirectbias:stu

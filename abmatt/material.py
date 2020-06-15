@@ -571,7 +571,7 @@ class Material:
             binfile.writeOffset('i', tex_link_offsets.pop(0), binfile.offset - start_offset)  # layer offset
             l.pack(binfile)
 
-        binfile.align()
+        binfile.alignToParent()
         binfile.createRef(1)
         binfile.start()  # MatGX section
         self.matGX.pack(binfile)

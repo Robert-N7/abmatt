@@ -161,6 +161,8 @@ class Mdl0(SubFile):
     SECTION_CLASSES = (DrawList, Bone, Vertex, Normal, Color, TexCoord, FurVector,
                        FurLayer, Material, Shader, Polygon, TextureLink, TextureLink)
 
+    SETTINGS = ('name')
+
     def __init__(self, name, parent):
         """ initialize with name and parent """
         super(Mdl0, self).__init__(name, parent)
@@ -184,6 +186,22 @@ class Mdl0(SubFile):
                          self.colors, self.texCoords, self.furVectors, self.furLayers,
                          self.materials, self.shaders, self.objects,
                          self.textureLinks, self.paletteLinks]
+
+    def __getitem__(self, key):
+        if key == 'name':
+            return self.name
+        else:
+            raise ValueError('Unknown key "{}"'.format(key))
+
+    def __setitem__(self, key, value):
+        if key == 'name':
+            self.updateName(value)
+        else:
+            raise ValueError('Unknown key "{}"'.format(key))
+
+    def updateName(self, name):
+        self.parent.updateModelName(self.name, name)
+        self.name = name
 
     def getMaterialsByName(self, name):
         return findAll(name, self.materials)
@@ -296,6 +314,9 @@ class Mdl0(SubFile):
     def check(self):
         for x in self.materials:
             x.check()
+        expected_name = self.parent.getExpectedMdl()
+        if expected_name and expected_name != self.name:
+            print('Warning: Model name {} does not match expected {}'.format(self.name, expected_name))
 
     def checkDrawXLU(self):
         count = 0

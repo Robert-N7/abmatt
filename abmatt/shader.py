@@ -176,7 +176,7 @@ class Stage():
         self.parent = parent
         self.map = {
             "enabled": True, "mapid": id, "coordinateid": id,
-            "textureswapselection": 0, "rastercolor": self.RASTER_COLORS[4],
+            "textureswapselection": 0, "rastercolor": self.RASTER_COLORS[-1],
             "rasterswapselection": 0,
             "colorconstantselection": self.COLOR_CONSTANTS[8], "colora": self.COLOR_SELS[-1],
             "colorb": self.COLOR_SELS[-1], "colorc": self.COLOR_SELS[-1],

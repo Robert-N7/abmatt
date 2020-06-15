@@ -52,12 +52,24 @@ class BinFile:
             raise PackingError(self, 'Incorrect stack, {} items still on'.format(len(self.stack) - 1))
         # write
         # print('Length of file is {}'.format(len(self.file)))
-        with open(self.filename, "wb") as f:
-            f.write(self.file)
+        try:
+            with open(self.filename, "wb") as f:
+                f.write(self.file)
+        except PermissionError:
+            print('Permission Denied')
+            return False
+        return True
 
     def align(self, alignment=0x20):
         """ Aligns to the alignment of file """
         past_align = self.offset % alignment
+        if past_align:
+            self.advance(alignment - past_align)
+
+    def alignToParent(self, alignment=0x20):
+        """ Aligns to alignment, with respect to parent"""
+        parent_offset = self.stack[-2]  # possible error here
+        past_align = (self.offset - parent_offset) % alignment
         if past_align:
             self.advance(alignment - past_align)
 
