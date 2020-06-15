@@ -69,6 +69,7 @@ class Brres():
             self.pack(f)
             f.commitWrite()
             print("Wrote file '{}'".format(filename))
+            self.name = filename
             return True
 
     def setModel(self, modelname):

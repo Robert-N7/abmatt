@@ -250,6 +250,7 @@ class Material:
         list[index].setColor(intVals)
 
     def setCullModeStr(self, cullstr):
+        cullstr = cullstr.replace('cull')
         i = indexListItem(self.CULL_STRINGS, cullstr, self.cullmode)
         if i >= 0:
             self.cullmode = i
@@ -390,7 +391,7 @@ class Material:
 
     def setDrawXLU(self, enabled):
         if enabled:
-            self.parent.setMaterialDrawXLU(self.id)
+            self.parent.setMaterialDrawXlu(self.id)
         else:
             self.parent.setMaterialDrawOpa(self.id)
 

@@ -60,13 +60,14 @@ Parameters are delimited by spaces except where a ':' or ',' is specified. Case 
 line = begin_preset | command;
 begin_preset = '[' <preset_name> ']' EOL; 
 
-command = (set | info | add | remove | select | preset) ['for' selection] EOL;
+command = (set | info | add | remove | select | preset | save) ['for' selection] EOL;
 set   = 'set' type setting;
-info  = 'info' type [key];
+info  = 'info' type [key | 'keys'];
 add   = 'add' type;
 remove = 'remove' type;
 select = 'select' selection;    Note: does not support 'for' selection clause
 preset = 'preset' preset_name;
+save = 'save' [filename] ['as' destination] ['overwrite']
 
 selection = name ['in' container]
 container = ['file' filename] ['model' name];

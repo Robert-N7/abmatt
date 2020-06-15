@@ -153,6 +153,12 @@ class Shell(Cmd):
     def help_select(self):
         print('select <name> [in <container>]')
 
+    def do_save(self, line):
+        self.run('save', line)
+
+    def help_save(self, line):
+        print('save [<filename>] [as <destination>] [overwrite]')
+
     def default(self, line):
         if line == 'x' or line == 'q':
             return self.do_quit(line)

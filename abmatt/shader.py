@@ -3,7 +3,7 @@
 # ------------------------------------------------------------------------
 from copy import deepcopy, copy
 
-from abmatt.binfile import Folder
+from abmatt.binfile import Folder, printCollectionHex
 from abmatt.matching import *
 from abmatt.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
 
@@ -179,13 +179,13 @@ class Stage():
             "textureswapselection": 0, "rastercolor": self.RASTER_COLORS[4],
             "rasterswapselection": 0,
             "colorconstantselection": self.COLOR_CONSTANTS[8], "colora": self.COLOR_SELS[-1],
-            "colorb": self.COLOR_SELS[8], "colorc": self.COLOR_SELS[10],
+            "colorb": self.COLOR_SELS[-1], "colorc": self.COLOR_SELS[-1],
             "colord": self.COLOR_SELS[-1], "colorbias": self.BIAS[0],
             "coloroperation": self.OPER[0], "colorclamp": True,
             "colorscale": self.SCALE[0], "colordestination": self.COLOR_DEST[0],
             "alphaconstantselection": self.ALPHA_CONSTANTS[20], "alphaa": self.ALPHA_SELS[-1],
-            "alphab": self.ALPHA_SELS[4], "alphac": self.ALPHA_SELS[5],
-            "alphad": self.ALPHA_SELS[1], "alphabias": self.BIAS[0],
+            "alphab": self.ALPHA_SELS[-1], "alphac": self.ALPHA_SELS[-1],
+            "alphad": self.ALPHA_SELS[-1], "alphabias": self.BIAS[0],
             "alphaoperation": self.OPER[0], "alphaclamp": True,
             "alphascale": self.SCALE[0], "alphadestination": self.ALPHA_DEST[0],
             "indirectstage": 0, "indirectformat": self.TEX_FORMAT[0],
@@ -613,6 +613,8 @@ class Shader():
             y = iref.getTexCoord(i)
             self.indTexCoords[i] = y
         binfile.align()
+        data = binfile.read('100B', 0)
+        printCollectionHex(data)
         i = 0
         while i < stage_count:
             stage0 = self.stages[i]
@@ -726,8 +728,7 @@ class Shader():
             stage0.packIndirect(binfile)
             if stage1:
                 stage1.packIndirect(binfile)
-            else:
-                binfile.advance(5)
+            binfile.align(16)
             j += 1
         binfile.advanceAndEnd(self.BYTESIZE)
 

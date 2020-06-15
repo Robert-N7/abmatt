@@ -668,7 +668,7 @@ class IndMatrix():
         scale = 0
         c = BPCommand(0)
         for i in range(3):
-            self.enabled = c.unpack(binfile)
+            self.enabled = c.unpack(binfile) > 0
             if not self.enabled:
                 binfile.advance(10)  # skip ahead
                 self.scale = scale

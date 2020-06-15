@@ -17,8 +17,8 @@ class Layer:
         "type", "coordinates", "embosssource", "embosslight",
         "normalize", "name")
     WRAP = ("clamp", "repeat", "mirror")
-    FILTER = ("nearest", "linear", "nearest_mipmap_nearest", "linear_mipmap_nearest", "nearest_mipmap_linear",
-              "linear_mipmap_linear")
+    FILTER = ("nearest", "linear", "nearestmipmapnearest", "linearmipmapnearest", "nearestmipmaplinear",
+              "linearmipmaplinear")
     ANISOTROPHY = ("one", "two", "four")
     MAPMODE = ("texcoord", "envcamera", "projection", "envlight", "envspec")
     PROJECTION = ("st", "stq")
@@ -211,11 +211,12 @@ class Layer:
             self.uwrap = i
 
     def setVWrapStr(self, value):
-        i = indexListItem(self.WRAP, value, self.vrap)
+        i = indexListItem(self.WRAP, value, self.vwrap)
         if i >= 0:
-            self.vrap = i
+            self.vwrap = i
 
     def setMinFilterStr(self, value):
+        value = value.replace('_', '')
         i = indexListItem(self.FILTER, value, self.minfilter)
         if i >= 0:
             self.minfilter = i

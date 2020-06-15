@@ -30,7 +30,7 @@ def getShadersFromMaterials(materials, models, for_modification=True):
 
 
 class Command:
-    COMMANDS = ["preset", "set", "add", "remove", "info", "select"]
+    COMMANDS = ["preset", "set", "add", "remove", "info", "select", "save"]
     SELECTED = []  # selection list
     SELECT_TYPE = None  # current selection list type
     SELECT_ID = None  # current selection id
@@ -48,7 +48,7 @@ class Command:
         "layer": Layer.SETTINGS,
         "shader": Shader.SETTINGS,
         "stage": Stage.SETTINGS,
-        "srt0": Srt0.SETTINGS
+        # "srt0": Srt0.SETTINGS
     }
 
     def __init__(self, text):
@@ -61,15 +61,20 @@ class Command:
             raise ParsingException(self.txt, 'No Command detected')
         is_preset = self.setCmd(x.pop(0).lower())
         if not x:
-            if self.cmd != 'info':
+            if self.cmd != 'info' and self.cmd != 'save':
                 raise ParsingException(self.txt, 'Not enough parameters')
             else:
                 self.type = None
+                self.overwrite = False
+                self.destination = self.file = None
                 return
         if self.setType(x[0]):
             x.pop(0)
         if self.cmd == 'select':
             self.setSelection(x)
+            return
+        elif self.cmd == 'save':
+            self.setSave(x)
             return
         for_index = -1
         for i in range(len(x)):
@@ -101,17 +106,35 @@ class Command:
                 print("Unknown parameter(s) {}".format(x))
             else:
                 self.key = x[0].lower()
+                if self.key == 'keys':
+                    return
         if self.key and self.type and self.key not in self.TYPE_SETTING_MAP[self.type]:
             raise ParsingException(self.txt, "Unknown Key {} for {}, possible keys:\n\t{}".format(self.key, self.type,
                                                                                                   self.TYPE_SETTING_MAP[
                                                                                                       self.type]))
+
+    def setSave(self, params):
+        saveAs = False
+        self.overwrite = False
+        self.destination = None
+        self.file = None
+        for x in params:
+            if x == 'as':
+                saveAs = True
+            elif x == 'overwrite':
+                self.overwrite = True
+            elif saveAs and not self.destination:
+                self.destination = x
+            elif not self.file:
+                self.file = x
+                self.hasSelection = True
 
     def setType(self, val):
         """Returns true if the type is set by val (consumed)"""
         if self.cmd == 'preset':
             self.type = 'material'
             return False
-        elif self.cmd == 'select':
+        elif self.cmd == 'select' or self.cmd == 'save':
             return False
         i = val.find(':')
         type_id = None
@@ -168,6 +191,8 @@ class Command:
                     elif x == 'model' or x == 'Model':
                         i += 1
                         self.model = li[i]
+                    elif not self.file:
+                        self.file = li[i]
                     else:
                         raise ParsingException(self.txt, 'Unknown argument {}'.format(li[i]))
                     i += 1
@@ -224,8 +249,11 @@ class Command:
     def detectType(key):
         map = Command.TYPE_SETTING_MAP
         previous = Command.SELECT_TYPE  # try the previous type settings first
-        if previous and key in map[previous]:
+        isKeys = key == 'keys'
+        if previous and (isKeys or key in map[previous]):
             return previous
+        if isKeys:
+            return 'material'
         for x in map:
             if x != previous and key in map[x]:
                 return x
@@ -319,6 +347,10 @@ class Command:
             elif self.cmd == 'select':
                 return True
         elif not self.MATERIALS and self.cmd == 'info':
+            if self.key == 'keys':
+                ctype = self.type if self.type else self.SELECT_TYPE
+                self.info_keys(ctype)
+                return True
             self.file = self.model = self.name = None
             self.updateSelection()
         if self.cmd == 'preset':
@@ -328,6 +360,9 @@ class Command:
             return self.runPreset(self.key)
         if not self.ACTIVE_FILES:
             raise ParsingException(self.txt, 'No file detected!')
+        if self.cmd == 'save':
+            self.run_save()
+            return True
         self.updateTypeSelection()
         if not self.SELECTED:
             print("No items found in selection for '{}'".format(self.txt))
@@ -338,6 +373,8 @@ class Command:
                 for x in self.SELECTED:
                     x[self.key] = self.value
             elif self.cmd == 'info':
+                if self.key == 'keys':
+                    self.info_keys(self.SELECT_TYPE)
                 for x in self.SELECTED:
                     x.info(self.key)
                 # for y in self.ACTIVE_FILES:
@@ -349,6 +386,17 @@ class Command:
                 self.markModified()
                 self.remove(self.SELECT_TYPE, self.SELECT_ID)
         return True
+
+    def info_keys(self, type):
+        if not type:
+            for x in self.TYPE_SETTING_MAP:
+                print('>{} keys: {}\n'.format(x, self.TYPE_SETTING_MAP[x]))
+        else:
+            print('>{} keys: {}'.format(type, self.TYPE_SETTING_MAP[type]))
+
+    def run_save(self):
+        for x in self.ACTIVE_FILES:
+            x.save(self.destination, self.overwrite)
 
     def runPreset(self, key):
         """Runs preset"""
@@ -426,7 +474,7 @@ def load_commandfile(filename):
                 try:
                     preset.append(Command(line))
                 except ParsingException as e:
-                    print('Error parsing preset {} : {}'.format(name, e))
+                    print('Preset {} : {}'.format(name, e))
                     Command.PRESETS[name] = None
             else:
                 commands.append(Command(line))

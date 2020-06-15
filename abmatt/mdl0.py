@@ -402,9 +402,8 @@ class Mdl0(SubFile):
         """Packs texture link section, returning map of names:offsets be filled in by mat/layer refs"""
         tex_map = {}
         for x in self.textureLinks:
-            if x:
-                folder.createEntryRefI()
-                tex_map[x.name] = x.pack(binfile)
+            folder.createEntryRefI()
+            tex_map[x.name] = x.pack(binfile)
         return tex_map
 
     def packSection(self, binfile, section_index, folder, extras=None):
