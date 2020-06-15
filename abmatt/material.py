@@ -402,6 +402,13 @@ class Material:
         if colon_index > -1:
             matrix_index = validInt(str_value[0], 0, 3)
             str_value = str_value[colon_index + 1:]
+        if ',' not in str_value:
+            try:
+                enable = validBool(str_value)
+                self.matGX.setIndMatrixEnable(matrix_index, enable)
+                return
+            except ValueError as e:
+                raise ValueError(self.MATRIX_ERR.format(str_value))
         str_values = str_value.replace('scale', '').split(',')
         if len(str_values) != 7:
             raise ValueError(self.MATRIX_ERR.format(str_value))

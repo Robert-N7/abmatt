@@ -32,8 +32,8 @@ class TevRegister:
 
     def setColor(self, rgba):
         """ Sets the color (r,g,b,a) """
-        self.reglow.setColor(rgba[1:3])
-        self.reghigh.setColor((rgba[3], rgba[0]))
+        self.reglow.setColor((rgba[3], rgba[0]))
+        self.reghigh.setColor(rgba[1:3])
 
 
 class MatGX:
@@ -59,11 +59,16 @@ class MatGX:
     def getIndMatrix(self, id):
         return self.indMatrices[id]
 
+    def setIndMatrixEnable(self, id, enable=True):
+        x = self.indMatrices[id]
+        x.enabled = enable
+
     def setIndMatrix(self, id, scale, matrix):
         x = self.indMatrices[id]
         x.scale = scale
         assert(len(matrix) == 6)
         x.matrix = matrix
+        x.enabled = True
 
     def unpack(self, binfile):
         """ unpacks the mat graphic codes """

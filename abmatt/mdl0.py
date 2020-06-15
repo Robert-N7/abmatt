@@ -55,6 +55,9 @@ class TextureLink:
         self.parent = parent
         self.num_references = 0
 
+    def __bool__(self):
+        return self.num_references > 0
+
     def unpack(self, binfile):
         binfile.start()
         [self.num_references] = binfile.read("I", 4)
@@ -63,8 +66,6 @@ class TextureLink:
         binfile.end()
 
     def pack(self, binfile):
-        if not self.num_references:
-            return
         offset = binfile.start()
         binfile.write("I", self.num_references)
         for i in range(self.num_references):
@@ -401,8 +402,9 @@ class Mdl0(SubFile):
         """Packs texture link section, returning map of names:offsets be filled in by mat/layer refs"""
         tex_map = {}
         for x in self.textureLinks:
-            folder.createEntryRefI()
-            tex_map[x.name] = x.pack(binfile)
+            if x:
+                folder.createEntryRefI()
+                tex_map[x.name] = x.pack(binfile)
         return tex_map
 
     def packSection(self, binfile, section_index, folder, extras=None):

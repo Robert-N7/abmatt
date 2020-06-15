@@ -165,7 +165,7 @@ def main():
     USAGE = USAGE.format(sys.argv[0])
     argv = sys.argv[1:]
     if not argv:
-        hlp()
+        print(USAGE)
         sys.exit(0)
     try:
         opts, args = getopt.getopt(argv, "hf:d:ok:v:n:m:c:t:is",
@@ -222,33 +222,37 @@ def main():
     if overwrite:
         Command.OVERWRITE = overwrite
         Brres.OVERWRITE = overwrite
-    if setting:
-        cmd = "set " + type + setting + ":" + value + " for " + name
-        if model:
-            cmd += " model " + model
-        cmds.append(Command(cmd))
+    if filename:
+        Command.updateFile(filename)
+        if setting:
+            cmd = "set " + type + setting + ":" + value + " for " + name
+            if model:
+                cmd += " model " + model
+            cmds.append(Command(cmd))
+            if info:
+                cmds.append(Command("info"))
         if info:
-            cmds.append(Command("info"))
+            cmd = "info " + type + setting + " for " + name
+            cmds.append(Command(cmd))
+    elif setting or info:
+        print('File is required to run info/setting commands')
+        print(USAGE)
+        exit(2)
+
     if commandfile:
         filecmds = load_commandfile(commandfile)
         cmds = cmds + filecmds
-    if info:
-        cmd = "info " + type + setting + " for " + name
-        cmds.append(Command(cmd))
-    if filename:
-        Command.updateFile(filename)
     # Load presets
     preset_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'presets.txt')
     if os.path.exists(preset_path):
         load_commandfile(preset_path)
 
     # Run Commands
-    if not cmds and not shell_mode:
-        print(USAGE)
-    else:
+    if cmds:
         run_commands(cmds)
     if shell_mode:
         Shell().cmdloop('Interactive shell started...')
+
     # cleanup
     for file in Command.ACTIVE_FILES:
         file.close()

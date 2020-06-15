@@ -315,22 +315,23 @@ class Command:
     def runCmd(self):
         if self.hasSelection:
             if not self.updateSelection():
-                sys.exit(1)
+                return False
             elif self.cmd == 'select':
-                return
+                return True
         elif not self.MATERIALS and self.cmd == 'info':
             self.file = self.model = self.name = None
             self.updateSelection()
         if self.cmd == 'preset':
             self.SELECTED = self.MATERIALS
             if not self.SELECTED:
-                return
+                return True
             return self.runPreset(self.key)
         if not self.ACTIVE_FILES:
             raise ParsingException(self.txt, 'No file detected!')
         self.updateTypeSelection()
         if not self.SELECTED:
             print("No items found in selection for '{}'".format(self.txt))
+            return False
         else:
             if self.cmd == 'set':
                 self.markModified()
@@ -347,6 +348,7 @@ class Command:
             elif self.cmd == 'remove':
                 self.markModified()
                 self.remove(self.SELECT_TYPE, self.SELECT_ID)
+        return True
 
     def runPreset(self, key):
         """Runs preset"""

@@ -1,0 +1,5 @@
+- Animation parsing (just to update string offsets)
+- Command completion
+- Save command
+- Support for editing SRT0
+- Support for editing PAT0

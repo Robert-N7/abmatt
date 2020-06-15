@@ -49,6 +49,7 @@ set layer:2 name:ef_arrowGradS
 set shader indirectmap:1
 set shader indirectcoord:1
 set shader stageCount:2
+set shader texturerefcount:3
 # stage 0
 set stage:0 mapid:2
 set coordinateid:2
@@ -73,3 +74,4 @@ set alphaC:ConstantAlphaSelection
 set alphaD:OutputAlpha
 set indirectBias:stu
 set stage:1 indirectMatrix:Matrix0
+
