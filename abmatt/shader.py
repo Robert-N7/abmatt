@@ -613,8 +613,6 @@ class Shader():
             y = iref.getTexCoord(i)
             self.indTexCoords[i] = y
         binfile.align()
-        data = binfile.read('100B', 0)
-        printCollectionHex(data)
         i = 0
         while i < stage_count:
             stage0 = self.stages[i]

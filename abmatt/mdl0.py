@@ -316,9 +316,9 @@ class Mdl0(SubFile):
     # ---------------START PACKING STUFF -------------------------------------
     def clean(self):
         """Cleans up references in preparation for packing"""
-        self.definitions = [x for x in self.definitions if x]
+        self.sections[0] = self.definitions = [x for x in self.definitions if x]
         self.shaders.consolidate()
-        self.textureLinks = [x for x in self.textureLinks if x.num_references > 0]
+        self.sections[11] = self.textureLinks = [x for x in self.textureLinks if x]
         parent = self.parent
         for x in self.textureLinks:
             if not parent.getTexture(x.name):
