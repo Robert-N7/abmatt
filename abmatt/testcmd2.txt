@@ -1,1 +1,0 @@
-set shader:2 for *

@@ -1,0 +1,10 @@
+- Misc. subfile parsing (just to update string offsets)
+- Command:
+    - Command completion
+    - *Save command*
+    - Copy/Paste
+    - *info for settings* (display keys)
+- Support for editing SRT0
+- Support for editing PAT0
+- ignore case matching
+- better info amounts, detect singles vs groups

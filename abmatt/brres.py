@@ -1,124 +1,100 @@
 #!/usr/bin/python
-#--------------------------------------------------------
+# --------------------------------------------------------
 #   Brres Class
-#--------------------------------------------------------
-from model import *
-from material import *
-from layer import *
-from shader import *
-from struct import *
-from pack import *
-from fileobject import *
-import sys
+# --------------------------------------------------------
 import os
-import binascii
+import re
+import string
+import sys
 
-class BresSubFile:
-    structs = {
-        "h" : Struct("> 4s I I I")
-    }
-    numSections = {
-        "CHR03" : 1,
-        "CHR05" : 5,
-        "CLR04" : 2,
-        "MDL08" : 11,
-        "MDL011" : 14,
-        "PAT04" : 6,
-        "SCN04" : 6,
-        "SCN05" : 7,
-        "SHP04" : 3,
-        "SRT04" : 1,
-        "SRT05" : 2,
-        "TEX01" : 1,
-        "TEX02" : 2,
-        "TEX03" : 1
-    }
-    def __init__(self, file, offset, name):
-        self.offset = file.offset = offset
-        self.name = name
-        self.h = file.read(self.structs["h"], 16)
-        # print("Subfile, len, version, outerOffset: {}".format(self.h))
-        self.magic = self.h[0]
-        self.length = self.h[1]
-        self.version = self.h[2]
-        # self.bin = file.file[self.offset:self.offset + self.length]
-        self.sectionCount = self.numSections[self.magic.decode() + str(self.version)]
-        # print("section count: {}".format(self.sectionCount))
-        self.sectionOffsets = file.read(Struct("> " + str(self.sectionCount) + "I" ), self.sectionCount * 4)
-        # print("{} Section offsets: {}".format(self.magic, self.sectionOffsets))
-        if self.magic == b"MDL0":
-            Model(file, self)
+from abmatt.binfile import BinFile, Folder, UnpackingError
+from abmatt.layer import Layer
+from abmatt.matching import findAll
+from abmatt.mdl0 import Mdl0
+from abmatt.pat0 import Pat0
+from abmatt.srt0 import Srt0
+from abmatt.subfile import *
 
 
-class Brres:
-    structs = {
-        "h" : Struct("> 4s H H I H H"),
-        "root" : Struct("> 4s I"),
-        "indexGroupH" : Struct("> I I"),
-        "indexGroup" : Struct("> H H H H I I"),
-    }
+class Brres():
+    FOLDERS = ["3DModels(NW4R)", "Textures(NW4R)", "AnmTexPat(NW4R)", "AnmTexSrt(NW4R)", "AnmChr(NW4R)",
+               "AnmScn(NW4R)", "AnmShp(NW4R)", "AnmClr(NW4R)"]
+    CLASSES = [Mdl0, Tex0, Pat0, Srt0, Chr0, Scn0, Shp0, Clr0]
+    SETTINGS = ('name')
+    MAGIC = "bres"
+    ROOTMAGIC = "root"
+    OVERWRITE = False
+    DESTINATION = None
 
-    def __init__(self, filename):
-        self.filename = filename
+    def __init__(self, name, parent=None, readFile=True):
+        """
+            initialize brres
+            name - the brres name, or filename
+            parent - optional for supporting containing files in future
+            readfile - optional start reading and unpacking file
+        """
         self.models = []
         self.textures = []
+        self.anmSrt = []
+        self.anmChr = []
+        self.anmPat = []
         self.anmClr = []
-        self.anmTexSrt = []
+        self.anmShp = []
+        self.anmScn = []
+        self.folders = [self.models, self.textures, self.anmPat, self.anmSrt, self.anmChr,
+                        self.anmClr, self.anmShp, self.anmScn]
         self.isModified = False
         self.isUpdated = False
-        self.file = Bin(self.filename, self)
-        try:
-            if not self.unpack(self.file):
-                print("Error parsing '{}'".format(filename))
-                sys.exit(1)
-        except ValueError as e:
-            print("Error parsing '{}': {}".format(filename, e))
-            sys.exit(1)
+        self.parent = parent
+        self.name = name
+        if readFile:
+            self.unpack(BinFile(self.name))
 
-    def unpack(self, file):
-        brresHd = file.read(self.structs["h"], 16)
-        if brresHd[0].decode() != "bres":
-            print("Not a brres file {}".format(brresHd[0]))
-            return False
-        file.offset = brresHd[4]
-        self.brresHd = brresHd
-        self.rootHd = file.read(self.structs["root"], 8)
-        self.indexGroups = []
-        self.subFiles = []
-        self.root = IndexGroup(file, 0)
-        for offset in self.root.entryOffsets:
-            self.indexGroups.append(IndexGroup(file, offset))
-        for group in self.indexGroups:
-            # folderNames = group.entryNames
-            offsets = group.entryOffsets
-            names = group.entryNames
-            for i in range(len(offsets)):
-                # print("\t=====Folder {}======".format(folderNames[i]))
-                self.subFiles.append(BresSubFile(file, offsets[i], names[i]))
-        return self.models
+    def __getitem__(self, key):
+        if key == 'name':
+            return self.name
+        else:
+            raise ValueError('Unknown key "{}"'.format(key))
 
-    def pack(self, brres):
-        pass
+    def __setitem__(self, key, value):
+        if key == 'name':
+            self.name = value
+        else:
+            raise ValueError('Unknown key "{}"'.format(key))
+
+    def getExpectedMdl(self):
+        filename = os.path.basename(self.name)
+        if filename in ('course_model', 'map_model', 'vrcorn_model'):
+            return filename.replace('_model', '')
+
+    def updateModelName(self, old_name, new_name):
+        for folder in self.folders[2:]:
+            for x in folder:
+                if old_name in x.name:
+                    x.name = x.name.replace(old_name, new_name)
 
     def getModelsByName(self, name):
         return findAll(name, self.models)
 
+    def close(self):
+        if self.isModified or self.DESTINATION and self.DESTINATION != self.name:
+            self.save(self.DESTINATION, self.OVERWRITE)
+
     def save(self, filename, overwrite):
         if not filename:
-            filename = self.filename
-            if not self.isChanged():
-                return
+            filename = self.name
+            # if not self.isChanged():
+            #     return
         if not overwrite and os.path.exists(filename):
             print("File '{}' already exists!".format(filename))
             return False
         else:
-            PackBrres(self)
-            packed = self.file
-            # packed.convertByteArr()
-            f = open(filename, "wb")
-            f.write(packed.file)
-            f.close()
+            f = BinFile(filename, mode="w")
+            self.pack(f)
+            f.commitWrite()
             print("Wrote file '{}'".format(filename))
+            self.name = filename
+            self.isModified = False
             return True
 
     def setModel(self, modelname):
@@ -138,20 +114,27 @@ class Brres:
         if command.cmd == command.COMMANDS[0]:
             self.set(command)
         elif command.cmd == command.COMMANDS[1]:
-            self.info(command, "")
+            self.info(command)
         else:
-            print("Unknown command: {}".format(self.cmd))
+            print("Unknown command: {}".format(command.cmd))
 
-    def info(self, command, trace):
-        # todo trace?
-        if command.modelname:  # narrow scope and pass
-            models = findAll(command.modelname, self.models)
-            if models:
-                for x in models:
-                    x.info(command, trace)
-        else:
-            for x in self.models:
-                x.info(command, trace)
+    def getTrace(self):
+        if self.parent:
+            return self.parent.name + "->" + self.name
+        return self.name
+
+    def info(self, key=None, indentation_level=0):
+        print('{}{}:\t{} model(s)\t{} texture(s)'.format('  ' * indentation_level + '>', self.name,
+                                                     len(self.models), len(self.textures)))
+        folder_indent = indentation_level + 1
+        indentation_level += 2
+        folders = self.folders
+        for i in range(len(folders)):
+            folder = folders[i]
+            if folder:
+                print('{}>{}'.format('  ' * folder_indent, self.FOLDERS[i]))
+                for x in folder:
+                    x.info(key, indentation_level)
 
     def set(self, command):
         mats = self.getMatCollection(command.modelname, command.materialname)
@@ -168,12 +151,10 @@ class Brres:
             else:
                 print("No matches found for {}".format(command.name))
 
-
     def getModelByOffset(self, offset):
         for mdl in self.models:
             if offset == mdl.offset:
                 return mdl
-
 
     def getMatCollection(self, modelname, materialname):
         mdls = findAll(modelname, self.models)
@@ -187,7 +168,7 @@ class Brres:
     def getLayerCollection(self, mats, layername):
         layers = []
         for m in mats:
-            found =  findAll(layername, m.layers)
+            found = findAll(layername, m.layers)
             if found:
                 layers = layers + found
         return layers
@@ -212,7 +193,7 @@ class Brres:
             if not fun:
                 print("Unknown setting {}".format(setting))
                 return False
-            else: # FUN!
+            else:  # FUN!
                 for x in layers:
                     fun(x, value)
         except ValueError as e:
@@ -227,7 +208,139 @@ class Brres:
         if self.isUpdated:
             for mdl in self.models:
                 if mdl.isChanged():
-                    self.isModified = True # to prevent checking further
+                    self.isModified = True  # to prevent checking further
                     return True
         self.isUpdated = False
         return False
+
+    def getNumSections(self, folders):
+        """ gets the number of sections, including root"""
+        count = 1   # root
+        for x in folders[count:]:
+            if x:
+                count += len(x)
+                # print('Length of folder {} is {}'.format(x.name, len(x)))
+        return count
+
+    def getTexture(self, name):
+        for x in self.textures:
+            if x.name == name:
+                return x
+
+    def getTextures(self, name):
+        return findAll(name, self.textures)
+
+    # ----------------- HOOKING REFERENCES ----------------------------------
+    def hookAnimationRefs(self):
+        """Hooks up references from materials to animations"""
+        for x in self.anmSrt:
+            name = x.name.rstrip(string.digits)
+            for mdl in self.models:
+                if name == mdl.name:
+                    mdl.hookSRT0ToMats(x)
+
+    # -------------------------------------------------------------------------
+    #   PACKING / UNPACKING
+    # -------------------------------------------------------------------------
+
+    def unpackFolder(self, binfile, root, folderIndex):
+        """ Unpacks the folder folderIndex """
+        name = self.FOLDERS[folderIndex]
+        if root.open(name):
+            container = self.folders[folderIndex]
+            subFolder = Folder(binfile, name)
+            subFolder.unpack(binfile)
+            klass = self.CLASSES[folderIndex]
+            while True:
+                nm = subFolder.openI()
+                if not nm:
+                    break
+                obj = klass(nm, self)
+                container.append(obj)
+                obj.unpack(binfile)
+
+    def unpack(self, binfile):
+        """ Unpacks the brres """
+        binfile.start()
+        magic = binfile.readMagic()
+        if magic != self.MAGIC:
+            raise UnpackingError(self, "Magic {} does not match {}".format(magic, self.MAGIC))
+        bom = binfile.read("H", 2)
+        binfile.bom = "<" if bom == 0xfffe else ">"
+        pad, length, rootoffset, numSections = binfile.read("hI2h", 10)
+        binfile.offset = rootoffset
+        root = binfile.readMagic()
+        assert (root == self.ROOTMAGIC)
+        section_length = binfile.read("I", 4)
+        root = Folder(binfile, root)
+        root.unpack(binfile)
+        # open all the folders
+        for i in range(len(self.FOLDERS)):
+            self.unpackFolder(binfile, root, i)
+        binfile.end()
+        self.hookAnimationRefs()
+
+    def generateRoot(self, binfile):
+        """ Generates the root folders
+            Does not hook up data pointers except the head group,
+            returns (rootFolders, bytesize)
+        """
+        rootFolders = []  # for storing Index Groups
+        byteSize = 0
+        # Create folder indexing folders
+        rootFolder = Folder(binfile, self.ROOTMAGIC)
+        rootFolders.append(rootFolder)
+        offsets = []  # for tracking offsets from first group to others
+        # Create folder for each section the brres has
+        for i in range(len(self.folders)):
+            folder = self.folders[i]
+            size = len(folder)
+            if size:
+                f = Folder(binfile, self.FOLDERS[i])
+                for j in range(size):
+                    f.addEntry(folder[j].name)  # might not have name?
+                rootFolder.addEntry(f.name)
+                rootFolders.append(f)
+                offsets.append(byteSize)
+                byteSize += f.byteSize()
+        # now update the dataptrs
+        rtsize = rootFolder.byteSize()
+        entries = rootFolder.entries
+        for i in range(len(offsets)):
+            entries[i].dataPtr = offsets[i] + rtsize
+        byteSize += rtsize + 8  # add first folder to bytesize, and header len
+        return rootFolders, byteSize
+
+    def packRoot(self, binfile, root):
+        """ Packs the root section, returns root folders that need data ptrs"""
+        binfile.writeMagic("root")
+        rtFolders, rtSize = root[0], root[1]
+        binfile.write("I", rtSize)
+        for f in rtFolders:
+            f.pack(binfile)
+        return rtFolders[1:]
+
+    def pack(self, binfile):
+        """ packs the brres """
+        binfile.start()
+        root = self.generateRoot(binfile)
+        binfile.writeMagic(self.MAGIC)
+        binfile.write("H", 0xfeff)  # BOM
+        binfile.advance(2)
+        binfile.markLen()
+        num_sections = self.getNumSections(root[0])
+        binfile.write("2H", 0x10, num_sections)
+        folders = self.packRoot(binfile, root)
+        # now pack the folders
+        folder_index = 0
+        for subfolder in self.folders:
+            if len(subfolder):
+                refGroup = folders[folder_index]
+                for file in subfolder:
+                    refGroup.createEntryRefI()  # create the dataptr
+                    file.pack(binfile)
+                folder_index += 1
+        binfile.packNames()
+        binfile.align()
+        binfile.end()
+    # --------------------------------------------------------------------------

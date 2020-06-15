@@ -1,0 +1,202 @@
+# ----------------------------------------------------------
+# Presets file, you are encouraged to edit/add your own
+# ----------------------------------------------------------
+
+[transparent]
+set material CompareBeforeTexture:False
+set material xlu:False
+set material ref0:128
+set material comp0:LessOrEqual
+set material ref1:255
+set material comp1:GreaterOrEqual
+
+[blend]
+set material CompareBeforeTexture:True
+set material blend:True
+set material xlu:True
+set material ref0:0
+set material comp0:Always
+set material ref1:0
+set material comp1:Always
+set material enableDepthUpdate:False
+
+[opaque]
+set material CompareBeforeTexture:True
+set material xlu:False
+set material ref0:0
+set material comp0:Always
+set material ref1:0
+set material comp1:Always
+
+[ef_dushboard]
+# material settings
+preset opaque
+set material shadercolor:constant3:(0,0,0,128)
+set material indirectmatrix:0:scale14,(0.6396484375,0,0),(0,0.639648375,0)
+set material layerCount:3
+# layers
+set layer:0 name:ef_rainbowRed2
+set layer:0 mapmode:EnvCamera
+set projection:stq
+set InputForm:abc1
+set coordinates:normals
+set normalize:True
+set layer:1 name:ef_arrowBumpS
+set layer:1 uwrap:mirror
+set layer:2 name:ef_arrowGradS
+# shader
+set shader indirectmap:1
+set shader indirectcoord:1
+set shader stageCount:2
+set shader texturerefcount:3
+# stage 0
+set stage:0 mapid:2
+set coordinateid:2
+set rastercolor:zero
+set colorConstantSelection:3_4
+set colorB:ColorConstantSelection
+set colorC:TextureColor
+set colorScale:1
+# stage 1
+set stage:1 mapid:0
+set coordinateid:0
+set rastercolor:0
+set colorConstantSelection:5_8
+set colorA:TextureAlpha
+set colorB:0
+set colorC:0
+set colorD:OutputColor
+set alphaConstantSelection:color3_alpha
+set alphaA:TextureAlpha
+set alphaB:0
+set alphaC:ConstantAlphaSelection
+set alphaD:OutputAlpha
+set indirectBias:stu
+set stage:1 indirectMatrix:Matrix0
+
+[wt_uriver]
+# material
+preset blend
+set material blendsrc:sourcealpha
+set material blenddest:sourcealpha
+set material shadercolor:0:(225,228,244,202)
+set material shadercolor:1:(218,226,242,0)
+set material shadercolor:2:(0,0,0,220)
+set material indirectmatrix:scale-6,(0.51171875,0,0),(0,0.6396484375,0)
+set material layercount:4
+# layer 0
+set layer:0 name:ef_prj_glow
+set scale:(0.16,0.03)
+set translation:(-2.5,-14)
+set scn0cameraref:0
+set mapmode:projection
+set uwrap:clamp
+set vwrap:clamp
+set minfilter:linear
+set projection:stq
+set inputform:abc1
+set coordinates:geometry
+# layer 1
+set layer:1 name:WT_water_ind2
+set minfilter:LinearMipmapLinear
+# layer 2
+set layer:2 name:WT_river02
+set lodbias:-1.8
+set minfilter:LinearMipmapLinear
+# layer 3
+set layer:3 name:WT_river03
+set lodbias:-0.5
+set minfilter:LinearMipmapLinear
+# shader
+set shader texturerefcount:4
+set shader indirectmap:1
+set shader indirectcoord:1
+set shader stagecount:3
+# stage 0
+set stage:0 mapID:0
+set coordinateID:0
+set rastercolor:zero
+set colora:color2
+set colorb:color0
+set colorc:textureColor
+set colord:zero
+set colorscale:multiplyby1
+set alphaB:TextureAlpha
+set alphaC:TextureAlpha
+set alphadestination:alpha1
+set indirectbias:stu
+set stage:0 indirectmatrix:matrix0
+# stage 1
+set stage:1 MapID:2
+set CoordinateID:2
+set rastercolor:zero
+set colorConstantSelection:color0_rgb
+set colorB:textureColor
+set colorC:outputColor
+set colorscale:multiplyby1
+set alphaConstantSelection:color0_alpha
+set alphaB:alpha0
+set alphaC:alpha1
+set indirectbias:stu
+set indirectmatrix:matrix0
+# stage 2
+set stage:2 mapID:3
+set CoordinateID:3
+set colorB:color1
+set colorC:textureColor
+set colorD:outputColor
+set colorScale:divideBy2
+set alphaConstantSelection:constant1_8
+set alphaB:outputAlpha
+set alphaC:ConstantAlphaSelection
+set alphaD:alpha2
+set indirectbias:stu
+set indirectMatrix:Matrix0
+
+[ef_hpipeboard]
+# material
+preset opaque
+set cullmode:none
+set shadercolor:0:(155,134,255,255)
+set shadercolor:constant3:(0,85,85,128)
+set indirectmatrix:scale-2,(0.7197265625,0,0,0,0,0)
+set layercount:3
+# layer 0
+set layer:0 name:arrowShMrr
+set scale:(0.5,0.5)
+set vwrap:mirror
+# layer 1
+set layer:1 name:rainbowBlueMrr
+set uwrap:mirror
+# layer 2
+set layer:2 name:bumpGrad
+set scale:(-3,-3)
+set rotation:90
+# shader
+set shader textureRefCount:3
+set indirectmap:2
+set indirectCoord:2
+set stageCount:2
+# stage 0
+set stage:0 mapID:1
+set stage:0 coordinateID:1
+set colorConstantSelection:color3_aaa
+set colorA:textureColor
+set colorB:Zero
+set colorC:Zero
+set alphaconstantselection:color3_alpha
+set alphaB:textureAlpha
+set alphaC:constantAlphaSelection
+set indirectBias:STU
+set indirectMatrix:Matrix0
+# stage 1
+set stage:1 mapID:0
+set coordinateID:0
+set colorConstantSelection:color3_aaa
+set colorB:outputColor
+set colorC:TextureAlpha
+set colorD:TextureColor
+set alphaConstantSelection:constant1_1
+set alphaB:constantAlphaSelection
+set alphaC:constantAlphaSelection
+set alphaD:outputAlpha
