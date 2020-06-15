@@ -1,11 +1,13 @@
 """ BRRES Subfiles """
 
-
 # Todo, parse all name references so the offsets can be properly updated to the new string table
 
 # --------------------------------------------------------
 # Most Brres Subfiles
 # --------------------------------------------------------
+from abmatt.binfile import Folder, PackingError
+
+
 class SubFile(object):
     """
     Brres Sub file Class
@@ -61,7 +63,7 @@ class SubFile(object):
         self.name = binfile.unpack_name()
 
     def _pack(self, binfile):
-        ''' packs sub file into binfile, subclass must use binfile.end() '''
+        """ packs sub file into binfile, subclass must use binfile.end() """
         binfile.start()
         binfile.writeMagic(self.MAGIC)
         binfile.markLen()
@@ -82,20 +84,44 @@ Chr0 Brres subfile
 
 
 class Chr0(SubFile):
-    ''' Chr0 class representation '''
+    """ Chr0 class representation """
     MAGIC = "CHR0"
     VERSION_SECTIONCOUNT = {5: 2, 3: 1}
 
     def __init__(self, name, parent):
         super(Chr0, self).__init__(name, parent)
+        self.animations = []
+
+    class ModelAnim:
+        def __init__(self, name, offset):
+            self.name = name
+            self.offset = offset  # since we don't parse data... store name offsetg
 
     def unpack(self, binfile):
         self._unpack(binfile)
-        self._unpackData(binfile)
+        _, self.framecount, self.size, self.loop, _ = binfile.read('I2H2I', 16)
+        binfile.recall()  # section 0
+        f = Folder(binfile, 'chr0root')
+        f.unpack(binfile)
+        self.data = binfile.readRemaining(self.byte_len)
+        while len(f):
+            name = f.recallEntryI()
+            self.animations.append(self.ModelAnim(name, binfile.offset - binfile.beginOffset))
 
     def pack(self, binfile):
         self._pack(binfile)
-        self._unpackData(binfile)
+        binfile.write('I2H2I', 0, self.framecount, self.size, self.loop, 0)
+        f = Folder(binfile, 'chr0root')
+        for x in self.animations:
+            f.addEntry(x.name)
+        binfile.createRef()
+        f.pack(binfile)
+        binfile.writeRemaining(self.data)
+        for x in self.animations:  # hackish way of overwriting the string offsets
+            binfile.offset = binfile.beginOffset + x.offset
+            f.createEntryRefI()
+            binfile.storeNameRef(x.name)
+        binfile.end()
 
 
 '''
@@ -104,7 +130,7 @@ Clr0 Brres subfile
 
 
 class Clr0(SubFile):
-    ''' Clr0 class '''
+    """ Clr0 class """
     MAGIC = "CLR0"
     VERSION_SECTIONCOUNT = {4: 2}
 
@@ -112,10 +138,12 @@ class Clr0(SubFile):
         super(Clr0, self).__init__(name, parent)
 
     def unpack(self, binfile):
+        print('Warning: Clr0 not supported, unable to edit')
         self._unpack(binfile)
         self._unpackData(binfile)
 
     def pack(self, binfile):
+        raise PackingError(binfile, 'Packing clr0 files not supported')
         self._pack(binfile)
         self._unpackData(binfile)
 
@@ -133,10 +161,12 @@ class Scn0(SubFile):
         super(Scn0, self).__init__(name, parent)
 
     def unpack(self, binfile):
+        print('Warning: Scn0 not supported, unable to edit')
         self._unpack(binfile)
         self._unpackData(binfile)
 
     def pack(self, binfile):
+        raise PackingError(binfile, 'Packing scn0 not supported')
         self._pack(binfile)
         self._unpackData(binfile)
 
@@ -154,10 +184,12 @@ class Shp0(SubFile):
         super(Shp0, self).__init__(name, parent)
 
     def unpack(self, binfile):
+        print('Warning: Shp0 not supported, unable to edit')
         self._unpack(binfile)
         self._unpackData(binfile)
 
     def pack(self, binfile):
+        raise PackingError(binfile, 'SHP0 not supported!')   # because of names
         self._pack(binfile)
         self._unpackData(binfile)
 

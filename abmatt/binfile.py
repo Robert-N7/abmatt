@@ -303,8 +303,6 @@ class BinFile:
 
     def writeOffset(self, fmt, offset, args):
         """ packs data at offset, must be less than file length """
-        if self.file[offset] != 0:
-            raise PackingError(self, 'Overwriting bytes at {}'.format(offset))
         pack_into(self.bom + fmt, self.file, offset, args)
         return len
 
