@@ -451,18 +451,29 @@ class Material:
         for x in self.layers:
             x.info(key, indentation_level)
 
-    def check(self):
-        if self.shader.texRefCount != len(self.layers):
+    def check_shader(self, layer_count, direct_count, ind_count, matrices_used):
+        # checks with shader
+        if layer_count != len(self.layers):
             print('CHECK: {} has {} layer(s) and shader has {} layer ref(s)'.format(self.name, len(self.layers),
                                                                             self.shader.texRefCount))
-        matrices_used = self.shader.getIndirectMatricesUsed()
         for i in range(2):
             matrix = self.matGX.getIndMatrix(i)
             if matrix.enabled:
                 if not matrices_used[i]:
-                    print('indirect matrix {} enabled but unused in shader'.format(i))
+                    print('CHECK: {} indirect matrix {} enabled but unused in shader'.format(self.name, i))
             elif not matrix.enabled and matrices_used[i]:
-                print('indirect matrix {} disabled but used in shader (hint set material IndirectMatrix)'.format(i))
+                print('CHECK: {} indirect matrix {} disabled but used in shader'.format(self.name, i))
+        # possibly auto-update these in future?
+        if direct_count != self.shaderStages:
+            print('Check: {} Shader has {} stages but material has {} marked'.format(self.name, direct_count,
+                                                                                     self.shaderStages))
+        if ind_count != self.indirectStages:
+            print('Check: {} Shader has {} stages but material has {} marked'.format(self.name, direct_count,
+                                                                                     self.indirectStages))
+
+
+    def check(self):
+        pass
 
     def isChanged(self):
         # if self.isModified:

@@ -58,7 +58,7 @@ class TextureLink:
     def unpack(self, binfile):
         binfile.start()
         [self.num_references] = binfile.read("I", 4)
-        for i in range(self.num_references):    # ignore this?
+        for i in range(self.num_references):  # ignore this?
             link = binfile.read("2i", 8)
         binfile.end()
 
@@ -122,6 +122,7 @@ class Vertex(ModelGeneric):
 
 class Bone(ModelGeneric):
     """ Bone class """
+
     def __init__(self, name, parent):
         super(Bone, self).__init__(name, parent, False)
 
@@ -247,7 +248,7 @@ class Mdl0(SubFile):
                 new_link = x
             if x.name == layer.name:
                 old_link = x
-        assert(old_link)
+        assert (old_link)
         # No link found, try to find texture matching and create link
         if not new_link:
             if name != 'Null' and not self.parent.getTexture(name):  # possible todo, regex matching for name?
@@ -290,7 +291,7 @@ class Mdl0(SubFile):
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + '>' + self.name if indentation_level else self.parent.name + "->" + self.name
         print("{}:\t{} material(s)\t{} shader(s)".format(trace, len(self.materials),
-                                                                   len(self.shaders)))
+                                                         len(self.shaders)))
         indentation_level += 1
         # pass it along
         for x in self.materials:
@@ -309,11 +310,15 @@ class Mdl0(SubFile):
                 print('Unknown animation reference "{}"'.format(animation.name))
 
     def check(self):
-        for x in self.materials:
+        """Checks model for validity"""
+        for x in self.shaders:
             x.check()
         expected_name = self.parent.getExpectedMdl()
         if expected_name and expected_name != self.name:
             print('WARNING: Model name {} does not match expected {}'.format(self.name, expected_name))
+        for x in self.textureLinks:
+            if not self.parent.getTexture(x.name):
+                print('WARNING: Texture Reference "{}" not found.'.format(x.name))
 
     def checkDrawXLU(self):
         count = 0
@@ -337,10 +342,6 @@ class Mdl0(SubFile):
         self.sections[0] = self.definitions = [x for x in self.definitions if x]
         self.shaders.consolidate()
         self.sections[11] = self.textureLinks = [x for x in self.textureLinks if x.num_references > 0]
-        parent = self.parent
-        for x in self.textureLinks:
-            if not parent.getTexture(x.name):
-                print('WARNING: Texture Reference "{}" not found.'.format(x.name))
         self.check()
 
     def unpackSection(self, binfile, section_index):
@@ -377,7 +378,7 @@ class Mdl0(SubFile):
                     d = self.drawXLU
                     found_xlu = True
                     if not found_opa:
-                        self.definitions.append(self.drawOpa) # empty but it might change
+                        self.definitions.append(self.drawOpa)  # empty but it might change
                 elif 'Opa' in name:
                     d = self.drawOpa
                     found_opa = True
@@ -388,7 +389,7 @@ class Mdl0(SubFile):
             d.unpack(binfile)
             self.definitions.append(d)
         if not found_xlu:
-            self.definitions.append(self.drawXLU)   # empty but might change
+            self.definitions.append(self.drawXLU)  # empty but might change
 
     def unpack(self, binfile):
         """ unpacks model data """
@@ -486,7 +487,7 @@ class Mdl0(SubFile):
         texture_link_map = None
         for i in self.SECTION_ORDER:
             folder = folders[i - 2] if i > 5 and self.version < 10 else folders[i]
-            if i == 11:     # special case for texture links
+            if i == 11:  # special case for texture links
                 texture_link_map = self.packTextureLinks(binfile, folder)
             else:
                 self.packSection(binfile, i, folder, texture_link_map)

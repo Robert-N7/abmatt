@@ -285,7 +285,7 @@ class BPCommand(object):
 
 
 class ZMode(BPCommand):
-    ''' Depth settings '''
+    """ Depth settings """
 
     def __init__(self, enableDepthTest=True, enableDepthUpdate=True):
         super(ZMode, self).__init__(BPCommand.BPMEM_ZMODE,
@@ -312,7 +312,7 @@ class ZMode(BPCommand):
 
 
 class AlphaFunction(BPCommand):
-    ''' Alpha function '''
+    """ Alpha function """
 
     def __init__(self, xlu=False):
         data = 0x1eff80 if xlu else 0x3f0000
@@ -367,7 +367,7 @@ class AlphaFunction(BPCommand):
 
 
 class BlendMode(BPCommand):
-    ''' Blend Mode '''
+    """ Blend Mode """
 
     def __init__(self, enabled=False):
         super(BlendMode, self).__init__(BPCommand.BPMEM_BLENDMODE, 0x34A0 | enabled)
@@ -398,7 +398,7 @@ class BlendMode(BPCommand):
 
 
 class ConstantAlpha(BPCommand):
-    ''' constant alpha '''
+    """ constant alpha """
 
     def __init__(self, enabled=False):
         data = 0 if not enabled else 0x1ff
@@ -418,7 +418,7 @@ class ConstantAlpha(BPCommand):
 
 
 class ColorEnv(BPCommand):
-    ''' Dealing with color shader ops '''
+    """ Dealing with color shader ops """
 
     def __init__(self, id):
         super(ColorEnv, self).__init__(0xC0 + (id * 2), 0x18f8af)
@@ -467,7 +467,7 @@ class ColorEnv(BPCommand):
 
 
 class AlphaEnv(BPCommand):
-    ''' Dealing with alpha shader ops '''
+    """ Dealing with alpha shader ops """
 
     def __init__(self, id):
         super(AlphaEnv, self).__init__(0xc1 + (id * 2), 0x08f2f0)
@@ -701,14 +701,14 @@ class ColorReg(BPCommand):
     """ Tev registers """
 
     def __init__(self, register, high, type, data=0):
-        ''' Color register
+        """ Color register
             register: 0-4
             high: 0- low, 1 - high
             type: 0-1
             data: color data
                 //0000 0000 0000 1111 1111 1111 Red (Lo) / Blue (Hi)
                 //0111 1111 1111 0000 0000 0000 Alpha (Lo) /Green (Hi)
-        '''
+        """
         super(ColorReg, self).__init__(0xE0 + (2 * register) + high, data)
 
     def getColor(self):
@@ -721,7 +721,7 @@ class ColorReg(BPCommand):
 
 
 class IndCmd(BPCommand):
-    ''' Indirect stage command '''
+    """ Indirect stage command """
 
     def __init__(self, id):
         super(IndCmd, self).__init__(0x10 + id)  # possibly varying order?

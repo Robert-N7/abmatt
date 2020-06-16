@@ -289,7 +289,10 @@ class Stage():
         elif "swap" in key or "stage" in key:
             self.map[key] = validInt(value, 0, 4)
         elif "id" in key:
-            self.map[key] = validInt(value, 0, 7)
+            i = validInt(value, 0, 7)
+            self.map[key] = i
+            if 'coord' in key:  # notify parent
+                self.parent.onCoordinateUpdate(i)
         else:  # list indexing ones
             value = value.replace('constant', '')
             if "scale" in key:
@@ -750,6 +753,53 @@ class Shader():
                 break
             i += 1
         return i
+
+    def getIndCoords(self):
+        indcoords = []
+        for x in self.stages:
+            indcoords.append(x['indirectstage'])
+        return indcoords
+
+    def check(self):
+        """Checks the shader for common errors, returns (direct_stage_count, ind_stage_count)"""
+        prefix = 'CHECK Shader{}:'.format(self.getMaterialNames())
+        tex_usage = [0] * self.texRefCount
+        ind_stage_count = direct_stage_count = 0
+        # indirect check
+        ind_stages = self.getIndCoords()
+        for x in self.indTexCoords:
+            if x < 7:
+                if x >= self.texRefCount:
+                    print('{} Indirect layer {} is not marked for use.'.format(prefix, x))
+                else:
+                    try:
+                        ind_stages.remove(x)
+                        tex_usage[x] += 1
+                        ind_stage_count += 1
+                    except ValueError:
+                        print('{} Indirect layer {} unused'.format(prefix, x))
+        # direct check
+        for x in self.stages:
+            id = x['coordinateid']
+            if id >= self.texRefCount:
+                print('{} Stage {} layer {} is not marked for use.'.format(prefix, x.id, id))
+            else:
+                tex_usage[id] += 1
+            direct_stage_count += 1
+        # now check usage count
+        for i in range(len(tex_usage)):
+            x = tex_usage[i]
+            if x == 0:
+                print('{} Layer {} is not used in shader.'.format(prefix, i))
+            elif x > 1:
+                print('{} Layer {} used {} times by shader.'.format(prefix, i, x))
+        ind_matrices_used = self.getIndirectMatricesUsed()
+        for x in self.materials:
+            x.check_shader(self.texRefCount, direct_stage_count, ind_stage_count, ind_matrices_used)
+
+    def onCoordinateUpdate(self, coord_id):
+        if coord_id >= self.texRefCount:
+            self.texRefCount = coord_id + 1  # auto adjust
 
 # possibly try to fix ctools bugs later
 # class TexCoord:
