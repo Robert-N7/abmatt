@@ -12,7 +12,7 @@ from cmd import Cmd
 from abmatt.brres import Brres
 from abmatt.command import Command, run_commands, ParsingException, load_commandfile
 
-__version__ = "0.4.1"
+__version__ = "0.4.2"
 USAGE = "Usage: {} -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value>\
  -n <name> -m <model> -i -s] "
 

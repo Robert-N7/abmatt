@@ -8,3 +8,11 @@
 - Support for editing PAT0
 - ignore case matching
 - better info amounts, detect singles vs groups
+- default presets
+
+    return self.lightChannels[0].getLight()
+AttributeError: LightChannel instance has no attribute 'getLight'
+
+line 448, in getHighestBit
+    while start and not (val & start):
+TypeError: unsupported operand type(s) for &: 'str' and 'int'

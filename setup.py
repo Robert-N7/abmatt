@@ -12,14 +12,14 @@ REQUIREMENTS = []
 # some more details
 CLASSIFIERS = [
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent"
  ]
 
 # calling the setup function
 setup(name='abmatt',
-      version='0.4.1',
+      version='0.4.2',
       entry_points={
           'console_scripts': [
               'abmatt = abmatt.__main__:main'

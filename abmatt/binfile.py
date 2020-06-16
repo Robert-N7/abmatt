@@ -1,7 +1,10 @@
 #!/usr/bin/python
 """ binary file read/writing operations """
 from struct import *
+import sys
 
+# which version?
+IS_PY3 = sys.version[0] == '3'
 
 class UnpackingError(BaseException):
     def __init__(self, binfile, str_err):
@@ -55,7 +58,7 @@ class BinFile:
         try:
             with open(self.filename, "wb") as f:
                 f.write(self.file)
-        except PermissionError:
+        except:
             print('Permission Denied')
             return False
         return True
@@ -394,7 +397,7 @@ class FolderEntry:
         self.id = 0xffff  # id, left, right as calculated by binfileary tree
         self.left = 0
         self.right = 0
-        self.name = name.encode('Ascii')
+        self.name = name.encode('ascii')
         # name.encode('Ascii')
         self.dataPtr = data_ptr
 
@@ -410,7 +413,7 @@ class FolderEntry:
     def unpack(self, binfile):
         self.id, u, self.left, self.right = binfile.read("4H", 8)
         self.name = binfile.unpack_name()
-        [dataptr] = binfile.read("I", 0)
+        # [dataptr] = binfile.read("I", 0)
         # print("{} entry {}: id {} left {} right {} data ptr {}".format(offset, self.name, self.id, self.left,
         #                                                                self.right, dataptr + binfile.beginOffset))
         binfile.store()
@@ -432,11 +435,15 @@ class FolderEntry:
         objlen = len(objectname)
         subjlen = len(self.name)
         if objlen < subjlen:
-            self.id = subjlen - 1 << 3 | self.getHighestBit(self.name[subjlen - 1])
+            val = self.name[subjlen - 1] if IS_PY3 else ord(self.name[subjlen - 1])  # ugly hack to fix compatibility
+            self.id = subjlen - 1 << 3 | self.getHighestBit(val)
         else:
             while subjlen > 0:
                 subjlen -= 1
-                ch = objectname[subjlen] ^ self.name[subjlen]
+                if not IS_PY3:
+                    ch = ord(objectname[subjlen]) ^ ord(self.name[subjlen])
+                else:
+                    ch = objectname[subjlen] ^ self.name[subjlen]
                 if ch:
                     self.id = subjlen << 3 | self.getHighestBit(ch)
                     break
@@ -452,12 +459,15 @@ class FolderEntry:
 
     def get_brres_id_bit(self, id):
         idx = id >> 3
-        return idx < len(self.name) and self.name[idx] >> (id & 7) & 1
+        if idx < len(self.name):
+            val = self.name[idx] if IS_PY3 else ord(self.name[idx])     # ugly hack to fix compatibility
+            return val >> (id & 7) & 1
+        return False
 
     def calc_brres_entry(self, entrylist):
         """ calculates brres entry, given an entry array"""
         head = entrylist[0]
-        self.calc_brres_id("")
+        self.calc_brres_id(''.encode('ascii'))
         self.left = self.right = self.idx
         prev = head
         current = entrylist[head.left]
