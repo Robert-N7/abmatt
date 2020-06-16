@@ -19,7 +19,7 @@ CLASSIFIERS = [
 
 # calling the setup function
 setup(name='abmatt',
-      version='0.4.0',
+      version='0.4.1',
       entry_points={
           'console_scripts': [
               'abmatt = abmatt.__main__:main'
@@ -33,6 +33,7 @@ setup(name='abmatt',
       author_email='robert7.nelson@gmail.com',
       license='GPLv3',
       packages=setuptools.find_packages(),
+      package_data={'abmatt':['presets.txt']},
       classifiers=CLASSIFIERS,
       install_requires=REQUIREMENTS,
       keywords='Mario Kart Wii Brres Material MDL0'
