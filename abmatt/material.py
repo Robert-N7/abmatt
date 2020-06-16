@@ -123,7 +123,7 @@ class Material:
         return self.shader
 
     def getLightChannel(self):
-        return self.lightChannels[0].getLight()
+        return str(self.lightChannels[0])
 
     def getLightset(self):
         return self.lightset
@@ -664,6 +664,9 @@ class LightChannel:
         self.rasterColorEnabled = False
         self.rasterAlphaEnabled = False
 
+    def __str__(self):
+        return 'ColorControl: {}\nAlphaControl: {}'.format(self.colorLightControl, self.alphaLightControl)
+
     def __getitem__(self, item):
         is_color = True if "color" in item else False
         if "control" in item:
@@ -740,6 +743,10 @@ class LightChannel:
             self.attenuationEnabled = flags >> 9 & 1
             self.attenuationFunction = flags >> 10 & 1
             self.light4567 = flags >> 11 & 0xf
+
+        def __str__(self):
+            return 'material:{} ambient:{} diffuse:{} attenuation:{}'.format(self['material'], self['ambient'],
+                                                                             self['diffuse'], self['attenuation'])
 
         def __getitem__(self, item):
             if 'material' in item:
