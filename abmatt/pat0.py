@@ -76,6 +76,7 @@ class MatAnimation:
 class Pat0(SubFile):
     """ Pat0 animation class """
 
+    SETTINGS = () # todo
     MAGIC = "PAT0"
     # Sections:
     #   0: data

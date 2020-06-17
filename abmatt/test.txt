@@ -1,2 +1,2 @@
-info for * in Course/beginner_course.d/vrcorn_model.brres
+info for * in Course/beginner_course.d/course_model.brres
 save as test4.brres overwrite

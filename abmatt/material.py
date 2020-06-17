@@ -161,12 +161,8 @@ class Material:
         return self.name
 
     def getLayerI(self, layer_index):
-        if 0 <= layer_index < 8:
-            if layer_index >= len(self.layers):
-                for i in range(layer_index + 1 - len(self.layers)):
-                    self.addLayer('Null')
+        if 0 <= layer_index < len(self.layers):
             return self.layers[layer_index]
-        raise IndexError('Layer index {}'.format(layer_index))
 
     def getLayers(self, key, force_add=False):
         """Attempts to get layer(s) by string key, adding it if force_add is set"""
@@ -217,6 +213,8 @@ class Material:
 
     def setName(self, value):
         self.name = value
+        if self.srt0:
+            self.srt0.updateName(value)
 
     def setXluStr(self, str_value):
         val = validBool(str_value)
@@ -439,6 +437,18 @@ class Material:
                    setEnableDepthUpdateStr, setDepthFunctionStr, setDrawPriorityStr,
                    setIndirectMatrix, setName, setLayerCount)
 
+    # ------------------------- SRT0 --------------------------------------------------
+    def set_srt0(self, anim):
+        """This is called by model to set up the srt0 reference"""
+        self.srt0 = anim
+        anim.setMaterial(self)
+
+    def get_srt0(self, force_add=False):
+        """Gets the srt0, if force_add is set, automatically generates one"""
+        if not self.srt0 and force_add:
+            self.srt0 = self.parent.add_srt0(self)
+        return self.srt0
+
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + self.name if indentation_level else '>' + self.parent.name + "->" + self.name
         if key in self.SETTINGS:
@@ -453,6 +463,7 @@ class Material:
         for x in self.layers:
             x.info(key, indentation_level)
 
+    # ------------------------------------- Check ----------------------------------------
     def check_shader(self, layer_count, direct_count, ind_count, matrices_used):
         # checks with shader
         if layer_count != len(self.layers):
@@ -467,36 +478,27 @@ class Material:
                 print('CHECK: {} indirect matrix {} disabled but used in shader'.format(self.name, i))
         # possibly auto-update these in future?
         if direct_count != self.shaderStages:
-            print('Check: {} Shader has {} stages but material has {} marked'.format(self.name, direct_count,
+            print('Check: {} Shader has {} direct stages but material has {} marked'.format(self.name, direct_count,
                                                                                      self.shaderStages))
         if ind_count != self.indirectStages:
-            print('Check: {} Shader has {} stages but material has {} marked'.format(self.name, direct_count,
+            print('Check: {} Shader has {} indirect stages but material has {} marked'.format(self.name, direct_count,
                                                                                      self.indirectStages))
 
-
-    def check(self):
-        pass
-
-    def isChanged(self):
-        # if self.isModified:
-        #     return True
-        # for layer in self.layers:
-        #     if layer.isModified:
-        #         return True
-        return False
-
+    # -------------------------------- Layer removing/adding --------------------------
     def removeLayerI(self, index=-1):
         """Removes layer at index"""
         layer = self.layers[index]
         self.parent.removeLayerReference(layer.name)
-        del self.layers[index]
+        self.layers.pop(index)
+        if self.srt0:
+            self.srt0.updateLayerNameI(index, None)
         return len(self.layers)
 
     def removeLayer(self, name):
         """ Removes layer from material by name """
         for i, x in enumerate(self.layers):
             if x.name == name:
-                del self.layers[i]
+                self.removeLayerI(i)
                 return
         raise ValueError('Material "{}" has no layer "{}" to remove'.format(self.name, name))
 
@@ -515,9 +517,17 @@ class Material:
                 print('Layer {} already exists in {}'.format(name, self.name))
                 return x
         self.parent.addLayerReference(name)  # update model texture link/check that exists
-        l = Layer(len(self.layers), name, self)
+        i = len(self.layers)
+        l = Layer(i, name, self)
         self.layers.append(l)
+        if self.srt0:
+            self.srt0.updateLayerNameI(i, name)
         return l
+
+    def renameLayer(self, layer, name):
+        if self.srt0:
+            self.srt0.updateLayerNameI(layer.id, name)
+        return self.parent.renameLayer(layer, name)
 
     # -----------------------------------------------------------------------------
     # PACKING

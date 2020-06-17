@@ -3,16 +3,16 @@
 # ---------------------------------------------------------------------------
 import fnmatch
 import os
-import sys
 
+from abmatt.binfile import UnpackingError
 from abmatt.brres import Brres
 from abmatt.layer import Layer
 from abmatt.matching import validInt, findAll
 from abmatt.material import Material
-from abmatt.shader import Shader, Stage
-from abmatt.srt0 import Srt0
 from abmatt.mdl0 import Mdl0
-from abmatt.binfile import UnpackingError
+from abmatt.shader import Shader, Stage
+from abmatt.pat0 import Pat0
+from abmatt.srt0 import Srt0, SRTMatAnim, SRTTexAnim
 
 
 class ParsingException(Exception):
@@ -51,7 +51,9 @@ class Command:
         "stage": Stage.SETTINGS,
         "mdl0": Mdl0.SETTINGS,
         "brres": Brres.SETTINGS,
-        # "srt0": Srt0.SETTINGS
+        "srt0": SRTMatAnim.SETTINGS,
+        "srt0layer": SRTTexAnim.SETTINGS,
+        "pat0": Pat0.SETTINGS
     }
 
     def __init__(self, text):
@@ -145,10 +147,10 @@ class Command:
             type_id = val[i + 1:]
             val = val[:i]
         val = val.lower()
-        if val == 'material' or val == 'shader':
+        if val in ('material', 'shader', 'srt0', 'pat0'):
             if self.cmd == 'add' or self.cmd == 'remove':
                 raise ParsingException(self.txt, 'Add/Remove not supported for {}.'.format(val))
-        elif val == 'layer' or val == 'stage':
+        elif val in ('layer', 'srt0layer', 'pat0layer', 'stage'):
             self.has_type_id = True
             try:
                 self.type_id = validInt(type_id, 0, 16) if type_id else None
@@ -334,6 +336,10 @@ class Command:
                     Command.SELECTED = findAll(self.SELECT_ID, self.MODELS)
             elif type == 'brres':
                     Command.SELECTED = findAll(self.SELECT_ID, self.ACTIVE_FILES)
+            elif 'srt0' in type:
+                pass # todo
+            elif 'pat0' in type:
+                pass # todo
 
     @staticmethod
     def markModified():
@@ -449,10 +455,10 @@ class Command:
 
 def run_commands(commandlist):
     for cmd in commandlist:
-        try:
+        # try:
             cmd.runCmd()
-        except ValueError as e:
-            print(e)
+        # except ValueError as e:
+        #     print(e)
 
 
 def load_commandfile(filename):

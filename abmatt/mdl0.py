@@ -7,8 +7,10 @@ from abmatt.polygon import Polygon
 from abmatt.shader import Shader, ShaderList
 from abmatt.subfile import SubFile
 
-
 # ----------------- Model sub files --------------------------------------------
+from srt0 import SRTMatAnim
+
+
 class ModelGeneric(object):
     """ A generic model class - most data structures have similar type of header"""
 
@@ -166,6 +168,7 @@ class Mdl0(SubFile):
         super(Mdl0, self).__init__(name, parent)
         self.drawXLU = DrawList('DrawXlu', self)
         self.drawOpa = DrawList('DrawOpa', self)
+        self.srt0_collection = None
         self.definitions = []
         self.bones = []
         self.vertices = []
@@ -197,16 +200,26 @@ class Mdl0(SubFile):
         else:
             raise ValueError('Unknown key "{}"'.format(key))
 
+    # ---------------------------------- SRT0 ------------------------------------------
+    def set_srt0(self, srt0_collection):
+        self.srt0_collection = srt0_collection
+        for x in srt0_collection:
+            mat = self.getMaterialByName(x.name)
+            if not mat:
+                print('Warning: no material found matching animation {}'.format(x.name))
+            else:
+                mat.set_srt0(x)
+
+    def add_srt0(self, material):
+        anim = SRTMatAnim(material.name)
+        self.srt0_collection.add(anim)
+        return anim
+
     def updateName(self, name):
         self.parent.updateModelName(self.name, name)
         self.name = name
 
-    def getMaterialsByName(self, name):
-        return findAll(name, self.materials)
-
-    def getShaders(self, material_list, for_modification=True):
-        return self.shaders.getShaders(material_list, for_modification)
-
+    # ------------------------------------ Materials ------------------------------
     def getMaterialByName(self, name):
         """Exact naming"""
         for m in self.materials:
@@ -219,6 +232,40 @@ class Mdl0(SubFile):
             if x.id == id:
                 return x
 
+    def getMaterialsByName(self, name):
+        return findAll(name, self.materials)
+
+    def isMaterialDrawXlu(self, material_id):
+        if self.drawXLU.getByMaterialID(material_id):
+            return True
+        return False
+
+    def setMaterialDrawXlu(self, material_id):
+        x = self.drawOpa.pop(material_id)
+        if x is not None:
+            self.drawXLU.insert(x)
+        return x
+
+    def setMaterialDrawOpa(self, material_id):
+        x = self.drawXLU.pop(material_id)
+        if x is not None:
+            self.drawOpa.insert(x)
+        return x
+
+    def setDrawPriority(self, material_id, priority):
+        return self.drawXLU.setPriority(material_id, priority) or self.drawOpa.setPriority(material_id, priority)
+
+    def getDrawPriority(self, material_id):
+        definition = self.drawXLU.getByMaterialID(material_id)
+        if not definition:
+            definition = self.drawOpa.getByMaterialID(material_id)
+        return definition.getPriority()
+
+    # ------------------------------- Shaders -------------------------------------------
+    def getShaders(self, material_list, for_modification=True):
+        return self.shaders.getShaders(material_list, for_modification)
+
+    # ----------------------------- Layers/Tex Links -------------------------------------
     def getTextureLink(self, name):
         for x in self.textureLinks:
             if x.name == name:
@@ -248,7 +295,7 @@ class Mdl0(SubFile):
                 new_link = x
             if x.name == layer.name:
                 old_link = x
-        assert (old_link)
+        assert old_link
         # No link found, try to find texture matching and create link
         if not new_link:
             if name != 'Null' and not self.parent.getTexture(name):  # possible todo, regex matching for name?
@@ -262,32 +309,6 @@ class Mdl0(SubFile):
     def getTrace(self):
         return self.parent.getTrace() + "->" + self.name
 
-    def isMaterialDrawXlu(self, material_id):
-        if self.drawXLU.getByMaterialID(material_id):
-            return True
-        return False
-
-    def setMaterialDrawXlu(self, material_id):
-        x = self.drawOpa.pop(material_id)
-        if x is not None:
-            self.drawXLU.insert(x)
-        return x
-
-    def setMaterialDrawOpa(self, material_id):
-        x = self.drawXLU.pop(material_id)
-        if x is not None:
-            self.drawOpa.insert(x)
-        return x
-
-    def setDrawPriority(self, material_id, priority):
-        return self.drawXLU.setPriority(material_id, priority) or self.drawOpa.setPriority(material_id, priority)
-
-    def getDrawPriority(self, material_id):
-        definition = self.drawXLU.getByMaterialID(material_id)
-        if not definition:
-            definition = self.drawOpa.getByMaterialID(material_id)
-        return definition.getPriority()
-
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + '>' + self.name if indentation_level else self.parent.name + "->" + self.name
         print("{}:\t{} material(s)\t{} shader(s)".format(trace, len(self.materials),
@@ -299,16 +320,7 @@ class Mdl0(SubFile):
         for x in self.shaders:
             x.info(key, indentation_level)
 
-    # ---------------HOOK REFERENCES -----------------------------------------
-    def hookSRT0ToMats(self, srt0):
-        for animation in srt0.matAnimations:
-            m = self.getMaterialByName(animation.name)
-            if m:
-                m.srt0 = animation
-                animation.material = m
-            else:
-                print('Unknown animation reference "{}"'.format(animation.name))
-
+    # --------------------------------------- Check -----------------------------------
     def check(self):
         """Checks model for validity"""
         for x in self.shaders:

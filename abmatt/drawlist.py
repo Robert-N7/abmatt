@@ -2,8 +2,8 @@
 
 
 class Definition():
-    ''' Definition, controls drawing commands such as opacity'''
-    names = ("DrawOpa", "DrawXlu", "MixNode", "NodeTree")  # todo check these
+    """ Definition, controls drawing commands such as opacity"""
+    names = ("DrawOpa", "DrawXlu", "MixNode", "NodeTree")
 
     def __init__(self, name, parent):
         self.name = name

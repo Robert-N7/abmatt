@@ -5,6 +5,19 @@ import re
 BOOLABLE = ["False", "True"]
 
 
+def splitKeyVal(value, default_key='0'):
+    i = value.find(':')
+    if i >= 0:
+        key = value[:i]
+        try:
+            value = value[i + 1:]
+        except IndexError:
+            raise ValueError('syntax error "{}", val required after colon'.format(value))
+    else:
+        key = default_key
+    return key, value
+
+
 def validFloat(str, min, max):
     f = float(str)
     if not min <= f < max:

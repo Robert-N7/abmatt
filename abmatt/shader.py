@@ -3,7 +3,7 @@
 # ------------------------------------------------------------------------
 from copy import deepcopy, copy
 
-from abmatt.binfile import Folder, printCollectionHex
+from abmatt.binfile import Folder
 from abmatt.matching import *
 from abmatt.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
 
@@ -559,7 +559,6 @@ class Shader():
 
     def getStage(self, n):
         if not 0 <= n < len(self.stages):
-            # todo: add shader stage?
             raise ValueError("Shader stage {} out of range, has {} stages".format(n, len(self.stages)))
         return self.stages[n]
 
@@ -772,20 +771,21 @@ class Shader():
         """Checks the shader for common errors, returns (direct_stage_count, ind_stage_count)"""
         prefix = 'CHECK Shader{}:'.format(self.getMaterialNames())
         tex_usage = [0] * self.texRefCount
-        ind_stage_count = direct_stage_count = 0
+        ind_stage_count = 0
         # indirect check
         ind_stages = self.getIndCoords()
-        for x in self.indTexCoords:
+        for stage_id in range(len(self.indTexCoords)):
+            x = self.indTexCoords[stage_id]
             if x < 7:
                 if x >= self.texRefCount:
                     print('{} Indirect layer {} is not marked for use.'.format(prefix, x))
                 else:
                     try:
-                        ind_stages.remove(x)
+                        ind_stages.remove(stage_id)
                         tex_usage[x] += 1
                         ind_stage_count += 1
                     except ValueError:
-                        print('{} Indirect layer {} unused'.format(prefix, x))
+                        print('{} Indirect layer {} set, but not used in shader'.format(prefix, x))
         # direct check
         for x in self.stages:
             id = x['coordinateid']
@@ -793,7 +793,6 @@ class Shader():
                 print('{} Stage {} layer {} is not marked for use.'.format(prefix, x.id, id))
             else:
                 tex_usage[id] += 1
-            direct_stage_count += 1
         # now check usage count
         for i in range(len(tex_usage)):
             x = tex_usage[i]
@@ -803,7 +802,7 @@ class Shader():
                 print('{} Layer {} used {} times by shader.'.format(prefix, i, x))
         ind_matrices_used = self.getIndirectMatricesUsed()
         for x in self.materials:
-            x.check_shader(self.texRefCount, direct_stage_count, ind_stage_count, ind_matrices_used)
+            x.check_shader(self.texRefCount, len(self.stages), ind_stage_count, ind_matrices_used)
 
     def onCoordinateUpdate(self, coord_id):
         if coord_id >= self.texRefCount:

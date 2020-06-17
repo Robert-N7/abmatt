@@ -12,7 +12,7 @@ from abmatt.layer import Layer
 from abmatt.matching import findAll
 from abmatt.mdl0 import Mdl0
 from abmatt.pat0 import Pat0
-from abmatt.srt0 import Srt0
+from abmatt.srt0 import Srt0, SRTCollection
 from abmatt.subfile import *
 
 
@@ -62,20 +62,6 @@ class Brres():
         else:
             raise ValueError('Unknown key "{}"'.format(key))
 
-    def getExpectedMdl(self):
-        filename = os.path.basename(self.name)
-        if filename in ('course_model', 'map_model', 'vrcorn_model'):
-            return filename.replace('_model', '')
-
-    def updateModelName(self, old_name, new_name):
-        for folder in self.folders[2:]:
-            for x in folder:
-                if old_name in x.name:
-                    x.name = x.name.replace(old_name, new_name)
-
-    def getModelsByName(self, name):
-        return findAll(name, self.models)
-
     def close(self):
         if self.isModified or self.DESTINATION and self.DESTINATION != self.name:
             self.save(self.DESTINATION, self.OVERWRITE)
@@ -97,27 +83,6 @@ class Brres():
             self.isModified = False
             return True
 
-    def setModel(self, modelname):
-        for mdl in self.models:
-            if modelname == mdl.name:
-                self.model = mdl
-                return True
-        regex = re.compile(modelname)
-        if regex:
-            for mdl in self.models:
-                if regex.search(modelname):
-                    self.model = mdl
-                    return True
-        return False
-
-    def parseCommand(self, command):
-        if command.cmd == command.COMMANDS[0]:
-            self.set(command)
-        elif command.cmd == command.COMMANDS[1]:
-            self.info(command)
-        else:
-            print("Unknown command: {}".format(command.cmd))
-
     def getTrace(self):
         if self.parent:
             return self.parent.name + "->" + self.name
@@ -125,7 +90,7 @@ class Brres():
 
     def info(self, key=None, indentation_level=0):
         print('{}{}:\t{} model(s)\t{} texture(s)'.format('  ' * indentation_level + '>', self.name,
-                                                     len(self.models), len(self.textures)))
+                                                         len(self.models), len(self.textures)))
         folder_indent = indentation_level + 1
         indentation_level += 2
         folders = self.folders
@@ -135,72 +100,6 @@ class Brres():
                 print('{}>{}'.format('  ' * folder_indent, self.FOLDERS[i]))
                 for x in folder:
                     x.info(key, indentation_level)
-
-    def set(self, command):
-        mats = self.getMatCollection(command.modelname, command.materialname)
-        if command.key in Layer.SETTINGS:
-            layers = self.getLayerCollection(mats, command.name)
-            if layers:
-                self.layersSet(layers, command.key, command.value)
-            else:
-                print("No matches found for {}".format(command.name))
-        else:
-            mats = findAll(command.name, mats)
-            if mats:
-                self.materialSet(mats, command.key, command.value)
-            else:
-                print("No matches found for {}".format(command.name))
-
-    def getModelByOffset(self, offset):
-        for mdl in self.models:
-            if offset == mdl.offset:
-                return mdl
-
-    def getMatCollection(self, modelname, materialname):
-        mdls = findAll(modelname, self.models)
-        mats = []
-        for mdl in mdls:
-            found = findAll(materialname, mdl.mats)
-            if found:
-                mats = mats + found
-        return mats
-
-    def getLayerCollection(self, mats, layername):
-        layers = []
-        for m in mats:
-            found = findAll(layername, m.layers)
-            if found:
-                layers = layers + found
-        return layers
-
-    def materialSet(self, materials, setting, value):
-        try:
-            func = materials[0].getSetter(setting)
-            if func:
-                for x in materials:
-                    func(x, value)
-            else:
-                print("Unknown setting {}".format(setting))
-        except ValueError as e:
-            print(str(e))
-            sys.exit(1)
-        self.isUpdated = True
-        return True
-
-    def layersSet(self, layers, setting, value):
-        try:
-            fun = layers[0].getSetter(setting)
-            if not fun:
-                print("Unknown setting {}".format(setting))
-                return False
-            else:  # FUN!
-                for x in layers:
-                    fun(x, value)
-        except ValueError as e:
-            print(str(e))
-            sys.exit(1)
-        self.isUpdated = True
-        return True
 
     def isChanged(self):
         if self.isModified:
@@ -215,12 +114,35 @@ class Brres():
 
     def getNumSections(self, folders):
         """ gets the number of sections, including root"""
-        count = 1   # root
+        count = 1  # root
         for x in folders[count:]:
             if x:
                 count += len(x)
                 # print('Length of folder {} is {}'.format(x.name, len(x)))
         return count
+
+    # ------------------------------ Models ---------------------------------
+
+    def getModel(self, name):
+        for x in self.models:
+            if x.name == name:
+                return x
+
+    def getExpectedMdl(self):
+        filename = os.path.basename(self.name)
+        if filename in ('course_model', 'map_model', 'vrcorn_model'):
+            return filename.replace('_model', '')
+
+    def updateModelName(self, old_name, new_name):
+        for folder in self.folders[2:]:
+            for x in folder:
+                if old_name in x.name:
+                    x.name = x.name.replace(old_name, new_name)
+
+    def getModelsByName(self, name):
+        return findAll(name, self.models)
+
+    # -------------------------------- Textures -----------------------------
 
     def getTexture(self, name):
         for x in self.textures:
@@ -230,18 +152,42 @@ class Brres():
     def getTextures(self, name):
         return findAll(name, self.textures)
 
-    # ----------------- HOOKING REFERENCES ----------------------------------
-    def hookAnimationRefs(self):
-        """Hooks up references from materials to animations"""
-        for x in self.anmSrt:
-            name = x.name.rstrip(string.digits)
-            for mdl in self.models:
-                if name == mdl.name:
-                    mdl.hookSRT0ToMats(x)
+    # --------------------- SRT0 ----------------------------------------------
+    def generate_srt_collections(self):
+        # srt animation processing
+        animations = self.anmSrt
+        model_anim_map = {}  # dictionary of model names to animations
+        if animations:
+            for x in animations:
+                name = x.name.rstrip(string.digits)
+                if not model_anim_map.get(name):
+                    model_anim_map[name] = [x]
+                else:
+                    model_anim_map[name].append(x)
+            # now create SRT Collection
+            for key, val in enumerate(model_anim_map):
+                mdl = self.getModel(key)
+                if not mdl:
+                    print('Warning: No model found matching animation {}'.format(key))
+                else:
+                    mdl.set_srt0(SRTCollection(key, self, val))
+
+    def get_srt0s_for_packing(self):
+        # srt animation processing
+        animations = []
+        for mdl in self.models:
+            if mdl.srt0_collection:
+                animations.extend(mdl.srt0_collection.consolidate())
+        return animations
 
     # -------------------------------------------------------------------------
     #   PACKING / UNPACKING
     # -------------------------------------------------------------------------
+    def post_unpacking(self):
+        self.generate_srt_collections()
+
+    def pre_packing(self):
+        self.folders[3] = self.get_srt0s_for_packing()
 
     def unpackFolder(self, binfile, root, folderIndex):
         """ Unpacks the folder folderIndex """
@@ -278,7 +224,7 @@ class Brres():
         for i in range(len(self.FOLDERS)):
             self.unpackFolder(binfile, root, i)
         binfile.end()
-        self.hookAnimationRefs()
+        self.post_unpacking()
 
     def generateRoot(self, binfile):
         """ Generates the root folders
@@ -322,6 +268,7 @@ class Brres():
 
     def pack(self, binfile):
         """ packs the brres """
+        self.pre_packing()
         binfile.start()
         root = self.generateRoot(binfile)
         binfile.writeMagic(self.MAGIC)

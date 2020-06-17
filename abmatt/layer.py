@@ -308,7 +308,7 @@ class Layer:
         return self.enable
 
     def setName(self, value):
-        self.name = self.parent.parent.renameLayer(self, value)
+        self.name = self.parent.renameLayer(self, value)
 
     SET_SETTING = (setScaleStr, setRotationStr, setTranslationStr, setCameraRefStr,
                    setLightRefStr, setMapmodeStr, setUWrapStr, setVWrapStr, setMinFilterStr, setMagFilterStr,

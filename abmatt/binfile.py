@@ -6,6 +6,7 @@ import sys
 # which version?
 IS_PY3 = sys.version[0] == '3'
 
+
 class UnpackingError(BaseException):
     def __init__(self, binfile, str_err):
         super(UnpackingError, self).__init__('Error unpacking {}: {}'.format(binfile.filename, str_err))
@@ -34,7 +35,7 @@ class BinFile:
         self.bom = bom  # byte order mark > | <
         self.nameRefMap = {}  # for packing name references
         self.lenMap = {}  # used for tracking length of files
-        self.c_length = None    # for tracking current length
+        self.c_length = None  # for tracking current length
         self.isWriteMode = (mode == 'w')
         if not self.isWriteMode:
             file = open(filename, "rb")
@@ -82,7 +83,7 @@ class BinFile:
         self.beginOffset = self.offset
         self.stack.append(self.offset)
         self.refMarker = []
-        self.c_length = None    # reset
+        self.c_length = None  # reset
         self.references[self.beginOffset] = self.refMarker
         return self.offset
 
@@ -93,7 +94,7 @@ class BinFile:
             offset = self.lenMap.get(self.beginOffset)
             if offset:
                 self.writeOffset("I", offset, self.offset - self.beginOffset)
-        else:   # read mode
+        else:  # read mode
             if self.c_length and self.c_length < self.offset - self.beginOffset:
                 raise UnpackingError(self, 'offset is outside current section')
         self.stack.pop()
@@ -101,7 +102,7 @@ class BinFile:
         if self.beginOffset in self.lenMap:
             self.c_length = self.lenMap[self.beginOffset]
         else:
-            self.c_length = None    # possibly search stack for a length?
+            self.c_length = None  # possibly search stack for a length?
         self.refMarker = self.references[self.beginOffset]
         return self.offset
 
@@ -260,7 +261,7 @@ class BinFile:
             m = self.offset - len(self.file)
             if m > 0:
                 self.file.extend(b'\0' * m)
-        else:   # read mode
+        else:  # read mode
             if self.c_length and self.offset - self.beginOffset > self.c_length:
                 raise UnpackingError(self, 'offset outside of section')
 
@@ -460,7 +461,7 @@ class FolderEntry:
     def get_brres_id_bit(self, id):
         idx = id >> 3
         if idx < len(self.name):
-            val = self.name[idx] if IS_PY3 else ord(self.name[idx])     # ugly hack to fix compatibility
+            val = self.name[idx] if IS_PY3 else ord(self.name[idx])  # ugly hack to fix compatibility
             return val >> (id & 7) & 1
         return False
 
