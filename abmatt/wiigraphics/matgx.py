@@ -1,7 +1,6 @@
 #!/usr/bin/python
 """ Material wii graphics"""
 from abmatt.wiigraphics.bp import ColorReg, AlphaFunction, ZMode, BPCommand, BlendMode, ConstantAlpha, IndMatrix
-from abmatt.binfile import printCollectionHex
 
 
 class TevRegister:
@@ -77,8 +76,6 @@ class MatGX:
 
     def unpack(self, binfile):
         """ unpacks the mat graphic codes """
-        hexData = binfile.read('200B', 0)
-        printCollectionHex(hexData)
         self.alphafunction.unpack(binfile)
         self.zmode.unpack(binfile)
         self.bpmask.unpack(binfile)
@@ -91,8 +88,6 @@ class MatGX:
         for i in range(len(self.cctevRegs)):
             self.cctevRegs[i].unpack(binfile)
         binfile.advance(24)
-        hexData = binfile.read('100B', 0)
-        printCollectionHex(hexData)
         for x in self.ras1:
             x.unpack(binfile)
         for x in self.indMatrices:

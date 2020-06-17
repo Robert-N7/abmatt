@@ -12,7 +12,7 @@ from cmd import Cmd
 from abmatt.brres import Brres
 from abmatt.command import Command, run_commands, ParsingException, load_commandfile
 
-__version__ = "0.4.2"
+__version__ = "0.5.0"
 USAGE = "Usage: {} -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value>\
  -n <name> -m <model> -i -s] "
 
@@ -249,9 +249,16 @@ def main():
         filecmds = load_commandfile(commandfile)
         cmds = cmds + filecmds
     # Load presets
-    preset_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'presets.txt')
+    dir = os.path.dirname(os.path.abspath(__file__))
+    preset_path = os.path.join(dir, 'presets.txt')
     if os.path.exists(preset_path):
         load_commandfile(preset_path)
+    # Load presets in cwd
+    cwd = os.getcwd()
+    if dir != cwd:
+        preset_path = os.path.join(cwd, 'presets.txt')
+        if os.path.exists(preset_path):
+            load_commandfile(preset_path)
 
     # Run Commands
     if cmds:
