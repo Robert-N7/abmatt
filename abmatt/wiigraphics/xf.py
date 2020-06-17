@@ -43,7 +43,7 @@ class XFTexMatrix(XFCommand):
         self.data[key] = value
 
     def unpack(self, binfile):
-        ''' unpacks XFTexMatrix '''
+        """ unpacks XFTexMatrix """
         [x] = self._unpack(binfile)
         if x:
             self["projection"] = x >> 1 & 1

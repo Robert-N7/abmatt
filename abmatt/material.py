@@ -14,6 +14,8 @@ def parse_color(color_str):
     color_str = color_str.strip('()')
     colors = color_str.split(',')
     if len(colors) < 4:
+        if colors == '0':
+            return 0, 0, 0, 0
         return None
     intVals = []
     for x in colors:
@@ -526,7 +528,7 @@ class Material:
         binfile.markLen()
         binfile.write("i", binfile.getOuterOffset())
         binfile.storeNameRef(self.name)
-        binfile.write("2I4BI3B", self.id, self.xlu << 31, len(self.layers), len(self.lightChannels),
+        binfile.write("2I4BI3b", self.id, self.xlu << 31, len(self.layers), len(self.lightChannels),
                       self.shaderStages, self.indirectStages, self.cullmode,
                       self.compareBeforeTexture, self.lightset, self.fogset)
         binfile.write("BI4B", 0, 0, 0xff, 0xff, 0xff, 0xff)  # padding, indirect method, light normal map
@@ -606,8 +608,9 @@ class Material:
                 f = flags[i] >> 4
                 i -= 1
             self.layers[li].setLayerFlags(f)
+        [self.textureMatrixMode] = binfile.read('I', 4)
         # Texture matrix
-        binfile.advance(164)
+        binfile.advance(160)
         for layer in self.layers:
             layer.unpack_textureMatrix(binfile)
         return offset
@@ -627,10 +630,10 @@ class Material:
         self.id, xluFlags, ntexgens, nlights, \
         self.shaderStages, self.indirectStages, \
         self.cullmode, self.compareBeforeTexture, \
-        self.lightset, self.fogset, pad = binfile.read("2I2B2BI4B", 20)
+        self.lightset, self.fogset, pad = binfile.read("2I2B2BI4b", 20)
         self.xlu = xluFlags >> 31 & 1
-        assert ((xluFlags & 0x7fffffff) == 0)
-        assert (nlights <= 2)
+        assert (xluFlags & 0x7fffffff) == 0
+        assert nlights <= 2
         binfile.advance(8)
         self.shaderOffset, nlayers = binfile.read("2i", 8)
         if nlayers != ntexgens:
@@ -639,8 +642,8 @@ class Material:
         binfile.store()  # layer offset
         if self.parent.version >= 10:
             binfile.advance(8)
-            bo = binfile.offset
-            [dpo] = binfile.readOffset("I", binfile.offset)
+            # bo = binfile.offset
+            # [dpo] = binfile.readOffset("I", binfile.offset)
             binfile.store()  # store matgx offset
         else:
             binfile.advance(4)
@@ -649,7 +652,7 @@ class Material:
         # ignore precompiled code space
         binfile.advance(360)
         startlayerInfo = binfile.offset
-        [self.textureMatrixMode] = binfile.readOffset('I', binfile.offset + 4)
+        # [self.textureMatrixMode] = binfile.readOffset('I', binfile.offset + 4)
         self.unpackLayers(binfile, startlayerInfo, nlayers)
         binfile.offset = startlayerInfo + 584
         self.unpackLightChannels(binfile, nlights)

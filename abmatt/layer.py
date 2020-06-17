@@ -341,7 +341,7 @@ class Layer:
         self.texMatrix = binfile.read("12f", 48)
 
     def unpackXF(self, binfile):
-        '''Unpacks Wii graphics '''
+        """Unpacks Wii graphics """
         self.xfTexMatrix.unpack(binfile)
         self.xfDualTex.unpack(binfile)
 
@@ -385,8 +385,7 @@ class Layer:
         trace = '  ' * indentation_level + self.name if indentation_level else '>' + self.parent.name + "->" + self.name
         if key:
             val = self[key]
-            if val:
-                print("{}\t{}:{}".format(trace, key, val))
+            print("{}\t{}:{}".format(trace, key, val))
         else:
             print("{}:\tScale:{} Rot:{} Trans:{} UWrap:{} VWrap:{} MinFilter:{}".format(
                                                          trace, self.scale, self.rotation, self.translation,

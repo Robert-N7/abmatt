@@ -167,7 +167,7 @@ class Stage():
                 "alphascale", "alphadestination",
                 "indirectstage", "indirectformat",
                 "indirectalpha",
-                "indirectbias", "indirectmatrix",
+                "indirectbias", "indirectmatrixselection",
                 "indirectswrap", "indirecttwrap",
                 "indirectuseprevstage", "indirectunmodifiedlod")
 
@@ -190,7 +190,7 @@ class Stage():
             "alphascale": self.SCALE[0], "alphadestination": self.ALPHA_DEST[0],
             "indirectstage": 0, "indirectformat": self.TEX_FORMAT[0],
             "indirectalpha": self.IND_ALPHA[0],
-            "indirectbias": self.IND_BIAS[0], "indirectmatrix": self.IND_MATRIX[0],
+            "indirectbias": self.IND_BIAS[0], "indirectmatrixselection": self.IND_MATRIX[0],
             "indirectswrap": self.WRAP[0], "indirecttwrap": self.WRAP[0],
             "indirectuseprevstage": False, "indirectunmodifiedlod": False
         }
@@ -211,7 +211,7 @@ class Stage():
             else:
                 key = 'colorconstantselection'
         if key not in self.map:
-            raise ValueError("No such shader stage setting {} possible keys are: \n\t{}".format(key, self.map.keys()))
+            raise ValueError("No such shader stage setting {} possible keys are: \n\t{}".format(key, self.SETTINGS))
         return self.map[key]
 
     def info(self, key=None, indentation_level=0):
@@ -246,7 +246,7 @@ class Stage():
         self.map["alphaconstantselection"] = self.ALPHA_CONSTANTS[i]
 
     def getIndMtxI(self):
-        i = self.IND_MATRIX.index(self.map["indirectmatrix"])
+        i = self.IND_MATRIX.index(self.map["indirectmatrixselection"])
         if i > 3:
             i += 1
         if i > 7:
@@ -258,7 +258,7 @@ class Stage():
             i -= 1
         if i > 4:
             i -= 1
-        self.map["indirectmatrix"] = self.IND_MATRIX[i]
+        self.map["indirectmatrixselection"] = self.IND_MATRIX[i]
 
     def getConstantColorI(self):
         i = self.COLOR_CONSTANTS.index(self.map["colorconstantselection"])
@@ -345,7 +345,7 @@ class Stage():
             elif "indirect" in key:
                 if key == "indirectformat":
                     indexListItem(self.TEX_FORMAT, value)
-                elif key == "indirectmatrix":
+                elif key == "indirectmatrixselection":
                     indexListItem(self.IND_MATRIX, value)
                 elif key == "indirectalpha":
                     indexListItem(self.IND_ALPHA, value)
@@ -481,7 +481,7 @@ class Shader():
     def getIndirectMatricesUsed(self):
         matrices_used = [False] * 3
         for x in self.stages:
-            matrix = x['indirectmatrix'][-1]
+            matrix = x['indirectmatrixselection'][-1]
             if matrix.isdigit():
                 matrices_used[int(matrix)] = True
         return matrices_used
@@ -505,20 +505,28 @@ class Shader():
         if self.SETTINGS[0] == key:
             return self.texRefCount
         elif self.SETTINGS[1] in key:
-            return self.indTexMaps[self.detectIndirectIndex(key)]
+            return self.indTexMaps
         elif self.SETTINGS[2] in key:
-            return self.indTexCoords[self.detectIndirectIndex(key)]
+            return self.indTexCoords
         elif self.SETTINGS[3] == key:  # stage count
             return len(self.stages)
 
     def __setitem__(self, key, value):
+        i = value.find(':')
+        key2 = 0  # key selection
+        if i > -1:
+            try:
+                key2 = value[:i]
+                value = value[i+1:]
+            except IndexError:
+                raise ValueError('Argument required after ":"')
         value = validInt(value, 0, 8)
         if self.SETTINGS[0] == key:  # texture refs
             self.texRefCount = value
         elif self.SETTINGS[1] in key:  # indirect map
-            self.indTexMaps[self.detectIndirectIndex(key)] = value
+            self.indTexMaps[key2] = value
         elif self.SETTINGS[2] in key:  # indirect coord
-            self.indTexCoords[self.detectIndirectIndex(key)] = value
+            self.indTexCoords[key2] = value
         elif self.SETTINGS[3] == key:   # stage count
             current_len = len(self.stages)
             if current_len < value:

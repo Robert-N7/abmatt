@@ -9,4 +9,5 @@
 *.d
 tmp.*
 temp.*
+test*
 __pycache*

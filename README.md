@@ -143,7 +143,9 @@ stage-key = 'enabled' | 'mapid' | 'coordinateid' | 'textureswapselection' |
    'colora' | 'colorb' | 'colorc' | 'colord' | 'colorbias' |
    'coloroperation' | 'colorclamp' | 'colorscale' | 'colordestination' |
    'alphaconstantselection' | 'alphaa' | 'alphab' | 'alphac' | 'alphad' |
-   'alphabias' | 'alphaoperation' | 'alphaclamp' | 'alphascale' | 'alphadestination' | 'indirectstage' | 'indirectformat' | 'indirectalpha' | 'indirectbias' | 'indirectmatrix' | 'indirectswrap' | 'indirecttwrap' | 'indirectuseprevstage' | 'indirectunmodifiedlod';
+   'alphabias' | 'alphaoperation' | 'alphaclamp' | 'alphascale' | 'alphadestination' | 
+   'indirectstage' | 'indirectformat' | 'indirectalpha' | 'indirectbias' | 
+   'indirectmatrixselection' | 'indirectswrap' | 'indirecttwrap' | 'indirectuseprevstage' | 'indirectunmodifiedlod';
 
 RASTER_COLORS = 'lightchannel0' | 'lightchannel1' | 'bumpalpha' | 'normalizedbumpalpha' | 'zero';
 COLOR_CONSTANTS = '1_1' | '7_8' | '3_4' | '5_8' | '1_2' | '3_8' | '1_4' | '1_8' |

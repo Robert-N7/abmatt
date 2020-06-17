@@ -1,6 +1,7 @@
 #!/usr/bin/python
 """ Material wii graphics"""
 from abmatt.wiigraphics.bp import ColorReg, AlphaFunction, ZMode, BPCommand, BlendMode, ConstantAlpha, IndMatrix
+from abmatt.binfile import printCollectionHex
 
 
 class TevRegister:
@@ -62,6 +63,10 @@ class MatGX:
     def setIndMatrixEnable(self, id, enable=True):
         x = self.indMatrices[id]
         x.enabled = enable
+        if enable and not x.scale:
+            # set up a default
+            x.scale = 14
+            x.matrix = (0.6396484375, 0, 0, 0, 0.639648375, 0)
 
     def setIndMatrix(self, id, scale, matrix):
         x = self.indMatrices[id]
@@ -72,26 +77,27 @@ class MatGX:
 
     def unpack(self, binfile):
         """ unpacks the mat graphic codes """
+        hexData = binfile.read('200B', 0)
+        printCollectionHex(hexData)
         self.alphafunction.unpack(binfile)
         self.zmode.unpack(binfile)
         self.bpmask.unpack(binfile)
         self.blendmode.unpack(binfile)
         self.constantalpha.unpack(binfile)
         binfile.advance(7)  # pad - unknown?
-        # hexData = binfile.read('100B', 0)
-        # printCollectionHex(hexData)
         for i in range(len(self.tevRegs)):
             self.tevRegs[i].unpack(binfile)
         binfile.advance(4)  # pad - unknown?
         for i in range(len(self.cctevRegs)):
             self.cctevRegs[i].unpack(binfile)
-        self.padding = binfile.read('4B', 4)
-        binfile.align()  # pad
+        binfile.advance(24)
+        hexData = binfile.read('100B', 0)
+        printCollectionHex(hexData)
         for x in self.ras1:
             x.unpack(binfile)
         for x in self.indMatrices:
             x.unpack(binfile)
-        binfile.align()
+        binfile.advance(9)
         # should be at layer xf flags
 
     def pack(self, binfile):
@@ -107,9 +113,9 @@ class MatGX:
         binfile.advance(4)  # pad
         for i in range(len(self.cctevRegs)):
             self.cctevRegs[i].pack(binfile)
-        binfile.align()
+        binfile.advance(24)
         for x in self.ras1:
             x.pack(binfile)
         for x in self.indMatrices:
             x.pack(binfile)
-        binfile.align()
+        binfile.advance(9)
