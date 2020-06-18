@@ -6,9 +6,11 @@ from abmatt.material import Material
 from abmatt.polygon import Polygon
 from abmatt.shader import Shader, ShaderList
 from abmatt.subfile import SubFile
-from abmatt.srt0 import SRTMatAnim
+from abmatt.srt0 import SRTMatAnim, SRTCollection
+
 
 # ----------------- Model sub files --------------------------------------------
+from pat0 import Pat0MatAnimation, Pat0Collection
 
 
 class ModelGeneric(object):
@@ -169,6 +171,7 @@ class Mdl0(SubFile):
         self.drawXLU = DrawList('DrawXlu', self)
         self.drawOpa = DrawList('DrawOpa', self)
         self.srt0_collection = None
+        self.pat0_collection = None
         self.definitions = []
         self.bones = []
         self.vertices = []
@@ -212,11 +215,34 @@ class Mdl0(SubFile):
 
     def add_srt0(self, material):
         anim = SRTMatAnim(material.name)
+        if not self.srt0_collection:
+            self.srt0_collection = self.parent.add_srt_collection(SRTCollection(self.name, self.parent))
         self.srt0_collection.add(anim)
         return anim
 
     def remove_srt0(self, animation):
         return self.srt0_collection.remove(animation)
+
+    # ------------------ Pat0 --------------------------------------
+    def set_pat0(self, pat0_collection):
+        self.pat0_collection = pat0_collection
+        for x in pat0_collection:
+            mat = self.getMaterialByName(x.name)
+            if not mat:
+                print('Warning: no material found matching animation {}'.format(x.name))
+            else:
+                mat.set_pat0(x)
+
+    def add_pat0(self, material):
+        anim = Pat0MatAnimation(material.name)
+        anim.create_brres_tex_ref(self.parent.textures)
+        if not self.pat0_collection:
+            self.pat0_collection = self.parent.add_pat0_collection(Pat0Collection(self.name, self.parent))
+        self.pat0_collection.add(anim)
+        return anim
+
+    def remove_pat0(self, animation):
+        return self.pat0_collection.remove(animation)
 
     # ------------------ Name --------------------------------------
     def updateName(self, name):

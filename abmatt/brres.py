@@ -11,7 +11,7 @@ from abmatt.binfile import BinFile, Folder, UnpackingError
 from abmatt.layer import Layer
 from abmatt.matching import findAll
 from abmatt.mdl0 import Mdl0
-from abmatt.pat0 import Pat0
+from abmatt.pat0 import Pat0, Pat0Collection
 from abmatt.srt0 import Srt0, SRTCollection
 from abmatt.subfile import *
 
@@ -152,12 +152,10 @@ class Brres():
     def getTextures(self, name):
         return findAll(name, self.textures)
 
-    # --------------------- SRT0 ----------------------------------------------
-    def generate_srt_collections(self):
-        # srt animation processing
-        animations = self.anmSrt
+    # --------------------- Animations ----------------------------------------------
+    @staticmethod
+    def create_model_animation_map(animations):
         model_anim_map = {}  # dictionary of model names to animations
-        anim_collections = []
         if animations:
             for x in animations:
                 name = x.name.rstrip(string.digits)
@@ -165,34 +163,64 @@ class Brres():
                     model_anim_map[name] = [x]
                 else:
                     model_anim_map[name].append(x)
-            # now create SRT Collection
-            for key in model_anim_map:
-                mdl = self.getModel(key)
-                if not mdl:
-                    print('Warning: No model found matching animation {}'.format(key))
-                else:
-                    collection = SRTCollection(key, self, model_anim_map[key])
-                    mdl.set_srt0(collection)
-                    anim_collections.append(collection)
-        return anim_collections
+        return model_anim_map
 
-    def get_srt0s_for_packing(self):
+    @staticmethod
+    def get_anim_for_packing(anim_collection):
         # srt animation processing
         animations = []
-        for mdl in self.models:
-            if mdl.srt0_collection:
-                animations.extend(mdl.srt0_collection.consolidate())
+        for x in anim_collection:
+            animations.extend(x.consolidate())
         return animations
+
+    def add_srt_collection(self, collection):
+        self.anmSrt.append(collection)
+        return collection
+
+    def add_pat0_collection(self, collection):
+        self.anmPat.append(collection)
+        return collection
+
+    def generate_srt_collections(self):
+        # srt animation processing
+        model_anim_map = self.create_model_animation_map(self.anmSrt)
+        # now create SRT Collection
+        anim_collections = []
+        for key in model_anim_map:
+            collection = SRTCollection(key, self, model_anim_map[key])
+            anim_collections.append(collection)
+            mdl = self.getModel(key)
+            if not mdl:
+                print('Warning: No model found matching srt0 animation {}'.format(key))
+            else:
+                mdl.set_srt0(collection)
+        return anim_collections
+
+    def generate_pat0_collections(self):
+        model_anim_map = self.create_model_animation_map(self.anmPat)
+        # now create SRT Collection
+        anim_collections = []
+        for key in model_anim_map:
+            collection = Pat0Collection(key, self, model_anim_map[key])
+            anim_collections.append(collection)
+            mdl = self.getModel(key)
+            if not mdl:
+                print('Warning: No model found matching pat0 animation {}'.format(key))
+            else:
+                mdl.set_pat0(collection)
+        return anim_collections
 
     # -------------------------------------------------------------------------
     #   PACKING / UNPACKING
     # -------------------------------------------------------------------------
     def post_unpacking(self):
+        self.folders[2] = self.anmPat = self.generate_pat0_collections()
         self.folders[3] = self.anmSrt = self.generate_srt_collections()
 
     def pre_packing(self):
         folders = [x for x in self.folders]
-        folders[3] = self.get_srt0s_for_packing()
+        folders[2] = self.get_anim_for_packing(self.anmPat)
+        folders[3] = self.get_anim_for_packing(self.anmSrt)
         return folders
 
     def unpackFolder(self, binfile, root, folderIndex):

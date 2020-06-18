@@ -94,7 +94,7 @@ class SRTKeyFrameList:
         if value in ('disabled', 'none', 'remove'):
             self.removeKeyFrame(key)
         else:
-            value = validFloat(value, float('inf') * -1, float('inf'))
+            value = validFloat(value, math.inf * -1, math.inf)
             self.setKeyFrame(value, key)
 
     def __eq__(self, other):
@@ -244,7 +244,6 @@ class SRTTexAnim():
     """ A single texture animation entry in srt0 under material """
     SETTINGS = ('xscale', 'yscale', 'rot', 'xtranslation', 'ytranslation')
 
-    # todo documentation
 
     def __init__(self, id, framecount, parent):
         self.id = id
@@ -648,7 +647,7 @@ class SRTMatAnim():
                     print('Check: {} SRT layer {} is enabled but has no corresponding layer'.format(material.name, i))
 
     def info(self, key=None, indentation_level=0):
-        trace = '  ' * indentation_level + 'srt0:' + self.name if indentation_level else '>srt0:' + self.name
+        trace = '  ' * indentation_level + '(SRT0)' + self.name if indentation_level else '>(SRT0):' + self.name
         if key in self.SETTINGS:
             print('{}\t{}'.format(trace, self[key]))
         else:

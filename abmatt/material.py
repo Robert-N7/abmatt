@@ -480,6 +480,28 @@ class Material:
         #     self.srt0 = self.parent.add_srt0(self)
         return self.srt0
 
+    # ----------------------------PAT0 ------------------------------------------
+    def add_pat0(self):
+        """Adds a new pat0"""
+        if self.pat0:
+            return self.pat0
+        anim = self.parent.add_pat0(self)
+        self.set_pat0(anim)
+        return anim
+
+    def remove_pat0(self):
+        self.parent.remove_pat0(self.pat0)
+        self.pat0 = None
+
+    def set_pat0(self, anim):
+        self.pat0 = anim
+        anim.setMaterial(self)
+        if len(self.layers) > 1:
+            print('WARNING: Pat0 animation hooked to material {} with {} layers.'.format(self.name, len(self.layers)))
+
+    def get_pat0(self):
+        return self.pat0
+
     # ----------------------------INFO ------------------------------------------
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + self.name if indentation_level else '>' + self.parent.name + "->" + self.name

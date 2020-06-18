@@ -11,7 +11,7 @@ from abmatt.matching import validInt, findAll
 from abmatt.material import Material
 from abmatt.mdl0 import Mdl0
 from abmatt.shader import Shader, Stage
-from abmatt.pat0 import Pat0
+from abmatt.pat0 import Pat0, Pat0MatAnimation
 from abmatt.srt0 import Srt0, SRTMatAnim, SRTTexAnim
 
 
@@ -53,7 +53,7 @@ class Command:
         "brres": Brres.SETTINGS,
         "srt0": SRTMatAnim.SETTINGS,
         "srt0layer": SRTTexAnim.SETTINGS,
-        "pat0": Pat0.SETTINGS
+        "pat0": Pat0MatAnimation.SETTINGS
     }
 
     def __init__(self, text):
@@ -150,7 +150,7 @@ class Command:
         if val in ('material', 'shader'):
             if self.cmd == 'add' or self.cmd == 'remove':
                 raise ParsingException(self.txt, 'Add/Remove not supported for {}.'.format(val))
-        elif val in ('layer', 'srt0layer', 'pat0layer', 'stage'):
+        elif val in ('layer', 'srt0layer', 'stage'):
             self.has_type_id = True
             try:
                 self.type_id = validInt(type_id, 0, 16) if type_id else None
@@ -298,9 +298,7 @@ class Command:
                 Command.SELECT_TYPE = 'srt0'
             elif self.type == 'pat0layer':
                 Command.SELECT_TYPE = 'pat0'
-            elif self.type == 'srt0':
-                Command.SELECT_TYPE = 'material'
-            elif self.type == 'pat0':
+            elif self.type in ('srt0', 'pat0'):
                 Command.SELECT_TYPE = 'material'
         else:
             if self.type:
@@ -343,9 +341,12 @@ class Command:
                 if type == 'shader':
                     Command.SELECTED = shaders
                 else:
-                    Command.SELECTED = []
-                    for x in shaders:
-                        Command.SELECTED.append(x.getStage(self.SELECT_ID))
+                    if self.SELECT_ID == '*':
+                        Command.SELECTED = []
+                        for x in shaders:
+                            Command.SELECTED.extend(x.stages)
+                    else:
+                        Command.SELECTED = [x.getStage(self.SELECT_ID) for x in shaders]
             elif type == 'mdl0':
                     Command.SELECTED = findAll(self.SELECT_ID, self.MODELS)
             elif type == 'brres':
@@ -364,7 +365,7 @@ class Command:
                             anim = findAll(self.SELECT_ID, x.tex_animations)
                             if anim:
                                 Command.SELECTED.extend(anim)
-                else: # material animation
+                else:   # material animation
                     Command.SELECTED = srts
             elif 'pat0' in type:
                 Command.SELECTED = [x.pat0 for x in self.MATERIALS if x.pat0]
@@ -469,9 +470,6 @@ class Command:
             else:
                 for x in self.SELECTED:
                     x.addLayerByName(type_id)
-        elif type == 'pat0':    # add pat0 layer
-            pass # todo
-
         else:
             raise ParsingException(self.txt, 'command "Add" not supported for type {}'.format(type))
 
@@ -506,8 +504,6 @@ class Command:
             else:
                 for x in self.SELECTED:
                     x.removeLayerByName(type_id)
-        elif type == 'pat0':  # remove pat0 layer
-            pass    # todo
         else:
             raise ParsingException(self.txt, 'command "Remove" not supported for type {}'.format(type))
 

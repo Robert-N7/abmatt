@@ -195,7 +195,10 @@ key-frame-list = key-frame-index ':' value {',' key-frame ':' value};
 ```
 
 ### PAT0 Keys
-### PAT0 Layer Keys
+```
+pat0-keys = 'framecount' | 'loop' | 'keyframe'
+pat0-keyframe = key-frame-list
+```
 
 ### Example File Commands
 Example file commands:

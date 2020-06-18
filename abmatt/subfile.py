@@ -138,7 +138,7 @@ class Clr0(SubFile):
         super(Clr0, self).__init__(name, parent)
 
     def unpack(self, binfile):
-        print('Warning: Clr0 not supported, unable to edit')
+        print('{} Warning: Clr0 not supported, unable to edit'.format(self.parent.name))
         self._unpack(binfile)
         self._unpackData(binfile)
 
@@ -161,7 +161,7 @@ class Scn0(SubFile):
         super(Scn0, self).__init__(name, parent)
 
     def unpack(self, binfile):
-        print('Warning: Scn0 not supported, unable to edit')
+        print('{} Warning: Scn0 not supported, unable to edit'.format(self.parent.name))
         self._unpack(binfile)
         self._unpackData(binfile)
 
@@ -184,7 +184,7 @@ class Shp0(SubFile):
         super(Shp0, self).__init__(name, parent)
 
     def unpack(self, binfile):
-        print('Warning: Shp0 not supported, unable to edit')
+        print('{} Warning: Shp0 not supported, unable to edit'.format(self.parent.name))
         self._unpack(binfile)
         self._unpackData(binfile)
 

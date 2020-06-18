@@ -1,11 +1,9 @@
-- Misc. subfile parsing (just to update string offsets)
+- Shp0 subfile parsing
+- Clr0 subfile parsing
+- other subfiles
 - Command:
     - Command completion
     - match command
-- Support for editing SRT0
-- Support for editing PAT0
 - ignore case matching
 - better info amounts, detect singles vs groups
-
-    return self.lightChannels[0].getLight()
-AttributeError: LightChannel instance has no attribute 'getLight'
+- Custom error for parsing key:values

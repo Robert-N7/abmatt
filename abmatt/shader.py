@@ -788,11 +788,12 @@ class Shader():
                         print('{} Indirect layer {} set, but not used in shader'.format(prefix, x))
         # direct check
         for x in self.stages:
-            id = x['coordinateid']
-            if id >= self.texRefCount:
-                print('{} Stage {} layer {} is not marked for use.'.format(prefix, x.id, id))
-            else:
-                tex_usage[id] += 1
+            if x['enabled']:
+                id = x['coordinateid']
+                if id >= self.texRefCount:
+                    print('{} Stage {} layer {} is not marked for use.'.format(prefix, x.id, id))
+                else:
+                    tex_usage[id] += 1
         # now check usage count
         for i in range(len(tex_usage)):
             x = tex_usage[i]

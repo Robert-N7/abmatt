@@ -507,7 +507,7 @@ class FolderEntry:
 class Folder:
     """ A folder for indexing files with a number of entries. (Index Group)"""
 
-    def __init__(self, binfile, name):
+    def __init__(self, binfile, name=None):
         self.name = name
         self.binfile = binfile
         self.entries = []

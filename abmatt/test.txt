@@ -1,2 +1,1 @@
-preset ef_dushboard for yama_m in Course/beginner_course.d/course_model.brres
-save as test4.brres overwrite
+info brres for * in Course/old_town_ds.d/*.brres

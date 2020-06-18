@@ -84,6 +84,11 @@ set indirectmap:7
 set indirectcoord:7
 preset default_stage
 
+[default_srt0]
+add srt0
+set framecount:200
+set srt0layer:0 ytranslation:200:6
+
 [default]
 preset default_material
 preset default_shader
@@ -250,6 +255,18 @@ set alphaC:ConstantAlphaSelection
 set alphaD:alpha2
 set indirectbias:stu
 set indirectMatrixSelection:Matrix0
+# srt0
+add srt0
+set srt0 framecount:300
+set loop:true
+set layerenable:0:False
+set layerenable:1:True
+set layerenable:2:True
+set layerenable:3:True
+set srt0layer:1 xtranslation:(300:1)
+set ytranslation:(300:-1)
+set srt0layer:2 ytranslation:(300,-2)
+set srt0layer:3 ytranslation:(300,-1)
 
 [ef_hpipeboard]
 # material
@@ -298,3 +315,16 @@ set alphaConstantSelection:constant1_1
 set alphaB:constantAlphaSelection
 set alphaC:constantAlphaSelection
 set alphaD:outputAlpha
+# srt0
+add srt0
+set srt0 framecount:400
+set loop:true
+set layerenable:0:true
+set layerenable:1:true
+set srt0layer:0 yscale:(0:2)
+set xtranslation:(400:5)
+set ytranslation:(0:0.5)
+set srt0layer:1 xscale:(0:0.25)
+set yscale:(0:0.25)
+set xtranslation:(400:8)
+set ytranslation:(400:8)
