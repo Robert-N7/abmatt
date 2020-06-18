@@ -4,7 +4,7 @@ import math
 import re
 
 from abmatt.binfile import Folder
-from abmatt.matching import validInt, validBool, validFloat, splitKeyVal
+from abmatt.matching import validInt, validBool, validFloat, splitKeyVal, matches
 from abmatt.subfile import SubFile
 
 
@@ -35,6 +35,13 @@ class SRTCollection:
     def remove(self, animation):
         self.collection.remove(animation)
 
+    def info(self, key=None, indentation_level=0):
+        trace = '  ' * indentation_level + '>(SRT0)' + self.name if indentation_level else '>(SRT0)' + self.name
+        print('{}: {} animations'.format(trace, len(self.collection)))
+        indentation_level += 1
+        for x in self.collection:
+            x.info(key, indentation_level)
+
     def consolidate(self):
         """Combines the srts, returning list of SRT0"""
         n = 0
@@ -47,7 +54,9 @@ class SRTCollection:
                     break
             if not added:  # create new one
                 postfix = str(len(srts)) if len(srts) > 0 else ''
-                s = Srt0(self.name + postfix, self.parent)
+                s = Srt0(self.name + postfix, self.parent, x.framecount, x.looping)
+                if not s.add(x):
+                    print('Error has occurred')
                 srts.append(s)
         return srts
 
@@ -57,7 +66,6 @@ class SRTKeyFrameList:
         could be scale/rotation/translation
         Always has 1 entry at index 0
     """
-    TYPES = ("xscale", "yscale", "rotation", "xtranslation", "ytranslation")
 
     class SRTKeyFrame:
         """ A single animation entry """
@@ -71,17 +79,23 @@ class SRTKeyFrameList:
             return self.index == other.index and self.value == other.value and self.delta == other.delta
 
     def __init__(self, frameCount, start_value=0):
-        self.frameCount = frameCount
+        self.framecount = frameCount
         self.entries = [self.SRTKeyFrame(start_value)]
 
     def __len__(self):
         return len(self.entries)
 
     def __getitem__(self, key):
-        return self.entries[key]
+        key = validFloat(key, 0, self.framecount + .0001)
+        return self.getFrame(key)
 
     def __setitem__(self, key, value):
-        self.setKeyFrame(value, key)
+        key = validFloat(key, 0, self.framecount+.0001)
+        if value in ('disabled', 'none', 'remove'):
+            self.removeKeyFrame(key)
+        else:
+            value = validFloat(value, float('inf') * -1, float('inf'))
+            self.setKeyFrame(value, key)
 
     def __eq__(self, other):
         my_entries = self.entries
@@ -94,12 +108,21 @@ class SRTKeyFrameList:
         return True
 
     def __str__(self):
-        return [str(x.index) + ':' + str(x.value) for x in self.entries]
+        val = '('
+        for x in self.entries:
+            val += str(x.index) + ':' + str(x.value) + ', '
+        return val[:-2] + ')'
 
     def isDefault(self, is_scale):
         if len(self.entries) > 1:
             return False
         return self.entries[0].value == 1 if is_scale else self.entries[0].value == 0
+
+    def isFixed(self):
+        return len(self.entries) == 1  # what about delta?
+
+    def setFixed(self, value):
+        self.entries = [self.SRTKeyFrame(value)]
 
     def getFrame(self, i):
         """ Gets frame with index i """
@@ -130,10 +153,10 @@ class SRTKeyFrameList:
                 next_id = next.index
             else:
                 next = self.entries[0]
-                next_id = next.index + self.frameCount
+                next_id = next.index + self.framecount
             prev = self.entries[entry_index - 1]
             if entry_index == 0:
-                prev_id = prev.index - self.frameCount
+                prev_id = prev.index - self.framecount
             else:
                 prev_id = prev.index
             entry.delta = self.calcDelta(entry.index, entry.value, next_id, next.value)
@@ -144,11 +167,11 @@ class SRTKeyFrameList:
         """ Adds/sets key frame, overwriting any existing frame at index
             automatically updates delta.
         """
-        if not 0 <= index <= self.frameCount:
+        if not 0 <= index <= self.framecount:
             raise ValueError("Frame Index {} out of range.".format(index))
         entries = self.entries
         found = False
-        for i in range(1, len(entries)):
+        for i in range(len(entries)):
             cntry = entries[i]
             if index < cntry.index:  # insert
                 new_entry = self.SRTKeyFrame(value, index)
@@ -159,6 +182,7 @@ class SRTKeyFrameList:
             elif index == cntry.index:  # replace
                 cntry.value = value
                 self.updateEntry(i)
+                found = True
                 break
         if not found:  # append it
             new_entry = self.SRTKeyFrame(value, index)
@@ -167,13 +191,16 @@ class SRTKeyFrameList:
 
     def removeKeyFrame(self, index):
         """ Removes key frame from list, updating delta """
+        if index == 0:
+            print('Unable to remove key frame 0')
+            return
         entries = self.entries
         for i in range(1, len(entries)):
             if entries[i].index == index:
                 prev = entries[i - 1]
                 if i == len(entries) - 1:  # last entry?
                     next_entry = entries[0]
-                    next_id = self.frameCount
+                    next_id = self.framecount
                 else:
                     next_entry = entries[i + 1]
                     next_id = next_entry.index
@@ -181,22 +208,20 @@ class SRTKeyFrameList:
                 entries.pop(i)
                 break
 
-    def clearFrames(self):
+    def clearFrames(self, is_scale):
         """ Clears all frames, resetting to one default """
-        self.entries = [self.SRTKeyFrame(0)]
+        start_val = 1 if is_scale else 0
+        self.entries = [self.SRTKeyFrame(start_val)]
 
     def setFrameCount(self, frameCount):
         """ Sets frame count, removing extra frames """
         e = self.entries
-        self.frameCount = frameCount
+        self.framecount = frameCount
         for i in range(len(e)):
             if e[i].index > frameCount:
                 self.entries = e[:i]  # possibly fix ending delta todo?
                 return i
         return 0
-
-    def info(self, key=None, indentation_level=0):
-        pass  # todo
 
     #   ------------------------------------------- PACKING --------------------------------------------------
     def unpack(self, binfile):
@@ -218,6 +243,7 @@ class SRTKeyFrameList:
 class SRTTexAnim():
     """ A single texture animation entry in srt0 under material """
     SETTINGS = ('xscale', 'yscale', 'rot', 'xtranslation', 'ytranslation')
+
     # todo documentation
 
     def __init__(self, id, framecount, parent):
@@ -228,20 +254,15 @@ class SRTTexAnim():
         self.rotationDefault = True  # rotation = zero
         self.translationDefault = True  # translation = zero
         self.scaleIsotropic = True  # xscale == yscale
-        self.xScaleFixed = False
-        self.xScale = 1
-        self.yScaleFixed = False
-        self.yScale = 1
-        self.rotationFixed = False
-        self.rotation = 0
-        self.xTranslationFixed = False
-        self.xTranslation = 0
-        self.yTranslationFixed = False
-        self.yTranslation = 0
+        self.xScaleFixed = True
+        self.yScaleFixed = True
+        self.rotationFixed = True
+        self.xTranslationFixed = True
+        self.yTranslationFixed = True
         self.animations = {
-            'xscale': SRTKeyFrameList(framecount),
-            'yscale': SRTKeyFrameList(framecount),
-            'rotation': SRTKeyFrameList(framecount),
+            'xscale': SRTKeyFrameList(framecount, 1),
+            'yscale': SRTKeyFrameList(framecount, 1),
+            'rot': SRTKeyFrameList(framecount),
             'xtranslation': SRTKeyFrameList(framecount),
             'ytranslation': SRTKeyFrameList(framecount)
         }
@@ -249,30 +270,28 @@ class SRTTexAnim():
     # -------------------------------------------------------------------------
     # interfacing
     def __getitem__(self, item):
-        if 'xscale' in item:
-            return self.animations['xscale']
-        elif 'yscale' in item:
-            return self.animations['yscale']
-        elif 'rot' in item:
-            return self.animations['rotation']
-        elif 'xtranslation' in item:
-            return self.animations['xtranslation']
-        elif 'ytranslation' in item:
-            return self.animations['ytranslation']
+        return self.animations[item]
 
     def __setitem__(self, key, value):
-        key2, value = splitKeyVal(value)
-        self.animations[key][key2] = value
+        if value in ('disabled', 'none', 'remove'):
+            is_scale = True if 'scale' in key else False
+            self.animations[key].clearFrames(is_scale)
+        else:
+            keyframes = value.strip('()').split(',')
+            anim = self.animations[key]
+            for x in keyframes:
+                key2, value = splitKeyVal(x)
+                anim[key2] = value
 
     def info(self, key=None, indentation_level=0):
         id = self.name if self.name else str(self.id)
-        trace = '  ' * indentation_level + 'srt:' + id if indentation_level else '>' + self.parent.name + '->srt:' + id
+        trace = '  ' * indentation_level + id if indentation_level else '>(SRT0)' + self.parent.name + '->' + id
         if not key:
             for x in self.SETTINGS:
                 trace += ' ' + x + ':' + str(self[x])
             print(trace)
         else:
-            print('{}\t{}'.format(trace, self[key]))
+            print('{}\t{}:{}'.format(trace, key, self[key]))
 
     def setKeyFrame(self, animType, value, index=0):
         """ Adds a key frame to the animation
@@ -320,8 +339,8 @@ class SRTTexAnim():
         # Scale
         x = self.animations['xscale']  # XScale
         y = self.animations['yscale']  # yscale
-        self.xScaleFixed = len(x) == 1
-        self.yScaleFixed = len(y) == 1
+        self.xScaleFixed = x.isFixed()
+        self.yScaleFixed = y.isFixed()
         self.scaleDefault = x.isDefault(True) and y.isDefault(True)
         if len(x) != len(y):
             self.scaleIsotropic = False
@@ -332,14 +351,14 @@ class SRTTexAnim():
                     self.scaleIsotropic = False
                     break
         # Rotation
-        rot = self.animations['rotation']
-        self.rotationFixed = len(rot) == 1
+        rot = self.animations['rot']
+        self.rotationFixed = rot.isFixed()
         self.rotationDefault = rot.isDefault(False)
         # Translation
         x = self.animations['xtranslation']
         y = self.animations['ytranslation']
-        self.xTranslationFixed = len(x) == 1
-        self.yTranslationFixed = len(y) == 1
+        self.xTranslationFixed = x.isFixed()
+        self.yTranslationFixed = y.isFixed()
         self.translationDefault = x.isDefault(False) and y.isDefault(False)
         return self.flagsToInt()
 
@@ -372,8 +391,8 @@ class SRTTexAnim():
         if self.scaleIsotropic:
             if self.xScaleFixed:
                 [val] = binfile.read("f", 4)
-                self.xScale = val
-                self.yScale = val
+                self.animations['xscale'].setFixed(val)
+                self.animations['yscale'].setFixed(val)
             else:
                 offset = binfile.offset
                 [binfile.offset] = binfile.read("I", 4)
@@ -383,12 +402,12 @@ class SRTTexAnim():
         else:  # not isotropic
             if self.xScaleFixed:
                 [val] = binfile.read("f", 4)
-                self.xScale = val
+                self.animations['xscale'].setFixed(val)
             else:
                 binfile.bl_unpack(self.animations['xscale'].unpack, False)
             if self.yScaleFixed:
                 [val] = binfile.read("f", 4)
-                self.yScale = val
+                self.animations['yscale'].setFixed(val)
             else:
                 binfile.bl_unpack(self.animations['yscale'].unpack, False)
 
@@ -398,12 +417,12 @@ class SRTTexAnim():
             return
         if self.xTranslationFixed:
             [val] = binfile.read("f", 4)
-            self.xTranslation = val
+            self.animations['xtranslation'].setFixed(val)
         else:
             binfile.bl_unpack(self.animations['xtranslation'].unpack, False)
         if self.yTranslationFixed:
             [val] = binfile.read("f", 4)
-            self.yTranslation = val
+            self.animations['ytranslation'].setFixed(val)
         else:
             binfile.bl_unpack(self.animations['ytranslation'].unpack, False)
 
@@ -412,9 +431,9 @@ class SRTTexAnim():
         if not self.rotationDefault:
             if self.rotationFixed:
                 [val] = binfile.read("f", 4)
-                self.rotation = val
+                self.animations['rot'].setFixed(val)
             else:
-                binfile.bl_unpack(self.animations['rotation'].unpack, False)
+                binfile.bl_unpack(self.animations['rot'].unpack, False)
 
     def unpack(self, binfile):
         ''' unpacks SRT Texture animation data '''
@@ -433,13 +452,13 @@ class SRTTexAnim():
         has_y_list_offset = has_x_list_offset = False
         if not self.scaleDefault:
             if self.xScaleFixed:
-                binfile.write("f", self.xScale)
+                binfile.write("f", self.animations['xscale'].getValue())
             else:
                 binfile.mark()  # mark to be stored
                 has_x_list_offset = True
             if not self.scaleIsotropic:
                 if self.yScaleFixed:
-                    binfile.write("f", self.yScale)
+                    binfile.write("f", self.animations['yscale'].getValue())
                 else:
                     binfile.mark()
                     has_y_list_offset = True
@@ -449,7 +468,7 @@ class SRTTexAnim():
         """ packs rotation data """
         if not self.rotationDefault:
             if self.rotationFixed:
-                binfile.write("f", self.rotation)
+                binfile.write("f", self.animations['rot'].getValue())
             else:
                 binfile.mark()
                 return True
@@ -460,12 +479,12 @@ class SRTTexAnim():
         hasXTransOffset = hasYTransOffset = False
         if not self.translationDefault:
             if self.xTranslationFixed:
-                binfile.write("f", self.xTranslation)
+                binfile.write("f", self.animations['xtranslation'].getValue())
             else:
                 binfile.mark()
                 hasXTransOffset = True
             if self.yTranslationFixed:
-                binfile.write("f", self.yTranslation)
+                binfile.write("f", self.animations['ytranslation'].getValue())
             else:
                 binfile.mark()
                 hasYTransOffset = True
@@ -476,8 +495,8 @@ class SRTTexAnim():
             returns offset markers to be passed to pack data
             (after packing all headers for material)
         """
-        # code = self.calculateCode()
-        code = self.flagsToInt()
+        code = self.calculateCode()
+        # code = self.flagsToInt()
         binfile.write("I", code)
         have_offsets = self.packScale(binfile)
         have_offsets.append(self.packRotation(binfile))
@@ -489,12 +508,13 @@ class SRTMatAnim():
     """ An entry in the SRT, supports multiple tex refs """
 
     SETTINGS = ('framecount', 'loop', 'layerenable')
+
     # todo documentation
 
     def __init__(self, name, frame_count=1, looping=True, material=None):
         self.name = name
         self.material = material  # to be filled
-        self.frameCount = frame_count
+        self.framecount = frame_count
         self.tex_animations = []
         self.texEnabled = [False] * 8
         self.looping = looping
@@ -522,7 +542,7 @@ class SRTMatAnim():
             self.texEnable(key) if value else self.texDisable(key)
 
     def setFrameCount(self, count):
-        self.frameCount = count
+        self.framecount = count
         for x in self.tex_animations:
             x.setFrameCount(count)
 
@@ -559,12 +579,47 @@ class SRTMatAnim():
     def getTexAnimationByID(self, id):
         if not self.texEnabled[id]:
             return None
-        j = 0   # indexing tex anims (enabled)
+        j = 0  # indexing tex anims (enabled)
         for i in range(len(self.texEnabled)):
             if self.texEnabled[i]:
                 if i == id:
                     return self.tex_animations[j]
                 j += 1
+
+    # ------------------------------- ADD -----------------------------
+    def addLayer(self):
+        """Adds layer at first available location"""
+        for i in range(len(self.texEnabled)):
+            if not self.texEnabled[i]:
+                return self.texEnable(i)
+        raise ValueError('{} Unable to add animation layer, maxed reached'.format(self.name))
+
+    def addLayerByName(self, name):
+        """Adds layer if found"""
+        i = self.material.find(name)
+        if i > 0:
+            self.texEnable(i)
+        raise ValueError('{} Unknown layer {}'.format(self.name, name))
+
+    # -------------------------------- Remove -------------------------------------------
+    def removeLayer(self):
+        """Removes last layer found"""
+        for i in range(len(self.texEnabled) - 1, -1, -1):
+            if self.texEnabled[i]:
+                return self.texDisable(i)
+        raise ValueError('{} No layers left to remove'.format(self.name))
+
+    def removeLayerByName(self, name):
+        """Removes the layer if found"""
+        j = 0
+        for i in range(len(self.texEnabled)):
+            if self.texEnabled[i]:
+                if matches(name, self.tex_animations[j].name):
+                    self.texEnabled[i] = False
+                    self.tex_animations.pop(j)
+                    return
+                j += 1
+        raise ValueError('{} No layer matching {}'.format(self.name, name))
 
     # -------------------------------- Name updates -------------------------------------
     def updateName(self, name):
@@ -592,28 +647,30 @@ class SRTMatAnim():
                 if self.texEnabled[i]:
                     print('Check: {} SRT layer {} is enabled but has no corresponding layer'.format(material.name, i))
 
-
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + 'srt0:' + self.name if indentation_level else '>srt0:' + self.name
-        if key:
+        if key in self.SETTINGS:
             print('{}\t{}'.format(trace, self[key]))
         else:
             for x in self.SETTINGS:
                 trace += ' ' + x + ':' + str(self[x])
             print(trace)
+            indentation_level += 1
+            for x in self.tex_animations:
+                x.info(key, indentation_level)
 
     # -----------------------------------------------------
     #  Packing
     def consolidate(self, binfile, has_key_frames):
         """consolidates and packs the frame lists based on the animations that have key frames"""
         frame_lists_offsets = {}  # dictionary to track offsets of frame lists
-        frame_scale = Srt0.calcFrameScale(self.frameCount)
+        frame_scale = Srt0.calcFrameScale(self.framecount)
         for j in range(len(self.tex_animations)):
             has_frames = has_key_frames[j]
             tex = self.tex_animations[j]
             for i in range(len(has_frames)):
                 if has_frames[i]:
-                    test_list = tex.animations[SRTKeyFrameList.TYPES[i]]
+                    test_list = tex.animations[SRTTexAnim.SETTINGS[i]]
                     found = False
                     for x in frame_lists_offsets:
                         if frame_lists_offsets[x] == test_list:  # move the offset to create the reference and move back
@@ -640,7 +697,7 @@ class SRTMatAnim():
         for i in range(8):
             if bit & enableFlag:
                 self.texEnabled[i] = True
-                self.tex_animations.append(SRTTexAnim(i, self.frameCount, self))
+                self.tex_animations.append(SRTTexAnim(i, self.framecount, self))
                 count += 1
             else:
                 self.texEnabled[i] = False
@@ -681,11 +738,13 @@ class Srt0(SubFile):
     MAGIC = "SRT0"
     VERSION_SECTIONCOUNT = {4: 1, 5: 2}
 
-    def __init__(self, name, parent):
+    def __init__(self, name, parent, frame_count=1, loop=True):
         super(Srt0, self).__init__(name, parent)
         self.matAnimations = []
-        self.framecount = 1
-        self.looping = True
+        self.framecount = frame_count
+        self.looping = loop
+        self.version = 5
+        self.matrixmode = 0
 
     # ---------------------------------------------------------------------
     # interfacing
@@ -728,11 +787,6 @@ class Srt0(SubFile):
 
     # ----------------------------------------------------------------------
     #   PACKING
-    def updateNames(self):
-        """Updates the mat animation names based on what material it's linked to"""
-        for x in self.matAnimations:
-            x.name = x.material.name
-
     def unpack(self, binfile):
         self._unpack(binfile)
         # self._unpackData(binfile)
@@ -755,7 +809,6 @@ class Srt0(SubFile):
 
     def pack(self, binfile):
         """ Packs the data for SRT file """
-        self.updateNames()
         self._pack(binfile)
         # self._packData(binfile)
         binfile.write("I2H2I", 0, self.framecount, len(self.matAnimations),

@@ -157,6 +157,7 @@ class Brres():
         # srt animation processing
         animations = self.anmSrt
         model_anim_map = {}  # dictionary of model names to animations
+        anim_collections = []
         if animations:
             for x in animations:
                 name = x.name.rstrip(string.digits)
@@ -165,12 +166,15 @@ class Brres():
                 else:
                     model_anim_map[name].append(x)
             # now create SRT Collection
-            for key, val in enumerate(model_anim_map):
+            for key in model_anim_map:
                 mdl = self.getModel(key)
                 if not mdl:
                     print('Warning: No model found matching animation {}'.format(key))
                 else:
-                    mdl.set_srt0(SRTCollection(key, self, val))
+                    collection = SRTCollection(key, self, model_anim_map[key])
+                    mdl.set_srt0(collection)
+                    anim_collections.append(collection)
+        return anim_collections
 
     def get_srt0s_for_packing(self):
         # srt animation processing
@@ -184,10 +188,12 @@ class Brres():
     #   PACKING / UNPACKING
     # -------------------------------------------------------------------------
     def post_unpacking(self):
-        self.generate_srt_collections()
+        self.folders[3] = self.anmSrt = self.generate_srt_collections()
 
     def pre_packing(self):
-        self.folders[3] = self.get_srt0s_for_packing()
+        folders = [x for x in self.folders]
+        folders[3] = self.get_srt0s_for_packing()
+        return folders
 
     def unpackFolder(self, binfile, root, folderIndex):
         """ Unpacks the folder folderIndex """
@@ -226,7 +232,7 @@ class Brres():
         binfile.end()
         self.post_unpacking()
 
-    def generateRoot(self, binfile):
+    def generateRoot(self, binfile, subfiles):
         """ Generates the root folders
             Does not hook up data pointers except the head group,
             returns (rootFolders, bytesize)
@@ -238,8 +244,8 @@ class Brres():
         rootFolders.append(rootFolder)
         offsets = []  # for tracking offsets from first group to others
         # Create folder for each section the brres has
-        for i in range(len(self.folders)):
-            folder = self.folders[i]
+        for i in range(len(subfiles)):
+            folder = subfiles[i]
             size = len(folder)
             if size:
                 f = Folder(binfile, self.FOLDERS[i])
@@ -257,34 +263,34 @@ class Brres():
         byteSize += rtsize + 8  # add first folder to bytesize, and header len
         return rootFolders, byteSize
 
-    def packRoot(self, binfile, root):
+    @staticmethod
+    def packRoot(binfile, rt_folders, rt_bytesize):
         """ Packs the root section, returns root folders that need data ptrs"""
         binfile.writeMagic("root")
-        rtFolders, rtSize = root[0], root[1]
-        binfile.write("I", rtSize)
-        for f in rtFolders:
+        binfile.write("I", rt_bytesize)
+        for f in rt_folders:
             f.pack(binfile)
-        return rtFolders[1:]
+        return rt_folders[1:]
 
     def pack(self, binfile):
         """ packs the brres """
-        self.pre_packing()
+        sub_files = self.pre_packing()
         binfile.start()
-        root = self.generateRoot(binfile)
+        rt_folders, rt_bytesize = self.generateRoot(binfile, sub_files)
         binfile.writeMagic(self.MAGIC)
         binfile.write("H", 0xfeff)  # BOM
         binfile.advance(2)
         binfile.markLen()
-        num_sections = self.getNumSections(root[0])
+        num_sections = self.getNumSections(rt_folders)
         binfile.write("2H", 0x10, num_sections)
-        folders = self.packRoot(binfile, root)
+        folders = self.packRoot(binfile, rt_folders, rt_bytesize)
         # now pack the folders
         folder_index = 0
-        for subfolder in self.folders:
-            if len(subfolder):
-                refGroup = folders[folder_index]
-                for file in subfolder:
-                    refGroup.createEntryRefI()  # create the dataptr
+        for file_group in sub_files:
+            if len(file_group):
+                index_group = folders[folder_index]
+                for file in file_group:
+                    index_group.createEntryRefI()  # create the dataptr
                     file.pack(binfile)
                 folder_index += 1
         binfile.packNames()

@@ -91,7 +91,7 @@ def matches(regexname, name):
     if regexname == name:
         return True
     try:
-        result = re.match(regexname, name)
+        result = re.search(regexname, name)
         if result:
             return True
     except re.error:

@@ -71,12 +71,14 @@ save = 'save' [filename] ['as' destination] ['overwrite']
 
 selection = name ['in' container]
 container = ['file' filename] ['model' name];
-type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id];
+type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id]
+    | 'srt0' | 'srt0layer' [':' id] | 'pat0' | 'pat0layer' [':' id];
 
 setting =  key ':' value; NOTE: No spaces allowed in key:value pairs
-key = material-key | layer-key | shader-key | stage-key; 
-value = material-value | layer-value | shader-value | stage-value | 'true' | 'false' | number-list;
-number-list = number {,number}; 
+key = material-key | layer-key | shader-key | stage-key
+    | srt0-key | srt0-layer-key | pat0-key | pat0-layer-key; 
+value = material-value | layer-value | shader-value | stage-value
+    |  srt0-value | srt0-layer-value | pat0-value | pat0-layer-value; 
 ```
 
 ### Selection Explanation
@@ -179,6 +181,21 @@ IND_MATRIX = 'nomatrix' | 'matrix0' | 'matrix1' | 'matrix2' | 'matrixs0' |
               'matrixs1' | 'matrixs2' | 'matrixt0' | 'matrixt1' | 'matrixt2';
 WRAP = 'nowrap' | 'wrap256' | 'wrap128' | 'wrap64' | 'wrap16' | 'wrap0'; 
 ```
+
+### SRT0 Keys
+```
+srt0-keys = 'framecount' | 'loop' | 'layerenable'
+srt0-layer-enable = id ':' ('true' | 'false') 
+```
+### SRT0 Layer Keys
+```
+srt0-layer-keys = 'xscale' | 'yscale' | 'rot' | 'xtranslation' | 'ytranslation';
+srt0-layer-values = 'disabled' | key-frame-list;
+key-frame-list = key-frame-index ':' value {',' key-frame ':' value};
+```
+
+### PAT0 Keys
+### PAT0 Layer Keys
 
 ### Example File Commands
 Example file commands:

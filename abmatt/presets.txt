@@ -159,6 +159,18 @@ set alphaC:ConstantAlphaSelection
 set alphaD:OutputAlpha
 set indirectBias:stu
 set stage:1 indirectMatrixSelection:Matrix0
+# srt0
+add srt0
+set srt0 loop:true
+set srt0 framecount:200
+set srt0 layerenable:1:True
+set srt0 layerenable:2:True
+set srt0layer:0 rot:(0:45)
+set xtranslation:(200:1)
+set srt0layer:1 ytranslation:(200:6)
+set xscale:(0:2)
+set srt0layer:2 ytranslation:(200:6)
+set xscale:(0:2)
 
 [wt_uriver]
 # material

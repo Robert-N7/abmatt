@@ -165,6 +165,20 @@ class Shell(Cmd):
         print('Syntax error, type ? for help')
 
 
+def load_presets():
+    # Load presets
+    dir = os.path.dirname(os.path.abspath(__file__))
+    preset_path = os.path.join(dir, 'presets.txt')
+    if os.path.exists(preset_path):
+        load_commandfile(preset_path)
+    # Load presets in cwd
+    cwd = os.getcwd()
+    if dir != cwd:
+        preset_path = os.path.join(cwd, 'presets.txt')
+        if os.path.exists(preset_path):
+            load_commandfile(preset_path)
+
+
 def main():
     """ Main """
     global USAGE
@@ -221,6 +235,7 @@ def main():
             print(USAGE)
             sys.exit(2)
 
+    load_presets()
     cmds = []
     if destination:
         Command.DESTINATION = destination
@@ -248,17 +263,6 @@ def main():
     if commandfile:
         filecmds = load_commandfile(commandfile)
         cmds = cmds + filecmds
-    # Load presets
-    dir = os.path.dirname(os.path.abspath(__file__))
-    preset_path = os.path.join(dir, 'presets.txt')
-    if os.path.exists(preset_path):
-        load_commandfile(preset_path)
-    # Load presets in cwd
-    cwd = os.getcwd()
-    if dir != cwd:
-        preset_path = os.path.join(cwd, 'presets.txt')
-        if os.path.exists(preset_path):
-            load_commandfile(preset_path)
 
     # Run Commands
     if cmds:

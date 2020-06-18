@@ -4,7 +4,7 @@
 #  Structure for working with materials
 # ---------------------------------------------------------------------
 
-from abmatt.matching import validBool, indexListItem, validInt, validFloat, findAll
+from abmatt.matching import validBool, indexListItem, validInt, validFloat, findAll, matches
 from abmatt.layer import Layer
 from abmatt.wiigraphics.matgx import MatGX
 
@@ -30,7 +30,6 @@ class Material:
     # -----------------------------------------------------------------------
     #   CONSTANTS
     # -----------------------------------------------------------------------
-    NUM_SETTINGS = 23
     SETTINGS = ("xlu", "ref0", "ref1",
                 "comp0", "comp1", "comparebeforetexture", "blend",
                 "blendsrc", "blendlogic", "blenddest", "constantalpha",
@@ -65,6 +64,7 @@ class Material:
         self.shader = None  # to be hooked up
         self.drawlist = None  # to be hooked up
         self.srt0 = None  # to be hooked up
+        self.pat0 = None  # to be hooked up
         self.matGX = MatGX()
 
     def __str__(self):
@@ -164,12 +164,17 @@ class Material:
         if 0 <= layer_index < len(self.layers):
             return self.layers[layer_index]
 
-    def getLayers(self, key, force_add=False):
-        """Attempts to get layer(s) by string key, adding it if force_add is set"""
+    def find(self, key):
+        for i in range(len(self.layers)):
+            if matches(key, self.layers[i].name):
+                return i
+        return -1
+
+    def getLayerByName(self, key):
+        """Attempts to get layer(s) by string key"""
         layers = findAll(key, self.layers)
-        if layers or not force_add:
-            return layers
-        return [self.forceAdd(key)]
+        if layers:
+            return layers[0]
 
     def forceAdd(self, key):
         textures = self.parent.parent.getTextures(key)
@@ -197,7 +202,7 @@ class Material:
                    getEnableDepthUpdate, getDepthFunction, getDrawPriority, getIndMatrix, getName, getLayerCount)
 
     def __getitem__(self, key):
-        for i in range(self.NUM_SETTINGS):
+        for i in range(len(self.SETTINGS)):
             if key == self.SETTINGS[i]:
                 return self.SET_SETTING[i]
 
@@ -206,7 +211,7 @@ class Material:
     # ---------------------------------------------------------------------------
 
     def __setitem__(self, key, value):
-        for i in range(self.NUM_SETTINGS):
+        for i in range(len(self.SETTINGS)):
             if key == self.SETTINGS[i]:
                 func = self.SET_SETTING[i]
                 return func(self, value)
@@ -437,18 +442,45 @@ class Material:
                    setEnableDepthUpdateStr, setDepthFunctionStr, setDrawPriorityStr,
                    setIndirectMatrix, setName, setLayerCount)
 
+    # -------------------------- PAT0 --------------------------------------------------
+    def add_pat0(self):
+        pass # todo
+
+    def remove_pat0(self):
+        pass # todo
+
+    def get_pat0(self):
+        pass # todo
+
+    def set_pat0(self, anim):
+        pass    # todo
+
     # ------------------------- SRT0 --------------------------------------------------
+    def add_srt0(self):
+        """Adds a new srt0 with one layer reference"""
+        if self.srt0:
+            return self.srt0
+        anim = self.parent.add_srt0(self)
+        self.set_srt0(anim)
+        anim.addLayer()
+        return anim
+
+    def remove_srt0(self):
+        self.parent.remove_srt0(self.srt0)
+        self.srt0 = None
+
     def set_srt0(self, anim):
         """This is called by model to set up the srt0 reference"""
         self.srt0 = anim
         anim.setMaterial(self)
 
-    def get_srt0(self, force_add=False):
+    def get_srt0(self):
         """Gets the srt0, if force_add is set, automatically generates one"""
-        if not self.srt0 and force_add:
-            self.srt0 = self.parent.add_srt0(self)
+        # if not self.srt0 and force_add:
+        #     self.srt0 = self.parent.add_srt0(self)
         return self.srt0
 
+    # ----------------------------INFO ------------------------------------------
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + self.name if indentation_level else '>' + self.parent.name + "->" + self.name
         if key in self.SETTINGS:

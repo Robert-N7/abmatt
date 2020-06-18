@@ -6,9 +6,9 @@ from abmatt.material import Material
 from abmatt.polygon import Polygon
 from abmatt.shader import Shader, ShaderList
 from abmatt.subfile import SubFile
+from abmatt.srt0 import SRTMatAnim
 
 # ----------------- Model sub files --------------------------------------------
-from srt0 import SRTMatAnim
 
 
 class ModelGeneric(object):
@@ -215,6 +215,10 @@ class Mdl0(SubFile):
         self.srt0_collection.add(anim)
         return anim
 
+    def remove_srt0(self, animation):
+        return self.srt0_collection.remove(animation)
+
+    # ------------------ Name --------------------------------------
     def updateName(self, name):
         self.parent.updateModelName(self.name, name)
         self.name = name

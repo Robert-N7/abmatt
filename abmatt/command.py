@@ -147,7 +147,7 @@ class Command:
             type_id = val[i + 1:]
             val = val[:i]
         val = val.lower()
-        if val in ('material', 'shader', 'srt0', 'pat0'):
+        if val in ('material', 'shader'):
             if self.cmd == 'add' or self.cmd == 'remove':
                 raise ParsingException(self.txt, 'Add/Remove not supported for {}.'.format(val))
         elif val in ('layer', 'srt0layer', 'pat0layer', 'stage'):
@@ -167,6 +167,8 @@ class Command:
                 self.type_id = type_id
             else:
                 self.type_id = '*'
+        elif val in ('srt0', 'pat0'):
+            pass
         else:
             self.type = None
             return False
@@ -286,8 +288,20 @@ class Command:
             returns true if modified
         """
         current = self.SELECT_TYPE
-        if self.cmd == 'add' or self.cmd == 'remove':  # use parents as selection
-            Command.SELECT_TYPE = 'shader' if self.type == 'stage' else 'material'
+        if self.cmd == 'add' or self.cmd == 'remove':
+            # use parents as selection, except (srt0, pat0)
+            if self.type == 'stage':
+                Command.SELECT_TYPE = 'shader'
+            elif self.type == 'layer':
+                Command.SELECT_TYPE = 'material'
+            elif self.type == 'srt0layer':
+                Command.SELECT_TYPE = 'srt0'
+            elif self.type == 'pat0layer':
+                Command.SELECT_TYPE = 'pat0'
+            elif self.type == 'srt0':
+                Command.SELECT_TYPE = 'material'
+            elif self.type == 'pat0':
+                Command.SELECT_TYPE = 'material'
         else:
             if self.type:
                 Command.SELECT_TYPE = self.type
@@ -317,13 +331,13 @@ class Command:
                 else:
                     Command.SELECTED = []
                     for x in self.MATERIALS:
-                        Command.SELECTED.extend(x.getLayers(self.SELECT_ID))
-                    if not Command.SELECTED:  # Forcibly adding case if no selected found
-                        # possible todo... make this optional?
-                        Command.SELECTED = [x.forceAdd(self.SELECT_ID) for x in self.MATERIALS]
+                        layers = findAll(self.SELECT_ID, x.layers)
+                        if layers:
+                            Command.SELECTED.extend(layers)
+                    # if not Command.SELECTED:  # Forcibly adding case if no selected found
+                    #     # possible todo... make this optional?
+                    #     Command.SELECTED = [x.forceAdd(self.SELECT_ID) for x in self.MATERIALS]
 
-            # elif self.type == 'srt0':
-            #     pass # todo
             elif type == 'shader' or type == 'stage':
                 shaders = getShadersFromMaterials(self.MATERIALS, self.MODELS)
                 if type == 'shader':
@@ -337,9 +351,23 @@ class Command:
             elif type == 'brres':
                     Command.SELECTED = findAll(self.SELECT_ID, self.ACTIVE_FILES)
             elif 'srt0' in type:
-                pass # todo
+                srts = [x.srt0 for x in self.MATERIALS if x.srt0]
+                if 'layer' in type:
+                    Command.SELECTED = []
+                    if self.SELECT_ID_NUMERIC:
+                        for x in srts:
+                            anim = x.getTexAnimationByID(self.SELECT_ID)
+                            if anim:
+                                Command.SELECTED.append(anim)
+                    else:
+                        for x in srts:
+                            anim = findAll(self.SELECT_ID, x.tex_animations)
+                            if anim:
+                                Command.SELECTED.extend(anim)
+                else: # material animation
+                    Command.SELECTED = srts
             elif 'pat0' in type:
-                pass # todo
+                Command.SELECTED = [x.pat0 for x in self.MATERIALS if x.pat0]
 
     @staticmethod
     def markModified():
@@ -414,17 +442,36 @@ class Command:
         """Add command"""
         if self.SELECT_ID_NUMERIC and type_id == 0:
             type_id = 1
-        if type == 'material':  # add layer case
+        if type == 'material':
+            if self.type == 'srt0':
+                for x in self.SELECTED:
+                    x.add_srt0()
+            elif self.type == 'pat0':
+                for x in self.SELECTED:
+                    x.add_pat0()
+            else:   # layers
+                if self.SELECT_ID_NUMERIC:
+                    for x in self.SELECTED:
+                        for i in range(type_id):
+                            x.addEmptyLayer()
+                else:
+                    for x in self.SELECTED:
+                        x.addLayer(type_id)
+        elif type == 'shader':  # add stage case
+            for x in self.SELECTED:
+                for i in range(type_id):
+                    x.addStage()
+        elif type == 'srt0':    # add srt0 layer
             if self.SELECT_ID_NUMERIC:
                 for x in self.SELECTED:
                     for i in range(type_id):
-                        x.addEmptyLayer()
+                        x.addLayer()
             else:
                 for x in self.SELECTED:
-                    x.addLayer(type_id)
-        elif type == 'shader':  # add stage case
-            for x in self.SELECTED:
-                x.addStage(type_id)
+                    x.addLayerByName(type_id)
+        elif type == 'pat0':    # add pat0 layer
+            pass # todo
+
         else:
             raise ParsingException(self.txt, 'command "Add" not supported for type {}'.format(type))
 
@@ -432,18 +479,35 @@ class Command:
         """Remove command"""
         if self.SELECT_ID_NUMERIC and type_id == 0:
             type_id = 1
-        if type == 'material':  # remove layer case
-            if self.SELECT_ID_NUMERIC:
+        if type == 'material':
+            if self.type == 'srt0':
                 for x in self.SELECTED:
-                    for i in range(type_id):
-                        x.removeLayerI()
-            else:
+                    x.remove_srt0()
+            elif self.type == 'pat0':
                 for x in self.SELECTED:
-                    x.removeLayer(type_id)
+                    x.remove_pat0()
+            else:    # remove layer case
+                if self.SELECT_ID_NUMERIC:
+                    for x in self.SELECTED:
+                        for i in range(type_id):
+                            x.removeLayerI()
+                else:
+                    for x in self.SELECTED:
+                        x.removeLayer(type_id)
         elif type == 'shader':  # remove stage case
             for x in self.SELECTED:
                 for i in range(type_id):
                     x.removeStage()
+        elif type == 'srt0':  # remove srt0 layer
+            if self.SELECT_ID_NUMERIC:
+                for x in self.SELECTED:
+                    for i in range(type_id):
+                        x.removeLayer()
+            else:
+                for x in self.SELECTED:
+                    x.removeLayerByName(type_id)
+        elif type == 'pat0':  # remove pat0 layer
+            pass    # todo
         else:
             raise ParsingException(self.txt, 'command "Remove" not supported for type {}'.format(type))
 
@@ -455,10 +519,10 @@ class Command:
 
 def run_commands(commandlist):
     for cmd in commandlist:
-        # try:
+        try:
             cmd.runCmd()
-        # except ValueError as e:
-        #     print(e)
+        except ValueError as e:
+            print(e)
 
 
 def load_commandfile(filename):
