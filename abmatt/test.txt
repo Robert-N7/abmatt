@@ -1,1 +1,6 @@
-info brres for * in Course/old_town_ds.d/*.brres
+# info brres for * in Course/old_town_ds.d/pocha.brres      # has clr0, chr0, srt0
+# info brres for * in Course/old_town_ds.d/SentakuDS.brres      # has shp0
+# info brres for * in Course/ridgehighway_course.d/K_car_body.brres     # weird pat0/srt0
+info brres for * in Course/old_mario_gc_yabuki.d/*.brres
+# save as test3.brres overwrite
+# info for * in test3.brres

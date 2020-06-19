@@ -5,7 +5,8 @@
 # --------------------------------------------------------
 # Most Brres Subfiles
 # --------------------------------------------------------
-from abmatt.binfile import Folder, PackingError
+from abmatt.binfile import Folder, PackingError, printCollectionHex
+from abmatt.matching import info_default
 
 
 class SubFile(object):
@@ -16,12 +17,19 @@ class SubFile(object):
     functions: byteSize, unpack, pack, unpackData, packData
     """
     MAGIC = 'NONE'
+    SETTINGS = ('version', 'sections')
     VERSION_SECTIONCOUNT = {}
 
     def __init__(self, name, parent):
         """ initialize with parent of this file """
         self.name = name
         self.parent = parent
+
+    def __getitem__(self, item):
+        if item == self.SETTINGS[0]:
+            return self.version
+        elif item == self.SETTINGS[1]:
+            return self._getNumSections()
 
     def _byteSize(self):
         """ should be overriden if size changes """
@@ -73,155 +81,6 @@ class SubFile(object):
         # name offset to be packed separately
         binfile.storeNameRef(self.name)
 
-    def info(self, key=None, indentation_level=0):
-        trace = '  ' * indentation_level + self.name if indentation_level else '>' + self.parent.name + '->' + self.name
-        print('{}: {} v{}\tbyte_size {}'.format(trace, self.MAGIC, self.version, self._byteSize()))
+    def info(self, key=None, indentation=0):
+        info_default(self, '>(' + self.MAGIC + ')' + self.name, key, indentation)
 
-
-'''
-Chr0 Brres subfile
-'''
-
-
-class Chr0(SubFile):
-    """ Chr0 class representation """
-    MAGIC = "CHR0"
-    VERSION_SECTIONCOUNT = {5: 2, 3: 1}
-
-    def __init__(self, name, parent):
-        super(Chr0, self).__init__(name, parent)
-        self.animations = []
-
-    class ModelAnim:
-        def __init__(self, name, offset):
-            self.name = name
-            self.offset = offset  # since we don't parse data... store name offsetg
-
-    def unpack(self, binfile):
-        self._unpack(binfile)
-        _, self.framecount, self.size, self.loop, _ = binfile.read('I2H2I', 16)
-        binfile.recall()  # section 0
-        f = Folder(binfile, 'chr0root')
-        f.unpack(binfile)
-        self.data = binfile.readRemaining(self.byte_len)
-        while len(f):
-            name = f.recallEntryI()
-            self.animations.append(self.ModelAnim(name, binfile.offset - binfile.beginOffset))
-
-    def pack(self, binfile):
-        self._pack(binfile)
-        binfile.write('I2H2I', 0, self.framecount, self.size, self.loop, 0)
-        f = Folder(binfile, 'chr0root')
-        for x in self.animations:
-            f.addEntry(x.name)
-        binfile.createRef()
-        f.pack(binfile)
-        binfile.writeRemaining(self.data)
-        for x in self.animations:  # hackish way of overwriting the string offsets
-            binfile.offset = binfile.beginOffset + x.offset
-            f.createEntryRefI()
-            binfile.storeNameRef(x.name)
-        binfile.end()
-
-
-'''
-Clr0 Brres subfile
-'''
-
-
-class Clr0(SubFile):
-    """ Clr0 class """
-    MAGIC = "CLR0"
-    VERSION_SECTIONCOUNT = {4: 2}
-
-    def __init__(self, name, parent):
-        super(Clr0, self).__init__(name, parent)
-
-    def unpack(self, binfile):
-        print('{} Warning: Clr0 not supported, unable to edit'.format(self.parent.name))
-        self._unpack(binfile)
-        self._unpackData(binfile)
-
-    def pack(self, binfile):
-        raise PackingError(binfile, 'Packing clr0 files not supported')
-        self._pack(binfile)
-        self._unpackData(binfile)
-
-
-'''
-Scn0 Brres subfile
-'''
-
-
-class Scn0(SubFile):
-    MAGIC = "SCN0"
-    VERSION_SECTIONCOUNT = {4: 6, 5: 7}
-
-    def __init__(self, name, parent):
-        super(Scn0, self).__init__(name, parent)
-
-    def unpack(self, binfile):
-        print('{} Warning: Scn0 not supported, unable to edit'.format(self.parent.name))
-        self._unpack(binfile)
-        self._unpackData(binfile)
-
-    def pack(self, binfile):
-        raise PackingError(binfile, 'Packing scn0 not supported')
-        self._pack(binfile)
-        self._unpackData(binfile)
-
-
-'''
-Shp0 Brres subfile
-'''
-
-
-class Shp0(SubFile):
-    MAGIC = "SHP0"
-    VERSION_SECTIONCOUNT = {4: 3}
-
-    def __init__(self, name, parent):
-        super(Shp0, self).__init__(name, parent)
-
-    def unpack(self, binfile):
-        print('{} Warning: Shp0 not supported, unable to edit'.format(self.parent.name))
-        self._unpack(binfile)
-        self._unpackData(binfile)
-
-    def pack(self, binfile):
-        raise PackingError(binfile, 'SHP0 not supported!')   # because of names
-        self._pack(binfile)
-        self._unpackData(binfile)
-
-
-'''
-Tex0 texture file representation
-'''
-
-
-class Tex0(SubFile):
-    """ Tex Class """
-    MAGIC = 'TEX0'
-    VERSION_SECTIONCOUNT = {1: 1, 2: 2, 3: 1}
-
-    def __init__(self, name, parent):
-        super(Tex0, self).__init__(name, parent)
-
-    def unpack(self, binfile):
-        self._unpack(binfile)
-        self._unpackData(binfile)
-
-    def pack(self, binfile):
-        self._pack(binfile)
-        self._packData(binfile)
-
-    # def unpackData(self, binfile):
-    #     ''' Unpacks tex0 from binfile '''
-    #     super(SubFile)()._unpack(binfile)
-    #     # Header
-    #     uk, pixelWidth, pixelHeight, format = binfile.read("I2HI", 12)
-    #     self.numImages, uk, self.numMipmaps, uk = binfile.read("2IfI", 16)
-    #     remaining = self.len - (binfile.offset - binfile.start)
-    #     # todo? possibly unpack the data in specified format?
-    #     self.data = binfile.read("{}B".format(remaining), remaining)
-    #     binfile.end()

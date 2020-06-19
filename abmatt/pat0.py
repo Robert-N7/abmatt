@@ -205,7 +205,7 @@ class Pat0MatAnimation:
     def pack(self, binfile):
         offset = binfile.start()
         binfile.storeNameRef(self.name)
-        self.fixedTexture = len(self.frames) <= 1       # todo, check fixed texture formatting
+        # self.fixedTexture = len(self.frames) <= 1       # todo, check fixed texture formatting/why?
         flags = self.enabled | self.fixedTexture << 1 | self.hasTexture << 2 | self.hasPalette << 3
         binfile.write('I', flags)
         binfile.mark()

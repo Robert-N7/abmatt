@@ -515,10 +515,10 @@ class Command:
 
 def run_commands(commandlist):
     for cmd in commandlist:
-        try:
+        # try:      # todo uncomment
             cmd.runCmd()
-        except ValueError as e:
-            print(e)
+        # except ValueError as e:
+        #     print(e)
 
 
 def load_commandfile(filename):

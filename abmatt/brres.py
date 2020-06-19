@@ -3,17 +3,18 @@
 #   Brres Class
 # --------------------------------------------------------
 import os
-import re
 import string
-import sys
 
 from abmatt.binfile import BinFile, Folder, UnpackingError
-from abmatt.layer import Layer
+from abmatt.chr0 import Chr0
+from abmatt.clr0 import Clr0
 from abmatt.matching import findAll
 from abmatt.mdl0 import Mdl0
 from abmatt.pat0 import Pat0, Pat0Collection
+from abmatt.scn0 import Scn0
+from abmatt.shp0 import Shp0
 from abmatt.srt0 import Srt0, SRTCollection
-from abmatt.subfile import *
+from abmatt.tex0 import Tex0
 
 
 class Brres():
@@ -42,7 +43,7 @@ class Brres():
         self.anmShp = []
         self.anmScn = []
         self.folders = [self.models, self.textures, self.anmPat, self.anmSrt, self.anmChr,
-                        self.anmClr, self.anmShp, self.anmScn]
+                        self.anmScn, self.anmShp, self.anmClr]
         self.isModified = False
         self.isUpdated = False
         self.parent = parent

@@ -5,6 +5,17 @@ import re
 BOOLABLE = ["False", "True"]
 
 
+def info_default(obj, prefix='', key=None, indentation=0):
+    s = '  ' * indentation if indentation else ''
+    if key:
+        print('{}{}: {}:{}'.format(s, prefix, key, obj[key]))
+    else:
+        s += prefix + ': '
+        for x in obj.SETTINGS:
+            s += x + ':' + str(obj[x]) + ', '
+        print(s[:-2])
+
+
 def splitKeyVal(value, default_key='0'):
     i = value.find(':')
     if i >= 0:

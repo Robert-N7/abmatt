@@ -94,6 +94,7 @@ class BinFile:
             offset = self.lenMap.get(self.beginOffset)
             if offset:
                 self.writeOffset("I", offset, self.offset - self.beginOffset)
+            self.offset = len(self.file)
         else:  # read mode
             if self.c_length and self.c_length < self.offset - self.beginOffset:
                 raise UnpackingError(self, 'offset is outside current section')
@@ -336,11 +337,14 @@ class BinFile:
         if not ptr:
             return None
         offset = self.beginOffset + ptr
-        name_lens = self.readOffset("I", offset - 4)
-        if name_lens[0] > 256:
+        [name_lens] = self.readOffset("I", offset - 4)
+        if name_lens > 256:
+            # For debugging
+            data = self.readOffset('64s', offset - 4)
+            print(data)
             raise UnpackingError(self, "Incorrect name offset".format(self.filename))
         else:
-            name = self.readOffset(str(name_lens[0]) + "s", offset)
+            name = self.readOffset(str(name_lens) + "s", offset)
             # print("Name: {}".format(name[0]))
             return name[0].decode()
 
