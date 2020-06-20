@@ -14,7 +14,7 @@ def parse_color(color_str):
     color_str = color_str.strip('()')
     colors = color_str.split(',')
     if len(colors) < 4:
-        if colors == '0':
+        if color_str == '0':
             return 0, 0, 0, 0
         return None
     intVals = []
@@ -496,8 +496,6 @@ class Material:
     def set_pat0(self, anim):
         self.pat0 = anim
         anim.setMaterial(self)
-        if len(self.layers) > 1:
-            print('WARNING: Pat0 animation hooked to material {} with {} layers.'.format(self.name, len(self.layers)))
 
     def get_pat0(self):
         return self.pat0
@@ -532,10 +530,10 @@ class Material:
                 print('CHECK: {} indirect matrix {} disabled but used in shader'.format(self.name, i))
         # possibly auto-update these in future?
         if direct_count != self.shaderStages:
-            print('Check: {} Shader has {} direct stages but material has {} marked'.format(self.name, direct_count,
+            print('CHECK: {} Shader has {} direct stages but material has {} marked'.format(self.name, direct_count,
                                                                                      self.shaderStages))
         if ind_count != self.indirectStages:
-            print('Check: {} Shader has {} indirect stages but material has {} marked'.format(self.name, direct_count,
+            print('CHECK: {} Shader has {} indirect stages but material has {} marked'.format(self.name, direct_count,
                                                                                      self.indirectStages))
 
     # -------------------------------- Layer removing/adding --------------------------
@@ -795,7 +793,8 @@ class LightChannel:
                 self.materialColor = int_vals
             elif "ambient" in key:
                 self.ambientColor = int_vals
-        raise ValueError(self.LC_ERROR.format(key))
+            else:
+                raise ValueError(self.LC_ERROR.format(key))
 
     class LightChannelControl:
         LIGHT_SOURCE = ("register", "vertex")

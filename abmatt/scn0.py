@@ -5,7 +5,8 @@ from abmatt.binfile import Folder, printCollectionHex
 
 def unpack_header(binfile):
     binfile.start()
-    length, outer = binfile.read('Ii', 8)
+    binfile.readLen()
+    binfile.advance(4)  # ignore outer offset
     name = binfile.unpack_name()
     node_id, real_id = binfile.read('2I', 8)
     return name, node_id, real_id
@@ -66,7 +67,7 @@ class AmbientLight:
     def pack(self, binfile):
         pack_header(binfile, self.name, self.node_id, self.real_id)
         binfile.write('4B', self.fixed_flags, 0, 0, self.flags)
-        binfile.write('4B', self.lighting)
+        binfile.write('4B', *self.lighting)
         binfile.end()
 
 
@@ -107,12 +108,14 @@ class Fog:
 
     def unpack(self, binfile):
         self.name, self.node_id, self.real_id = unpack_header(binfile)
+        # todo, key frames from start/end
         self.flags, _, _, _, self.type, self.start, self.end = binfile.read('4BI2f', 16)
         self.color = binfile.read('4B', 4)
         binfile.end()
         return self
 
     def pack(self, binfile):
+        print('WARNING: packing scn0 fog is not supported.')
         pack_header(binfile, self.name, self.node_id, self.real_id)
         binfile.write('4BI2f', self.flags, 0, 0, 0, self.type, self.start, self.end)
         binfile.write('4B', self.color)
@@ -137,10 +140,10 @@ class Camera:
     def pack(self, binfile):
         pack_header(binfile, self.name, self.node_id, self.real_id)
         binfile.write('I2HI', self.projection_type, self.flags1, self.flags2, 0)
-        binfile.write('3f', self.position)
+        binfile.write('3f', *self.position)
         binfile.write('3f', self.aspect, self.near_z, self.far_z)
-        binfile.write('3f', self.rotate)
-        binfile.write('3f', self.aim)
+        binfile.write('3f', *self.rotate)
+        binfile.write('3f', *self.aim)
         binfile.write('3f', self.twist, self.persp_fov_y, self.ortho_height)
         binfile.end()
 
@@ -177,14 +180,16 @@ class Scn0KeyFrameList:
 class Scn0(SubFile):
     MAGIC = "SCN0"
     VERSION_SECTIONCOUNT = {4: 6, 5: 7}
+    EXPECTED_VERSION = 5
     SETTINGS = ('framecount', 'loop')
+    FOLDERS = ('LightSet(NW4R)', 'AmbLights(NW4R)', 'Lights(NW4R)', 'Fog(NW4R)', 'Cameras(NW4R)')
     KLASSES = (LightSet, AmbientLight, Light, Fog, Camera)
 
     def __init__(self, name, parent):
         super(Scn0, self).__init__(name, parent)
         self.framecount = 1
         self.loop = True
-        self.keyframelists = []
+        self.animations = []
         self.lightsets = []
         self.ambient_lights = []
         self.lights = []
@@ -201,11 +206,11 @@ class Scn0(SubFile):
         self._unpack(binfile)
         _, self.framecount, self.speclightcount, self.loop = binfile.read('i2Hi', 12)
         section_counts = binfile.read('5H', 12)  # + pad
-        if binfile.recall():    # section keyframes
-            self.keyframelists.append(Scn0KeyFrameList().unpack(binfile))
+        binfile.recall()    # section root
+        # folder = Folder(binfile).unpack(binfile)
         groups = [self.lightsets, self.ambient_lights, self.lights, self.fogs, self.cameras]
         for i in range(5):
-            n = section_counts.pop(0)
+            n = section_counts[i]
             if binfile.recall():
                 klass = self.KLASSES[i]
                 folder = groups[i]
@@ -213,20 +218,37 @@ class Scn0(SubFile):
                     folder.append(klass().unpack(binfile))
         binfile.end()
 
+    def pack_root(self, binfile, packing_items):
+        binfile.createRef() # section root
+        root = Folder(binfile)
+        index_groups = []
+        for i in range(5):
+            if packing_items[i]:
+                root.addEntry(self.FOLDERS[i])
+                f = Folder(binfile, self.FOLDERS[i])
+                index_groups.append(f)
+                for item in packing_items[i]:
+                    f.addEntry(item.name)
+        root.pack(binfile)
+        for x in index_groups:
+            root.createEntryRefI()
+            x.pack(binfile) # doesn't create data pointers
+        return index_groups
+
     def pack(self, binfile):
         self._pack(binfile)
         binfile.write('i2Hi', 0, self.framecount, self.speclightcount, self.loop)
         packing_items = [self.lightsets, self.ambient_lights, self.lights, self.fogs, self.cameras]
         # write counts
-        binfile.write('5H', [len(x) for x in packing_items])
-        binfile.createRef() # section key frames
-        for x in self.keyframelists:
-            x.pack(binfile)
+        binfile.write('5H', *[len(x) for x in packing_items])
+        folders = self.pack_root(binfile, packing_items)
         # all the rest
         for i in range(5):
             group = packing_items[i]
             if len(group):
-                binfile.createRef(i, False)
+                binfile.createRef(i, False) # create section header offset
+                folder = folders.pop(0)
                 for x in group:
+                    folder.createEntryRefI()
                     x.pack(binfile)
         binfile.end()

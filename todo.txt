@@ -3,7 +3,8 @@
 - other subfiles
 - Command:
     - Command completion
-    - match command
+    - copy/paste
+    - dump
 - ignore case matching
 - better info amounts, detect singles vs groups
 - Custom error for parsing key:values

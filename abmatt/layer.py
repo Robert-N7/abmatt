@@ -284,15 +284,15 @@ class Layer:
         i = int(value)
         if not 0 <= i <= 7:
             raise ValueError("Value '" + value + "' out of range for emboss source")
-        if self.xfTexMatrix["embossSource"] != i:
-            self.xfTexMatrix["embossSource"] = i
+        if self.xfTexMatrix["embosssource"] != i:
+            self.xfTexMatrix["embosssource"] = i
 
     def setEmbossLightStr(self, value):
         i = int(value)
         if not 0 <= i <= 255:
             raise ValueError("Value '" + value + "' out of range for emboss light")
-        if self.xfTexMatrix["embossLight"] != i:
-            self.xfTexMatrix["embossLight"] = i
+        if self.xfTexMatrix["embosslight"] != i:
+            self.xfTexMatrix["embosslight"] = i
 
     def setNormalizeStr(self, value):
         val = validBool(value)

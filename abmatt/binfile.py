@@ -64,8 +64,11 @@ class BinFile:
             return False
         return True
 
+    def is_aligned(self, alignment=0x20):
+        return (self.offset - self.beginOffset) % alignment == 0
+
     def align(self, alignment=0x20):
-        """ Aligns to the alignment of file """
+        """ Aligns to the alignment of the current file """
         past_align = self.offset % alignment
         if past_align:
             self.advance(alignment - past_align)
@@ -86,6 +89,10 @@ class BinFile:
         self.c_length = None  # reset
         self.references[self.beginOffset] = self.refMarker
         return self.offset
+
+    def alignAndEnd(self, alignment=0x20):
+        self.align(alignment)
+        self.end()
 
     #  end / pops last start offset off stack
     def end(self):
@@ -303,8 +310,10 @@ class BinFile:
     def readOffset(self, fmt, offset):  # len not needed
         return unpack_from(self.bom + fmt, self.file, offset)
 
-    def readRemaining(self, filelen):
+    def readRemaining(self, filelen=None):
         """ Reads and returns remaining data as bytes """
+        if not filelen:
+            filelen = self.lenMap[self.beginOffset]
         remainder = filelen - (self.offset - self.beginOffset)
         return self.read("{}B".format(remainder), remainder)
 
@@ -547,6 +556,7 @@ class Folder:
             sub.unpack(binfile)
             self.entries.append(sub)
         binfile.end()
+        return self
 
     def pack(self, binfile):
         """ packs folder """
@@ -601,7 +611,7 @@ class Folder:
         for i in range(len(self.entries)):
             if self.entries[i].name == name:
                 return self.createEntryRefI(i)
-        raise UnpackingError(self.binfile, "Entry name {} not in folder {}".format(name, self.name))
+        raise PackingError(self.binfile, "Entry name {} not in folder {}".format(name, self.name))
 
     def createEntryRefI(self, index=0):
         """ creates reference in folder to section at entry[index] (once only, pops)"""

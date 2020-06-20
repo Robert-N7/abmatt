@@ -65,7 +65,8 @@ class Brres():
 
     def close(self):
         if self.isModified or self.DESTINATION and self.DESTINATION != self.name:
-            self.save(self.DESTINATION, self.OVERWRITE)
+            return self.save(self.DESTINATION, self.OVERWRITE)
+        return True
 
     def save(self, filename, overwrite):
         if not filename:
@@ -73,7 +74,6 @@ class Brres():
             # if not self.isChanged():
             #     return
         if not overwrite and os.path.exists(filename):
-            print("File '{}' already exists!".format(filename))
             return False
         else:
             f = BinFile(filename, mode="w")
@@ -245,7 +245,7 @@ class Brres():
         binfile.start()
         magic = binfile.readMagic()
         if magic != self.MAGIC:
-            raise UnpackingError(self, "Magic {} does not match {}".format(magic, self.MAGIC))
+            raise UnpackingError(self, '"{}" not a brres file'.format(self.name))
         bom = binfile.read("H", 2)
         binfile.bom = "<" if bom == 0xfffe else ">"
         pad, length, rootoffset, numSections = binfile.read("hI2h", 10)
@@ -289,30 +289,31 @@ class Brres():
         entries = rootFolder.entries
         for i in range(len(offsets)):
             entries[i].dataPtr = offsets[i] + rtsize
-        byteSize += rtsize + 8  # add first folder to bytesize, and header len
-        return rootFolders, byteSize
+        return rootFolders
 
     @staticmethod
-    def packRoot(binfile, rt_folders, rt_bytesize):
+    def packRoot(binfile, rt_folders):
         """ Packs the root section, returns root folders that need data ptrs"""
+        binfile.start()
         binfile.writeMagic("root")
-        binfile.write("I", rt_bytesize)
+        binfile.markLen()
         for f in rt_folders:
             f.pack(binfile)
+        binfile.alignAndEnd()
         return rt_folders[1:]
 
     def pack(self, binfile):
         """ packs the brres """
         sub_files = self.pre_packing()
         binfile.start()
-        rt_folders, rt_bytesize = self.generateRoot(binfile, sub_files)
+        rt_folders = self.generateRoot(binfile, sub_files)
         binfile.writeMagic(self.MAGIC)
         binfile.write("H", 0xfeff)  # BOM
         binfile.advance(2)
         binfile.markLen()
         num_sections = self.getNumSections(rt_folders)
         binfile.write("2H", 0x10, num_sections)
-        folders = self.packRoot(binfile, rt_folders, rt_bytesize)
+        folders = self.packRoot(binfile, rt_folders)
         # now pack the folders
         folder_index = 0
         for file_group in sub_files:

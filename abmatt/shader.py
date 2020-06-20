@@ -346,6 +346,8 @@ class Stage():
                 if key == "indirectformat":
                     indexListItem(self.TEX_FORMAT, value)
                 elif key == "indirectmatrixselection":
+                    if len(value) < 6:
+                        value = 'matrix' + value
                     indexListItem(self.IND_MATRIX, value)
                 elif key == "indirectalpha":
                     indexListItem(self.IND_ALPHA, value)
@@ -769,7 +771,7 @@ class Shader():
 
     def check(self):
         """Checks the shader for common errors, returns (direct_stage_count, ind_stage_count)"""
-        prefix = 'CHECK Shader{}:'.format(self.getMaterialNames())
+        prefix = 'CHECK: Shader{}:'.format(self.getMaterialNames())
         tex_usage = [0] * self.texRefCount
         ind_stage_count = 0
         # indirect check

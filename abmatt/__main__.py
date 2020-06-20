@@ -10,11 +10,12 @@ import sys
 from cmd import Cmd
 
 from abmatt.brres import Brres
-from abmatt.command import Command, run_commands, ParsingException, load_commandfile
+from abmatt.mdl0 import TexCoord
+from abmatt.command import Command, ParsingException
 
 __version__ = "0.5.0"
-USAGE = "Usage: {} -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value>\
- -n <name> -m <model> -i -s] "
+USAGE = "Usage: {} -f <file> [-d <destination> -o -c <command-file> -k <key> -v <value>\
+ -n <name> -m <model> -i -s -u] "
 
 
 def hlp():
@@ -104,7 +105,7 @@ class Shell(Cmd):
 
     def run(self, prefix, cmd):
         try:
-            run_commands([Command(prefix + ' ' + cmd)])
+            Command.run_commands([Command(prefix + ' ' + cmd)])
         except ParsingException as e:
             print('{}, Type "?" for help.'.format(e))
 
@@ -170,13 +171,13 @@ def load_presets():
     dir = os.path.dirname(os.path.abspath(__file__))
     preset_path = os.path.join(dir, 'presets.txt')
     if os.path.exists(preset_path):
-        load_commandfile(preset_path)
+        Command.load_commandfile(preset_path)
     # Load presets in cwd
     cwd = os.getcwd()
     if dir != cwd:
         preset_path = os.path.join(cwd, 'presets.txt')
         if os.path.exists(preset_path):
-            load_commandfile(preset_path)
+            Command.load_commandfile(preset_path)
 
 
 def main():
@@ -188,16 +189,17 @@ def main():
         print(USAGE)
         sys.exit(0)
     try:
-        opts, args = getopt.getopt(argv, "hf:d:ok:v:n:m:c:t:is",
+        opts, args = getopt.getopt(argv, "hf:d:ok:v:n:m:c:t:isu",
                                    ["help", "file=", "destination=", "overwrite",
                                     "type=", "key=", "value=",
-                                    "name=", "model=", "info", "commandfile=", "shell"])
+                                    "name=", "model=", "info", "command-file=", "shell",
+                                    "uv-divisor-zero"])
     except getopt.GetoptError:
         print(USAGE)
         sys.exit(2)
     filename = ""
     destination = ""
-    shell_mode = info = overwrite = False
+    shell_mode = info = overwrite = uv_divisor_zero = False
     type = "material"
     setting = ""
     value = ""
@@ -226,10 +228,12 @@ def main():
             model = arg
         elif opt in ("-i", "--info"):
             info = True
-        elif opt in ("-c", "--commandfile"):
+        elif opt in ("-c", "--command-file"):
             commandfile = arg
         elif opt in ("-s", "--shell"):
             shell_mode = True
+        elif opt in ("-u", "--uv-divisor-zero"):
+            uv_divisor_zero = True
         else:
             print("Unknown option '{}'".format(opt))
             print(USAGE)
@@ -237,6 +241,8 @@ def main():
 
     load_presets()
     cmds = []
+    if uv_divisor_zero:
+        TexCoord.UV_DIVISOR_ZERO = True
     if destination:
         Command.DESTINATION = destination
         Brres.DESTINATION = destination
@@ -261,12 +267,12 @@ def main():
         exit(2)
 
     if commandfile:
-        filecmds = load_commandfile(commandfile)
+        filecmds = Command.load_commandfile(commandfile)
         cmds = cmds + filecmds
 
     # Run Commands
     if cmds:
-        run_commands(cmds)
+        Command.run_commands(cmds)
     if shell_mode:
         Shell().cmdloop('Interactive shell started...')
 

@@ -87,6 +87,7 @@ class Clr0(SubFile):
     """ Clr0 class """
     MAGIC = "CLR0"
     VERSION_SECTIONCOUNT = {4: 2, 3: 1}
+    EXPECTED_VERSION = 4
     SETTINGS = ('framecount', 'loop')
 
     def __init__(self, name, parent):

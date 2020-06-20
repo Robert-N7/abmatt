@@ -85,7 +85,7 @@ class Pat0MatAnimation:
         if key == 'loop':
             self.loop = validBool(value)
         elif key == 'framecount':
-            self.framecount = validInt(value, 0, math.inf)
+            self.framecount = validInt(value, 0, 0x7FFFFFFF)
         elif key == 'keyframe':
             frame_ids = []
             names = []
@@ -244,6 +244,7 @@ class Pat0(SubFile):
     #   4: palette ptr Table
     #   5: user data
     VERSION_SECTIONCOUNT = {3: 5, 4: 6}
+    EXPECTED_VERSION = 4
 
     def __init__(self, name, parent, frame_count=2, loop=True):
         super(Pat0, self).__init__(name, parent)

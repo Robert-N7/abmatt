@@ -2,6 +2,7 @@
 """ Srt0 Brres subfile """
 import math
 import re
+from copy import deepcopy
 
 from abmatt.binfile import Folder
 from abmatt.matching import validInt, validBool, validFloat, splitKeyVal, matches
@@ -94,7 +95,7 @@ class SRTKeyFrameList:
         if value in ('disabled', 'none', 'remove'):
             self.removeKeyFrame(key)
         else:
-            value = validFloat(value, math.inf * -1, math.inf)
+            value = validFloat(value, -0x7FFFFFFF, 0x7FFFFFFF)
             self.setKeyFrame(value, key)
 
     def __eq__(self, other):
@@ -148,10 +149,10 @@ class SRTKeyFrameList:
         if len(self.entries) < 2:  # one or 0
             entry.delta = 0
         else:
-            if entry_index != -1 and entry_index != len(self.entries):
+            try:
                 next = self.entries[entry_index + 1]
                 next_id = next.index
-            else:
+            except IndexError:
                 next = self.entries[0]
                 next_id = next.index + self.framecount
             prev = self.entries[entry_index - 1]
@@ -229,9 +230,11 @@ class SRTKeyFrameList:
         self.entries = []
         # header
         size, uk, fs = binfile.read("2Hf", 8)
+        assert size
         for i in range(size):
             index, value, delta = binfile.read("3f", 12)
             self.entries.append(self.SRTKeyFrame(value, index, delta))
+        return self
 
     def pack(self, binfile, framescale):
         """ packs an animation entry list """
@@ -341,14 +344,7 @@ class SRTTexAnim():
         self.xScaleFixed = x.isFixed()
         self.yScaleFixed = y.isFixed()
         self.scaleDefault = x.isDefault(True) and y.isDefault(True)
-        if len(x) != len(y):
-            self.scaleIsotropic = False
-        else:
-            self.scaleIsotropic = True
-            for i in range(len(x)):
-                if x[i].value != y[i].value:
-                    self.scaleIsotropic = False
-                    break
+        self.scaleIsotropic = x == y
         # Rotation
         rot = self.animations['rot']
         self.rotationFixed = rot.isFixed()
@@ -394,10 +390,8 @@ class SRTTexAnim():
                 self.animations['yscale'].setFixed(val)
             else:
                 offset = binfile.offset
-                [binfile.offset] = binfile.read("I", 4)
-                self.animations['xscale'].unpack(binfile)
-                self.animations['yscale'].unpack(binfile)
-                binfile.offset = offset + 4
+                keyframelist = binfile.bl_unpack(self.animations['xscale'].unpack, False)
+                self.animations['yscale'] = deepcopy(keyframelist)
         else:  # not isotropic
             if self.xScaleFixed:
                 [val] = binfile.read("f", 4)
@@ -508,8 +502,6 @@ class SRTMatAnim():
 
     SETTINGS = ('framecount', 'loop', 'layerenable')
 
-    # todo documentation
-
     def __init__(self, name, frame_count=1, looping=True, material=None):
         self.name = name
         self.material = material  # to be filled
@@ -528,7 +520,7 @@ class SRTMatAnim():
 
     def __setitem__(self, key, value):
         if key == 'framecount':
-            i = validInt(value, 1, math.inf)
+            i = validInt(value, 1, 0x7FFFFFFF)
             self.framecount = i
             for x in self.tex_animations:
                 x.setFrameCount(i)
@@ -644,7 +636,7 @@ class SRTMatAnim():
         if max < 8:
             for i in range(max, 8):
                 if self.texEnabled[i]:
-                    print('Check: {} SRT layer {} is enabled but has no corresponding layer'.format(material.name, i))
+                    print('CHECK: {} SRT layer {} is enabled but has no corresponding layer'.format(material.name, i))
 
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + '(SRT0)' + self.name if indentation_level else '>(SRT0):' + self.name
@@ -733,9 +725,9 @@ class SRTMatAnim():
 
 class Srt0(SubFile):
     """ Srt0 Animation """
-    # todo: clean up this mess, allow setting individual tangent values and defaults etc...
     MAGIC = "SRT0"
     VERSION_SECTIONCOUNT = {4: 1, 5: 2}
+    EXPECTED_VERSION = 5
 
     def __init__(self, name, parent, frame_count=1, loop=True):
         super(Srt0, self).__init__(name, parent)

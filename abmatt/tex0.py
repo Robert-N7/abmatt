@@ -6,6 +6,7 @@ class Tex0(SubFile):
     """ Tex0 Class """
     MAGIC = 'TEX0'
     VERSION_SECTIONCOUNT = {1: 1, 2: 2, 3: 1}
+    EXPECTED_VERSION = 3
 
     def __init__(self, name, parent):
         super(Tex0, self).__init__(name, parent)

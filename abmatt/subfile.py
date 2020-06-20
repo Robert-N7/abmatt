@@ -19,6 +19,7 @@ class SubFile(object):
     MAGIC = 'NONE'
     SETTINGS = ('version', 'sections')
     VERSION_SECTIONCOUNT = {}
+    EXPECTED_VERSION = 0    # override this
 
     def __init__(self, name, parent):
         """ initialize with parent of this file """
@@ -55,16 +56,19 @@ class SubFile(object):
         binfile.end()
 
     def _getNumSections(self):
-        try:
-            return self.VERSION_SECTIONCOUNT[self.version]
-        except:
-            raise ("Unsupported version {} for {}".format(self.version, self.MAGIC))
+        if self.version not in self.VERSION_SECTIONCOUNT:
+            raise ("{} {} unsupported version {}".format(self.MAGIC, self.name, self.version))
+        if self.version != self.EXPECTED_VERSION:
+            print('Note: {} {} unusual version {}'.format(self.MAGIC, self.name, self.version))
+        return self.VERSION_SECTIONCOUNT[self.version]
 
     def _unpack(self, binfile):
         """ unpacks the sub file, subclass must use binfile.end() """
+        if not binfile.is_aligned():
+            print('{} in {} not aligned.'.format(self.MAGIC, binfile.filename))
         binfile.start()
         magic = binfile.readMagic()
-        assert (magic == self.MAGIC)
+        assert magic == self.MAGIC
         self.byte_len, self.version, outerOffset = binfile.read("2Ii", 12)
         self.numSections = self._getNumSections()
         binfile.store(self.numSections)  # store section offsets

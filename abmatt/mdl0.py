@@ -1,5 +1,5 @@
 """ MDL0 Models """
-from abmatt.binfile import Folder
+from abmatt.binfile import Folder, printCollectionHex
 from abmatt.drawlist import DrawList, Definition
 from abmatt.matching import findAll
 from abmatt.material import Material
@@ -7,7 +7,6 @@ from abmatt.polygon import Polygon
 from abmatt.shader import Shader, ShaderList
 from abmatt.subfile import SubFile
 from abmatt.srt0 import SRTMatAnim, SRTCollection
-
 
 # ----------------- Model sub files --------------------------------------------
 from pat0 import Pat0MatAnimation, Pat0Collection
@@ -96,11 +95,53 @@ class FurVector(ModelGeneric):
         super(FurVector, self).__init__(name, parent)
 
 
-class TexCoord(ModelGeneric):
+class TexCoord:
     """ TexCoord model data"""
+    UV_DIVISOR_ZERO = False
 
     def __init__(self, name, parent):
-        super(TexCoord, self).__init__(name, parent)
+        self.name = name
+        self.parent = parent
+
+    def __str__(self):
+        return 'UV {} id:{} st:{} format:{} divisor:{} stride:{} count:{}'.format(self.name, self.index, self.is_st,
+                                                                                  self.format, self.divisor,
+                                                                                  self.stride, self.uv_count)
+
+    def unpack(self, binfile):
+        binfile.start()
+        binfile.readLen()
+        binfile.advance(4)
+        binfile.store()
+        binfile.advance(4)
+        self.index, self.is_st, self.format, self.divisor, self.stride, self.uv_count = binfile.read('3I2BH', 16)
+        if self.divisor >= 32:
+            if self.UV_DIVISOR_ZERO:
+                self.divisor = 0
+                print('NOTE: set corrupt UV "{}", divisor {} to 0'.format(self.name, self.divisor))
+            else:
+                print('CHECK: Corrupt UV "{}", divisor {} out of range'.format(self.name, self.divisor))
+        self.minimum = binfile.read('3f', 12)
+        self.maximum = binfile.read('3f', 12)
+        binfile.recall()
+        self.data = binfile.readRemaining()
+        # printCollectionHex(self.data)
+        # print(self)
+        binfile.end()
+
+    def pack(self, binfile):
+        binfile.start()
+        binfile.markLen()
+        binfile.write('i', binfile.getOuterOffset())
+        binfile.mark()
+        binfile.storeNameRef(self.name)
+        binfile.write('3I2BH', self.index, self.is_st, self.format, self.divisor, self.stride, self.uv_count)
+        binfile.write('3f', *self.minimum)
+        binfile.write('3f', *self.maximum)
+        binfile.advance(8)
+        binfile.createRef()
+        binfile.writeRemaining(self.data)
+        binfile.end()
 
 
 class Color(ModelGeneric):
@@ -117,11 +158,50 @@ class Normal(ModelGeneric):
         super(Normal, self).__init__(name, parent)
 
 
-class Vertex(ModelGeneric):
+class Vertex():
     """ Vertex class for storing vertices data """
 
     def __init__(self, name, parent):
-        super(Vertex, self).__init__(name, parent)
+        self.name = name
+        self.parent = parent
+
+    def __str__(self):
+        return 'Vertex {} id:{} xyz:{} format:{} divisor:{} stride:{} count:{}'.format(self.name, self.index,
+                                                                                       self.is_xyz,
+                                                                                       self.format, self.divisor,
+                                                                                       self.stride, self.vertex_count)
+
+    def unpack(self, binfile):
+        """ Unpacks some ptrs but mostly just leaves data as bytes """
+        binfile.start()
+        length = binfile.readLen()
+        binfile.advance(4)
+        binfile.store()  # data pointer
+        binfile.advance(4)  # ignore, we already have name
+        self.index, self.is_xyz, self.format, self.divisor, self.stride, self.vertex_count = binfile.read("3I2BH", 16)
+        if self.divisor >= 32:
+            print('CHECK: Corrupt UV "{}", divisor {} out of range'.format(self.name, self.divisor))
+        self.minimum = binfile.read('3f', 12)
+        self.maximum = binfile.read('3f', 12)
+        binfile.recall()
+        self.data = binfile.readRemaining()
+        binfile.end()
+        return self
+
+    def pack(self, binfile):
+        """ Packs into binfile """
+        binfile.start()
+        binfile.markLen()
+        binfile.write("i", binfile.getOuterOffset())
+        binfile.mark()  # mark the data pointer
+        binfile.storeNameRef(self.name)
+        binfile.write('3I2BH', self.index, self.is_xyz, self.format, self.divisor, self.stride, self.vertex_count)
+        binfile.write('3f', *self.minimum)
+        binfile.write('3f', *self.maximum)
+        binfile.advance(8)
+        binfile.createRef()  # data pointer
+        binfile.writeRemaining(self.data)
+        binfile.end()
 
 
 class Bone(ModelGeneric):
@@ -154,6 +234,7 @@ class Mdl0(SubFile):
     """ Model Subfile """
     MAGIC = "MDL0"
     VERSION_SECTIONCOUNT = {8: 11, 11: 14}
+    EXPECTED_VERSION = 11
     SECTION_NAMES = ("Definitions", "Bones", "Vertices", "Normals", "Colors",
                      "UVs", "FurVectors", "FurLayers",
                      "Materials", "Shaders", "Objects", "Textures", "Palettes")
@@ -305,7 +386,7 @@ class Mdl0(SubFile):
         link = self.getTextureLink(name)
         if not link:
             if name != 'Null' and not self.parent.getTexture(name):
-                print('WARNING: Adding reference to unknown texture "{}"'.format(name))
+                print('NOTE: Adding reference to unknown texture "{}"'.format(name))
             link = TextureLink(name, self)
             self.textureLinks.append(link)
         link.num_references += 1
@@ -329,7 +410,7 @@ class Mdl0(SubFile):
         # No link found, try to find texture matching and create link
         if not new_link:
             if name != 'Null' and not self.parent.getTexture(name):  # possible todo, regex matching for name?
-                print('WARNING: Adding reference to unknown texture "{}"'.format(name))
+                print('NOTE: Adding reference to unknown texture "{}"'.format(name))
             new_link = TextureLink(name, self)
             self.textureLinks.append(new_link)
         old_link.num_references -= 1
@@ -371,7 +452,7 @@ class Mdl0(SubFile):
                     self.parent.isModified = True
                 count += 1
                 mark = 'xlu' if x.xlu else 'opa'
-                print('Note: Fixing incorrect draw pass for {}, marking as {}'.format(x.name, mark))
+                print('NOTE: Fixing incorrect draw pass for {}, marking as {}'.format(x.name, mark))
                 if x.xlu:
                     self.setMaterialDrawXlu(x.id)
                 else:
@@ -533,5 +614,5 @@ class Mdl0(SubFile):
                 texture_link_map = self.packTextureLinks(binfile, folder)
             else:
                 self.packSection(binfile, i, folder, texture_link_map)
-        binfile.end()  # end file
+        binfile.alignAndEnd()  # end file
     # -------------- END PACKING STUFF ---------------------------------------

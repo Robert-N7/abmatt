@@ -1,6 +1,25 @@
+# info brres for lsd in Course/ridgehighway_course.d/*.brres
 # info brres for * in Course/old_town_ds.d/pocha.brres      # has clr0, chr0, srt0
 # info brres for * in Course/old_town_ds.d/SentakuDS.brres      # has shp0
 # info brres for * in Course/ridgehighway_course.d/K_car_body.brres     # weird pat0/srt0
-info brres for * in Course/old_mario_gc_yabuki.d/*.brres
-# save as test3.brres overwrite
-# info for * in test3.brres
+# info brres for * in Course/old_mario_gc_yabuki.d/course_model.brres     # scn0
+
+# info for match in ../ctools_test2.brres
+select DoubleRamp in ../course_model.brres
+preset ef_dushboard
+set layer:0 name:course_model-SKP--DoubleRamp
+info material
+preset ef_dushboard for Boost
+set layer:0 name:course_model-SKP--BoostPanel
+info material
+preset default for Crystal
+preset blend
+remove srt0
+info
+preset wt_takitubo for AcidFall
+set layer:0 name:course_model-SKP--AcidFall
+set layer:1 name:ef_wave
+save as test3.brres overwrite
+select WT_Takitubo in Course/water_course.d/course_model.brres
+select * in test3.brres
+save as test4.brres overwrite

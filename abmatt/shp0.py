@@ -69,6 +69,7 @@ class Shp0Animation:
 class Shp0(SubFile):
     MAGIC = "SHP0"
     VERSION_SECTIONCOUNT = {4: 3, 3: 2}
+    EXPECTED_VERSION = 4
     SETTINGS = ('framecount', 'loop')
 
     def __init__(self, name, parent):

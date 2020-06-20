@@ -28,7 +28,8 @@ class TevRegister:
     def getColor(self):
         """ Gets the color (r,g,b,a) """
         c1 = self.reglow.getColor()
-        return c1[1] + self.reghigh.getColor() + c1[0]
+        c2 = self.reghigh.getColor()
+        return c1[1], c2[0], c2[1], c1[0]
 
     def setColor(self, rgba):
         """ Sets the color (r,g,b,a) """

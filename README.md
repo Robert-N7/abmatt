@@ -26,11 +26,11 @@ ABMatt supports editing the following types:
 
 ## Command Line Usage
 ```
-abmatt -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value> -t <type> -n <name> -m <model> -i -s]
+abmatt -f <file> [-d <destination> -o -c <command-file> -k <key> -v <value> -t <type> -n <name> -m <model> -i -s -u]
 ```
 | Flag |Expanded| Description |
 |---|---|---|
-| -c | --commandfile | File with ABMatT commands to be processed as specified in file format. |
+| -c | --command-file | File with ABMatT commands to be processed as specified in file format. |
 | -d | --destination | The file name to be written to. Mutliple destinations are not supported. |
 | -f | --file | The brres file name to be read from |
 | -h | --help | Displays a help message about program usage. |
@@ -41,6 +41,7 @@ abmatt -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value> -t <t
 | -o | --overwrite | Overwrite existing files. The default is to not overwrite the input file or any other file unless this flag is used. |
 | -s | --shell | Interactive shell mode. |
 | -t | --type | Type (material, layer, shader, stage) |
+| -u | --uv-divisor-zero| Sets corrupt uv divisors to 0.
 | -v | --value | Setting value to be paired with a key. |
 
 ### Command Line Examples

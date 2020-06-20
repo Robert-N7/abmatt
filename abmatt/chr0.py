@@ -7,6 +7,7 @@ class Chr0(SubFile):
     """ Chr0 class representation """
     MAGIC = "CHR0"
     VERSION_SECTIONCOUNT = {5: 2, 3: 1}
+    EXPECTED_VERSION = 5
     SETTINGS = ('framecount', 'loop')
 
     def __init__(self, name, parent):
