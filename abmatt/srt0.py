@@ -1,10 +1,8 @@
 #!/usr/bin/python
 """ Srt0 Brres subfile """
-import math
-import re
 from copy import deepcopy
 
-from abmatt.binfile import Folder, printCollectionHex
+from abmatt.binfile import Folder
 from abmatt.matching import validInt, validBool, validFloat, splitKeyVal, matches
 from abmatt.subfile import SubFile
 
@@ -104,7 +102,9 @@ class SRTKeyFrameList:
         if len(my_entries) != len(other_entries):
             return False
         for i in range(len(my_entries)):
-            if my_entries[i] != other_entries[i]:
+            e = my_entries[i]
+            o = other_entries[i]
+            if e.index != o.index or e.value != o.value or e.delta != o.delta:
                 return False
         return True
 
@@ -139,9 +139,9 @@ class SRTKeyFrameList:
                 return x.value
 
     def calcDelta(self, id1, val1, id2, val2):
-        if val1 == val2:  # divide by 0
+        if id2 == id1:  # divide by 0
             return 0
-        return (id2 - id1) / (val2 - val1)
+        return (val2 - val1) / (id2 - id1)
 
     def updateEntry(self, entry_index):
         """Calculates the deltas due to a changed entry"""
@@ -230,10 +230,14 @@ class SRTKeyFrameList:
         self.entries = []
         # header
         size, uk, fs = binfile.read("2Hf", 8)
+        print('FrameScale: {} i v d'.format(fs))
+        str = ''
         assert size
         for i in range(size):
             index, value, delta = binfile.read("3f", 12)
+            str += '({},{},{}), '.format(index, value, delta)
             self.entries.append(self.SRTKeyFrame(value, index, delta))
+        print(str[:-2])
         return self
 
     def pack(self, binfile, framescale):
@@ -344,7 +348,7 @@ class SRTTexAnim():
         self.xScaleFixed = x.isFixed()
         self.yScaleFixed = y.isFixed()
         self.scaleDefault = x.isDefault(True) and y.isDefault(True)
-        self.scaleIsotropic = x == y
+        self.scaleIsotropic = self.scaleDefault or x == y
         # Rotation
         rot = self.animations['rot']
         self.rotationFixed = rot.isFixed()
@@ -429,10 +433,11 @@ class SRTTexAnim():
                 binfile.bl_unpack(self.animations['rot'].unpack, False)
 
     def unpack(self, binfile):
-        ''' unpacks SRT Texture animation data '''
+        """ unpacks SRT Texture animation data """
         # m = binfile.read('200B', 0)
         # printCollectionHex(m)
         [code] = binfile.read("I", 4)
+        print('(SRT0){}->{} code:{}'.format(self.parent.name, self.id, code))
         self.parseIntCode(code)
         self.unpackScale(binfile)
         self.unpackRotation(binfile)
@@ -679,9 +684,9 @@ class SRTMatAnim():
     def unpack(self, binfile):
         """ unpacks the material srt entry """
         binfile.start()
-        data = binfile.read('200B', 0)
-        print('Mat Anim {}'.format(self.name))
-        printCollectionHex(data)
+        # data = binfile.read('200B', 0)
+        # print('Mat Anim {}'.format(self.name))
+        # printCollectionHex(data)
         nameoff, enableFlag, uk = binfile.read("3I", 12)
         bit = 1
         count = 0
@@ -699,7 +704,7 @@ class SRTMatAnim():
             tex.unpack(binfile)
         binfile.end()
 
-    def pack(self, binfile, framescale):
+    def pack(self, binfile):
         """ Packs the material srt entry """
         binfile.start()
         binfile.storeNameRef(self.name)
@@ -774,7 +779,7 @@ class Srt0(SubFile):
     @staticmethod
     def calcFrameScale(frameCount):
         """ calculates the frame scale... 1/framecount """
-        return 1 / frameCount if frameCount > 1 else 1
+        return 1.0 / frameCount if frameCount > 1 else 1
 
     # ----------------------------------------------------------------------
     #   PACKING
@@ -808,10 +813,9 @@ class Srt0(SubFile):
         for x in self.matAnimations:
             folder.addEntry(x.name)
         folder.pack(binfile)
-        framescale = self.calcFrameScale(self.framecount)
         for x in self.matAnimations:
             folder.createEntryRefI()
-            x.pack(binfile, framescale)
+            x.pack(binfile)
         # binfile.createRef()  # section 1 (unknown)
         # binfile.writeRemaining(self.section1)
         binfile.end()

@@ -6,16 +6,21 @@
 
 # info for match in ../ctools_test2.brres
 select DoubleRamp in ../course_model.brres
+remove srt0
 preset ef_dushboard
 set layer:0 name:course_model-SKP--DoubleRamp
 info material
-preset ef_dushboard for Boost
+
+remove srt0 for Boost
+preset ef_dushboard
 set layer:0 name:course_model-SKP--BoostPanel
 info material
+
 preset default for Crystal
 preset blend
+set enabledDepthupdate:true
 remove srt0
-info
+
 preset wt_takitubo for AcidFall
 set layer:0 name:course_model-SKP--AcidFall
 set layer:1 name:ef_wave
