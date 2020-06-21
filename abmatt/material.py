@@ -533,7 +533,7 @@ class Material:
             print('CHECK: {} Shader has {} direct stages but material has {} marked'.format(self.name, direct_count,
                                                                                      self.shaderStages))
         if ind_count != self.indirectStages:
-            print('CHECK: {} Shader has {} indirect stages but material has {} marked'.format(self.name, direct_count,
+            print('CHECK: {} Shader has {} indirect stages but material has {} marked'.format(self.name, ind_count,
                                                                                      self.indirectStages))
 
     # -------------------------------- Layer removing/adding --------------------------

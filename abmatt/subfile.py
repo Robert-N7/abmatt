@@ -64,9 +64,8 @@ class SubFile(object):
 
     def _unpack(self, binfile):
         """ unpacks the sub file, subclass must use binfile.end() """
-        if not binfile.is_aligned():
-            print('{} in {} not aligned.'.format(self.MAGIC, binfile.filename))
-        binfile.start()
+        offset = binfile.start()
+        # print('{} {} at {}'.format(self.MAGIC, self.name, offset))
         magic = binfile.readMagic()
         assert magic == self.MAGIC
         self.byte_len, self.version, outerOffset = binfile.read("2Ii", 12)

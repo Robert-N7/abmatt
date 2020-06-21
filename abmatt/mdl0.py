@@ -109,7 +109,8 @@ class TexCoord:
                                                                                   self.stride, self.uv_count)
 
     def unpack(self, binfile):
-        binfile.start()
+        offset = binfile.start()
+        # print('UV {} at {}'.format(self.name, offset))
         binfile.readLen()
         binfile.advance(4)
         binfile.store()

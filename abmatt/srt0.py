@@ -4,7 +4,7 @@ import math
 import re
 from copy import deepcopy
 
-from abmatt.binfile import Folder
+from abmatt.binfile import Folder, printCollectionHex
 from abmatt.matching import validInt, validBool, validFloat, splitKeyVal, matches
 from abmatt.subfile import SubFile
 
@@ -679,9 +679,9 @@ class SRTMatAnim():
     def unpack(self, binfile):
         """ unpacks the material srt entry """
         binfile.start()
-        # data = binfile.read('200B', 0)
-        # print('Mat Anim {}'.format(self.name))
-        # printCollectionHex(data)
+        data = binfile.read('200B', 0)
+        print('Mat Anim {}'.format(self.name))
+        printCollectionHex(data)
         nameoff, enableFlag, uk = binfile.read("3I", 12)
         bit = 1
         count = 0
@@ -780,8 +780,6 @@ class Srt0(SubFile):
     #   PACKING
     def unpack(self, binfile):
         self._unpack(binfile)
-        # self._unpackData(binfile)
-        # return
         uk, self.framecount, self.size, self.matrixmode, self.looping = binfile.read("I2H2I", 16)
         # advance to section 0
         binfile.recall()

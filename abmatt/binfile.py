@@ -388,7 +388,7 @@ class BinFile:
                 offset = self.offset + 4
                 length = len(key)
                 # self.writeOffset('I', offset, length)
-                self.write("I{}s".format(length), length, key)
+                self.write("I{}sB".format(length), length, key, 0)
                 # write name reference pointers
                 reflist = names[key]
                 if not reflist:
@@ -545,6 +545,7 @@ class Folder:
 
     def unpack(self, binfile):
         """ Unpacks folder """
+        # print('Folder {} offset {}'.format(self.name, binfile.offset))
         binfile.start()
         self.offset = binfile.offset
         len, num_entries = binfile.read("2I", 8)
