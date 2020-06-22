@@ -21,9 +21,20 @@ preset blend
 set enableDepthupdate:true
 remove srt0
 
-preset wt_takitubo for AcidFall
+preset default_shader for AcidFall
+set layercount:2
 set layer:0 name:course_model-SKP--AcidFall
 set layer:1 name:ef_wave
+set indirectmatrix:scale14,0.695,0,0,0,0.695,0
+set layer:1 minfilter:linearmipmaplinear
+set shader indirectmap:1
+set shader indirectcoord:1
+set shader stagecount:2
+set shader stagecount:1
+set indirectbias:stu
+set indirectmatrixselection:matrix0
+remove srt0layer
+
 save as test3.brres overwrite
 select WT_Takitubo in Course/water_course.d/course_model.brres
 select * in test3.brres

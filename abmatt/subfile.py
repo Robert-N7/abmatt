@@ -7,6 +7,7 @@
 # --------------------------------------------------------
 from abmatt.binfile import Folder, PackingError, printCollectionHex
 from abmatt.matching import info_default
+from autofix import AUTO_FIXER
 
 
 class SubFile(object):
@@ -20,7 +21,6 @@ class SubFile(object):
     SETTINGS = ('version', 'sections')
     VERSION_SECTIONCOUNT = {}
     EXPECTED_VERSION = 0    # override this
-    LOUDNESS = 2            # Loudness levels, 0 silent, 1 errors/warnings, 2 notes, 3 max
 
     def __init__(self, name, parent):
         """ initialize with parent of this file """
@@ -63,7 +63,8 @@ class SubFile(object):
 
     def check(self, loudness):
         if self.version != self.EXPECTED_VERSION:
-            print('CHECK: {} {} unusual version {}'.format(self.MAGIC, self.name, self.version))
+            if AUTO_FIXER.should_fix('{} {} unusual version {}'.format(self.MAGIC, self.name, self.version), 2):
+                self.version = self.EXPECTED_VERSION
 
     def _unpack(self, binfile):
         """ unpacks the sub file, subclass must use binfile.end() """

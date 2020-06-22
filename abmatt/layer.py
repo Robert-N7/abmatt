@@ -4,6 +4,7 @@ from copy import copy, deepcopy
 from abmatt.matching import parseValStr, indexListItem, validBool, Clipable
 
 from abmatt.wiigraphics.xf import XFTexMatrix, XFDualTex
+from autofix import AUTO_FIXER
 
 
 class Layer(Clipable):
@@ -412,9 +413,9 @@ class Layer(Clipable):
             print("{}\t{}:{}".format(trace, key, val))
         else:
             print("{}:\tScale:{} Rot:{} Trans:{} UWrap:{} VWrap:{} MinFilter:{}".format(
-                                                         trace, self.scale, self.rotation, self.translation,
-                                                         self.WRAP[self.uwrap], self.WRAP[self.vwrap],
-                                                         self.FILTER[self.minfilter], self.MAPMODE[self.mapMode]))
+                trace, self.scale, self.rotation, self.translation,
+                self.WRAP[self.uwrap], self.WRAP[self.vwrap],
+                self.FILTER[self.minfilter], self.MAPMODE[self.mapMode]))
 
     def uses_mipmaps(self):
         return self.minfilter > 1
@@ -423,9 +424,12 @@ class Layer(Clipable):
         if loudness > 1:
             if self.uses_mipmaps():
                 if texture_map[self.name].num_mips == 0:
-                    print('CHECK: {} mipmaps enabled but no mipmaps in TEX0.'.format(self.parent.name + '->' + self.name))
+                    if AUTO_FIXER.should_fix('{} mipmaps enabled but none in TEX0.'.format(self.name), 3):
+                        self.minfilter = 1  # linear
+                        AUTO_FIXER.notify('Minfilter set to linear', 4)
             else:
                 if texture_map[self.name].num_mips > 0:
-                    print('CHECK: {} mipmaps disabled but TEX0 has {}'.format(self.parent.name + '->' + self.name,
-                                                                              texture_map[self.name].num_mips))
-        self.xfTexMatrix.check()
+                    if AUTO_FIXER.should_fix('{} mipmaps disabled but TEX0 has {}'.format(
+                            self.name, texture_map[self.name].num_mips), 3):
+                        self.minfilter = 5  # linearmipmaplinear
+                        AUTO_FIXER.notify('Minfilter set to LinearMipmapLinear', 4)

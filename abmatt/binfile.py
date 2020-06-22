@@ -3,6 +3,8 @@
 from struct import *
 import sys
 
+from abmatt.autofix import AUTO_FIXER
+
 # which version?
 IS_PY3 = sys.version[0] == '3'
 
@@ -60,7 +62,7 @@ class BinFile:
             with open(self.filename, "wb") as f:
                 f.write(self.file)
         except:
-            print('Permission Denied')
+            AUTO_FIXER.notify('Permission Denied', 1)
             return False
         return True
 
@@ -391,11 +393,8 @@ class BinFile:
                 self.write("I{}sB".format(length), length, key, 0)
                 # write name reference pointers
                 reflist = names[key]
-                if not reflist:
-                    print("Unused name: {}".format(key))
-                else:
-                    for ref in reflist:
-                        self.writeOffset("I", ref[1], offset - ref[0])
+                for ref in reflist:
+                    self.writeOffset("I", ref[1], offset - ref[0])
 
     def convertByteArr(self):
         if type(self.file) != bytearray:

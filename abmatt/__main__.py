@@ -11,7 +11,8 @@ from cmd import Cmd
 
 from abmatt.brres import Brres
 from abmatt.mdl0 import TexCoord
-from abmatt.command import Command, ParsingException
+from abmatt.command import Command, ParsingException, NoSuchFile
+from abmatt.autofix import AUTO_FIXER
 
 __version__ = "0.5.0"
 USAGE = "USAGE: abmatt [-i -f <file> -b <brres-file> -d <destination> -o -t <type> -k <key> -v <value> -n <name>\
@@ -206,11 +207,11 @@ def main():
         print(USAGE)
         sys.exit(0)
     try:
-        opts, args = getopt.getopt(argv, "hd:oc:t:k:v:n:b:m:f:iuqs",
+        opts, args = getopt.getopt(argv, "ahd:oc:t:k:v:n:b:m:f:iuqs",
                                    ["help", "destination=", "overwrite",
                                     "command=", "type=", "key=", "value=",
                                     "name=", "brres=", "model=", "file=", "interactive",
-                                    "uv-divisor-zero", "silent", "quiet"])
+                                    "auto-fix=", "silent", "quiet"])
     except getopt.GetoptError as e:
         print(e)
         print(USAGE)
@@ -249,13 +250,13 @@ def main():
             command = arg
         elif opt in ("-i", "--interactive"):
             interactive = True
-        elif opt in ("-u", "--uv-divisor-zero"):
-            uv_divisor_zero = True
+        elif opt in ("-a", "--auto-fix"):
+            AUTO_FIXER.set_fix_level(arg)
         elif opt in ("-s", "--silent"):
-            Command.set_loudness(0)
+            AUTO_FIXER.set_loudness(0)
         elif opt in ("-q", "--quiet"):
-            if Command.LOUDNESS:
-                Command.set_loudness(1)
+            if AUTO_FIXER.LOUDNESS:
+                AUTO_FIXER.set_loudness(2)
         else:
             print("Unknown option '{}'".format(opt))
             print(USAGE)
@@ -272,7 +273,11 @@ def main():
         Command.OVERWRITE = overwrite
         Brres.OVERWRITE = overwrite
     if brres_file:
-        Command.updateFile(brres_file)
+        try:
+            Command.updateFile(brres_file)
+        except NoSuchFile as e:
+            print(e)
+            exit(2)
         if command:
             cmd = command + ' ' + type
             if key:

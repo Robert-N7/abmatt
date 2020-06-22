@@ -22,14 +22,17 @@ ABMatt supports editing the following types:
 * layers
 * shaders
 * stages
+* pat0
+* srt0
 
 
 ## Command Line Usage
 ```
-abmatt [-i -f <file> -b <brres-file> -d <destination> -o -t <type> -k <key> -v <value> -n <name> -m <model> -u]
+abmatt [-i -f <file> -b <brres-file> -d <destination> -o -t <type> -k <key> -v <value> -n <name> -m <model> -a -s -q]
 ```
 | Flag |Expanded| Description |
 |---|---|---|
+| -a | --auto-fix | Automatic fix options are none, error, warning, check, all, and prompt. The default is to fix at the check level without prompting.
 | -b | --brres | Brres file selection. |
 | -d | --destination | The file path to be written to. Mutliple destinations are not supported. |
 | -f | --file | File with ABMatt commands to be processed as specified in file format. |
@@ -39,10 +42,9 @@ abmatt [-i -f <file> -b <brres-file> -d <destination> -o -t <type> -k <key> -v <
 | -m | --model | Model selection. |
 | -n | --name | Material or layer name or regular expression to be found. |
 | -o | --overwrite | Overwrite existing files.  |
-| -q | --quiet | Lowers verbosity level. |
+| -q | --quiet | Lowers verbosity level to errors and warnings. |
 | -s | --silent | Runs silently. |
 | -t | --type | Type selection. |
-| -u | --uv-divisor-zero| Sets corrupt uv divisors to 0.
 | -v | --value | Value to set corresponding with key. (set command) |
 
 ### Command Line Examples
@@ -142,7 +144,7 @@ coordinates   = 'geometry' | 'normals' | 'colors' | 'binfileormalst' |
 ```
 ### Shader Keys
 ```
-shader-key = 'stagecount', 'texturerefcount' | 'indirectmap' [<n>] | 'indirectcoord' [<n>];
+shader-key = 'stagecount' | 'indirectmap' [<n>] | 'indirectcoord' [<n>] | 'indirectmap' [<n>];
 ```
 ### Stage Keys
 ```

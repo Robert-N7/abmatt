@@ -41,17 +41,6 @@ class XFTexMatrix(XFCommand):
             "embosslight": 0
         }
 
-    def check(self):
-        if self.data['embosssource'] != 5:
-            print('CHECK: Unexpected emboss source {}'.format(self.data['embosssource']))
-        if self.data['embosslight'] != 0:
-            print('CHECK: Unexpected emboss light {}'.format(self.data['embosslight']))
-        if self.data['type'] != 0:
-            print('CHECK: Unexpected type {}'.format(self.data['type']))
-        if self.data['inputform'] != self.data['projection']:
-            print('CHECK: Mismatching inputform {} and projection {}'.format(self.INPUTFORM[self.data['inputform']],
-                                                                             self.PROJECTION[self.data['projection']]))
-
     def __getitem__(self, key):
         return self.data[key]
 

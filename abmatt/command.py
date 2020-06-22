@@ -13,6 +13,7 @@ from abmatt.mdl0 import Mdl0
 from abmatt.shader import Shader, Stage
 from abmatt.pat0 import Pat0, Pat0MatAnimation
 from abmatt.srt0 import Srt0, SRTMatAnim, SRTTexAnim
+from abmatt.autofix import AUTO_FIXER
 
 
 class ParsingException(Exception):
@@ -23,6 +24,11 @@ class ParsingException(Exception):
 class SaveError(Exception):
     def __init__(self, message=''):
         super(SaveError, self).__init__('ERROR saving! ' + message)
+
+
+class NoSuchFile(Exception):
+    def __init__(self, path):
+        super(NoSuchFile, self).__init__('No such file "{}"'.format(path))
 
 
 class PasteError(Exception):
@@ -67,7 +73,6 @@ class Command:
     PRESETS = {}
     CLIPBOARD = None
     CLIPTYPE = None
-    LOUDNESS = 2
 
     TYPE_SETTING_MAP = {
         "material": Material.SETTINGS,
@@ -133,7 +138,7 @@ class Command:
                 self.value = value
         elif len(x):
             if self.cmd != 'info':
-                print("Unknown parameter(s) {}".format(x))
+                raise ParsingException(self.txt, "Unknown parameter(s) {}".format(x))
             else:
                 self.key = x[0].lower()
                 if self.key == 'keys':
@@ -142,11 +147,6 @@ class Command:
             raise ParsingException(self.txt, "Unknown Key {} for {}, possible keys:\n\t{}".format(self.key, self.type,
                                                                                                   self.TYPE_SETTING_MAP[
                                                                                                       self.type]))
-
-    @staticmethod
-    def set_loudness(level):
-        Command.LOUDNESS = level
-        Brres.set_loudness(level)
 
     def setSave(self, params):
         saveAs = False
@@ -210,9 +210,7 @@ class Command:
     def setSelection(self, li):
         """ takes a list and parses selection """
         if not li:
-            print("No selection given")
-            self.hasSelection = False
-            return False
+            raise ParsingException("No selection given")
         self.hasSelection = True
         self.name = li[0]
         self.model = self.file = x = None
@@ -249,9 +247,6 @@ class Command:
     @staticmethod
     def updateFile(filename):
         files = Command.getFiles(filename)
-        if not files:  # could possibly ignore error here for wildcard patterns?
-            print("The file '{}' does not exist".format(filename))
-            return False
         if Command.DESTINATION:  # check for multiple files with single destination
             outside_active = True
             for x in Command.ACTIVE_FILES:
@@ -262,7 +257,6 @@ class Command:
                 raise SaveError('Multiple files for single destination')
         Command.ACTIVE_FILES = Command.openFiles(files, Command.ACTIVE_FILES)
         Command.MODELS = []  # clear models
-        return True
 
     @staticmethod
     def openFiles(filenames, files):
@@ -285,43 +279,41 @@ class Command:
                     brres = Brres(f)
                     opened.append(brres)
                 except UnpackingError as e:
-                    print(e)
+                    AUTO_FIXER.notify(e, 1)
         return opened
 
     @staticmethod
     def load_commandfile(filename):
-        if not os.path.exists(filename):
-            print("No such file {}".format(filename))
-            exit(2)
-        f = open(filename, "r")
-        lines = f.readlines()
+        files = Command.getFiles(filename)
         commands = []
-        preset_begin = False
-        preset = []
-        name = None
-        for line in lines:
-            if line[0].isalpha():
-                i = line.find("#")
-                if i != -1:
-                    line = line[0:i]
-                if preset_begin:
-                    try:
-                        preset.append(Command(line))
-                    except ParsingException as e:
-                        print('Preset {} : {}'.format(name, e))
-                        Command.PRESETS[name] = None
-                else:
-                    commands.append(Command(line))
-            elif line[0] == '[':  # preset
-                i = line.find(']')
-                if i != -1:
-                    if i > 1:
-                        preset_begin = True
-                        preset = []
-                        name = line[1:i]
-                        Command.PRESETS[name] = preset
+        with open(files[0], "r") as f:
+            lines = f.readlines()
+            preset_begin = False
+            preset = []
+            name = None
+            for line in lines:
+                if line[0].isalpha():
+                    i = line.find("#")
+                    if i != -1:
+                        line = line[0:i]
+                    if preset_begin:
+                        try:
+                            preset.append(Command(line))
+                        except ParsingException as e:
+                            AUTO_FIXER.notify('Preset {} : {}'.format(name, e), 1)
+                            Command.PRESETS[name] = None
                     else:
-                        preset_begin = False
+                        commands.append(Command(line))
+                elif line[0] == '[':  # preset
+                    i = line.find(']')
+                    if i != -1:
+                        if i > 1:
+                            preset_begin = True
+                            preset = []
+                            name = line[1:i]
+                            Command.PRESETS[name] = preset
+                        else:
+                            preset_begin = False
         return commands
 
     @staticmethod
@@ -333,14 +325,15 @@ class Command:
         for file in os.listdir(directory):
             if fnmatch.fnmatch(file, name):
                 files.append(os.path.join(directory, file))
+        if not files:
+            raise NoSuchFile(filename)
         return files
 
     # ------------------------------------  UPDATING TYPE/SELECTION ------------------------------------------------
     def updateSelection(self):
         """ updates container items """
         if self.file:
-            if not self.updateFile(self.file):
-                return False
+            self.updateFile(self.file)
         # Models
         if self.model or not self.MODELS:
             for x in self.ACTIVE_FILES:
@@ -350,7 +343,7 @@ class Command:
         for x in self.MODELS:
             Command.MATERIALS.extend(x.getMaterialsByName(self.name))
         if not Command.MATERIALS:
-            print('No matches found for {}'.format(self.name))
+            AUTO_FIXER.notify('No matches found for {}'.format(self.name), 4)
         Command.SELECT_TYPE = None  # reset selection
         return True
 
@@ -484,13 +477,13 @@ class Command:
     # ---------------------------------------------- RUN CMD ---------------------------------------------------
     @staticmethod
     def run_commands(commandlist):
-        # try:
+        try:
             for cmd in commandlist:
                 cmd.runCmd()
-        # except ValueError as e:
-        #     print(e)
-        # except SaveError as e:
-        #     print(e)
+        except ValueError as e:
+            AUTO_FIXER.notify(e, 1)
+        except SaveError as e:
+            AUTO_FIXER.notify(e, 1)
 
     def runCmd(self):
         if self.hasSelection:
@@ -514,7 +507,7 @@ class Command:
             return True
         self.updateTypeSelection()
         if not self.SELECTED:
-            print("No items found in selection for '{}'".format(self.txt))
+            AUTO_FIXER.notify("No items found in selection for '{}'".format(self.txt), 3)
             return False
         else:
             if self.cmd == 'set':

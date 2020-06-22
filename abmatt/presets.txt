@@ -79,7 +79,6 @@ set indirectmatrixselection:nomatrix
 
 [default_shader]
 set stageCount:1
-set textureRefCount:1
 set indirectmap:7
 set indirectcoord:7
 preset default_stage
@@ -139,7 +138,6 @@ set layer:2 name:ef_arrowGradS
 set shader indirectmap:1
 set shader indirectcoord:1
 set shader stageCount:2
-set shader texturerefcount:3
 # stage 0
 set stage:0 mapid:2
 set coordinateid:2
@@ -202,7 +200,6 @@ set projection:stq
 set inputform:abc1
 set coordinates:geometry
 # shader
-set texturerefcount:3
 set indirectmap:1
 set indirectcoord:1
 set stagecount:2
@@ -261,7 +258,6 @@ set layer:2 name:bumpGrad
 set scale:(-3,-3)
 set rotation:90
 # shader
-set shader textureRefCount:3
 set indirectmap:2
 set indirectCoord:2
 set stageCount:2
@@ -337,7 +333,6 @@ set layer:3 name:WT_river03
 set lodbias:-0.5
 set minfilter:LinearMipmapLinear
 # shader
-set shader texturerefcount:4
 set shader indirectmap:1
 set shader indirectcoord:1
 set shader stagecount:3
@@ -407,7 +402,6 @@ set layer:1 name:ef_wave_indMip
 set minfilter:linearMipmapLinear
 set lodbias:-2
 # shader
-set shader texturerefcount:2
 set indirectmap:1
 set indirectcoord:1
 set stagecount:1

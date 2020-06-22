@@ -1,4 +1,5 @@
 """Model Drawlist class"""
+from binfile import UnpackingError
 
 
 class Definition():
@@ -34,8 +35,7 @@ class Definition():
                     drawl = [weight_id, weight_count] + weights
                     current_list.append(drawl)
                 elif byte > 0x6:  # error reading list?
-                    print("Error unpacking list {}".format(current_list))
-                    break
+                    raise UnpackingError(binfile, "Error unpacking definitions")
                 else:
                     current_list.append(binfile.read("4B", 4))
 

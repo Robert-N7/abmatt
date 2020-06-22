@@ -5,17 +5,17 @@
 import os
 import string
 
+from abmatt.autofix import AUTO_FIXER
 from abmatt.binfile import BinFile, Folder, UnpackingError
 from abmatt.chr0 import Chr0
 from abmatt.clr0 import Clr0
 from abmatt.matching import findAll, Clipable
 from abmatt.mdl0 import Mdl0
-from abmatt.pat0 import Pat0, Pat0Collection, Pat0MatAnimation
+from abmatt.pat0 import Pat0, Pat0Collection
 from abmatt.scn0 import Scn0
 from abmatt.shp0 import Shp0
 from abmatt.srt0 import Srt0, SRTCollection
 from abmatt.tex0 import Tex0
-from abmatt.subfile import SubFile
 
 
 class Brres(Clipable):
@@ -27,7 +27,6 @@ class Brres(Clipable):
     ROOTMAGIC = "root"
     OVERWRITE = False
     DESTINATION = None
-    LOUDNESS = 2    # Loudness levels, 0 silent, 1 errors/warnings, 2 notes, 3 max
 
     def __init__(self, name, parent=None, readFile=True):
         """
@@ -66,12 +65,6 @@ class Brres(Clipable):
         else:
             raise ValueError('Unknown key "{}"'.format(key))
 
-    @staticmethod
-    def set_loudness(level):
-        Brres.LOUDNESS = level
-        Pat0MatAnimation.LOUDNESS = level
-        SubFile.LOUDNESS = level
-
     # ---------------------------------------------- CLIPBOARD ------------------------------------------
     def paste(self, brres):
         for x in self.models:
@@ -97,8 +90,7 @@ class Brres(Clipable):
             f = BinFile(filename, mode="w")
             self.pack(f)
             f.commitWrite()
-            if self.LOUDNESS > 1:
-                print("Wrote file '{}'".format(filename))
+            AUTO_FIXER.notify("Wrote file '{}'".format(filename), 4)
             self.name = filename
             self.isModified = False
             return True
@@ -140,6 +132,7 @@ class Brres(Clipable):
                 count += len(x)
                 # print('Length of folder {} is {}'.format(x.name, len(x)))
         return count
+
     # ------------------------------ Models ---------------------------------
 
     def getModel(self, name):
@@ -148,7 +141,7 @@ class Brres(Clipable):
                 return x
 
     def getExpectedMdl(self):
-        filename = os.path.basename(self.name)
+        filename = os.path.splitext(os.path.basename(self.name))[0]
         if filename in ('course_model', 'map_model', 'vrcorn_model'):
             return filename.replace('_model', '')
 
@@ -174,6 +167,14 @@ class Brres(Clipable):
 
     def getTextures(self, name):
         return findAll(name, self.textures)
+
+    def getUsedTextures(self):
+        ret = set()
+        for x in self.models:
+            ret |= x.get_used_textures()
+        for x in self.anmPat:
+            ret |= x.get_used_textures()
+        return ret
 
     # --------------------- Animations ----------------------------------------------
     @staticmethod
@@ -213,8 +214,8 @@ class Brres(Clipable):
             collection = SRTCollection(key, self, model_anim_map[key])
             anim_collections.append(collection)
             mdl = self.getModel(key)
-            if not mdl and self.LOUDNESS:
-                print('Warning: No model found matching srt0 animation {}'.format(key))
+            if not mdl:
+                AUTO_FIXER.notify('No model found matching srt0 animation {}'.format(key), 3)
             else:
                 mdl.set_srt0(collection)
         return anim_collections
@@ -227,8 +228,8 @@ class Brres(Clipable):
             collection = Pat0Collection(key, self, model_anim_map[key])
             anim_collections.append(collection)
             mdl = self.getModel(key)
-            if not mdl and self.LOUDNESS:
-                print('Warning: No model found matching pat0 animation {}'.format(key))
+            if not mdl:
+                AUTO_FIXER.notify('No model found matching pat0 animation {}'.format(key), 3)
             else:
                 mdl.set_pat0(collection)
         return anim_collections
@@ -241,6 +242,7 @@ class Brres(Clipable):
         self.folders[3] = self.anmSrt = self.generate_srt_collections()
 
     def pre_packing(self):
+        self.check(AUTO_FIXER.LOUDNESS)
         folders = [x for x in self.folders]
         folders[2] = self.get_anim_for_packing(self.anmPat)
         folders[3] = self.get_anim_for_packing(self.anmSrt)
@@ -348,4 +350,19 @@ class Brres(Clipable):
         binfile.packNames()
         binfile.align()
         binfile.end()
+
     # --------------------------------------------------------------------------
+    def check(self, loudness):
+        tex_names = set(self.getTextureMap().keys())
+        tex_used = self.getUsedTextures()
+        unused = tex_names - tex_used
+        if unused:
+            if AUTO_FIXER.should_fix('Unused textures: {}'.format(unused), 3):
+                self.remove_unused_textures(unused)
+        for mdl in self.models:
+            mdl.check(loudness)
+
+    def remove_unused_textures(self, unused_textures):
+        self.folders[1] = self.textures = [x for x in self.textures if x.name not in unused_textures]
+        for x in unused_textures:
+            self.texture_map[x] = None     # update map

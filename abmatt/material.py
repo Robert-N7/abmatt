@@ -8,6 +8,7 @@ from copy import deepcopy
 from abmatt.matching import validBool, indexListItem, validInt, validFloat, findAll, matches, Clipable
 from abmatt.layer import Layer
 from abmatt.wiigraphics.matgx import MatGX
+from abmatt.autofix import AUTO_FIXER
 
 
 def parse_color(color_str):
@@ -524,25 +525,22 @@ class Material(Clipable):
         if self.srt0:
             self.srt0.check(loudness)
 
-    def check_shader(self, layer_count, direct_count, ind_count, matrices_used):
+    def check_shader(self, direct_count, ind_count, matrices_used, loudness):
         # checks with shader
-        if layer_count != len(self.layers):
-            print('CHECK: {} has {} layer(s) and shader has {} layer ref(s)'.format(self.name, len(self.layers),
-                                                                                    self.shader.texRefCount))
         for i in range(2):
             matrix = self.matGX.getIndMatrix(i)
             if matrix.enabled:
                 if not matrices_used[i]:
-                    print('CHECK: {} indirect matrix {} enabled but unused in shader'.format(self.name, i))
+                    AUTO_FIXER.notify('{} indirect matrix {} enabled but unused in shader'.format(self.name, i), 3)
             elif not matrix.enabled and matrices_used[i]:
-                print('CHECK: {} indirect matrix {} disabled but used in shader'.format(self.name, i))
+                AUTO_FIXER.notify('{} indirect matrix {} disabled but used in shader'.format(self.name, i), 3)
         # possibly auto-update these in future?
         if direct_count != self.shaderStages:
-            print('CHECK: {} Shader has {} direct stages but material has {} marked'.format(self.name, direct_count,
-                                                                                            self.shaderStages))
+            if AUTO_FIXER.should_fix('{} shader direct stage count mismatch'.format(self.name), 2):
+                self.shaderStages = direct_count
         if ind_count != self.indirectStages:
-            print('CHECK: {} Shader has {} indirect stages but material has {} marked'.format(self.name, ind_count,
-                                                                                              self.indirectStages))
+            if AUTO_FIXER.should_fix('{} shader indirect stage count mismatch'.format(self.name), 2):
+                self.indirectStages = ind_count
 
     # -------------------------------- Layer removing/adding --------------------------
     def removeLayerI(self, index=-1):
@@ -574,9 +572,8 @@ class Material(Clipable):
         # check to see if we already have layer
         for x in self.layers:
             if x.name == name:
-
-                print('Layer {} already exists in {}'.format(name, self.name))
-                return x
+                if not AUTO_FIXER.should_fix('Layer {} already exists in {}, add anyway?'.format(name, self.name), 5):
+                    return x
         self.parent.addLayerReference(name)  # update model texture link/check that exists
         i = len(self.layers)
         l = Layer(i, name, self)

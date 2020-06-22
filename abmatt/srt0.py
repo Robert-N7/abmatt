@@ -5,6 +5,7 @@ from copy import deepcopy, copy
 from abmatt.binfile import Folder
 from abmatt.matching import validInt, validBool, validFloat, splitKeyVal, matches, Clipable
 from abmatt.subfile import SubFile
+from abmatt.autofix import AUTO_FIXER
 
 
 # ---------------------------------------------------------
@@ -650,11 +651,14 @@ class SRTMatAnim(Clipable):
                 j += 1
 
     def check(self, loudness):
+        if not self.material:
+            return
         max = len(self.material.layers)
         if max < 8:
             for i in range(max, 8):
                 if self.texEnabled[i]:
-                    print('CHECK: {} SRT layer {} is enabled but has no corresponding layer'.format(self.material.name, i))
+                    if AUTO_FIXER.should_fix("{} SRT layer {} doesn't exist".format(self.material.name, i), 2):
+                        self.texDisable(i)
 
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + '(SRT0)' + self.name if indentation_level else '>(SRT0):' + self.name

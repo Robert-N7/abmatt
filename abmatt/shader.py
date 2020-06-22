@@ -6,9 +6,10 @@ from copy import deepcopy, copy
 from abmatt.binfile import Folder
 from abmatt.matching import *
 from abmatt.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
+from autofix import AUTO_FIXER
 
 
-class ShaderList():
+class ShaderList:
     """For maintaining shader collections"""
     FOLDER = "Shaders"
 
@@ -192,6 +193,9 @@ class Stage(Clipable):
             raise ValueError("No such shader stage setting {} possible keys are: \n\t{}".format(key, self.SETTINGS))
         return self.map[key]
 
+    def check(self, loudness):
+        pass
+
     # -------------------- CLIPBOARD --------------------------------------------------
     def clip(self, clipboard):
         clipboard[self.parent.getMaterialName() + str(self.id)] = self
@@ -205,7 +209,7 @@ class Stage(Clipable):
             self.map[key] = item.map[key]
 
     def info(self, key=None, indentation_level=0):
-        trace = '  ' * indentation_level if indentation_level else '>' + str(self.parent.getMaterialNames())
+        trace = '  ' * indentation_level if indentation_level else '>' + str(self.parent.getMaterialName())
         if key:
             print('{}->Stage:{}\t{}:{}'.format(trace, self.id, key, self[key]))
         else:
@@ -281,8 +285,6 @@ class Stage(Clipable):
         elif "id" in key:
             i = validInt(value, 0, 7)
             self.map[key] = i
-            if 'coord' in key:  # notify parent
-                self.parent.onCoordinateUpdate(i)
         else:  # list indexing ones
             value = value.replace('constant', '')
             if "scale" in key:
@@ -441,7 +443,7 @@ class Shader(Clipable):
                   BPCommand(0xF9, 0xC), BPCommand(0xFA, 0x5), BPCommand(0xFB, 0xD),
                   BPCommand(0xFC, 0xA), BPCommand(0xFD, 0xE))
     SEL_MASK = BPCommand(0xFE, 0xFFFFF0)
-    SETTINGS = ('texturerefcount', 'indirectmap', 'indirectcoord', 'stagecount')
+    SETTINGS = ('indirectmap', 'indirectcoord', 'stagecount')
 
     def __init__(self, name, parent):
         self.parent = parent
@@ -449,13 +451,11 @@ class Shader(Clipable):
         self.stages = []
         self.swap_table = deepcopy(self.SWAP_TABLE)
         self.material = None  # material to be hooked
-        self.texRefCount = 1  # Number of texture references
         self.indTexMaps = [-1] * 4
         self.indTexCoords = [-1] * 4
 
     def __eq__(self, other):
-        if self.texRefCount != other.texRefCount or len(self.stages) != len(other.stages) or \
-                len(self.indTexMaps) != len(other.indTexMaps) or len(self.indTexCoords) != len(self.indTexCoords):
+        if len(self.stages) != len(other.stages) or self.getTexRefCount() != other.getTexRefCount():
             return False
         my_stages = self.stages
         others = other.stages
@@ -477,7 +477,6 @@ class Shader(Clipable):
         self.set_stage_count(num_stages)
         for i in range(num_stages):
             self.stages[i].paste(item.stages[i])
-        self.texRefCount = item.texRefCount
         self.indTexCoords = [x for x in item.indTexCoords]
         self.indTexMaps = [x for x in item.indTexMaps]
 
@@ -505,13 +504,11 @@ class Shader(Clipable):
         return i
 
     def __getitem__(self, key):
-        if self.SETTINGS[0] == key:
-            return self.texRefCount
-        elif self.SETTINGS[1] in key:
+        if self.SETTINGS[0] in key:
             return self.indTexMaps
-        elif self.SETTINGS[2] in key:
+        elif self.SETTINGS[1] in key:
             return self.indTexCoords
-        elif self.SETTINGS[3] == key:  # stage count
+        elif self.SETTINGS[2] == key:  # stage count
             return len(self.stages)
 
     def __setitem__(self, key, value):
@@ -524,15 +521,15 @@ class Shader(Clipable):
             except IndexError:
                 raise ValueError('Argument required after ":"')
         value = validInt(value, 0, 8)
-        if self.SETTINGS[0] == key:  # texture refs
-            self.texRefCount = value
-        elif self.SETTINGS[1] in key:  # indirect map
+        if self.SETTINGS[0] in key:  # indirect map
             self.indTexMaps[key2] = value
-        elif self.SETTINGS[2] in key:  # indirect coord
+        elif self.SETTINGS[1] in key:  # indirect coord
             self.indTexCoords[key2] = value
             self.onUpdateIndirectStages(self.countIndirectStages())
-        elif self.SETTINGS[3] == key:  # stage count
+        elif self.SETTINGS[2] == key:  # stage count
             self.set_stage_count(value)
+        else:
+            raise ValueError('Unknown Key {} for shader'.format(key))
 
     def set_stage_count(self, value):
         current_len = len(self.stages)
@@ -540,12 +537,10 @@ class Shader(Clipable):
             while current_len < value:
                 self.addStage()
                 current_len += 1
-            self.onUpdateActiveStages(current_len)
         elif current_len > value:
             while current_len > value:
                 self.removeStage()
                 current_len -= 1
-            self.onUpdateActiveStages(current_len)
 
     def getMaterialName(self):
         return self.material.name
@@ -553,11 +548,10 @@ class Shader(Clipable):
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level if indentation_level else '>'
         if not key:
-            print('{}(Shader){}: TextureRefCount:{} IndirectMap:{} IndirectCoord:{}'.format(trace,
-                                                                                          self.getMaterialName(),
-                                                                                          self.texRefCount,
-                                                                                          self.indTexMaps,
-                                                                                          self.indTexCoords))
+            print('{}(Shader){}: IndirectMap:{} IndirectCoord:{}'.format(trace,
+                                                                         self.getMaterialName(),
+                                                                         self.indTexMaps,
+                                                                         self.indTexCoords))
             indentation_level += 1
             for x in self.stages:
                 x.info(key, indentation_level)
@@ -577,6 +571,7 @@ class Shader(Clipable):
         s['mapid'] = mapid
         s['coordinateid'] = mapid
         stages.append(s)
+        self.onUpdateActiveStages(len(stages))
         return s
 
     def onUpdateActiveStages(self, num_stages):
@@ -589,6 +584,7 @@ class Shader(Clipable):
         if len(self.stages) == 1:
             raise Exception('Shader must have at least 1 stage')
         self.stages.pop(id)
+        self.onUpdateActiveStages(len(self.stages))
 
     def __deepcopy__(self, memodict=None):
         ret = Shader(self.name, self.parent)
@@ -598,7 +594,6 @@ class Shader(Clipable):
             for key, val in x.map.items():
                 map[key] = val
             ret.stages.append(s)
-        ret.texRefCount = self.texRefCount
         ret.indTexMaps = copy(self.indTexMaps)
         ret.indTexCoords = copy(self.indTexCoords)
         return ret
@@ -608,11 +603,6 @@ class Shader(Clipable):
         binfile.start()
         length, outer, id, stage_count, res0, res1, res2, = binfile.read("3I4B", 16)
         layer_indices = binfile.read("8B", 8)
-        self.texRefCount = 0
-        for x in layer_indices:
-            if x > 10:
-                break
-            self.texRefCount += 1
         assert (stage_count <= 16)
         self.stages = []
         for i in range(stage_count):
@@ -627,10 +617,8 @@ class Shader(Clipable):
         iref = RAS1_IRef()
         iref.unpack(binfile)
         for i in range(4):
-            x = iref.getTexMap(i)
-            self.indTexMaps[i] = x
-            y = iref.getTexCoord(i)
-            self.indTexCoords[i] = y
+            self.indTexMaps[i] = iref.getTexMap(i)
+            self.indTexCoords[i] = iref.getTexCoord(i)
         binfile.align()
         i = 0
         while i < stage_count:
@@ -682,7 +670,7 @@ class Shader(Clipable):
         binfile.write("IiI4B", self.BYTESIZE, binfile.getOuterOffset(), id,
                       len(self.stages), 0, 0, 0)
         layer_indices = [0xff] * 8
-        for i in range(self.texRefCount):
+        for i in range(self.getTexRefCount()):
             layer_indices[i] = i
         binfile.write("8B", *layer_indices)
         binfile.align()
@@ -771,51 +759,66 @@ class Shader(Clipable):
         return i
 
     def getIndCoords(self):
-        indcoords = []
-        for x in self.stages:
-            indcoords.append(x['indirectstage'])
-        return indcoords
+        return {x['indirectstage'] for x in self.stages}
 
-    def check(self):
+    def getTexRefCount(self):
+        return len(self.material.layers)
+
+    def check(self, loudness):
         """Checks the shader for common errors, returns (direct_stage_count, ind_stage_count)"""
-        prefix = 'CHECK: Shader{}:'.format(self.getMaterialName())
-        tex_usage = [0] * self.texRefCount
+        prefix = 'Shader {}:'.format(self.getMaterialName())
+        texRefCount = self.getTexRefCount()
+        tex_usage = [0] * texRefCount
         ind_stage_count = 0
+        mark_to_remove = []
+        # direct check
+        for x in self.stages:
+            if x['enabled']:
+                id = x['mapid']
+                if id >= texRefCount:
+                    if AUTO_FIXER.should_fix('{} Stage {} no such layer {}.'.format(prefix, x.id, id), 2):
+                        # try to find an unused one
+                        id = self.detect_unusedMapId()
+                        if id < texRefCount:
+                            x['mapid'] = x['coordinateid'] = id
+                            AUTO_FIXER.notify('Set stage {} map to {}'.format(x.id, id), 4)
+                        else:
+                            mark_to_remove.append(x)
+                else:
+                    tex_usage[id] += 1
+
+        for x in mark_to_remove:
+            AUTO_FIXER.notify('{} removing stage {}'.format(prefix, x.id), 4)
+            self.stages.remove(x)
+        # check stages
+        for x in self.stages:
+            x.check(loudness)
         # indirect check
         ind_stages = self.getIndCoords()
         for stage_id in range(len(self.indTexCoords)):
             x = self.indTexCoords[stage_id]
             if x < 7:
-                if x >= self.texRefCount:
-                    print('{} Indirect layer {} is not marked for use.'.format(prefix, x))
+                if x >= texRefCount:
+                    if AUTO_FIXER.should_fix('{} Indirect layer {} does not exist.'.format(prefix, x), 3):
+                        self.indTexCoords[stage_id] = 7
                 else:
                     try:
                         ind_stages.remove(stage_id)
                         tex_usage[x] += 1
                         ind_stage_count += 1
                     except ValueError:
-                        print('{} Indirect layer {} set, but not used in shader'.format(prefix, x))
-        # direct check
-        for x in self.stages:
-            if x['enabled']:
-                id = x['coordinateid']
-                if id >= self.texRefCount:
-                    print('{} Stage {} layer {} is not marked for use.'.format(prefix, x.id, id))
-                else:
-                    tex_usage[id] += 1
+                        if AUTO_FIXER.should_fix('{} Indirect layer {} set, but not used'.format(prefix, x), 3):
+                            self.indTexCoords[stage_id] = 7
         # now check usage count
-        for i in range(len(tex_usage)):
-            x = tex_usage[i]
-            if x == 0:
-                print('{} Layer {} is not used in shader.'.format(prefix, i))
-            elif x > 1:
-                print('{} Layer {} used {} times by shader.'.format(prefix, i, x))
+        if loudness > 2:
+            for i in range(len(tex_usage)):
+                x = tex_usage[i]
+                if x == 0:
+                    AUTO_FIXER.notify('{} Layer {} is not used in shader.'.format(prefix, i), 3)
+                elif x > 1:
+                    AUTO_FIXER.notify('{} Layer {} used {} times by shader.'.format(prefix, i, x), 3)
         ind_matrices_used = self.getIndirectMatricesUsed()
-        self.material.check_shader(self.texRefCount, len(self.stages), ind_stage_count, ind_matrices_used)
-
-    def onCoordinateUpdate(self, coord_id):
-        if coord_id >= self.texRefCount:
-            self.texRefCount = coord_id + 1  # auto adjust
+        self.material.check_shader(len(self.stages), ind_stage_count, ind_matrices_used, loudness)
 
 # possibly try to fix ctools bugs later
 # class TexCoord:

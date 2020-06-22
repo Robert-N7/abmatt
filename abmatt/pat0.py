@@ -5,6 +5,7 @@ from copy import deepcopy
 from abmatt.subfile import SubFile
 from abmatt.binfile import Folder
 from abmatt.matching import validBool, validInt, validFloat, splitKeyVal, Clipable
+from abmatt.autofix import AUTO_FIXER
 
 
 class Pat0Collection:
@@ -26,6 +27,12 @@ class Pat0Collection:
     def __iter__(self):
         for x in self.collection:
             yield x
+
+    def get_used_textures(self):
+        used = set()
+        for anim in self.collection:
+            used |= anim.get_used_textures()
+        return used
 
     def add(self, mat_animation):
         self.collection.append(mat_animation)
@@ -72,7 +79,7 @@ class Pat0MatAnimation(Clipable):
         self.hasPalette = False
         self.frames = []
         self.name = name
-        self.material = None     # to be filled in
+        self.material = None  # to be filled in
         self.brres_textures = brres_textures
         self.framecount = frame_count
         self.loop = loop
@@ -91,6 +98,9 @@ class Pat0MatAnimation(Clipable):
 
     def setMaterial(self, material):
         self.material = material
+
+    def get_used_textures(self):
+        return {x.tex_name for x in self.frames}
 
     def __setitem__(self, key, value):
         if key == 'loop':
@@ -154,13 +164,18 @@ class Pat0MatAnimation(Clipable):
         return False
 
     def check(self, loudness):
+        mark_for_removal = []
         for f in self.frames:
-            if f.tex_name not in self.brres_textures:
-                print('CHECK: No texture found matching pat0 {}'.format(f.tex_name))
+            if f.tex_name not in self.brres_textures and f.tex_name not in mark_for_removal:
+                if AUTO_FIXER.should_fix('No texture found matching pat0 {}'.format(f.tex_name), 3):
+                    mark_for_removal.append(f.tex_name)
+        if mark_for_removal:
+            self.frames = [x for x in self.frames if x.tex_name not in mark_for_removal]
+            AUTO_FIXER.notify('Removed Pat0 frames {}'.format(mark_for_removal), 4)
 
     def check_name(self, name):
-        if self.LOUDNESS > 1 and name not in self.brres_textures:
-            print('Note: No texture found matching frame {}'.format(name))
+        if name not in self.brres_textures:
+            AUTO_FIXER.notify('No texture found matching frame {}'.format(name), 3)
 
     def set_frame(self, key_frame_id, tex_name):
         if not 0 <= key_frame_id <= self.framecount:
@@ -301,7 +316,8 @@ class Pat0(SubFile):
         folder.unpack(binfile)
         while len(folder):
             name = folder.recallEntryI()
-            anim = Pat0MatAnimation(name, self.parent.getTextureMap(), self.frame_count, self.loop).unpack(binfile, textures)
+            anim = Pat0MatAnimation(name, self.parent.getTextureMap(), self.frame_count, self.loop).unpack(binfile,
+                                                                                                           textures)
             self.mat_anims.append(anim)
         # remaining = binfile.readRemaining(self.byte_len)
         # printCollectionHex(remaining)
@@ -318,15 +334,15 @@ class Pat0(SubFile):
         self._pack(binfile)
         binfile.write('I4HI', 0, self.frame_count, len(anims), len(textures), 0, self.loop)
         binfile.createRef(0, False)  # section 0: data
-        folder = Folder(binfile)    # index group
+        folder = Folder(binfile)  # index group
         for x in anims:
             folder.addEntry(x.name)
         folder.pack(binfile)
         offsets = []
-        for x in anims:    # Headers/flags
+        for x in anims:  # Headers/flags
             folder.createEntryRefI()
-            offsets.append(x.pack(binfile))      # todo, check if the fixed flag changes things
-        for x in anims:    # key frame lists
+            offsets.append(x.pack(binfile))  # todo, check if the fixed flag changes things
+        for x in anims:  # key frame lists
             binfile.createRefFrom(offsets.pop(0))
             x.pack_frames(binfile, textures)
 
