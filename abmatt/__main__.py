@@ -14,8 +14,8 @@ from abmatt.mdl0 import TexCoord
 from abmatt.command import Command, ParsingException
 
 __version__ = "0.5.0"
-USAGE = "Usage: {} -f <file> [-d <destination> -o -c <command-file> -k <key> -v <value>\
- -n <name> -m <model> -i -s -u] "
+USAGE = "USAGE: abmatt [-i -f <file> -b <brres-file> -d <destination> -o -t <type> -k <key> -v <value> -n <name>\
+ -m <model> -u]"
 
 
 def hlp():
@@ -60,41 +60,46 @@ Version {}
 
 | Flag |Expanded| Description |
 |---|---|---|
-| -c | --commandfile | File with ABMatT commands to be processed as specified in file format. |
-| -d | --destination | The file name to be written to. Mutliple destinations are not supported. |
-| -f | --file | The brres file name to be read from |
+| -b | --brres | Brres file selection. |
+| -d | --destination | The file path to be written to. Mutliple destinations are not supported. |
+| -f | --file | File with ABMatt commands to be processed as specified in file format. |
 | -h | --help | Displays a help message about program usage. |
-| -i | --info | Information flag that generates additional informational output. |
-| -k | --key | Setting key to be updated. See [File Format](## File Format) for keys. |
-| -m | --model | The name of the model to search in. |
+| -i | --interactive | Interactive shell mode. |
+| -k | --key | Setting key to be updated. |
+| -m | --model | Model selection. |
 | -n | --name | Material or layer name or regular expression to be found. |
-| -o | --overwrite | Overwrite existing files. The default is to not overwrite the input file or any other file unless this flag is used. |
-| -s | --shell | Interactive shell mode. |
-| -t | --type | Type (material, layer, shader, stage) |
-| -v | --value | Setting value to be paired with a key. |
+| -o | --overwrite | Overwrite existing files.  |
+| -t | --type | Type selection. |
+| -u | --uv-divisor-zero| Sets corrupt uv divisors to 0.
+| -v | --value | Value to set corresponding with key. (set command) |
 
 File command format in extended BNF:
-command = (set | info | add | remove | select | preset) ['for' selection] EOL;
+ommand =  cmd-prefix ['for' selection] EOL;
+cmd-prefix = set | info | add | remove | select | preset | save | copy | paste;
 set   = 'set' type setting;
-info  = 'info' type [key];
+info  = 'info' type [key | 'keys'];
 add   = 'add' type;
 remove = 'remove' type;
 select = 'select' selection;    Note: does not support 'for' selection clause
 preset = 'preset' preset_name;
+save = 'save' [filename] ['as' destination] ['overwrite']
+copy = 'copy' type;
+paste = 'paste' type;
 
 selection = name ['in' container]
-container = ['file' filename] ['model' name];
-type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id];
-setting =  key ':' value; NOTE: No spaces allowed in key:value pairs
+container = ['brres' filename] ['model' name];
+type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id]
+    | 'srt0' | 'srt0layer' [':' id] | 'pat0'
+    | 'mdl0' | 'brres';
 
 Example file commands:
-    set xlu:true for xlu.* in model course      # Sets all materials in course starting with xlu to transparent
+    set xlu:true for xlu.* in course_model.brres      # Sets all materials starting with xlu to transparent
     set scale:(1,1) for *                 # Sets the scale for all layers to 1,1
     info layer:ef_arrowGradS        # Prints information about the layer 'ef_arrowGradS'
 Example command line usage:
     abmatt -f course_model.brres -o -k xlu -v false -n opaque_material
 This opens course_model.brres in overwrite mode and disables xlu for material 'opaque_material'.
-For more Help or if you want to contribute visit https://github.com/Robert-N7/ABMatT
+For more Help or if you want to contribute visit https://github.com/Robert-N7/abmatt
     '''
     print(helpstr.format(__version__))
     print("{}".format(USAGE))
@@ -108,6 +113,18 @@ class Shell(Cmd):
             Command.run_commands([Command(prefix + ' ' + cmd)])
         except ParsingException as e:
             print('{}, Type "?" for help.'.format(e))
+
+    def do_paste(self, line):
+        self.run('paste', line)
+
+    def help_paste(self):
+        print('paste <type> [for <selection>]')
+
+    def do_copy(self, line):
+        self.run('copy', line)
+
+    def help_copy(self):
+        print('copy <type> [for <selection>]')
 
     def do_quit(self, line):
         return True
@@ -189,35 +206,37 @@ def main():
         print(USAGE)
         sys.exit(0)
     try:
-        opts, args = getopt.getopt(argv, "hf:d:ok:v:n:m:c:t:isu",
-                                   ["help", "file=", "destination=", "overwrite",
-                                    "type=", "key=", "value=",
-                                    "name=", "model=", "info", "command-file=", "shell",
-                                    "uv-divisor-zero"])
-    except getopt.GetoptError:
+        opts, args = getopt.getopt(argv, "hd:oc:t:k:v:n:b:m:f:iuqs",
+                                   ["help", "destination=", "overwrite",
+                                    "command=", "type=", "key=", "value=",
+                                    "name=", "brres=", "model=", "file=", "interactive",
+                                    "uv-divisor-zero", "silent", "quiet"])
+    except getopt.GetoptError as e:
+        print(e)
         print(USAGE)
         sys.exit(2)
-    filename = ""
-    destination = ""
-    shell_mode = info = overwrite = uv_divisor_zero = False
+    if args:
+        print('Unknown option {}'.format(args))
+        print(USAGE)
+        sys.exit(2)
+    interactive = overwrite = uv_divisor_zero = False
     type = "material"
-    setting = ""
-    value = ""
-    name = ".*"
-    model = ""
-    commandfile = ""
+    command = destination = brres_file = command_file = model = value = key = ""
+    name = "*"
     for opt, arg in opts:
         if opt in ("-h", "--help"):
             hlp()
             sys.exit()
+        elif opt in ('-b', '--brres'):
+            brres_file = arg
         elif opt in ("-f", "--file"):
-            filename = arg
+            command_file = arg
         elif opt in ("-d", "--destination"):
             destination = arg
         elif opt in ("-o", "--overwrite"):
             overwrite = True
         elif opt in ("-k", "--key"):
-            setting = arg
+            key = arg
         elif opt in ("-v", "--value"):
             value = arg
         elif opt in ("-t", "--type"):
@@ -226,14 +245,17 @@ def main():
             name = arg
         elif opt in ("-m", "--model"):
             model = arg
-        elif opt in ("-i", "--info"):
-            info = True
-        elif opt in ("-c", "--command-file"):
-            commandfile = arg
-        elif opt in ("-s", "--shell"):
-            shell_mode = True
+        elif opt in ("-c", "--command"):
+            command = arg
+        elif opt in ("-i", "--interactive"):
+            interactive = True
         elif opt in ("-u", "--uv-divisor-zero"):
             uv_divisor_zero = True
+        elif opt in ("-s", "--silent"):
+            Command.set_loudness(0)
+        elif opt in ("-q", "--quiet"):
+            if Command.LOUDNESS:
+                Command.set_loudness(1)
         else:
             print("Unknown option '{}'".format(opt))
             print(USAGE)
@@ -249,31 +271,32 @@ def main():
     if overwrite:
         Command.OVERWRITE = overwrite
         Brres.OVERWRITE = overwrite
-    if filename:
-        Command.updateFile(filename)
-        if setting:
-            cmd = "set " + type + setting + ":" + value + " for " + name
-            if model:
-                cmd += " model " + model
+    if brres_file:
+        Command.updateFile(brres_file)
+        if command:
+            cmd = command + ' ' + type
+            if key:
+                cmd += ' ' + key
+                if value:
+                    cmd += ':' + value
+            if name or model:
+                cmd += ' for ' + name
+                if model:
+                    cmd += ' in model ' + model
             cmds.append(Command(cmd))
-            if info:
-                cmds.append(Command("info"))
-        if info:
-            cmd = "info " + type + setting + " for " + name
-            cmds.append(Command(cmd))
-    elif setting or info:
-        print('File is required to run info/setting commands')
+    elif command:
+        print('File is required to run commands')
         print(USAGE)
         exit(2)
 
-    if commandfile:
-        filecmds = Command.load_commandfile(commandfile)
+    if command_file:
+        filecmds = Command.load_commandfile(command_file)
         cmds = cmds + filecmds
 
     # Run Commands
     if cmds:
         Command.run_commands(cmds)
-    if shell_mode:
+    if interactive:
         Shell().cmdloop('Interactive shell started...')
 
     # cleanup

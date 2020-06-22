@@ -18,7 +18,7 @@ info material
 
 preset default for Crystal
 preset blend
-set enabledDepthupdate:true
+set enableDepthupdate:true
 remove srt0
 
 preset wt_takitubo for AcidFall

@@ -26,23 +26,24 @@ ABMatt supports editing the following types:
 
 ## Command Line Usage
 ```
-abmatt -f <file> [-d <destination> -o -c <command-file> -k <key> -v <value> -t <type> -n <name> -m <model> -i -s -u]
+abmatt [-i -f <file> -b <brres-file> -d <destination> -o -t <type> -k <key> -v <value> -n <name> -m <model> -u]
 ```
 | Flag |Expanded| Description |
 |---|---|---|
-| -c | --command-file | File with ABMatT commands to be processed as specified in file format. |
-| -d | --destination | The file name to be written to. Mutliple destinations are not supported. |
-| -f | --file | The brres file name to be read from |
+| -b | --brres | Brres file selection. |
+| -d | --destination | The file path to be written to. Mutliple destinations are not supported. |
+| -f | --file | File with ABMatt commands to be processed as specified in file format. |
 | -h | --help | Displays a help message about program usage. |
-| -i | --info | Information flag that generates additional informational output. |
-| -k | --key | Setting key to be updated. See [File Format](## File Format) for keys. |
-| -m | --model | The name of the model to search in. |
+| -i | --interactive | Interactive shell mode. |
+| -k | --key | Setting key to be updated. |
+| -m | --model | Model selection. |
 | -n | --name | Material or layer name or regular expression to be found. |
-| -o | --overwrite | Overwrite existing files. The default is to not overwrite the input file or any other file unless this flag is used. |
-| -s | --shell | Interactive shell mode. |
-| -t | --type | Type (material, layer, shader, stage) |
+| -o | --overwrite | Overwrite existing files.  |
+| -q | --quiet | Lowers verbosity level. |
+| -s | --silent | Runs silently. |
+| -t | --type | Type selection. |
 | -u | --uv-divisor-zero| Sets corrupt uv divisors to 0.
-| -v | --value | Setting value to be paired with a key. |
+| -v | --value | Value to set corresponding with key. (set command) |
 
 ### Command Line Examples
 This command would open *course_model.brres* in overwrite mode and run the commands stored in *my_commands.txt*
@@ -61,7 +62,8 @@ Parameters are delimited by spaces except where a ':' or ',' is specified. Case 
 line = begin_preset | command;
 begin_preset = '[' <preset_name> ']' EOL; 
 
-command = (set | info | add | remove | select | preset | save) ['for' selection] EOL;
+command =  cmd-prefix ['for' selection] EOL;
+cmd-prefix = set | info | add | remove | select | preset | save | copy | paste;
 set   = 'set' type setting;
 info  = 'info' type [key | 'keys'];
 add   = 'add' type;
@@ -69,17 +71,20 @@ remove = 'remove' type;
 select = 'select' selection;    Note: does not support 'for' selection clause
 preset = 'preset' preset_name;
 save = 'save' [filename] ['as' destination] ['overwrite']
+copy = 'copy' type;
+paste = 'paste' type;
 
 selection = name ['in' container]
-container = ['file' filename] ['model' name];
+container = ['brres' filename] ['model' name];
 type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id]
-    | 'srt0' | 'srt0layer' [':' id] | 'pat0' | 'pat0layer' [':' id];
+    | 'srt0' | 'srt0layer' [':' id] | 'pat0'
+    | 'mdl0' | 'brres';
 
 setting =  key ':' value; NOTE: No spaces allowed in key:value pairs
 key = material-key | layer-key | shader-key | stage-key
-    | srt0-key | srt0-layer-key | pat0-key | pat0-layer-key; 
+    | srt0-key | srt0-layer-key | pat0-key; 
 value = material-value | layer-value | shader-value | stage-value
-    |  srt0-value | srt0-layer-value | pat0-value | pat0-layer-value; 
+    |  srt0-value | srt0-layer-value | pat0-value; 
 ```
 
 ### Selection Explanation
@@ -221,3 +226,17 @@ set layer mapmode:linear_mipmap_linear
 ```
 Calling the preset:
 `preset my_preset for my_material_name`
+
+### Copy/Paste
+* Copy operations do not perform byte copying.
+* The type must match when copying. 
+* Group copying matches selected items on their names/ids.
+* Single copying pastes over all selected without matching names.
+* Names are not changed when pasting.
+* Copying a material will copy all settings related to the material, including layers, shaders, and animations.
+
+The following finds matches by material names in two brres files and pastes the material data.
+```
+copy material for * in course_model.brres
+paste material for * in new_model.brres
+```  

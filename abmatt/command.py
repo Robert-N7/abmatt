@@ -17,12 +17,17 @@ from abmatt.srt0 import Srt0, SRTMatAnim, SRTTexAnim
 
 class ParsingException(Exception):
     def __init__(self, txt, message=''):
-        super(ParsingException, self).__init__("Error parsing: '" + txt + "' " + message)
+        super(ParsingException, self).__init__("ERROR parsing: '" + txt + "' " + message)
 
 
 class SaveError(Exception):
     def __init__(self, message=''):
         super(SaveError, self).__init__('ERROR saving! ' + message)
+
+
+class PasteError(Exception):
+    def __init__(self, message=''):
+        super(PasteError, self).__init__('ERROR pasting! ' + message)
 
 
 def getShadersFromMaterials(materials, for_modification=True):
@@ -48,7 +53,7 @@ def getParents(group):
 
 
 class Command:
-    COMMANDS = ["preset", "set", "add", "remove", "info", "select", "save"]
+    COMMANDS = ["preset", "set", "add", "remove", "info", "select", "save", "copy", "paste"]
     SELECTED = []  # selection list
     SELECT_TYPE = None  # current selection list type
     SELECT_ID = None  # current selection id
@@ -60,6 +65,9 @@ class Command:
     MODELS = []
     MATERIALS = []
     PRESETS = {}
+    CLIPBOARD = None
+    CLIPTYPE = None
+    LOUDNESS = 2
 
     TYPE_SETTING_MAP = {
         "material": Material.SETTINGS,
@@ -135,6 +143,11 @@ class Command:
                                                                                                   self.TYPE_SETTING_MAP[
                                                                                                       self.type]))
 
+    @staticmethod
+    def set_loudness(level):
+        Command.LOUDNESS = level
+        Brres.set_loudness(level)
+
     def setSave(self, params):
         saveAs = False
         self.overwrite = False
@@ -177,7 +190,9 @@ class Command:
                 self.type_id_numeric = False
             # elif 'srt0' in val:
         #     self.type = 'srt0'
-        elif val == 'mdl0' or val == 'brres':
+        elif val in ('mdl0', 'brres'):
+            if self.cmd == 'add' or self.cmd == 'remove':
+                raise ParsingException(self.txt, 'Add/Remove not supported for {}.'.format(val))
             if type_id:
                 self.has_type_id = True
                 self.type_id_numeric = False
@@ -208,11 +223,11 @@ class Command:
             i = 0
             try:  # to get args
                 while i < len(li):
-                    x = li[i]
-                    if x == 'file' or x == 'File':
+                    x = li[i].lower()
+                    if x == 'file':
                         i += 1
                         self.file = li[i]  # possible exception
-                    elif x == 'model' or x == 'Model':
+                    elif x == 'model':
                         i += 1
                         self.model = li[i]
                     elif not self.file:
@@ -469,13 +484,13 @@ class Command:
     # ---------------------------------------------- RUN CMD ---------------------------------------------------
     @staticmethod
     def run_commands(commandlist):
-        try:
+        # try:
             for cmd in commandlist:
                 cmd.runCmd()
-        except ValueError as e:
-            print(e)
-        except SaveError as e:
-            print(e)
+        # except ValueError as e:
+        #     print(e)
+        # except SaveError as e:
+        #     print(e)
 
     def runCmd(self):
         if self.hasSelection:
@@ -520,7 +535,46 @@ class Command:
             elif self.cmd == 'remove':
                 self.markModified()
                 self.remove(self.SELECT_TYPE, self.SELECT_ID)
+            elif self.cmd == 'copy':
+                self.run_copy(self.SELECT_TYPE)
+            elif self.cmd == 'paste':
+                self.run_paste(self.SELECT_TYPE)
         return True
+
+    # -------------------------------------------- COPY/PASTE -----------------------------------------------
+    #   Items implementing clipboard must support the methods:
+    #       .clip(clipboard)
+    #       .clip_find(clipboard)
+    #       .paste(item)
+    def run_copy(self, select_type):
+        Command.CLIPBOARD = {}
+        for x in self.SELECTED:
+            x.clip(Command.CLIPBOARD)
+        Command.CLIPTYPE = select_type
+
+    def run_paste(self, select_type):
+        clip = self.CLIPBOARD
+        selected = self.SELECTED
+        if not clip:
+            raise PasteError('No items in clipboard.')
+        # check for compatible types
+        if select_type != self.CLIPTYPE:
+            raise PasteError('Mismatched clipboard types (has {})'.format(self.CLIPTYPE))
+        paste_count = 0
+        if len(clip) == 1:
+            item = clip[clip.keys()[0]]
+            for x in selected:
+                x.paste(item)
+                paste_count += 1
+        else:
+            for x in selected:
+                to_paste = x.clip_find(clip)
+                if to_paste:
+                    x.paste(to_paste)
+                    paste_count += 1
+        if paste_count == 0:
+            raise PasteError('No matches found in clipboard.')
+        return paste_count
 
     def info_keys(self, type):
         if not type:
@@ -533,7 +587,7 @@ class Command:
         files_to_save = findAll(self.file, self.ACTIVE_FILES)
         if len(files_to_save) > 1 and self.destination is not None:
             raise SaveError('Detected {} files and only one destination "{}"'.format(len(files_to_save),
-                                                                                       self.destination))
+                                                                                     self.destination))
         else:
             for x in files_to_save:
                 if not x.save(self.destination, self.overwrite):

@@ -1,9 +1,10 @@
 """PAT0 Animations"""
 import math
+from copy import deepcopy
 
 from abmatt.subfile import SubFile
 from abmatt.binfile import Folder
-from abmatt.matching import validBool, validInt, validFloat, splitKeyVal
+from abmatt.matching import validBool, validInt, validFloat, splitKeyVal, Clipable
 
 
 class Pat0Collection:
@@ -58,12 +59,13 @@ class Pat0Collection:
         return pats
 
 
-class Pat0MatAnimation:
+class Pat0MatAnimation(Clipable):
     """Single material animation"""
 
     SETTINGS = ('framecount', 'loop', 'keyframe')
+    LOUDNESS = 2
 
-    def __init__(self, name, frame_count=2, loop=True):
+    def __init__(self, name, brres_textures, frame_count=2, loop=True):
         self.enabled = True
         self.fixedTexture = False
         self.hasTexture = True
@@ -71,9 +73,18 @@ class Pat0MatAnimation:
         self.frames = []
         self.name = name
         self.material = None     # to be filled in
-        self.brres_textures = None  # to be filled
+        self.brres_textures = brres_textures
         self.framecount = frame_count
         self.loop = loop
+
+    def paste(self, item):
+        self.enabled = item.enabled
+        self.fixedTexture = item.fixedTexture
+        self.hasTexture = item.hasTexture
+        self.hasPalette = item.hasPalette
+        self.frames = deepcopy(item.frames)
+        self.framecount = item.framecount
+        self.loop = item.loop
 
     def create_brres_tex_ref(self, brres_textures):
         self.brres_textures = brres_textures
@@ -117,6 +128,9 @@ class Pat0MatAnimation:
         def __str__(self):
             return str(self.frame_id) + ':' + self.tex_name
 
+    def updateName(self, new_name):
+        self.name = new_name
+
     def set_frame_count(self, val):
         self.framecount = val
         self.frames = [x for x in self.frames if x.frame_id <= val]
@@ -139,13 +153,14 @@ class Pat0MatAnimation:
                 return True
         return False
 
+    def check(self, loudness):
+        for f in self.frames:
+            if f.tex_name not in self.brres_textures:
+                print('CHECK: No texture found matching pat0 {}'.format(f.tex_name))
+
     def check_name(self, name):
-        if self.brres_textures:
-            for x in self.brres_textures:
-                if x.name == name:
-                    return True
-            print('WARNING: No texture found matching pat0 animation {}'.format(name))
-        return not self.brres_textures
+        if self.LOUDNESS > 1 and name not in self.brres_textures:
+            print('Note: No texture found matching frame {}'.format(name))
 
     def set_frame(self, key_frame_id, tex_name):
         if not 0 <= key_frame_id <= self.framecount:
@@ -217,8 +232,8 @@ class Pat0MatAnimation:
         [flags] = binfile.read('I', 4)
         self.enabled = flags & 1
         self.fixedTexture = flags >> 1 & 1
-        if self.fixedTexture:
-            print('{} Fixed texture!'.format(self.name))
+        # if self.fixedTexture:
+        #     print('{} Fixed texture!'.format(self.name))
         self.hasTexture = flags >> 2 & 1
         self.hasPalette = flags >> 3 & 1
 
@@ -286,9 +301,8 @@ class Pat0(SubFile):
         folder.unpack(binfile)
         while len(folder):
             name = folder.recallEntryI()
-            anim = Pat0MatAnimation(name, self.frame_count, self.loop).unpack(binfile, textures)
+            anim = Pat0MatAnimation(name, self.parent.getTextureMap(), self.frame_count, self.loop).unpack(binfile, textures)
             self.mat_anims.append(anim)
-            anim.create_brres_tex_ref(self.parent.textures)
         # remaining = binfile.readRemaining(self.byte_len)
         # printCollectionHex(remaining)
         # ignore the rest

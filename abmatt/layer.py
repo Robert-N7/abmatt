@@ -1,14 +1,15 @@
 """ Layer class """
-from abmatt.matching import parseValStr, indexListItem, validBool
+from copy import copy, deepcopy
+
+from abmatt.matching import parseValStr, indexListItem, validBool, Clipable
 
 from abmatt.wiigraphics.xf import XFTexMatrix, XFDualTex
 
 
-class Layer:
+class Layer(Clipable):
     # ----------------------------------------------------------------------------
     #   Constants
     # ----------------------------------------------------------------------------
-    NUM_SETTINGS = 22
     SETTINGS = (
         "scale", "rotation", "translation", "scn0cameraref",
         "scn0lightref", "mapmode", "uwrap", "vwrap",
@@ -63,7 +64,7 @@ class Layer:
     #   GETTERS
     # ----------------------------------------------------------------------------------
     def __getitem__(self, item):
-        for i in range(self.NUM_SETTINGS):
+        for i in range(len(self.SETTINGS)):
             if self.SETTINGS[i] == item:
                 func = self.GET_SETTINGS[i]
                 return func(self)
@@ -145,7 +146,7 @@ class Layer:
                     getNormalize, getName)
 
     def getSetter(self, key):
-        for i in range(self.NUM_SETTINGS):
+        for i in range(len(self.SETTINGS)):
             if self.SETTINGS[i] == key:
                 return self.SET_SETTING[i]
 
@@ -316,6 +317,29 @@ class Layer:
                    setInputFormStr, setTypeStr, setCoordinatesStr, setEmbossSourceStr, setEmbossLightStr,
                    setNormalizeStr, setName)
 
+    # -------------------------------------- PASTE ---------------------------
+    def paste(self, item):
+        if self.name == 'Null':
+            self.setName(item.name)
+        self.uwrap = item.uwrap
+        self.vwrap = item.vwrap
+        self.minfilter = item.minfilter
+        self.magfilter = item.magfilter
+        self.LODBias = item.LODBias
+        self.maxAnisotrophy = item.maxAnisotrophy
+        self.clampBias = item.clampBias
+        self.texelInterpolate = item.texelInterpolate
+        self.scale = (item.scale[0], item.scale[1])
+        self.rotation = item.rotation
+        self.translation = (item.translation[0], item.translation[1])
+        self.scn0CameraRef = item.scn0CameraRef
+        self.scn0LightRef = item.scn0LightRef
+        self.mapMode = item.mapMode
+        self.enableIdentityMatrix = item.enableIdentityMatrix
+        self.texMatrix = copy(item.texMatrix)
+        self.xfTexMatrix = deepcopy(item.xfTexMatrix)
+        self.xfDualTex = deepcopy(item.xfDualTex)
+
     # -------------------------------------------------------------------------
     # Packing things
     # -------------------------------------------------------------------------
@@ -391,3 +415,17 @@ class Layer:
                                                          trace, self.scale, self.rotation, self.translation,
                                                          self.WRAP[self.uwrap], self.WRAP[self.vwrap],
                                                          self.FILTER[self.minfilter], self.MAPMODE[self.mapMode]))
+
+    def uses_mipmaps(self):
+        return self.minfilter > 1
+
+    def check(self, texture_map, loudness):
+        if loudness > 1:
+            if self.uses_mipmaps():
+                if texture_map[self.name].num_mips == 0:
+                    print('CHECK: {} mipmaps enabled but no mipmaps in TEX0.'.format(self.parent.name + '->' + self.name))
+            else:
+                if texture_map[self.name].num_mips > 0:
+                    print('CHECK: {} mipmaps disabled but TEX0 has {}'.format(self.parent.name + '->' + self.name,
+                                                                              texture_map[self.name].num_mips))
+        self.xfTexMatrix.check()

@@ -20,6 +20,7 @@ class SubFile(object):
     SETTINGS = ('version', 'sections')
     VERSION_SECTIONCOUNT = {}
     EXPECTED_VERSION = 0    # override this
+    LOUDNESS = 2            # Loudness levels, 0 silent, 1 errors/warnings, 2 notes, 3 max
 
     def __init__(self, name, parent):
         """ initialize with parent of this file """
@@ -58,9 +59,11 @@ class SubFile(object):
     def _getNumSections(self):
         if self.version not in self.VERSION_SECTIONCOUNT:
             raise ("{} {} unsupported version {}".format(self.MAGIC, self.name, self.version))
-        if self.version != self.EXPECTED_VERSION:
-            print('Note: {} {} unusual version {}'.format(self.MAGIC, self.name, self.version))
         return self.VERSION_SECTIONCOUNT[self.version]
+
+    def check(self, loudness):
+        if self.version != self.EXPECTED_VERSION:
+            print('CHECK: {} {} unusual version {}'.format(self.MAGIC, self.name, self.version))
 
     def _unpack(self, binfile):
         """ unpacks the sub file, subclass must use binfile.end() """

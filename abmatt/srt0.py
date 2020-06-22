@@ -1,9 +1,9 @@
 #!/usr/bin/python
 """ Srt0 Brres subfile """
-from copy import deepcopy
+from copy import deepcopy, copy
 
 from abmatt.binfile import Folder
-from abmatt.matching import validInt, validBool, validFloat, splitKeyVal, matches
+from abmatt.matching import validInt, validBool, validFloat, splitKeyVal, matches, Clipable
 from abmatt.subfile import SubFile
 
 
@@ -89,7 +89,7 @@ class SRTKeyFrameList:
         return self.getFrame(key)
 
     def __setitem__(self, key, value):
-        key = validFloat(key, 0, self.framecount+.0001)
+        key = validFloat(key, 0, self.framecount + .0001)
         if value in ('disabled', 'none', 'remove'):
             self.removeKeyFrame(key)
         else:
@@ -193,7 +193,6 @@ class SRTKeyFrameList:
     def removeKeyFrame(self, index):
         """ Removes key frame from list, updating delta """
         if index == 0:
-            print('Unable to remove key frame 0')
             return
         entries = self.entries
         for i in range(1, len(entries)):
@@ -230,14 +229,14 @@ class SRTKeyFrameList:
         self.entries = []
         # header
         size, uk, fs = binfile.read("2Hf", 8)
-        print('FrameScale: {} i v d'.format(fs))
-        str = ''
-        assert size
+        # print('FrameScale: {} i v d'.format(fs))
+        # str = ''
+        # assert size
         for i in range(size):
             index, value, delta = binfile.read("3f", 12)
-            str += '({},{},{}), '.format(index, value, delta)
+            # str += '({},{},{}), '.format(index, value, delta)
             self.entries.append(self.SRTKeyFrame(value, index, delta))
-        print(str[:-2])
+        # print(str[:-2])
         return self
 
     def pack(self, binfile, framescale):
@@ -250,7 +249,6 @@ class SRTKeyFrameList:
 class SRTTexAnim():
     """ A single texture animation entry in srt0 under material """
     SETTINGS = ('xscale', 'yscale', 'rot', 'xtranslation', 'ytranslation')
-
 
     def __init__(self, id, framecount, parent):
         self.id = id
@@ -289,9 +287,14 @@ class SRTTexAnim():
                 key2, value = splitKeyVal(x)
                 anim[key2] = value
 
+    def __deepcopy__(self, memodict={}):
+        ret = SRTTexAnim(self.id, self.parent.framecount, None)
+        ret.animations = deepcopy(self.animations)
+        return ret
+
     def info(self, key=None, indentation_level=0):
         id = self.name if self.name else str(self.id)
-        trace = '  ' * indentation_level + id if indentation_level else '>(SRT0)' + self.parent.name + '->' + id
+        trace = '  ' * indentation_level + 'Tex:' + id if indentation_level else '>(SRT0)' + self.parent.name + '->Tex:' + id
         if not key:
             for x in self.SETTINGS:
                 trace += ' ' + x + ':' + str(self[x])
@@ -437,7 +440,7 @@ class SRTTexAnim():
         # m = binfile.read('200B', 0)
         # printCollectionHex(m)
         [code] = binfile.read("I", 4)
-        print('(SRT0){}->{} code:{}'.format(self.parent.name, self.id, code))
+        # print('(SRT0){}->{} code:{}'.format(self.parent.name, self.id, code))
         self.parseIntCode(code)
         self.unpackScale(binfile)
         self.unpackRotation(binfile)
@@ -502,7 +505,7 @@ class SRTTexAnim():
         return have_offsets
 
 
-class SRTMatAnim():
+class SRTMatAnim(Clipable):
     """ An entry in the SRT, supports multiple tex refs """
 
     SETTINGS = ('framecount', 'loop', 'layerenable')
@@ -536,6 +539,16 @@ class SRTMatAnim():
             key = validInt(key, 0, 8)
             value = validBool(value)
             self.texEnable(key) if value else self.texDisable(key)
+
+    # ------------------ PASTE ---------------------------
+    def paste(self, item):
+        self.looping = item.looping
+        self.texEnabled = copy(item.texEnabled)
+        self.setFrameCount(item.framecount)
+        self.tex_animations = [deepcopy(x) for x in item.tex_animations]
+        # setup parent
+        for x in self.tex_animations:
+            x.parent = self
 
     def setFrameCount(self, count):
         self.framecount = count
@@ -636,12 +649,12 @@ class SRTMatAnim():
                 self.tex_animations[j].name = layers[i].name
                 j += 1
 
-    def check(self, material):
-        max = len(material.layers)
+    def check(self, loudness):
+        max = len(self.material.layers)
         if max < 8:
             for i in range(max, 8):
                 if self.texEnabled[i]:
-                    print('CHECK: {} SRT layer {} is enabled but has no corresponding layer'.format(material.name, i))
+                    print('CHECK: {} SRT layer {} is enabled but has no corresponding layer'.format(self.material.name, i))
 
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + '(SRT0)' + self.name if indentation_level else '>(SRT0):' + self.name

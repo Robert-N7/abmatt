@@ -8,16 +8,17 @@ import string
 from abmatt.binfile import BinFile, Folder, UnpackingError
 from abmatt.chr0 import Chr0
 from abmatt.clr0 import Clr0
-from abmatt.matching import findAll
+from abmatt.matching import findAll, Clipable
 from abmatt.mdl0 import Mdl0
-from abmatt.pat0 import Pat0, Pat0Collection
+from abmatt.pat0 import Pat0, Pat0Collection, Pat0MatAnimation
 from abmatt.scn0 import Scn0
 from abmatt.shp0 import Shp0
 from abmatt.srt0 import Srt0, SRTCollection
 from abmatt.tex0 import Tex0
+from abmatt.subfile import SubFile
 
 
-class Brres():
+class Brres(Clipable):
     FOLDERS = ["3DModels(NW4R)", "Textures(NW4R)", "AnmTexPat(NW4R)", "AnmTexSrt(NW4R)", "AnmChr(NW4R)",
                "AnmScn(NW4R)", "AnmShp(NW4R)", "AnmClr(NW4R)"]
     CLASSES = [Mdl0, Tex0, Pat0, Srt0, Chr0, Scn0, Shp0, Clr0]
@@ -26,6 +27,7 @@ class Brres():
     ROOTMAGIC = "root"
     OVERWRITE = False
     DESTINATION = None
+    LOUDNESS = 2    # Loudness levels, 0 silent, 1 errors/warnings, 2 notes, 3 max
 
     def __init__(self, name, parent=None, readFile=True):
         """
@@ -48,6 +50,7 @@ class Brres():
         self.isUpdated = False
         self.parent = parent
         self.name = name
+        self.texture_map = None
         if readFile:
             self.unpack(BinFile(self.name))
 
@@ -63,6 +66,21 @@ class Brres():
         else:
             raise ValueError('Unknown key "{}"'.format(key))
 
+    @staticmethod
+    def set_loudness(level):
+        Brres.LOUDNESS = level
+        Pat0MatAnimation.LOUDNESS = level
+        SubFile.LOUDNESS = level
+
+    # ---------------------------------------------- CLIPBOARD ------------------------------------------
+    def paste(self, brres):
+        for x in self.models:
+            for y in brres.models:
+                if x.name == y.name:
+                    x.paste(y)
+                    break
+
+    # -------------------------- SAVE/ CLOSE --------------------------------------------
     def close(self):
         if self.isModified or self.DESTINATION and self.DESTINATION != self.name:
             return self.save(self.DESTINATION, self.OVERWRITE)
@@ -79,7 +97,8 @@ class Brres():
             f = BinFile(filename, mode="w")
             self.pack(f)
             f.commitWrite()
-            print("Wrote file '{}'".format(filename))
+            if self.LOUDNESS > 1:
+                print("Wrote file '{}'".format(filename))
             self.name = filename
             self.isModified = False
             return True
@@ -121,7 +140,6 @@ class Brres():
                 count += len(x)
                 # print('Length of folder {} is {}'.format(x.name, len(x)))
         return count
-
     # ------------------------------ Models ---------------------------------
 
     def getModel(self, name):
@@ -144,11 +162,15 @@ class Brres():
         return findAll(name, self.models)
 
     # -------------------------------- Textures -----------------------------
+    def getTextureMap(self):
+        if not self.texture_map:
+            self.texture_map = {}
+            for x in self.textures:
+                self.texture_map[x.name] = x
+        return self.texture_map
 
     def getTexture(self, name):
-        for x in self.textures:
-            if x.name == name:
-                return x
+        return self.getTextureMap().get(name)
 
     def getTextures(self, name):
         return findAll(name, self.textures)
@@ -191,7 +213,7 @@ class Brres():
             collection = SRTCollection(key, self, model_anim_map[key])
             anim_collections.append(collection)
             mdl = self.getModel(key)
-            if not mdl:
+            if not mdl and self.LOUDNESS:
                 print('Warning: No model found matching srt0 animation {}'.format(key))
             else:
                 mdl.set_srt0(collection)
@@ -205,7 +227,7 @@ class Brres():
             collection = Pat0Collection(key, self, model_anim_map[key])
             anim_collections.append(collection)
             mdl = self.getModel(key)
-            if not mdl:
+            if not mdl and self.LOUDNESS:
                 print('Warning: No model found matching pat0 animation {}'.format(key))
             else:
                 mdl.set_pat0(collection)

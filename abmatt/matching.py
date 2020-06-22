@@ -1,8 +1,22 @@
-""" Matching functions """
+""" Matching and miscellaneous functions, and clipable interface """
 
 import re
 
 BOOLABLE = ["False", "True"]
+
+
+
+class Clipable:
+    """Clipable interface"""
+    # ---------------------------------------------- CLIPBOARD -------------------------------------------
+    def clip(self, clipboard):
+        clipboard[self.name] = self
+
+    def clip_find(self, clipboard):
+        return clipboard.get(self.name)
+
+    def paste(self, item):
+        pass
 
 
 def info_default(obj, prefix='', key=None, indentation=0):
