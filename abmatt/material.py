@@ -463,8 +463,12 @@ class Material(Clipable):
 
     def set_srt0(self, anim):
         """This is called by model to set up the srt0 reference"""
+        if self.srt0:
+            AUTO_FIXER.notify('Multiple Srt0 for {}'.format(self.name), 1)
+            return False
         self.srt0 = anim
         anim.setMaterial(self)
+        return True
 
     def get_srt0(self):
         """Gets the srt0, if force_add is set, automatically generates one"""
@@ -493,8 +497,12 @@ class Material(Clipable):
             self.pat0 = None
 
     def set_pat0(self, anim):
+        if self.pat0:
+            AUTO_FIXER.notify('Multiple Pat0 for {}!'.format(self.name), 1)
+            return False
         self.pat0 = anim
         anim.setMaterial(self)
+        return True
 
     def get_pat0(self):
         return self.pat0

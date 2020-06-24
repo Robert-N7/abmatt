@@ -29,6 +29,9 @@ class SRTCollection:
         for x in self.collection:
             yield x
 
+    def rename(self, new_name):
+        self.name = new_name
+
     def add(self, mat_animation):
         self.collection.append(mat_animation)
 
@@ -541,6 +544,9 @@ class SRTMatAnim(Clipable):
             value = validBool(value)
             self.texEnable(key) if value else self.texDisable(key)
 
+    def rename(self, name):
+        self.name = name
+
     # ------------------ PASTE ---------------------------
     def paste(self, item):
         self.looping = item.looping
@@ -558,7 +564,6 @@ class SRTMatAnim(Clipable):
 
     def setMaterial(self, material):
         self.material = material
-        assert material.name == self.name
         self.updateLayerNames(material)
 
     def texEnable(self, i):
@@ -654,11 +659,15 @@ class SRTMatAnim(Clipable):
         if not self.material:
             return
         max = len(self.material.layers)
+        enabled = 0
         if max < 8:
             for i in range(max, 8):
                 if self.texEnabled[i]:
+                    enabled += 1
                     if AUTO_FIXER.should_fix("{} SRT layer {} doesn't exist".format(self.material.name, i), 2):
                         self.texDisable(i)
+        if not enabled:
+            AUTO_FIXER.notify('No srt0 layers enabled!', 2)
 
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + '(SRT0)' + self.name if indentation_level else '>(SRT0):' + self.name

@@ -3,7 +3,7 @@
 from abmatt.autofix import AUTO_FIXER
 from abmatt.binfile import Folder, printCollectionHex
 from abmatt.drawlist import DrawList, Definition
-from abmatt.matching import findAll
+from abmatt.matching import findAll, fuzzy_match
 from abmatt.material import Material
 from abmatt.pat0 import Pat0MatAnimation, Pat0Collection
 from abmatt.polygon import Polygon
@@ -294,7 +294,13 @@ class Mdl0(SubFile):
         for x in srt0_collection:
             mat = self.getMaterialByName(x.name)
             if not mat:
-                AUTO_FIXER.notify('No material found matching animation {}'.format(x.name), 3)
+                if AUTO_FIXER.should_fix('No material found matching animation {}'.format(x.name), 1):
+                    mat = fuzzy_match(x.name, self.materials)
+                    if mat and mat.set_srt0(x):
+                        x.rename(mat.name)
+                        AUTO_FIXER.notify('Matched srt0 to {}'.format(mat.name), 4)
+                    else:
+                        AUTO_FIXER.notify('Fix failed', 1)
             else:
                 mat.set_srt0(x)
 
@@ -314,7 +320,13 @@ class Mdl0(SubFile):
         for x in pat0_collection:
             mat = self.getMaterialByName(x.name)
             if not mat:
-                AUTO_FIXER.notify('No material found matching animation {}'.format(x.name), 3)
+                if AUTO_FIXER.should_fix('No material found matching animation {}'.format(x.name), 1):
+                    mat = fuzzy_match(x.name, self.materials)
+                    if mat and mat.set_pat0(x):
+                        x.rename(mat.name)
+                        AUTO_FIXER.notify('Set pat0 to {}'.format(mat.name), 4)
+                    else:
+                        AUTO_FIXER.notify('Fix failed.', 1)
             else:
                 mat.set_pat0(x)
 
@@ -331,6 +343,8 @@ class Mdl0(SubFile):
     # ------------------ Name --------------------------------------
     def rename(self, name):
         self.parent.updateModelName(self.name, name)
+        self.srt0_collection.rename(name)
+        self.pat0_collection.rename(name)
         self.name = name
 
     # ------------------------------------ Materials ------------------------------
@@ -389,7 +403,8 @@ class Mdl0(SubFile):
         link = self.getTextureLink(name)
         if not link:
             if name != 'Null' and not self.parent.getTexture(name):
-                AUTO_FIXER.notify('Adding reference to unknown texture "{}"'.format(name), 4)
+                tex = fuzzy_match(name, self.parent.textures)
+                AUTO_FIXER.notify('Adding reference to unknown texture "{}", did you mean {}?'.format(name, tex.name), 4)
             link = TextureLink(name, self)
             self.textureLinks.append(link)
         link.num_references += 1
@@ -413,7 +428,8 @@ class Mdl0(SubFile):
         # No link found, try to find texture matching and create link
         if not new_link:
             if name != 'Null' and not self.parent.getTexture(name):
-                AUTO_FIXER.notify('Adding reference to unknown texture "{}"'.format(name), 4)
+                tex = fuzzy_match(name, self.parent.textures)
+                AUTO_FIXER.notify('Adding reference to unknown texture "{}", did you mean {}?'.format(name, tex.name), 4)
             new_link = TextureLink(name, self)
             self.textureLinks.append(new_link)
         old_link.num_references -= 1
@@ -453,11 +469,18 @@ class Mdl0(SubFile):
         for x in self.materials:
             if new_name == x.name:
                 raise ValueError('The name {} is already taken!'.format(new_name))
-        self.srt0_collection.rename(material.name, new_name)
         if material.srt0:
             material.srt0.rename(new_name)
+        else:
+            anim = self.srt0_collection[new_name]
+            if anim:
+                material.set_srt0(anim)
         if material.pat0:
             material.pat0.rename(new_name)
+        else:
+            anim = self.pat0_collection[new_name]
+            if anim:
+                material.set_pat0(anim)
 
     # --------------------------------------- Check -----------------------------------
     def check(self, loudness):
@@ -479,7 +502,7 @@ class Mdl0(SubFile):
                     AUTO_FIXER.notify('Missing map bones', 1)
         for x in self.textureLinks:
             if x.num_references and not texture_map.get(x.name):
-                AUTO_FIXER.notify('Texture Reference "{}" not found.'.format(x.name), 1)
+                AUTO_FIXER.notify('Texture Reference "{}" not found.'.format(x.name), 2)
         self.checkDrawXLU(loudness)
         for x in self.texCoords:
             x.check(loudness)

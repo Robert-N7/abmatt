@@ -422,14 +422,17 @@ class Layer(Clipable):
 
     def check(self, texture_map, loudness):
         if loudness > 1:
-            if self.uses_mipmaps():
-                if texture_map[self.name].num_mips == 0:
-                    if AUTO_FIXER.should_fix('{} mipmaps enabled but none in TEX0.'.format(self.name), 3):
-                        self.minfilter = 1  # linear
-                        AUTO_FIXER.notify('Minfilter set to linear', 4)
-            else:
-                if texture_map[self.name].num_mips > 0:
-                    if AUTO_FIXER.should_fix('{} mipmaps disabled but TEX0 has {}'.format(
-                            self.name, texture_map[self.name].num_mips), 3):
-                        self.minfilter = 5  # linearmipmaplinear
-                        AUTO_FIXER.notify('Minfilter set to LinearMipmapLinear', 4)
+            try:
+                if self.uses_mipmaps():
+                    if texture_map[self.name].num_mips == 0:
+                        if AUTO_FIXER.should_fix('{} mipmaps enabled but none in TEX0.'.format(self.name), 4):
+                            self.minfilter = 1  # linear
+                            AUTO_FIXER.notify('Minfilter set to linear', 4)
+                else:
+                    if texture_map[self.name].num_mips > 0:
+                        if AUTO_FIXER.should_fix('{} mipmaps disabled but TEX0 has {}'.format(
+                                self.name, texture_map[self.name].num_mips), 4):
+                            self.minfilter = 5  # linearmipmaplinear
+                            AUTO_FIXER.notify('Minfilter set to LinearMipmapLinear', 4)
+            except KeyError:
+                pass # no tex ref found (checked this elsewhere, maybe move here?)

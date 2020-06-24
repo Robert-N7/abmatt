@@ -40,6 +40,9 @@ class Pat0Collection:
     def remove(self, animation):
         self.collection.remove(animation)
 
+    def rename(self, name):
+        self.name = name
+
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + '>(PAT0)' + self.name if indentation_level else '>(PAT0)' + self.name
         print('{}: {} animations'.format(trace, len(self.collection)))
@@ -223,6 +226,12 @@ class Pat0MatAnimation(Clipable):
         frames = self.frames
         for i in range(size):
             frame_id, tex_id, plt_id = binfile.read('f2H', 8)
+            if frame_id > self.framecount:
+                AUTO_FIXER.notify('unpacked Pat0 frame index out of range', 1)
+                break
+            if tex_id >= len(textures):
+                tex_id = 0
+                AUTO_FIXER.notify('unpacked Pat0 tex_id out of range', 1)
             frames.append(self.Frame(frame_id, textures[tex_id], plt_id))
 
     def pack_frames(self, binfile, textures):
@@ -230,7 +239,7 @@ class Pat0MatAnimation(Clipable):
         binfile.write('2Hf', len(frames), 0, self.calcFrameScale())
         for x in frames:
             texture_id = textures.index(x.tex_name)
-            binfile.write('f2H', x.frame_id, texture_id, x.palette_id)
+            binfile.write('f2H', x.frame_id, texture_id, 0)
 
     def pack(self, binfile):
         offset = binfile.start()

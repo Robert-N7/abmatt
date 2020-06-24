@@ -363,6 +363,7 @@ class Brres(Clipable):
             mdl.check(loudness)
 
     def remove_unused_textures(self, unused_textures):
-        self.folders[1] = self.textures = [x for x in self.textures if x.name not in unused_textures]
+        tex = self.textures
+        tex_map = self.texture_map
         for x in unused_textures:
-            self.texture_map[x] = None     # update map
+            tex.remove(tex_map.pop(x))

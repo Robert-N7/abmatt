@@ -1,8 +1,21 @@
 """ Matching and miscellaneous functions, and clipable interface """
 
 import re
+from fuzzywuzzy import fuzz
 
 BOOLABLE = ["False", "True"]
+
+
+def fuzzy_match(text, group):
+    bssf = None
+    best_ratio = 0
+    lower = text.lower()
+    for x in group:
+        r = fuzz.ratio(lower, x.name.lower())
+        if r > best_ratio:
+            best_ratio = r
+            bssf = x
+    return bssf
 
 
 
@@ -82,9 +95,7 @@ def indexListItem(list, item, compareIndex=-2):
 
 def parseValStr(value):
     """ Parses tuple formed string with no spaces """
-    if value[0] == "(" and value[-1] == ")":
-        value = value[1:-1]
-    return value.split(",")
+    return value.strip('()').split(",")
 
 
 # finds a name in group, group instances must have .name

@@ -53,7 +53,7 @@ class AutoFix:
 
     def notify(self, description, bug_level):
         """Notifies of a bug check"""
-        if bug_level >= self.LOUDNESS:
+        if bug_level <= self.LOUDNESS:
             print('{}: {}'.format(self.ERROR_LEVELS[bug_level], description))
 
     def get_level(self, level_str):

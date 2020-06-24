@@ -23,7 +23,7 @@ class ParsingException(Exception):
 
 class SaveError(Exception):
     def __init__(self, message=''):
-        super(SaveError, self).__init__('ERROR saving! ' + message)
+        super(SaveError, self).__init__(message)
 
 
 class NoSuchFile(Exception):
@@ -33,7 +33,7 @@ class NoSuchFile(Exception):
 
 class PasteError(Exception):
     def __init__(self, message=''):
-        super(PasteError, self).__init__('ERROR pasting! ' + message)
+        super(PasteError, self).__init__(message)
 
 
 def getShadersFromMaterials(materials, for_modification=True):
@@ -152,7 +152,7 @@ class Command:
         saveAs = False
         self.overwrite = False
         self.destination = None
-        self.file = None
+        self.file = self.model = None
         for x in params:
             if x == 'as':
                 saveAs = True

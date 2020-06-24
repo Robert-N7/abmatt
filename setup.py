@@ -7,7 +7,7 @@ with open('README.md') as file:
 
 
 # specify requirements of your package here
-REQUIREMENTS = []
+REQUIREMENTS = ['fuzzywuzzy', 'python-Levenshtein']
 
 # some more details
 CLASSIFIERS = [

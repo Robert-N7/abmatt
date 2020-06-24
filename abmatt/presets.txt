@@ -177,10 +177,11 @@ set xscale:(0:2)
 
 [ef_sea]
 set material layercount:3
+set indirectmatrix:Scale-3,(0.1806640625,-0.73046875,0.0,0.083984375,0.5791015625,0.0)
 preset opaque
 set shadercolor:color0:(0,53,100,0)
+# todo add indirect matrix
 # layers
-set layer:0 name:ef_wave1P_Mip
 set scale:(20,20)
 set minfilter:linearMipmapLinear
 set lodbias:-0.07
@@ -190,7 +191,7 @@ set minfilter:linearMipmapLinear
 set lodbias:0.81
 set layer:2 name:ef_prj_glow
 set scale:(0.4,0.4)
-set translation:(-0.66, -0.28)
+set translation:(-0.66,-0.28)
 set uwrap:clamp
 set vwrap:clamp
 set minfilter:linear
