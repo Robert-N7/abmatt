@@ -1,6 +1,31 @@
 """Debugging and fixing"""
 
 
+class Bug:
+    # bug levels
+    # None 0
+    # Errors 1
+    # Warnings 2
+    # Checks 3
+    # Suggest 4
+    # Prompt 5
+    # notify levels, 0 silent, 1 quiet, 2 mid, 3 loud, 4 max, 5 debug
+    def __init__(self, bug_level, notify_level, description, fix_des):
+        self.bug_level = bug_level
+        self.notify_level = notify_level        # lower numbers mean notify when quiet
+        self.description = description
+        self.fix_des = fix_des
+        self.is_resolved = False
+
+    def should_fix(self):
+        return not self.is_resolved and AUTO_FIXER.should_fix(self)
+
+    def resolve(self, result_level=4, result_message=None):
+        if result_level < 4:
+            self.is_resolved = True
+        return AUTO_FIXER.display_result(self, result_level, result_message)
+
+
 class AutoFixAbort(BaseException):
     """Raised by prompt"""
     def __init__(self):
@@ -13,35 +38,65 @@ class AutoFix:
     # Errors 1
     # Warnings 2
     # Checks 3
-    # Info 4    / all
+    # Suggest 4
     # Prompt 5
-    FIX_LEVEL = 3
     FIX_PROMPT = 5
 
-    LOUDNESS = 4  # Loudness levels, 0 silent, 1 errors, 2 warnings, 3 Checks, 4 Info
-    ERROR_LEVELS = ('NONE', 'ERROR', 'WARNING', 'CHECK', 'INFO', 'PROMPT')
+    # Loudness levels, 0 silent, 1 quiet, 2 mid, 3 loud, 4 max, 5 debug
+    LOUD_LEVELS = ('SILENT', 'QUIET', 'MID', 'LOUD', 'MAX', 'DEBUG')
+    ERROR_LEVELS = ('NONE', 'ERROR', 'WARNING', 'CHECK', 'SUGGEST', 'PROMPT')
+    RESULTS = ('NONE', 'ERROR', 'WARNING', 'CHECK', 'SUCCESS')
+
+    def __init__(self, fix_level=0, loudness=0):
+        self.loudness = loudness
+        self.fix_level = fix_level
+
+    def set_fix_level(self, fix_level):
+        if fix_level.isDigit():
+            self.fix_level = int(fix_level)
+        else:
+            fix_level = fix_level.upper()
+            if fix_level == 'ALL':
+                self.fix_level = 4
+            else:
+                self.fix_level = self.ERROR_LEVELS.index(fix_level)
 
     def can_prompt(self):
-        return self.FIX_LEVEL == self.FIX_PROMPT
+        return self.fix_level == self.FIX_PROMPT
 
-    def should_fix(self, description, bug_level):
+    def log(self, message):
+        if self.loudness >= 5:
+            print(message)
+
+    def info(self, message, loudness=2):
+        if self.loudness >= loudness:
+            print('INFO: {}'.format(message))
+
+    def warn(self, message, loudness=2):
+        if self.loudness >= loudness:
+            print('WARN: {}'.format(message))
+
+    def error(self, message, loudness=1):
+        print('ERROR: {}'.format(message))
+
+    def should_fix(self, bug):
         """Determines if a bug should be fixed"""
-        fix_level = AutoFix.FIX_LEVEL
-        if fix_level >= bug_level:
+        fix_level = self.fix_level
+        if fix_level >= bug.bug_level:
             should_fix = True
             if fix_level == self.FIX_PROMPT:
-                should_fix = self.prompt(description)
+                should_fix = self.prompt(bug.description, bug.fix_des)
             if should_fix:
-                if self.LOUDNESS >= bug_level:
-                    print('FIX: {}'.format(description))
+                if self.loudness >= bug.notify_level:
+                    print('FIX: {}'.format(bug.description))
                 return True
-        self.notify(description, bug_level)
+        self.notify(bug)
         return False
 
     @staticmethod
-    def prompt(description):
+    def prompt(description, proposed_fix=None):
         while True:
-            result = input('Auto fix: ' + description + '? (y/n)').lower()
+            result = input('Fix: ' + description + proposed_fix + '? (y/n)').lower()
             if result[0] == 'y':
                 return 1
             elif result[0] == 'n':
@@ -51,10 +106,17 @@ class AutoFix:
             else:
                 print('Invalid response, expects yes, no, or abort.')
 
-    def notify(self, description, bug_level):
+    def display_result(self, bug, result_level=4, result_message=None):
+        if self.loudness >= bug.notify_level:
+            if result_message:
+                print('(' + self.RESULTS[result_level] + ') ' + result_message)
+            else:
+                print('(' + self.RESULTS[result_level] + ') ' + bug.fix_des)
+
+    def notify(self, bug):
         """Notifies of a bug check"""
-        if bug_level <= self.LOUDNESS:
-            print('{}: {}'.format(self.ERROR_LEVELS[bug_level], description))
+        if self.loudness >= bug.notify_level:
+            print('{}: {}'.format(self.ERROR_LEVELS[bug.bug_level], bug.description))
 
     def get_level(self, level_str):
         """Expects level to be a string, as a number or one of the Error levels"""
@@ -70,9 +132,7 @@ class AutoFix:
             return self.ERROR_LEVELS.index(level_str)
 
     def set_loudness(self, level_str):
-        AutoFix.LOUDNESS = self.get_level(level_str)
+        self.loudness = self.get_level(level_str)
 
-    def set_fix_level(self, level_str):
-        AutoFix.FIX_LEVEL = self.get_level(level_str)
 
 AUTO_FIXER = AutoFix()

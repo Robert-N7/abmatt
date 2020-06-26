@@ -5,9 +5,9 @@
 # --------------------------------------------------------
 # Most Brres Subfiles
 # --------------------------------------------------------
-from abmatt.binfile import Folder, PackingError, printCollectionHex
+from abmatt.binfile import Folder, PackingError, printCollectionHex, UnpackingError
 from abmatt.matching import info_default
-from autofix import AUTO_FIXER
+from autofix import AUTO_FIXER, Bug
 
 
 class SubFile(object):
@@ -26,6 +26,7 @@ class SubFile(object):
         """ initialize with parent of this file """
         self.name = name
         self.parent = parent
+        self.version = self.EXPECTED_VERSION
 
     def __getitem__(self, item):
         if item == self.SETTINGS[0]:
@@ -61,17 +62,20 @@ class SubFile(object):
             raise ("{} {} unsupported version {}".format(self.MAGIC, self.name, self.version))
         return self.VERSION_SECTIONCOUNT[self.version]
 
-    def check(self, loudness):
+    def check(self):
         if self.version != self.EXPECTED_VERSION:
-            if AUTO_FIXER.should_fix('{} {} unusual version {}'.format(self.MAGIC, self.name, self.version), 2):
+            b = Bug(2, 3, '{} {} unusual version {}'.format(self.MAGIC, self.name, self.version),
+                    'set to {}'.format(self.EXPECTED_VERSION))
+            if b.should_fix():
                 self.version = self.EXPECTED_VERSION
 
     def _unpack(self, binfile):
         """ unpacks the sub file, subclass must use binfile.end() """
         offset = binfile.start()
-        # print('{} {} at {}'.format(self.MAGIC, self.name, offset))
+        print('{} {} at {}'.format(self.MAGIC, self.name, offset))
         magic = binfile.readMagic()
-        assert magic == self.MAGIC
+        if magic != self.MAGIC:
+            raise UnpackingError('Magic {} does not match expected {}'.format(magic, self.MAGIC))
         self.byte_len, self.version, outerOffset = binfile.read("2Ii", 12)
         self.numSections = self._getNumSections()
         binfile.store(self.numSections)  # store section offsets

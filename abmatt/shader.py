@@ -6,7 +6,7 @@ from copy import deepcopy, copy
 from abmatt.binfile import Folder
 from abmatt.matching import *
 from abmatt.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
-from autofix import AUTO_FIXER
+from autofix import AUTO_FIXER, Bug
 
 
 class ShaderList:
@@ -193,8 +193,10 @@ class Stage(Clipable):
             raise ValueError("No such shader stage setting {} possible keys are: \n\t{}".format(key, self.SETTINGS))
         return self.map[key]
 
-    def check(self, loudness):
-        pass
+    def check(self):
+        if not self.map['enabled']:
+            AUTO_FIXER.warn('{} Stage {} not enabled'.format(self.parent.getMaterialName(), self.id), 2)
+
 
     # -------------------- CLIPBOARD --------------------------------------------------
     def clip(self, clipboard):
@@ -764,7 +766,7 @@ class Shader(Clipable):
     def getTexRefCount(self):
         return len(self.material.layers)
 
-    def check(self, loudness):
+    def check(self):
         """Checks the shader for common errors, returns (direct_stage_count, ind_stage_count)"""
         prefix = 'Shader {}:'.format(self.getMaterialName())
         texRefCount = self.getTexRefCount()
@@ -776,49 +778,48 @@ class Shader(Clipable):
             if x['enabled']:
                 id = x['mapid']
                 if id >= texRefCount:
-                    if AUTO_FIXER.should_fix('{} Stage {} no such layer {}.'.format(prefix, x.id, id), 2):
-                        # try to find an unused one
-                        id = self.detect_unusedMapId()
-                        if id < texRefCount:
+                    id = self.detect_unusedMapId()
+                    if id < texRefCount:
+                        b = Bug(2, 2, '{} Stage {} no such layer {}.'.format(prefix, x.id, id),
+                                'Use layer {}'.format(id))
+                        if b.should_fix():
                             x['mapid'] = x['coordinateid'] = id
-                            AUTO_FIXER.notify('Set stage {} map to {}'.format(x.id, id), 4)
-                        else:
+                            b.resolve()
+                    else:
+                        b = Bug(2, 2, '{} Stage {} no such layer {}.'.format(prefix, x.id, id), 'Remove stage')
+                        if b.should_fix():
                             mark_to_remove.append(x)
+                            b.resolve()
                 else:
                     tex_usage[id] += 1
-
         for x in mark_to_remove:
-            AUTO_FIXER.notify('{} removing stage {}'.format(prefix, x.id), 4)
             self.stages.remove(x)
         # check stages
         for x in self.stages:
-            x.check(loudness)
+            x.check()
         # indirect check
         ind_stages = self.getIndCoords()
         for stage_id in range(len(self.indTexCoords)):
             x = self.indTexCoords[stage_id]
             if x < 7:
-                if x >= texRefCount:
-                    if AUTO_FIXER.should_fix('{} Indirect layer {} does not exist.'.format(prefix, x), 3):
-                        self.indTexCoords[stage_id] = 7
-                else:
+                if x < texRefCount:
                     try:
                         ind_stages.remove(stage_id)
                         tex_usage[x] += 1
                         ind_stage_count += 1
                     except ValueError:
-                        if AUTO_FIXER.should_fix('{} Indirect layer {} set, but not used'.format(prefix, x), 3):
-                            self.indTexCoords[stage_id] = 7
+                        AUTO_FIXER.warn('Ind coord {} set but unused'.format(x), 3)
         # now check usage count
-        if loudness > 2:
-            for i in range(len(tex_usage)):
-                x = tex_usage[i]
-                if x == 0:
-                    AUTO_FIXER.notify('{} Layer {} is not used in shader.'.format(prefix, i), 3)
-                elif x > 1:
-                    AUTO_FIXER.notify('{} Layer {} used {} times by shader.'.format(prefix, i, x), 3)
+        for i in range(len(tex_usage)):
+            x = tex_usage[i]
+            if x == 0:
+                b = Bug(3, 3, '{} Layer {} is not used in shader.'.format(prefix, i), 'remove layer')
+                AUTO_FIXER.notify(b)
+            elif x > 1:
+                b = Bug(4, 4, '{} Layer {} used {} times by shader.'.format(prefix, i, x), 'check shader')
+                AUTO_FIXER.notify(b)
         ind_matrices_used = self.getIndirectMatricesUsed()
-        self.material.check_shader(len(self.stages), ind_stage_count, ind_matrices_used, loudness)
+        self.material.check_shader(len(self.stages), ind_stage_count, ind_matrices_used)
 
 # possibly try to fix ctools bugs later
 # class TexCoord:

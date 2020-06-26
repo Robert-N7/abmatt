@@ -62,7 +62,7 @@ class BinFile:
             with open(self.filename, "wb") as f:
                 f.write(self.file)
         except:
-            AUTO_FIXER.notify('Permission Denied', 1)
+            AUTO_FIXER.error('Permission Denied', 1)
             return False
         return True
 
@@ -151,15 +151,16 @@ class BinFile:
         except IndexError:
             raise PackingError(self, "Marked index from {} at {} does not exist!".format(self.beginOffset, ref_index))
 
-    def createRefFromStored(self, ref_index=0, pop=True):
+    def createRefFromStored(self, ref_index=0, pop=True, start_ref=None):
         """ Creates reference to the current file offset
             in relation to the stored offset (not start!)
         """
+        refMarker = self.refMarker if start_ref is None else self.references[start_ref]
         try:
             if pop:
-                marked_offset = self.refMarker.pop(ref_index)
+                marked_offset = refMarker.pop(ref_index)
             else:
-                marked_offset = self.refMarker[ref_index]
+                marked_offset = refMarker[ref_index]
             self.writeOffset("I", marked_offset, self.offset - marked_offset)
             return marked_offset
         except IndexError:
@@ -377,12 +378,13 @@ class BinFile:
     def packNames(self):
         """packs in the names"""
         names = self.nameRefMap
-        # out = []
-        # for key in names:
-        #     reflist = names[key]
-        #     for x in reflist:
-        #         out.append(x[1])
-        # print(out)
+        out = []
+        for key in names:
+            reflist = names[key]
+            for x in reflist:
+                out.append(x[1])
+        with open('names.txt', 'w') as f:
+            f.write(str(out))
         for key in sorted(names):
             if key is not None and key != b'':
                 # self.advance(4)

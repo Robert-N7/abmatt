@@ -6,7 +6,7 @@ from fuzzywuzzy import fuzz
 BOOLABLE = ["False", "True"]
 
 
-def fuzzy_match(text, group):
+def fuzzy_match(text, group, acceptable_ratio=84):
     bssf = None
     best_ratio = 0
     lower = text.lower()
@@ -15,8 +15,20 @@ def fuzzy_match(text, group):
         if r > best_ratio:
             best_ratio = r
             bssf = x
-    return bssf
+    return bssf if best_ratio > acceptable_ratio else None
 
+
+def fuzzy_strings(text, strings, acceptable_ratio=50):
+    """Same as fuzzy_match except expects group of strings"""
+    bssf = None
+    best_ratio = 0
+    lower = text.lower()
+    for x in strings:
+        r = fuzz.ratio(lower, x.lower())
+        if r > best_ratio:
+            best_ratio = r
+            bssf = x
+    return bssf if best_ratio > acceptable_ratio else None
 
 
 class Clipable:

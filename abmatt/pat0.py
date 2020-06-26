@@ -5,7 +5,7 @@ from copy import deepcopy
 from abmatt.subfile import SubFile
 from abmatt.binfile import Folder
 from abmatt.matching import validBool, validInt, validFloat, splitKeyVal, Clipable
-from abmatt.autofix import AUTO_FIXER
+from abmatt.autofix import AUTO_FIXER, Bug
 
 
 class Pat0Collection:
@@ -170,8 +170,10 @@ class Pat0MatAnimation(Clipable):
         mark_for_removal = []
         for f in self.frames:
             if f.tex_name not in self.brres_textures and f.tex_name not in mark_for_removal:
-                if AUTO_FIXER.should_fix('No texture found matching pat0 {}'.format(f.tex_name), 3):
+                b = Bug(4, 1, 'No Tex0 matching {} in Pat0'.format(f.tex_name), 'Remove Tex0')
+                if b.should_fix():
                     mark_for_removal.append(f.tex_name)
+                    b.resolve()
         if mark_for_removal:
             self.frames = [x for x in self.frames if x.tex_name not in mark_for_removal]
             AUTO_FIXER.notify('Removed Pat0 frames {}'.format(mark_for_removal), 4)

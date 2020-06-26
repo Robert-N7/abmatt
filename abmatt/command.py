@@ -555,10 +555,11 @@ class Command:
             raise PasteError('Mismatched clipboard types (has {})'.format(self.CLIPTYPE))
         paste_count = 0
         if len(clip) == 1:
-            item = clip[clip.keys()[0]]
-            for x in selected:
-                x.paste(item)
-                paste_count += 1
+            for key in clip:
+                item = clip[key]
+                for x in selected:
+                    x.paste(item)
+                    paste_count += 1
         else:
             for x in selected:
                 to_paste = x.clip_find(clip)

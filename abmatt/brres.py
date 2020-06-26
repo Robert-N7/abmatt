@@ -5,7 +5,7 @@
 import os
 import string
 
-from abmatt.autofix import AUTO_FIXER
+from abmatt.autofix import AUTO_FIXER, Bug
 from abmatt.binfile import BinFile, Folder, UnpackingError
 from abmatt.chr0 import Chr0
 from abmatt.clr0 import Clr0
@@ -90,7 +90,7 @@ class Brres(Clipable):
             f = BinFile(filename, mode="w")
             self.pack(f)
             f.commitWrite()
-            AUTO_FIXER.notify("Wrote file '{}'".format(filename), 4)
+            AUTO_FIXER.info("Wrote file '{}'".format(filename), 4)
             self.name = filename
             self.isModified = False
             return True
@@ -242,7 +242,7 @@ class Brres(Clipable):
         self.folders[3] = self.anmSrt = self.generate_srt_collections()
 
     def pre_packing(self):
-        self.check(AUTO_FIXER.LOUDNESS)
+        self.check()
         folders = [x for x in self.folders]
         folders[2] = self.get_anim_for_packing(self.anmPat)
         folders[3] = self.get_anim_for_packing(self.anmSrt)
@@ -254,6 +254,7 @@ class Brres(Clipable):
         if root.open(name):
             container = self.folders[folderIndex]
             subFolder = Folder(binfile, name)
+            print('Folder {} at {}'.format(name, binfile.offset))
             subFolder.unpack(binfile)
             klass = self.CLASSES[folderIndex]
             while True:
@@ -323,7 +324,8 @@ class Brres(Clipable):
         binfile.markLen()
         for f in rt_folders:
             f.pack(binfile)
-        binfile.alignAndEnd()
+        binfile.end()
+        binfile.align()
         return rt_folders[1:]
 
     def pack(self, binfile):
@@ -352,15 +354,18 @@ class Brres(Clipable):
         binfile.end()
 
     # --------------------------------------------------------------------------
-    def check(self, loudness):
+    def check(self):
+        AUTO_FIXER.info('checking file {}'.format(self.name), 3)
         tex_names = set(self.getTextureMap().keys())
         tex_used = self.getUsedTextures()
         unused = tex_names - tex_used
         if unused:
-            if AUTO_FIXER.should_fix('Unused textures: {}'.format(unused), 3):
+            b = Bug(4, 3, 'Unused textures: {}'.format(unused), 'Remove textures')
+            if b.should_fix():
                 self.remove_unused_textures(unused)
+                b.resolve()
         for mdl in self.models:
-            mdl.check(loudness)
+            mdl.check()
 
     def remove_unused_textures(self, unused_textures):
         tex = self.textures

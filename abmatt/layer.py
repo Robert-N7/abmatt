@@ -1,10 +1,10 @@
 """ Layer class """
 from copy import copy, deepcopy
 
-from abmatt.matching import parseValStr, indexListItem, validBool, Clipable
+from abmatt.matching import parseValStr, indexListItem, validBool, Clipable, fuzzy_match, fuzzy_strings
 
 from abmatt.wiigraphics.xf import XFTexMatrix, XFDualTex
-from autofix import AUTO_FIXER
+from autofix import AUTO_FIXER, Bug
 
 
 class Layer(Clipable):
@@ -36,7 +36,6 @@ class Layer(Clipable):
         self.parent = parent
         self.name = name
         self.enable = True
-        self.scaleDefault = self.rotationDefault = self.translationDefault = True
         self.scale = (1, 1)
         self.rotation = 0
         self.translation = (0, 0)
@@ -134,8 +133,11 @@ class Layer(Clipable):
         return self.xfDualTex.normalize
 
     def getFlagNibble(self):
-        return self.enable | self.scaleDefault << 1 \
-               | self.rotationDefault << 2 | self.translationDefault << 3
+        scale_default = self.scale[0] == 1 and self.scale[1] == 1
+        rotation_default = self.rotation == 0
+        translation_default = self.translation[0] == 0 and self.translation[1] == 0
+        return self.enable | scale_default << 1 \
+               | rotation_default << 2 | translation_default << 3
 
     def getName(self):
         return self.name
@@ -166,17 +168,12 @@ class Layer(Clipable):
         i1 = float(values[0])
         i2 = float(values[1])
         if self.scale[0] != i1 or self.scale[1] != i2:
-            if i1 != 1 or i2 != 1:
-                self.scaleDefault = False
-            else:
-                self.scaleDefault = True
             self.scale = (i1, i2)
 
     def setRotationStr(self, value):
         f = float(value)
         if f != self.rotation:
             self.rotation = f
-            self.rotationDefault = False if self.rotation == 0 else True
 
     def setTranslationStr(self, value):
         values = parseValStr(value)
@@ -186,7 +183,6 @@ class Layer(Clipable):
         i2 = float(values[1])
         if self.translation[0] != i1 or self.translation[1] != i2:
             self.translation = (i1, i2)
-            self.translationDefault = 1 if i1 == 1 and i2 == 1 else 0
 
     def setCameraRefStr(self, value):
         i = int(value)
@@ -304,9 +300,9 @@ class Layer(Clipable):
     def setLayerFlags(self, nibble):
         """ from lsb, enable, scaledefault, rotationdefault, transdefault """
         self.enable = nibble & 1
-        self.scaleDefault = nibble >> 1 & 1
-        self.rotationDefault = nibble >> 2 & 1
-        self.translationDefault = nibble >> 3 & 1
+        # self.scaleDefault = nibble >> 1 & 1
+        # self.rotationDefault = nibble >> 2 & 1
+        # self.translationDefault = nibble >> 3 & 1
         return self.enable
 
     def setName(self, value):
@@ -317,6 +313,9 @@ class Layer(Clipable):
                    setLodBiasStr, setAnisotrophyStr, setClampBiasStr, setTexelInterpolateStr, setProjectionStr,
                    setInputFormStr, setTypeStr, setCoordinatesStr, setEmbossSourceStr, setEmbossLightStr,
                    setNormalizeStr, setName)
+
+    def __str__(self):
+        return self.name + ': srt:{} {} {}'.format(self.scale, self.rotation, self.translation)
 
     # -------------------------------------- PASTE ---------------------------
     def paste(self, item):
@@ -420,19 +419,29 @@ class Layer(Clipable):
     def uses_mipmaps(self):
         return self.minfilter > 1
 
-    def check(self, texture_map, loudness):
-        if loudness > 1:
-            try:
-                if self.uses_mipmaps():
-                    if texture_map[self.name].num_mips == 0:
-                        if AUTO_FIXER.should_fix('{} mipmaps enabled but none in TEX0.'.format(self.name), 4):
-                            self.minfilter = 1  # linear
-                            AUTO_FIXER.notify('Minfilter set to linear', 4)
-                else:
-                    if texture_map[self.name].num_mips > 0:
-                        if AUTO_FIXER.should_fix('{} mipmaps disabled but TEX0 has {}'.format(
-                                self.name, texture_map[self.name].num_mips), 4):
-                            self.minfilter = 5  # linearmipmaplinear
-                            AUTO_FIXER.notify('Minfilter set to LinearMipmapLinear', 4)
-            except KeyError:
-                pass # no tex ref found (checked this elsewhere, maybe move here?)
+    def check(self, texture_map):
+        tex = texture_map.get(self.name)
+        if not tex:
+            # try fuzz
+            result = fuzzy_strings(self.name, texture_map)
+            if result:
+                b = Bug(2, 3, 'No texture matching {}'.format(self.name), 'Rename to {}'.format(result))
+                if b.should_fix():
+                    self.parent.renameLayer(self, result)
+                    b.resolve()
+            else:
+                AUTO_FIXER.warn('No texture matching {}'.format(self.name))
+        if tex:
+            if self.uses_mipmaps():
+                if tex.num_mips == 0:
+                    b = Bug(4, 4, '{} no mipmaps in tex0'.format(self.name), 'Set minfilter to linear')
+                    if b.should_fix():
+                        self.minfilter = 1  # linear
+                        b.resolve()
+            else:
+                if tex.num_mips > 0:
+                    b = Bug(4, 4, '{} mipmaps disabled but TEX0 has {}'.format(
+                            self.name, tex.num_mips), 'Set minfilter to LinearMipmapLinear')
+                    if b.should_fix():
+                        self.minfilter = 5  # linearmipmaplinear
+                        b.resolve()

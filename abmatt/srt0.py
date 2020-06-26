@@ -2,10 +2,10 @@
 """ Srt0 Brres subfile """
 from copy import deepcopy, copy
 
-from abmatt.binfile import Folder
+from abmatt.binfile import Folder, printCollectionHex
 from abmatt.matching import validInt, validBool, validFloat, splitKeyVal, matches, Clipable
 from abmatt.subfile import SubFile
-from abmatt.autofix import AUTO_FIXER
+from abmatt.autofix import AUTO_FIXER, Bug
 
 
 # ---------------------------------------------------------
@@ -56,7 +56,7 @@ class SRTCollection:
                     added = True
                     break
             if not added:  # create new one
-                postfix = str(len(srts)) if len(srts) > 0 else ''
+                postfix = str(len(srts) + 1) if len(srts) > 0 else ''
                 s = Srt0(self.name + postfix, self.parent, x.framecount, x.looping)
                 if not s.add(x):
                     print('Error has occurred')
@@ -81,6 +81,9 @@ class SRTKeyFrameList:
         def __eq__(self, other):
             return self.index == other.index and self.value == other.value and self.delta == other.delta
 
+        def __str__(self):
+            return '({}:{}:{})'.format(self.index, self.value, self.delta)
+
     def __init__(self, frameCount, start_value=0):
         self.framecount = frameCount
         self.entries = [self.SRTKeyFrame(start_value)]
@@ -97,8 +100,12 @@ class SRTKeyFrameList:
         if value in ('disabled', 'none', 'remove'):
             self.removeKeyFrame(key)
         else:
+            delta = None
+            if ':' in value:
+                value, delta = splitKeyVal(value)
+                delta = validFloat(value, -0x7FFFFFFF, 0x7FFFFFFF)
             value = validFloat(value, -0x7FFFFFFF, 0x7FFFFFFF)
-            self.setKeyFrame(value, key)
+            self.setKeyFrame(value, key, delta)
 
     def __eq__(self, other):
         my_entries = self.entries
@@ -115,7 +122,7 @@ class SRTKeyFrameList:
     def __str__(self):
         val = '('
         for x in self.entries:
-            val += str(x.index) + ':' + str(x.value) + ', '
+            val += str(x) + ', '
         return val[:-2] + ')'
 
     def isDefault(self, is_scale):
@@ -144,7 +151,7 @@ class SRTKeyFrameList:
 
     def calcDelta(self, id1, val1, id2, val2):
         if id2 == id1:  # divide by 0
-            return 0
+            return self.entries[0].delta
         return (val2 - val1) / (id2 - id1)
 
     def updateEntry(self, entry_index):
@@ -168,31 +175,37 @@ class SRTKeyFrameList:
             prev.delta = self.calcDelta(prev_id, prev.value, entry.index, entry.value)
 
     # ------------------------------------------------ Key Frames ---------------------------------------------
-    def setKeyFrame(self, value, index=0):
+    def setKeyFrame(self, value, index=0, delta=None):
         """ Adds/sets key frame, overwriting any existing frame at index
             automatically updates delta.
         """
         if not 0 <= index <= self.framecount:
             raise ValueError("Frame Index {} out of range.".format(index))
         entries = self.entries
-        found = False
+        entry_index = -1
+        cntry = None
         for i in range(len(entries)):
             cntry = entries[i]
             if index < cntry.index:  # insert
-                new_entry = self.SRTKeyFrame(value, index)
-                entries.insert(i, new_entry)
-                self.updateEntry(i)
-                found = True
+                cntry = self.SRTKeyFrame(value, index)
+                entries.insert(i, cntry)
+                entry_index = i
                 break
             elif index == cntry.index:  # replace
                 cntry.value = value
+                new_entry = cntry
                 self.updateEntry(i)
-                found = True
+                entry_index = i
                 break
-        if not found:  # append it
-            new_entry = self.SRTKeyFrame(value, index)
-            entries.append(new_entry)
-            self.updateEntry(-1)
+        if entry_index < 0:  # append it
+            cntry = self.SRTKeyFrame(value, index)
+            entries.append(cntry)
+            self.updateEntry(entry_index)
+        if delta is None:
+            self.updateEntry(entry_index)
+        else:
+            cntry.delta = delta
+
 
     def removeKeyFrame(self, index):
         """ Removes key frame from list, updating delta """
@@ -655,19 +668,24 @@ class SRTMatAnim(Clipable):
                 self.tex_animations[j].name = layers[i].name
                 j += 1
 
-    def check(self, loudness):
+    def check(self):
         if not self.material:
             return
         max = len(self.material.layers)
         enabled = 0
-        if max < 8:
-            for i in range(max, 8):
-                if self.texEnabled[i]:
-                    enabled += 1
-                    if AUTO_FIXER.should_fix("{} SRT layer {} doesn't exist".format(self.material.name, i), 2):
+        for i in range(8):
+            if self.texEnabled[i]:
+                enabled += 1
+                if i >= max:
+                    b = Bug(1, 3, "{} SRT layer {} doesn't exist".format(self.material.name, i), 'Remove srt0 layer')
+                    if b.should_fix():
                         self.texDisable(i)
+                        b.resolve()
         if not enabled:
-            AUTO_FIXER.notify('No srt0 layers enabled!', 2)
+            b = Bug(3, 2, '{} no SRT0 layers enabled'.format(self.material.name), 'Remove SRT0')
+            if b.should_fix():
+                self.material.remove_srt0()
+                b.resolve()
 
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + '(SRT0)' + self.name if indentation_level else '>(SRT0):' + self.name
@@ -683,14 +701,13 @@ class SRTMatAnim(Clipable):
 
     # -----------------------------------------------------
     #  Packing
-    def consolidate(self, binfile, has_key_frames):
+    def consolidate(self, binfile, has_key_frames, frame_lists_offsets):
         """consolidates and packs the frame lists based on the animations that have key frames"""
-        frame_lists_offsets = {}  # dictionary to track offsets of frame lists
         frame_scale = Srt0.calcFrameScale(self.framecount)
-        for j in range(len(self.tex_animations)):
+        for j in range(len(self.tex_animations)):   # Each texture
             has_frames = has_key_frames[j]
             tex = self.tex_animations[j]
-            for i in range(len(has_frames)):
+            for i in range(len(has_frames)):    # srt
                 if has_frames[i]:
                     test_list = tex.animations[SRTTexAnim.SETTINGS[i]]
                     found = False
@@ -698,20 +715,20 @@ class SRTMatAnim(Clipable):
                         if frame_lists_offsets[x] == test_list:  # move the offset to create the reference and move back
                             tmp = binfile.offset
                             binfile.offset = x
-                            binfile.createRefFromStored()
+                            binfile.createRefFromStored(0, True, self.offset)
                             binfile.offset = tmp
                             found = True
                             break
                     if not found:
                         frame_lists_offsets[binfile.offset] = test_list
-                        binfile.createRefFromStored()
+                        binfile.createRefFromStored(0, True, self.offset)
                         test_list.pack(binfile, frame_scale)
 
     def unpack(self, binfile):
         """ unpacks the material srt entry """
-        binfile.start()
+        offset = binfile.start()
         # data = binfile.read('200B', 0)
-        # print('Mat Anim {}'.format(self.name))
+        print('Mat Anim {} at {}'.format(self.name, offset))
         # printCollectionHex(data)
         nameoff, enableFlag, uk = binfile.read("3I", 12)
         bit = 1
@@ -732,7 +749,7 @@ class SRTMatAnim(Clipable):
 
     def pack(self, binfile):
         """ Packs the material srt entry """
-        binfile.start()
+        self.offset = binfile.start()
         binfile.storeNameRef(self.name)
         # parse enabled
         i = count = 0
@@ -744,13 +761,14 @@ class SRTMatAnim(Clipable):
             bit <<= 1
         binfile.write("2I", i, 0)
         binfile.mark(count)
-        offsets = []
+        has_offsets = []
         animations = self.tex_animations
         for tex in animations:
             binfile.createRef()
-            offsets.append(tex.packHead(binfile))
-        self.consolidate(binfile, offsets)
+            has_offsets.append(tex.packHead(binfile))
+        # self.consolidate(binfile, offsets)
         binfile.end()
+        return has_offsets
     # -----------------------------------------------------
 
 
@@ -839,9 +857,14 @@ class Srt0(SubFile):
         for x in self.matAnimations:
             folder.addEntry(x.name)
         folder.pack(binfile)
+        mat_offsets = []
         for x in self.matAnimations:
             folder.createEntryRefI()
-            x.pack(binfile)
+            mat_offsets.append(x.pack(binfile))
+        # Now for key frames
+        key_frame_lists = {}  # map of offsets to frame lists
+        for x in self.matAnimations:
+            x.consolidate(binfile, mat_offsets.pop(0), key_frame_lists)
         # binfile.createRef()  # section 1 (unknown)
         # binfile.writeRemaining(self.section1)
         binfile.end()

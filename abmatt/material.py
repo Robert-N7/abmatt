@@ -464,7 +464,7 @@ class Material(Clipable):
     def set_srt0(self, anim):
         """This is called by model to set up the srt0 reference"""
         if self.srt0:
-            AUTO_FIXER.notify('Multiple Srt0 for {}'.format(self.name), 1)
+            AUTO_FIXER.error('Multiple Srt0 for {}'.format(self.name), 1)
             return False
         self.srt0 = anim
         anim.setMaterial(self)
@@ -524,31 +524,28 @@ class Material(Clipable):
             x.info(key, indentation_level)
 
     # ------------------------------------- Check ----------------------------------------
-    def check(self, texture_map, loudness):
-        self.shader.check(loudness)
+    def check(self, texture_map):
+        self.shader.check()
         for layer in self.layers:
-            layer.check(texture_map, loudness)
+            layer.check(texture_map)
         if self.pat0:
-            self.pat0.check(loudness)
+            self.pat0.check()
         if self.srt0:
-            self.srt0.check(loudness)
+            self.srt0.check()
 
-    def check_shader(self, direct_count, ind_count, matrices_used, loudness):
+    def check_shader(self, direct_count, ind_count, matrices_used):
         # checks with shader
         for i in range(2):
             matrix = self.matGX.getIndMatrix(i)
             if matrix.enabled:
                 if not matrices_used[i]:
-                    AUTO_FIXER.notify('{} indirect matrix {} enabled but unused in shader'.format(self.name, i), 3)
+                    AUTO_FIXER.warn('{} indirect matrix {} enabled but unused in shader'.format(self.name, i), 3)
             elif not matrix.enabled and matrices_used[i]:
-                AUTO_FIXER.notify('{} indirect matrix {} disabled but used in shader'.format(self.name, i), 3)
-        # possibly auto-update these in future?
+                AUTO_FIXER.warn('{} indirect matrix {} disabled but used in shader'.format(self.name, i), 3)
         if direct_count != self.shaderStages:
-            if AUTO_FIXER.should_fix('{} shader direct stage count mismatch'.format(self.name), 2):
-                self.shaderStages = direct_count
+            self.shaderStages = direct_count
         if ind_count != self.indirectStages:
-            if AUTO_FIXER.should_fix('{} shader indirect stage count mismatch'.format(self.name), 2):
-                self.indirectStages = ind_count
+            self.indirectStages = ind_count
 
     # -------------------------------- Layer removing/adding --------------------------
     def removeLayerI(self, index=-1):
@@ -737,7 +734,8 @@ class Material(Clipable):
 
     def unpack(self, binfile):
         """ Unpacks material """
-        binfile.start()
+        offset = binfile.start()
+        # print('Material {} offset {}'.format(self.name, offset))
         l, mdOff = binfile.read("Ii", 8)
         binfile.advance(4)
         self.id, xluFlags, ntexgens, nlights, \
