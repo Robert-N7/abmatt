@@ -5,7 +5,7 @@
 # ---------------------------------------------------------------------
 from copy import deepcopy
 
-from abmatt.matching import validBool, indexListItem, validInt, validFloat, findAll, matches, Clipable
+from abmatt.matching import validBool, indexListItem, validInt, validFloat, findAll, matches, Clipable, splitKeyVal
 from abmatt.layer import Layer
 from abmatt.wiigraphics.matgx import MatGX
 from abmatt.autofix import AUTO_FIXER
@@ -516,9 +516,9 @@ class Material(Clipable):
                 print("{}\t{}:{}".format(trace, key, val))
             return
         elif not key:
-            print("{}\tLayerCount:{} Xlu:{} CullMode:{} Blend:{}".format(trace, len(self.layers), self.xlu,
+            print("{}\tLayerCount:{} Xlu:{} CullMode:{} CompBeforeTexture:{}".format(trace, len(self.layers), self.xlu,
                                                                          self.CULL_STRINGS[self.cullmode],
-                                                                         self.getBlend()))
+                                                                         self.compareBeforeTexture))
         indentation_level += 1
         for x in self.layers:
             x.info(key, indentation_level)
@@ -778,8 +778,8 @@ class Material(Clipable):
 
 # LIGHT CHANNEL ----------------------------------------------------
 class LightChannel:
-    LC_ERROR = 'Invalid Light "{}", Expected [material|ambient|raster|diffuse|attenuation]\
-(color|alpha)[enable][control]:value'
+    LC_ERROR = 'Invalid Light "{}", Expected ((color|alpha)control:key:value|[material|ambient|raster]\
+(color|alpha)(enable|rgba))'
 
     def __init__(self):
         self.materialColorEnabled = False
@@ -790,7 +790,9 @@ class LightChannel:
         self.rasterAlphaEnabled = False
 
     def __str__(self):
-        return 'ColorControl: {}\nAlphaControl: {}'.format(self.colorLightControl, self.alphaLightControl)
+        return 'Flags:{:02X} Mat:{} Amb:{}\n\tColorControl: {}\n\tAlphaControl: {}'.format(self.flagsToInt(),
+                                                                         self.materialColor, self.ambientColor,
+                                                                         self.colorLightControl, self.alphaLightControl)
 
     def __getitem__(self, item):
         is_color = True if "color" in item else False
@@ -813,10 +815,13 @@ class LightChannel:
     def __setitem__(self, key, value):
         is_color = True if "color" in key else False
         if "control" in key:
+            key2, value = splitKeyVal(value)
+            if not key2:
+                raise ValueError(self.LC_ERROR.format(key))
             if is_color:
-                self.colorLightControl[key] = value
+                self.colorLightControl[key2] = value
             else:
-                self.alphaLightControl[key] = value
+                self.alphaLightControl[key2] = value
         elif 'enable' in key:
             val = validBool(value)
             if "material" in key:
@@ -871,8 +876,8 @@ class LightChannel:
             self.light4567 = flags >> 11 & 0xf
 
         def __str__(self):
-            return 'material:{} ambient:{} diffuse:{} attenuation:{}'.format(self['material'], self['ambient'],
-                                                                             self['diffuse'], self['attenuation'])
+            return 'enabled:{} material:{} ambient:{} diffuse:{} attenuation:{}'.format(self['enable'],
+                    self['material'], self['ambient'], self['diffuse'], self['attenuation'])
 
         def __getitem__(self, item):
             if 'material' in item:
@@ -891,7 +896,7 @@ class LightChannel:
         def __setitem__(self, key, value):
             if 'material' in key:
                 i = indexListItem(self.LIGHT_SOURCE, value, self.materialSourceVertex)
-                if i > 0:
+                if i >= 0:
                     self.materialSourceVertex = i
             elif 'enable' in key:
                 val = validBool(value)
@@ -936,9 +941,12 @@ class LightChannel:
         self.colorLightControl = self.LightChannelControl(data[9])
         self.alphaLightControl = self.LightChannelControl(data[10])
 
+    def flagsToInt(self):
+        return self.materialColorEnabled | self.materialAlphaEnabled << 1 | self.ambientColorEnabled << 2 \
+        | self.ambientAlphaEnabled << 3 | self.rasterColorEnabled << 4 | self.rasterAlphaEnabled << 5
+
     def pack(self, binfile):
-        flags = self.materialColorEnabled | self.materialAlphaEnabled << 1 | self.ambientColorEnabled << 2 \
-                | self.ambientAlphaEnabled << 3 | self.rasterColorEnabled << 4 | self.rasterAlphaEnabled << 5
+        flags = self.flagsToInt()
         mc = self.materialColor
         binfile.write('I4B', flags, mc[0], mc[1], mc[2], mc[3])
         ac = self.ambientColor

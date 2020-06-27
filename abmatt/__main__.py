@@ -114,6 +114,8 @@ class Shell(Cmd):
             Command.run_commands([Command(prefix + ' ' + cmd)])
         except ParsingException as e:
             print('{}, Type "?" for help.'.format(e))
+        except NoSuchFile as e:
+            print(e)
 
     def do_paste(self, line):
         self.run('paste', line)

@@ -89,10 +89,10 @@ class Brres(Clipable):
         else:
             f = BinFile(filename, mode="w")
             self.pack(f)
-            f.commitWrite()
-            AUTO_FIXER.info("Wrote file '{}'".format(filename), 4)
-            self.name = filename
-            self.isModified = False
+            if f.commitWrite():
+                AUTO_FIXER.info("Wrote file '{}'".format(filename), 4)
+                self.name = filename
+                self.isModified = False
             return True
 
     def getTrace(self):

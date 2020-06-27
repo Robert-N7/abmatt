@@ -47,7 +47,7 @@ class AutoFix:
     ERROR_LEVELS = ('NONE', 'ERROR', 'WARNING', 'CHECK', 'SUGGEST', 'PROMPT')
     RESULTS = ('NONE', 'ERROR', 'WARNING', 'CHECK', 'SUCCESS')
 
-    def __init__(self, fix_level=0, loudness=0):
+    def __init__(self, fix_level=4, loudness=4):
         self.loudness = loudness
         self.fix_level = fix_level
 

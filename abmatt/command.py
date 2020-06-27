@@ -481,9 +481,9 @@ class Command:
             for cmd in commandlist:
                 cmd.runCmd()
         except ValueError as e:
-            AUTO_FIXER.notify(e, 1)
+            AUTO_FIXER.error(e, 1)
         except SaveError as e:
-            AUTO_FIXER.notify(e, 1)
+            AUTO_FIXER.error(e, 1)
 
     def runCmd(self):
         if self.hasSelection:
@@ -507,7 +507,7 @@ class Command:
             return True
         self.updateTypeSelection()
         if not self.SELECTED:
-            AUTO_FIXER.notify("No items found in selection for '{}'".format(self.txt), 3)
+            AUTO_FIXER.error("No items found in selection for '{}'".format(self.txt), 3)
             return False
         else:
             if self.cmd == 'set':
