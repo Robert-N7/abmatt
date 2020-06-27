@@ -166,7 +166,7 @@ class Pat0MatAnimation(Clipable):
                 return True
         return False
 
-    def check(self, loudness):
+    def check(self):
         mark_for_removal = []
         for f in self.frames:
             if f.tex_name not in self.brres_textures and f.tex_name not in mark_for_removal:
@@ -233,7 +233,7 @@ class Pat0MatAnimation(Clipable):
                 break
             if tex_id >= len(textures):
                 tex_id = 0
-                AUTO_FIXER.notify('unpacked Pat0 tex_id out of range', 1)
+                AUTO_FIXER.warn('Unpacked Pat0 tex_id out of range', 1)
             frames.append(self.Frame(frame_id, textures[tex_id], plt_id))
 
     def pack_frames(self, binfile, textures):
