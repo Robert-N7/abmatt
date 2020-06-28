@@ -1,13 +1,12 @@
 """ BRRES Subfiles """
 
-# Todo, parse all name references so the offsets can be properly updated to the new string table
 
 # --------------------------------------------------------
 # Most Brres Subfiles
 # --------------------------------------------------------
 from abmatt.binfile import Folder, PackingError, printCollectionHex, UnpackingError
 from abmatt.matching import info_default
-from autofix import AUTO_FIXER, Bug
+from abmatt.autofix import AUTO_FIXER, Bug
 
 
 class SubFile(object):
@@ -72,7 +71,7 @@ class SubFile(object):
     def _unpack(self, binfile):
         """ unpacks the sub file, subclass must use binfile.end() """
         offset = binfile.start()
-        print('{} {} at {}'.format(self.MAGIC, self.name, offset))
+        # print('{} {} at {}'.format(self.MAGIC, self.name, offset))
         magic = binfile.readMagic()
         if magic != self.MAGIC:
             raise UnpackingError('Magic {} does not match expected {}'.format(magic, self.MAGIC))

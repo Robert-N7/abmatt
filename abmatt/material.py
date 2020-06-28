@@ -524,8 +524,13 @@ class Material(Clipable):
             x.info(key, indentation_level)
 
     # ------------------------------------- Check ----------------------------------------
-    def check(self, texture_map):
+    def getTextureMap(self):
+        return self.parent.getTextureMap()
+
+    def check(self, texture_map=None):
         self.shader.check()
+        if texture_map is None:
+            texture_map = self.getTextureMap()
         for layer in self.layers:
             layer.check(texture_map)
         if self.pat0:

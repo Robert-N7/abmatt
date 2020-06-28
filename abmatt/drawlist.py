@@ -1,5 +1,5 @@
 """Model Drawlist class"""
-from binfile import UnpackingError
+from abmatt.binfile import UnpackingError
 
 
 class Definition():

@@ -30,6 +30,9 @@ class NoSuchFile(Exception):
     def __init__(self, path):
         super(NoSuchFile, self).__init__('No such file "{}"'.format(path))
 
+class MaxFileLimit(Exception):
+    def __init__(self):
+        super(MaxFileLimit, self).__init__('Max file limit reached')
 
 class PasteError(Exception):
     def __init__(self, message=''):
@@ -66,13 +69,15 @@ class Command:
     SELECT_ID_NUMERIC = False  # current id numeric
     DESTINATION = None
     OVERWRITE = False
-    ACTIVE_FILES = []
+    ACTIVE_FILES = []   # currently being used in selection
+    OPEN_FILES = {} # currently open
     FILES_MARKED = set()  # files marked as modified
     MODELS = []
     MATERIALS = []
     PRESETS = {}
     CLIPBOARD = None
     CLIPTYPE = None
+    MAX_FILES_OPEN = 6
 
     TYPE_SETTING_MAP = {
         "material": Material.SETTINGS,
@@ -255,32 +260,57 @@ class Command:
                     break
             if len(files) > 1 or Command.ACTIVE_FILES and outside_active:
                 raise SaveError('Multiple files for single destination')
-        Command.ACTIVE_FILES = Command.openFiles(files, Command.ACTIVE_FILES)
+        Command.ACTIVE_FILES = Command.openFiles(files)
         Command.MODELS = []  # clear models
 
     @staticmethod
-    def openFiles(filenames, files):
-        # remove any names that are already open
-        opened = []
-        openedNames = []
-        for i in range(len(files)):
-            openedFile = files[i]
-            if not openedFile.name in filenames:
-                openedFile.close()
-                if openedFile in Command.FILES_MARKED:
-                    Command.FILES_MARKED.remove(openedFile)
+    def closeFiles(file_names):
+        opened = Command.OPEN_FILES
+        marked = Command.FILES_MARKED
+        for x in file_names:
+            file = opened.pop(x)
+            file.close()
+            marked.remove(file)
+
+    @staticmethod
+    def openFiles(filenames):
+        opened = Command.OPEN_FILES
+        max = Command.MAX_FILES_OPEN   # max that can remain open
+        if max - len(filenames) < 0:
+            raise MaxFileLimit
+        to_open = [f for f in filenames if f not in opened]
+        total = len(to_open) + len(opened)
+        needs_close = total > max
+        can_close = []  # modified but can close
+        to_close = []   # going to close
+        active = []     # active files to return
+        # first pass, mark non-modified files for closing, and appending active
+        for x in opened:
+            if x not in filenames:
+                if not opened[x].isModified:
+                    to_close.append(x)
+                    total -= 1
+                else:
+                    can_close.append(x)
             else:
-                opened.append(openedFile)
-                openedNames.append(openedFile.name)
+                active.append(opened[x])
+        if needs_close:
+            if total > max:     # mark modified files for closing
+                for x in can_close:
+                    to_close.append(x)
+                    total -= 1
+                    if total <= max:
+                        break
+            Command.closeFiles(to_close)
         # open any that aren't opened
-        for f in filenames:
-            if f not in openedNames:
-                try:
-                    brres = Brres(f)
-                    opened.append(brres)
-                except UnpackingError as e:
-                    AUTO_FIXER.notify(e, 1)
-        return opened
+        for f in to_open:
+            try:
+                brres = Brres(f)
+                active.append(brres)
+                opened[f] = brres
+            except UnpackingError as e:
+                AUTO_FIXER.notify(e, 1)
+        return active
 
     @staticmethod
     def load_commandfile(filename):
@@ -342,8 +372,6 @@ class Command:
         Command.MATERIALS = []  # reset materials
         for x in self.MODELS:
             Command.MATERIALS.extend(x.getMaterialsByName(self.name))
-        if not Command.MATERIALS:
-            AUTO_FIXER.notify('No matches found for {}'.format(self.name), 4)
         Command.SELECT_TYPE = None  # reset selection
         return True
 
@@ -468,8 +496,7 @@ class Command:
     @staticmethod
     def markModified():
         marked = Command.FILES_MARKED
-        for x in Command.MATERIALS:
-            f = x.parent.parent
+        for f in Command.ACTIVE_FILES:
             if f not in marked:
                 f.isModified = True
                 Command.FILES_MARKED.add(f)
@@ -483,6 +510,14 @@ class Command:
         except ValueError as e:
             AUTO_FIXER.error(e, 1)
         except SaveError as e:
+            AUTO_FIXER.error(e, 1)
+        except PasteError as e:
+            AUTO_FIXER.error(e, 1)
+        except MaxFileLimit as e:
+            AUTO_FIXER.error(e, 1)
+        except NoSuchFile as e:
+            AUTO_FIXER.error(e, 1)
+        except ParsingException as e:
             AUTO_FIXER.error(e, 1)
 
     def runCmd(self):

@@ -4,7 +4,7 @@ from copy import copy, deepcopy
 from abmatt.matching import parseValStr, indexListItem, validBool, Clipable, fuzzy_match, fuzzy_strings
 
 from abmatt.wiigraphics.xf import XFTexMatrix, XFDualTex
-from autofix import AUTO_FIXER, Bug
+from abmatt.autofix import AUTO_FIXER, Bug
 
 
 class Layer(Clipable):
@@ -419,7 +419,9 @@ class Layer(Clipable):
     def uses_mipmaps(self):
         return self.minfilter > 1
 
-    def check(self, texture_map):
+    def check(self, texture_map=None):
+        if texture_map is None:
+            texture_map = self.parent.getTextureMap()
         tex = texture_map.get(self.name)
         if not tex:
             # try fuzz
@@ -427,8 +429,9 @@ class Layer(Clipable):
             if result:
                 b = Bug(2, 3, 'No texture matching {}'.format(self.name), 'Rename to {}'.format(result))
                 if b.should_fix():
-                    self.parent.renameLayer(self, result)
+                    self.setName(result)
                     b.resolve()
+                    tex=texture_map.get(self.name)
             else:
                 AUTO_FIXER.warn('No texture matching {}'.format(self.name))
         if tex:

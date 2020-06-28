@@ -115,8 +115,10 @@ class TexCoord:
 
     def check(self):
         if self.divisor >= 32:
-            self.divisor = 0
-            AUTO_FIXER.error('UV divisor out of range, setting to 0', 4)
+            b = Bug(1, 3, '{} Corrupted'.format(self.name), 'Set UV divisor to 0')
+            if b.should_fix():
+                self.divisor = 0
+                b.resolve()
 
     def unpack(self, binfile):
         offset = binfile.start()
@@ -178,8 +180,10 @@ class Vertex():
 
     def check(self):
         if self.divisor >= 32:
-            AUTO_FIXER.error('Vertex divisor out of range, setting to 0.', 4)
-            self.divisor = 0
+            b = Bug(1, 3, '{} Corrupt vertex'.format(self.name), 'Set to 0')
+            if b.should_fix():
+                self.divisor = 0
+                b.resolve()
 
     def unpack(self, binfile):
         """ Unpacks some ptrs but mostly just leaves data as bytes """
@@ -461,7 +465,7 @@ class Mdl0(SubFile):
                 notify = 'Adding reference to unknown texture "{}"'.format(name)
                 if tex:
                     notify += ', did you mean ' + tex.name + '?'
-                AUTO_FIXER.notify(notify, 4)
+                AUTO_FIXER.info(notify, 4)
             new_link = TextureLink(name, self)
             self.textureLinks.append(new_link)
         old_link.num_references -= 1
@@ -514,13 +518,16 @@ class Mdl0(SubFile):
             if anim:
                 material.set_pat0(anim)
 
+    def getTextureMap(self):
+        return self.parent.getTextureMap()
+
     # --------------------------------------- Check -----------------------------------
     def check(self):
         """Checks model (somewhat) for validity
             texture_map: dictionary of tex_name:texture
         """
         super(Mdl0, self).check()
-        texture_map = self.parent.getTextureMap()
+        texture_map = self.getTextureMap()
         for x in self.materials:
             x.check(texture_map)
         expected_name = self.parent.getExpectedMdl()
@@ -583,16 +590,11 @@ class Mdl0(SubFile):
             self.shaders.unpack(binfile, self.materials)
         elif binfile.recall():  # from offset header
             section_klass = self.SECTION_CLASSES[section_index]
-            print('Index Group {} at {}'.format(self.SECTION_NAMES[section_index], binfile.offset))
             folder = Folder(binfile, self.SECTION_NAMES[section_index])
             folder.unpack(binfile)
             section = self.sections[section_index]
-            first = True
             while len(folder.entries):
                 name = folder.recallEntryI()
-                if first:
-                    print('First {} at {}'.format(self.SECTION_NAMES[section_index], binfile.offset))
-                    first = False
                 d = section_klass(name, self)
                 d.unpack(binfile)
                 section.append(d)

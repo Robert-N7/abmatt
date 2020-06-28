@@ -728,7 +728,7 @@ class SRTMatAnim(Clipable):
         """ unpacks the material srt entry """
         offset = binfile.start()
         # data = binfile.read('200B', 0)
-        print('Mat Anim {} at {}'.format(self.name, offset))
+        # print('Mat Anim {} at {}'.format(self.name, offset))
         # printCollectionHex(data)
         nameoff, enableFlag, uk = binfile.read("3I", 12)
         bit = 1

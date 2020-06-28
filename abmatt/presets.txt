@@ -122,7 +122,7 @@ set material comp1:Always
 # material settings
 preset opaque
 set material shadercolor:constant3:(0,0,0,128)
-set material indirectmatrix:0:scale14,(0.6396484375,0,0),(0,0.639648375,0)
+set material indirectmatrix:0:scale-3,(0.6396484375,0,0),(0,0.639648375,0)
 set material layerCount:3
 # layers
 set layer:0 name:ef_rainbowRed2

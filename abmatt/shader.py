@@ -6,7 +6,7 @@ from copy import deepcopy, copy
 from abmatt.binfile import Folder
 from abmatt.matching import *
 from abmatt.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
-from autofix import AUTO_FIXER, Bug
+from abmatt.autofix import AUTO_FIXER, Bug
 
 
 class ShaderList:

@@ -61,17 +61,18 @@ Version {}
 
 | Flag |Expanded| Description |
 |---|---|---|
+| -a | --auto-fix | Automatic fix options are none, error, warning, check, all, and prompt. (0-5) The default is to fix at the check level without prompting.
 | -b | --brres | Brres file selection. |
 | -d | --destination | The file path to be written to. Mutliple destinations are not supported. |
 | -f | --file | File with ABMatt commands to be processed as specified in file format. |
 | -h | --help | Displays a help message about program usage. |
 | -i | --interactive | Interactive shell mode. |
 | -k | --key | Setting key to be updated. |
+| -l | --loudness | Sets the verbosity level. (0-5)
 | -m | --model | Model selection. |
 | -n | --name | Material or layer name or regular expression to be found. |
 | -o | --overwrite | Overwrite existing files.  |
 | -t | --type | Type selection. |
-| -u | --uv-divisor-zero| Sets corrupt uv divisors to 0.
 | -v | --value | Value to set corresponding with key. (set command) |
 
 File command format in extended BNF:
@@ -209,11 +210,11 @@ def main():
         print(USAGE)
         sys.exit(0)
     try:
-        opts, args = getopt.getopt(argv, "ahd:oc:t:k:v:n:b:m:f:iuqs",
+        opts, args = getopt.getopt(argv, "a:hd:oc:t:k:v:n:b:m:f:iul:",
                                    ["help", "destination=", "overwrite",
                                     "command=", "type=", "key=", "value=",
                                     "name=", "brres=", "model=", "file=", "interactive",
-                                    "auto-fix=", "silent", "quiet"])
+                                    "auto-fix=", "loudness="])
     except getopt.GetoptError as e:
         print(e)
         print(USAGE)
@@ -254,11 +255,8 @@ def main():
             interactive = True
         elif opt in ("-a", "--auto-fix"):
             AUTO_FIXER.set_fix_level(arg)
-        elif opt in ("-s", "--silent"):
-            AUTO_FIXER.set_loudness(0)
-        elif opt in ("-q", "--quiet"):
-            if AUTO_FIXER.LOUDNESS:
-                AUTO_FIXER.set_loudness(2)
+        elif opt in ("-l", "--loudness"):
+            AUTO_FIXER.set_loudness(arg)
         else:
             print("Unknown option '{}'".format(opt))
             print(USAGE)

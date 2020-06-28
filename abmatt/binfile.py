@@ -62,7 +62,7 @@ class BinFile:
             with open(self.filename, "wb") as f:
                 f.write(self.file)
         except:
-            AUTO_FIXER.error('Permission Denied', 1)
+            AUTO_FIXER.error('Unable to open {}, Permission Denied'.format(self.filename), 1)
             return False
         return True
 

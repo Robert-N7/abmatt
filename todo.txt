@@ -1,9 +1,7 @@
-- Shp0 subfile parsing
-- Clr0 subfile parsing
-- other subfiles
+
+- Shader consolidation
 - Command:
     - Command completion
-    - copy/paste
     - dump
 - ignore case matching
 - better info amounts, detect singles vs groups

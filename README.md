@@ -32,18 +32,17 @@ abmatt [-i -f <file> -b <brres-file> -d <destination> -o -t <type> -k <key> -v <
 ```
 | Flag |Expanded| Description |
 |---|---|---|
-| -a | --auto-fix | Automatic fix options are none, error, warning, check, all, and prompt. The default is to fix at the check level without prompting.
+| -a | --auto-fix | Automatic fix options are none, error, warning, check, all, and prompt. (0-5) The default is to fix at the check level without prompting.
 | -b | --brres | Brres file selection. |
 | -d | --destination | The file path to be written to. Mutliple destinations are not supported. |
 | -f | --file | File with ABMatt commands to be processed as specified in file format. |
 | -h | --help | Displays a help message about program usage. |
 | -i | --interactive | Interactive shell mode. |
 | -k | --key | Setting key to be updated. |
+| -l | --loudness | Sets the verbosity level. (0-5)
 | -m | --model | Model selection. |
 | -n | --name | Material or layer name or regular expression to be found. |
 | -o | --overwrite | Overwrite existing files.  |
-| -q | --quiet | Lowers verbosity level to errors and warnings. |
-| -s | --silent | Runs silently. |
 | -t | --type | Type selection. |
 | -v | --value | Value to set corresponding with key. (set command) |
 

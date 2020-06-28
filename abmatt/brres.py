@@ -254,7 +254,7 @@ class Brres(Clipable):
         if root.open(name):
             container = self.folders[folderIndex]
             subFolder = Folder(binfile, name)
-            print('Folder {} at {}'.format(name, binfile.offset))
+            # print('Folder {} at {}'.format(name, binfile.offset))
             subFolder.unpack(binfile)
             klass = self.CLASSES[folderIndex]
             while True:
@@ -356,6 +356,8 @@ class Brres(Clipable):
     # --------------------------------------------------------------------------
     def check(self):
         AUTO_FIXER.info('checking file {}'.format(self.name), 3)
+        for mdl in self.models:
+            mdl.check()
         tex_names = set(self.getTextureMap().keys())
         tex_used = self.getUsedTextures()
         unused = tex_names - tex_used
@@ -364,8 +366,6 @@ class Brres(Clipable):
             if b.should_fix():
                 self.remove_unused_textures(unused)
                 b.resolve()
-        for mdl in self.models:
-            mdl.check()
 
     def remove_unused_textures(self, unused_textures):
         tex = self.textures
