@@ -1,9 +1,10 @@
 """Model Drawlist class"""
+from abmatt.binfile import UnpackingError
 
 
 class Definition():
-    ''' Definition, controls drawing commands such as opacity'''
-    names = ("DrawOpa", "DrawXlu", "MixNode", "NodeTree")  # todo check these
+    """ Definition, controls drawing commands such as opacity"""
+    names = ("DrawOpa", "DrawXlu", "MixNode", "NodeTree")
 
     def __init__(self, name, parent):
         self.name = name
@@ -34,8 +35,7 @@ class Definition():
                     drawl = [weight_id, weight_count] + weights
                     current_list.append(drawl)
                 elif byte > 0x6:  # error reading list?
-                    print("Error unpacking list {}".format(current_list))
-                    break
+                    raise UnpackingError(binfile, "Error unpacking definitions")
                 else:
                     current_list.append(binfile.read("4B", 4))
 

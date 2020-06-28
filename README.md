@@ -22,26 +22,29 @@ ABMatt supports editing the following types:
 * layers
 * shaders
 * stages
+* pat0
+* srt0
 
 
 ## Command Line Usage
 ```
-abmatt -f <file> [-d <destination> -o -c <commandfile> -k <key> -v <value> -t <type> -n <name> -m <model> -i -s]
+abmatt [-i -f <file> -b <brres-file> -d <destination> -o -t <type> -k <key> -v <value> -n <name> -m <model> -a -s -q]
 ```
 | Flag |Expanded| Description |
 |---|---|---|
-| -c | --commandfile | File with ABMatT commands to be processed as specified in file format. |
-| -d | --destination | The file name to be written to. Mutliple destinations are not supported. |
-| -f | --file | The brres file name to be read from |
+| -a | --auto-fix | Automatic fix options are none, error, warning, check, all, and prompt. (0-5) The default is to fix at the check level without prompting.
+| -b | --brres | Brres file selection. |
+| -d | --destination | The file path to be written to. Mutliple destinations are not supported. |
+| -f | --file | File with ABMatt commands to be processed as specified in file format. |
 | -h | --help | Displays a help message about program usage. |
-| -i | --info | Information flag that generates additional informational output. |
-| -k | --key | Setting key to be updated. See [File Format](## File Format) for keys. |
-| -m | --model | The name of the model to search in. |
+| -i | --interactive | Interactive shell mode. |
+| -k | --key | Setting key to be updated. |
+| -l | --loudness | Sets the verbosity level. (0-5)
+| -m | --model | Model selection. |
 | -n | --name | Material or layer name or regular expression to be found. |
-| -o | --overwrite | Overwrite existing files. The default is to not overwrite the input file or any other file unless this flag is used. |
-| -s | --shell | Interactive shell mode. |
-| -t | --type | Type (material, layer, shader, stage) |
-| -v | --value | Setting value to be paired with a key. |
+| -o | --overwrite | Overwrite existing files.  |
+| -t | --type | Type selection. |
+| -v | --value | Value to set corresponding with key. (set command) |
 
 ### Command Line Examples
 This command would open *course_model.brres* in overwrite mode and run the commands stored in *my_commands.txt*
@@ -60,7 +63,8 @@ Parameters are delimited by spaces except where a ':' or ',' is specified. Case 
 line = begin_preset | command;
 begin_preset = '[' <preset_name> ']' EOL; 
 
-command = (set | info | add | remove | select | preset | save) ['for' selection] EOL;
+command =  cmd-prefix ['for' selection] EOL;
+cmd-prefix = set | info | add | remove | select | preset | save | copy | paste;
 set   = 'set' type setting;
 info  = 'info' type [key | 'keys'];
 add   = 'add' type;
@@ -68,15 +72,20 @@ remove = 'remove' type;
 select = 'select' selection;    Note: does not support 'for' selection clause
 preset = 'preset' preset_name;
 save = 'save' [filename] ['as' destination] ['overwrite']
+copy = 'copy' type;
+paste = 'paste' type;
 
 selection = name ['in' container]
-container = ['file' filename] ['model' name];
-type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id];
+container = ['brres' filename] ['model' name];
+type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id]
+    | 'srt0' | 'srt0layer' [':' id] | 'pat0'
+    | 'mdl0' | 'brres';
 
 setting =  key ':' value; NOTE: No spaces allowed in key:value pairs
-key = material-key | layer-key | shader-key | stage-key; 
-value = material-value | layer-value | shader-value | stage-value | 'true' | 'false' | number-list;
-number-list = number {,number}; 
+key = material-key | layer-key | shader-key | stage-key
+    | srt0-key | srt0-layer-key | pat0-key; 
+value = material-value | layer-value | shader-value | stage-value
+    |  srt0-value | srt0-layer-value | pat0-value; 
 ```
 
 ### Selection Explanation
@@ -134,7 +143,7 @@ coordinates   = 'geometry' | 'normals' | 'colors' | 'binfileormalst' |
 ```
 ### Shader Keys
 ```
-shader-key = 'stagecount', 'texturerefcount' | 'indirectmap' [<n>] | 'indirectcoord' [<n>];
+shader-key = 'stagecount' | 'indirectmap' [<n>] | 'indirectcoord' [<n>] | 'indirectmap' [<n>];
 ```
 ### Stage Keys
 ```
@@ -143,7 +152,9 @@ stage-key = 'enabled' | 'mapid' | 'coordinateid' | 'textureswapselection' |
    'colora' | 'colorb' | 'colorc' | 'colord' | 'colorbias' |
    'coloroperation' | 'colorclamp' | 'colorscale' | 'colordestination' |
    'alphaconstantselection' | 'alphaa' | 'alphab' | 'alphac' | 'alphad' |
-   'alphabias' | 'alphaoperation' | 'alphaclamp' | 'alphascale' | 'alphadestination' | 'indirectstage' | 'indirectformat' | 'indirectalpha' | 'indirectbias' | 'indirectmatrix' | 'indirectswrap' | 'indirecttwrap' | 'indirectuseprevstage' | 'indirectunmodifiedlod';
+   'alphabias' | 'alphaoperation' | 'alphaclamp' | 'alphascale' | 'alphadestination' | 
+   'indirectstage' | 'indirectformat' | 'indirectalpha' | 'indirectbias' | 
+   'indirectmatrixselection' | 'indirectswrap' | 'indirecttwrap' | 'indirectuseprevstage' | 'indirectunmodifiedlod';
 
 RASTER_COLORS = 'lightchannel0' | 'lightchannel1' | 'bumpalpha' | 'normalizedbumpalpha' | 'zero';
 COLOR_CONSTANTS = '1_1' | '7_8' | '3_4' | '5_8' | '1_2' | '3_8' | '1_4' | '1_8' |
@@ -178,6 +189,24 @@ IND_MATRIX = 'nomatrix' | 'matrix0' | 'matrix1' | 'matrix2' | 'matrixs0' |
 WRAP = 'nowrap' | 'wrap256' | 'wrap128' | 'wrap64' | 'wrap16' | 'wrap0'; 
 ```
 
+### SRT0 Keys
+```
+srt0-keys = 'framecount' | 'loop' | 'layerenable'
+srt0-layer-enable = id ':' ('true' | 'false') 
+```
+### SRT0 Layer Keys
+```
+srt0-layer-keys = 'xscale' | 'yscale' | 'rot' | 'xtranslation' | 'ytranslation';
+srt0-layer-values = 'disabled' | key-frame-list;
+key-frame-list = key-frame-index ':' value {',' key-frame ':' value};
+```
+
+### PAT0 Keys
+```
+pat0-keys = 'framecount' | 'loop' | 'keyframe'
+pat0-keyframe = key-frame-list
+```
+
 ### Example File Commands
 Example file commands:
 ```
@@ -198,3 +227,17 @@ set layer mapmode:linear_mipmap_linear
 ```
 Calling the preset:
 `preset my_preset for my_material_name`
+
+### Copy/Paste
+* Copy operations do not perform byte copying.
+* The type must match when copying. 
+* Group copying matches selected items on their names/ids.
+* Single copying pastes over all selected without matching names.
+* Names are not changed when pasting.
+* Copying a material will copy all settings related to the material, including layers, shaders, and animations.
+
+The following finds matches by material names in two brres files and pastes the material data.
+```
+copy material for * in course_model.brres
+paste material for * in new_model.brres
+```  

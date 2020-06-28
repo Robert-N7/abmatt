@@ -7,7 +7,7 @@ with open('README.md') as file:
 
 
 # specify requirements of your package here
-REQUIREMENTS = []
+REQUIREMENTS = ['fuzzywuzzy', 'python-Levenshtein']
 
 # some more details
 CLASSIFIERS = [
@@ -19,7 +19,7 @@ CLASSIFIERS = [
 
 # calling the setup function
 setup(name='abmatt',
-      version='0.4.2',
+      version='0.5.0',
       entry_points={
           'console_scripts': [
               'abmatt = abmatt.__main__:main'

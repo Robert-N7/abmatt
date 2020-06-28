@@ -2,6 +2,96 @@
 # Presets file, you are encouraged to edit/add your own
 # ----------------------------------------------------------
 
+[default_layer]
+set scale:1,1
+set rotation:0
+set translation:1,1
+set scn0cameraref:-1
+set scn0lightref:-1
+set mapmode:texcoord
+set uwrap:repeat
+set vwrap:repeat
+set minfilter:linear_mipmap_linear
+set magfilter:linear
+set lodbias:0
+set anisotrophy:1
+set clampbias:False
+set texelinterpolate:False
+set projection:st
+set inputform:ab11
+set type:regular
+set coordinates:texcoord0
+set embosssource:5
+set embosslight:0
+set normalize:False
+
+[default_material]
+set layercount:1
+set xlu:False
+set ref0:0
+set ref1:0
+set comp0:always
+set comp1:always
+set comparebeforetexture:false
+set blend:false
+set blendsrc:sourcealpha
+set blendlogic:copy
+set blenddest:inversesourcealpha
+set constantalpha:disable
+set cullmode:inside
+set shadercolor:0:0
+set shadercolor:1:0
+set shadercolor:2:0
+set shadercolor:constant0:0
+set shadercolor:constant1:0
+set shadercolor:constant2:0
+set shadercolor:constant3:0
+set lightchannel:colorcontrolmaterial:register
+set lightchannel:alphacontrolmaterial:register
+set lightset:-1
+set fogset:0
+set matrixmode:maya
+set enabledepthtest:true
+set enabledepthupdate:true
+set depthfunction:lessorequal
+set drawpriority:0
+set indirectmatrix:0:disable
+preset default_layer
+
+[default_stage]
+set mapid:0
+set coordinateid:0
+set rastercolor:lightchannel0
+set colorA:0
+set colorB:textureColor
+set colorC:rasterColor
+set colorD:0
+set colorscale:multiplyby1
+set colordestination:outputcolor
+set alphaA:0
+set alphaB:textureAlpha
+set alphaC:rasterAlpha
+set alphaD:0
+set alphascale:multiplyby1
+set alphaDestination:outputAlpha
+set indirectBias:none
+set indirectmatrixselection:nomatrix
+
+[default_shader]
+set stageCount:1
+set indirectmap:7
+set indirectcoord:7
+preset default_stage
+
+[default_srt0]
+add srt0
+set framecount:200
+set srt0layer:0 ytranslation:200:6
+
+[default]
+preset default_material
+preset default_shader
+
 [transparent]
 set material CompareBeforeTexture:False
 set material xlu:False
@@ -32,7 +122,7 @@ set material comp1:Always
 # material settings
 preset opaque
 set material shadercolor:constant3:(0,0,0,128)
-set material indirectmatrix:0:scale14,(0.6396484375,0,0),(0,0.639648375,0)
+set material indirectmatrix:0:scale-3,(0.6396484375,0,0),(0,0.639648375,0)
 set material layerCount:3
 # layers
 set layer:0 name:ef_rainbowRed2
@@ -48,7 +138,6 @@ set layer:2 name:ef_arrowGradS
 set shader indirectmap:1
 set shader indirectcoord:1
 set shader stageCount:2
-set shader texturerefcount:3
 # stage 0
 set stage:0 mapid:2
 set coordinateid:2
@@ -62,7 +151,7 @@ set stage:1 mapid:0
 set coordinateid:0
 set rastercolor:0
 set colorConstantSelection:5_8
-set colorA:TextureAlpha
+set colorA:TextureColor
 set colorB:0
 set colorC:0
 set colorD:OutputColor
@@ -72,7 +161,144 @@ set alphaB:0
 set alphaC:ConstantAlphaSelection
 set alphaD:OutputAlpha
 set indirectBias:stu
-set stage:1 indirectMatrix:Matrix0
+set stage:1 indirectMatrixSelection:Matrix0
+# srt0
+add srt0
+set srt0 loop:true
+set srt0 framecount:200
+set srt0 layerenable:1:True
+set srt0 layerenable:2:True
+set srt0layer:0 rot:(0:45)
+set xtranslation:(200:1)
+set srt0layer:1 ytranslation:(200:6)
+set xscale:(0:2)
+set srt0layer:2 ytranslation:(200:6)
+set xscale:(0:2)
+
+[ef_sea]
+set material layercount:3
+set indirectmatrix:Scale-3,(0.1806640625,-0.73046875,0.0,0.083984375,0.5791015625,0.0)
+preset opaque
+set shadercolor:color0:(0,53,100,0)
+# todo add indirect matrix
+# layers
+set scale:(20,20)
+set minfilter:linearMipmapLinear
+set lodbias:-0.07
+set layer:1 name:ef_wave_indMip
+set scale:(16,16)
+set minfilter:linearMipmapLinear
+set lodbias:0.81
+set layer:2 name:ef_prj_glow
+set scale:(0.4,0.4)
+set translation:(-0.66,-0.28)
+set uwrap:clamp
+set vwrap:clamp
+set minfilter:linear
+set scn0cameraref:0
+set mapmode:projection
+set projection:stq
+set inputform:abc1
+set coordinates:geometry
+# shader
+set indirectmap:1
+set indirectcoord:1
+set stagecount:2
+set stage:0 mapid:2
+set coordinateid:2
+set colorconstantselection:3_4
+set colora:color0
+set colorb:one
+set colorc:texturecolor
+set indirectbias:stu
+set indirectmatrixselection:0
+set stage:1 mapid:0
+set coordinateid:0
+set colorconstantselection:1_2
+set colora:color0
+set colorb:outputcolor
+set colorc:texturecolor
+set colord:outputcolor
+set alphaa:outputalpha
+set alphab:zero
+set alphac:zero
+set alphad:zero
+set indirectbias:stu
+set indirectmatrixselection:0
+# srt0
+add srt0
+set framecount:500
+set layerenable:1:True
+set layerenable:2:True
+set srt0layer:0 xscale:0:20
+set yscale:0:20
+set xtranslation:500:-0.05
+set ytranslation:500:0.05
+set srt0layer:1 xscale:0:16
+set yscale:0:16
+set xtranslation:500:0.0625
+set ytranslation:500:0.0625
+
+[ef_hpipeboard]
+# material
+preset opaque
+set cullmode:none
+set shadercolor:0:(155,134,255,255)
+set shadercolor:constant3:(0,85,85,128)
+set indirectmatrix:scale-2,(0.7197265625,0,0,0,0,0)
+set layercount:3
+# layer 0
+set layer:0 name:arrowShMrr
+set scale:(0.5,0.5)
+set vwrap:mirror
+# layer 1
+set layer:1 name:rainbowBlueMrr
+set uwrap:mirror
+# layer 2
+set layer:2 name:bumpGrad
+set scale:(-3,-3)
+set rotation:90
+# shader
+set indirectmap:2
+set indirectCoord:2
+set stageCount:2
+# stage 0
+set stage:0 mapID:1
+set stage:0 coordinateID:1
+set colorConstantSelection:color3_aaa
+set colorA:textureColor
+set colorB:Zero
+set colorC:Zero
+set alphaconstantselection:color3_alpha
+set alphaB:textureAlpha
+set alphaC:constantAlphaSelection
+set indirectBias:STU
+set indirectMatrixSelection:Matrix0
+# stage 1
+set stage:1 mapID:0
+set coordinateID:0
+set colorConstantSelection:color3_aaa
+set colorB:outputColor
+set colorC:TextureAlpha
+set colorD:TextureColor
+set alphaConstantSelection:constant1_1
+set alphaB:constantAlphaSelection
+set alphaC:constantAlphaSelection
+set alphaD:outputAlpha
+# srt0
+add srt0
+set srt0 framecount:400
+set loop:true
+set layerenable:0:true
+set layerenable:1:true
+set srt0layer:0 yscale:(0:2)
+set xtranslation:(400:5)
+set ytranslation:(0:0.5)
+set srt0layer:1 xscale:(0:0.25)
+set yscale:(0:0.25)
+set xtranslation:(400:8)
+set ytranslation:(400:8)
+
 
 [wt_uriver]
 # material
@@ -108,7 +334,6 @@ set layer:3 name:WT_river03
 set lodbias:-0.5
 set minfilter:LinearMipmapLinear
 # shader
-set shader texturerefcount:4
 set shader indirectmap:1
 set shader indirectcoord:1
 set shader stagecount:3
@@ -125,7 +350,7 @@ set alphaB:TextureAlpha
 set alphaC:TextureAlpha
 set alphadestination:alpha1
 set indirectbias:stu
-set stage:0 indirectmatrix:matrix0
+set stage:0 indirectmatrixSelection:matrix0
 # stage 1
 set stage:1 MapID:2
 set CoordinateID:2
@@ -138,7 +363,7 @@ set alphaConstantSelection:color0_alpha
 set alphaB:alpha0
 set alphaC:alpha1
 set indirectbias:stu
-set indirectmatrix:matrix0
+set indirectmatrixSelection:matrix0
 # stage 2
 set stage:2 mapID:3
 set CoordinateID:3
@@ -151,52 +376,47 @@ set alphaB:outputAlpha
 set alphaC:ConstantAlphaSelection
 set alphaD:alpha2
 set indirectbias:stu
-set indirectMatrix:Matrix0
+set indirectMatrixSelection:Matrix0
+# srt0
+add srt0
+set srt0 framecount:300
+set loop:true
+set layerenable:0:False
+set layerenable:1:True
+set layerenable:2:True
+set layerenable:3:True
+set srt0layer:1 xtranslation:(300:1)
+set ytranslation:(300:-1)
+set srt0layer:2 ytranslation:(300,-2)
+set srt0layer:3 ytranslation:(300,-1)
 
-[ef_hpipeboard]
+[wt_takitubo]
 # material
-preset opaque
-set cullmode:none
-set shadercolor:0:(155,134,255,255)
-set shadercolor:constant3:(0,85,85,128)
-set indirectmatrix:scale-2,(0.7197265625,0,0,0,0,0)
-set layercount:3
-# layer 0
-set layer:0 name:arrowShMrr
-set scale:(0.5,0.5)
-set vwrap:mirror
-# layer 1
-set layer:1 name:rainbowBlueMrr
-set uwrap:mirror
-# layer 2
-set layer:2 name:bumpGrad
-set scale:(-3,-3)
-set rotation:90
+set layercount:2
+preset blend
+set indirectmatrix:-4,(0.6396484375,0.0,0.0,0.0,0.6396484375,0.0)
+# layers
+set layer:0 name:WT_TakiTubo01
+set minfilter:linearMipmapLinear
+set lodbias:-1
+set layer:1 name:ef_wave_indMip
+set minfilter:linearMipmapLinear
+set lodbias:-2
 # shader
-set shader textureRefCount:3
-set indirectmap:2
-set indirectCoord:2
-set stageCount:2
-# stage 0
-set stage:0 mapID:1
-set stage:0 coordinateID:1
-set colorConstantSelection:color3_aaa
-set colorA:textureColor
-set colorB:Zero
-set colorC:Zero
-set alphaconstantselection:color3_alpha
-set alphaB:textureAlpha
-set alphaC:constantAlphaSelection
-set indirectBias:STU
-set indirectMatrix:Matrix0
-# stage 1
-set stage:1 mapID:0
-set coordinateID:0
-set colorConstantSelection:color3_aaa
-set colorB:outputColor
-set colorC:TextureAlpha
-set colorD:TextureColor
-set alphaConstantSelection:constant1_1
-set alphaB:constantAlphaSelection
-set alphaC:constantAlphaSelection
-set alphaD:outputAlpha
+set indirectmap:1
+set indirectcoord:1
+set stagecount:1
+# stages
+set stage:0 mapid:0
+set coordinateid:0
+set colorscale:multiplyby2
+set rastercolor:lightchannel0
+set indirectmatrixselection:0
+set indirectbias:stu
+# srt0
+add srt0
+set framecount:180
+set loop:true
+set layerenable:0:true
+set ytranslation:180:-1
+

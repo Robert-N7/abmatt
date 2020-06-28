@@ -3,46 +3,81 @@
 # ---------------------------------------------------------------------------
 import fnmatch
 import os
-import sys
 
+from abmatt.binfile import UnpackingError
 from abmatt.brres import Brres
 from abmatt.layer import Layer
 from abmatt.matching import validInt, findAll
 from abmatt.material import Material
-from abmatt.shader import Shader, Stage
-from abmatt.srt0 import Srt0
 from abmatt.mdl0 import Mdl0
-from abmatt.binfile import UnpackingError
+from abmatt.shader import Shader, Stage
+from abmatt.pat0 import Pat0, Pat0MatAnimation
+from abmatt.srt0 import Srt0, SRTMatAnim, SRTTexAnim
+from abmatt.autofix import AUTO_FIXER
 
 
 class ParsingException(Exception):
     def __init__(self, txt, message=''):
-        super(ParsingException, self).__init__("Error parsing: '" + txt + "' " + message)
+        super(ParsingException, self).__init__("ERROR parsing: '" + txt + "' " + message)
 
 
-def getShadersFromMaterials(materials, models, for_modification=True):
+class SaveError(Exception):
+    def __init__(self, message=''):
+        super(SaveError, self).__init__(message)
+
+
+class NoSuchFile(Exception):
+    def __init__(self, path):
+        super(NoSuchFile, self).__init__('No such file "{}"'.format(path))
+
+class MaxFileLimit(Exception):
+    def __init__(self):
+        super(MaxFileLimit, self).__init__('Max file limit reached')
+
+class PasteError(Exception):
+    def __init__(self, message=''):
+        super(PasteError, self).__init__(message)
+
+
+def getShadersFromMaterials(materials, for_modification=True):
     """Gets unique shaders from material list, where materials may come from different models,
         may have to detach if shared with material not in list
     """
     shaders = []
-    for x in models:
-        shaders.extend(x.getShaders(materials, for_modification))
+    models_checked = []
+    for x in materials:
+        mdl = x.parent
+        if mdl not in models_checked:
+            models_checked.append(mdl)
+            shaders.extend(mdl.getShaders(materials, for_modification))
     return shaders
 
 
+def getParents(group):
+    parents = []
+    for x in group:
+        if x.parent not in parents:
+            parents.append(x.parent)
+    return parents
+
+
 class Command:
-    COMMANDS = ["preset", "set", "add", "remove", "info", "select", "save"]
+    COMMANDS = ["preset", "set", "add", "remove", "info", "select", "save", "copy", "paste"]
     SELECTED = []  # selection list
     SELECT_TYPE = None  # current selection list type
     SELECT_ID = None  # current selection id
     SELECT_ID_NUMERIC = False  # current id numeric
     DESTINATION = None
     OVERWRITE = False
-    ACTIVE_FILES = []
-    FILES_MARKED = False  # files marked as modified
+    ACTIVE_FILES = []   # currently being used in selection
+    OPEN_FILES = {} # currently open
+    FILES_MARKED = set()  # files marked as modified
     MODELS = []
     MATERIALS = []
     PRESETS = {}
+    CLIPBOARD = None
+    CLIPTYPE = None
+    MAX_FILES_OPEN = 6
 
     TYPE_SETTING_MAP = {
         "material": Material.SETTINGS,
@@ -51,7 +86,9 @@ class Command:
         "stage": Stage.SETTINGS,
         "mdl0": Mdl0.SETTINGS,
         "brres": Brres.SETTINGS,
-        # "srt0": Srt0.SETTINGS
+        "srt0": SRTMatAnim.SETTINGS,
+        "srt0layer": SRTTexAnim.SETTINGS,
+        "pat0": Pat0MatAnimation.SETTINGS
     }
 
     def __init__(self, text):
@@ -106,7 +143,7 @@ class Command:
                 self.value = value
         elif len(x):
             if self.cmd != 'info':
-                print("Unknown parameter(s) {}".format(x))
+                raise ParsingException(self.txt, "Unknown parameter(s) {}".format(x))
             else:
                 self.key = x[0].lower()
                 if self.key == 'keys':
@@ -120,7 +157,7 @@ class Command:
         saveAs = False
         self.overwrite = False
         self.destination = None
-        self.file = None
+        self.file = self.model = None
         for x in params:
             if x == 'as':
                 saveAs = True
@@ -145,10 +182,10 @@ class Command:
             type_id = val[i + 1:]
             val = val[:i]
         val = val.lower()
-        if val == 'material' or val == 'shader':
+        if val in ('material', 'shader'):
             if self.cmd == 'add' or self.cmd == 'remove':
                 raise ParsingException(self.txt, 'Add/Remove not supported for {}.'.format(val))
-        elif val == 'layer' or val == 'stage':
+        elif val in ('layer', 'srt0layer', 'stage'):
             self.has_type_id = True
             try:
                 self.type_id = validInt(type_id, 0, 16) if type_id else None
@@ -158,13 +195,17 @@ class Command:
                 self.type_id_numeric = False
             # elif 'srt0' in val:
         #     self.type = 'srt0'
-        elif val == 'mdl0' or val == 'brres':
+        elif val in ('mdl0', 'brres'):
+            if self.cmd == 'add' or self.cmd == 'remove':
+                raise ParsingException(self.txt, 'Add/Remove not supported for {}.'.format(val))
             if type_id:
                 self.has_type_id = True
                 self.type_id_numeric = False
                 self.type_id = type_id
             else:
                 self.type_id = '*'
+        elif val in ('srt0', 'pat0'):
+            pass
         else:
             self.type = None
             return False
@@ -174,9 +215,7 @@ class Command:
     def setSelection(self, li):
         """ takes a list and parses selection """
         if not li:
-            print("No selection given")
-            self.hasSelection = False
-            return False
+            raise ParsingException("No selection given")
         self.hasSelection = True
         self.name = li[0]
         self.model = self.file = x = None
@@ -187,11 +226,11 @@ class Command:
             i = 0
             try:  # to get args
                 while i < len(li):
-                    x = li[i]
-                    if x == 'file' or x == 'File':
+                    x = li[i].lower()
+                    if x == 'file':
                         i += 1
                         self.file = li[i]  # possible exception
-                    elif x == 'model' or x == 'Model':
+                    elif x == 'model':
                         i += 1
                         self.model = li[i]
                     elif not self.file:
@@ -209,12 +248,10 @@ class Command:
             self.cmd = val
         return self.cmd == 'preset'
 
+    # ----------------------------  FILE STUFF ---------------------------------------------------------
     @staticmethod
     def updateFile(filename):
-        files = getFiles(filename)
-        if not files:  # could possibly ignore error here for wildcard patterns?
-            print("The file '{}' does not exist".format(filename))
-            return False
+        files = Command.getFiles(filename)
         if Command.DESTINATION:  # check for multiple files with single destination
             outside_active = True
             for x in Command.ACTIVE_FILES:
@@ -222,19 +259,111 @@ class Command:
                     outside_active = False
                     break
             if len(files) > 1 or Command.ACTIVE_FILES and outside_active:
-                print("Error: Multiple files for single destination!")
-                print("Specify single file and destination, or no destination with overwrite option.")
-                return False
-        Command.ACTIVE_FILES = openFiles(files, Command.ACTIVE_FILES)
+                raise SaveError('Multiple files for single destination')
+        Command.ACTIVE_FILES = Command.openFiles(files)
         Command.MODELS = []  # clear models
-        Command.FILES_MARKED = False
-        return True
 
+    @staticmethod
+    def closeFiles(file_names):
+        opened = Command.OPEN_FILES
+        marked = Command.FILES_MARKED
+        for x in file_names:
+            file = opened.pop(x)
+            file.close()
+            marked.remove(file)
+
+    @staticmethod
+    def openFiles(filenames):
+        opened = Command.OPEN_FILES
+        max = Command.MAX_FILES_OPEN   # max that can remain open
+        if max - len(filenames) < 0:
+            raise MaxFileLimit
+        to_open = [f for f in filenames if f not in opened]
+        total = len(to_open) + len(opened)
+        needs_close = total > max
+        can_close = []  # modified but can close
+        to_close = []   # going to close
+        active = []     # active files to return
+        # first pass, mark non-modified files for closing, and appending active
+        for x in opened:
+            if x not in filenames:
+                if not opened[x].isModified:
+                    to_close.append(x)
+                    total -= 1
+                else:
+                    can_close.append(x)
+            else:
+                active.append(opened[x])
+        if needs_close:
+            if total > max:     # mark modified files for closing
+                for x in can_close:
+                    to_close.append(x)
+                    total -= 1
+                    if total <= max:
+                        break
+            Command.closeFiles(to_close)
+        # open any that aren't opened
+        for f in to_open:
+            try:
+                brres = Brres(f)
+                active.append(brres)
+                opened[f] = brres
+            except UnpackingError as e:
+                AUTO_FIXER.notify(e, 1)
+        return active
+
+    @staticmethod
+    def load_commandfile(filename):
+        files = Command.getFiles(filename)
+        commands = []
+        with open(files[0], "r") as f:
+            lines = f.readlines()
+            preset_begin = False
+            preset = []
+            name = None
+            for line in lines:
+                if line[0].isalpha():
+                    i = line.find("#")
+                    if i != -1:
+                        line = line[0:i]
+                    if preset_begin:
+                        try:
+                            preset.append(Command(line))
+                        except ParsingException as e:
+                            AUTO_FIXER.notify('Preset {} : {}'.format(name, e), 1)
+                            Command.PRESETS[name] = None
+                    else:
+                        commands.append(Command(line))
+                elif line[0] == '[':  # preset
+                    i = line.find(']')
+                    if i != -1:
+                        if i > 1:
+                            preset_begin = True
+                            preset = []
+                            name = line[1:i]
+                            Command.PRESETS[name] = preset
+                        else:
+                            preset_begin = False
+        return commands
+
+    @staticmethod
+    def getFiles(filename):
+        directory, name = os.path.split(filename)
+        if not directory:
+            directory = "."
+        files = []
+        for file in os.listdir(directory):
+            if fnmatch.fnmatch(file, name):
+                files.append(os.path.join(directory, file))
+        if not files:
+            raise NoSuchFile(filename)
+        return files
+
+    # ------------------------------------  UPDATING TYPE/SELECTION ------------------------------------------------
     def updateSelection(self):
         """ updates container items """
         if self.file:
-            if not self.updateFile(self.file):
-                return False
+            self.updateFile(self.file)
         # Models
         if self.model or not self.MODELS:
             for x in self.ACTIVE_FILES:
@@ -243,8 +372,6 @@ class Command:
         Command.MATERIALS = []  # reset materials
         for x in self.MODELS:
             Command.MATERIALS.extend(x.getMaterialsByName(self.name))
-        if not Command.MATERIALS:
-            print('No matches found for {}'.format(self.name))
         Command.SELECT_TYPE = None  # reset selection
         return True
 
@@ -266,7 +393,7 @@ class Command:
         has_changed = False
         if not self.has_type_id:
             Command.SELECT_ID = None  # reset
-        elif self.type_id:  # explicit
+        elif self.type_id is not None:  # explicit
             if self.SELECT_ID_NUMERIC != self.type_id_numeric or self.type_id != self.SELECT_ID:
                 Command.SELECT_ID = self.type_id
                 Command.SELECT_ID_NUMERIC = self.type_id_numeric
@@ -284,8 +411,18 @@ class Command:
             returns true if modified
         """
         current = self.SELECT_TYPE
-        if self.cmd == 'add' or self.cmd == 'remove':  # use parents as selection
-            Command.SELECT_TYPE = 'shader' if self.type == 'stage' else 'material'
+        if self.cmd == 'add' or self.cmd == 'remove':
+            # use parents as selection, except (srt0, pat0)
+            if self.type == 'stage':
+                Command.SELECT_TYPE = 'shader'
+            elif self.type == 'layer':
+                Command.SELECT_TYPE = 'material'
+            elif self.type == 'srt0layer':
+                Command.SELECT_TYPE = 'srt0'
+            elif self.type == 'pat0layer':
+                Command.SELECT_TYPE = 'pat0'
+            elif self.type in ('srt0', 'pat0'):
+                Command.SELECT_TYPE = 'material'
         else:
             if self.type:
                 Command.SELECT_TYPE = self.type
@@ -294,7 +431,7 @@ class Command:
                     Command.SELECT_TYPE = self.detectType(self.key)  # possibly ambiguous for stages/layers?
                     if not Command.SELECT_TYPE:
                         raise ParsingException(self.txt, 'Unknown key {}!'.format(self.key))
-                    if self.SELECT_TYPE == 'layer' or self.SELECT_TYPE == 'stage':
+                    if self.SELECT_TYPE in ('layer', 'stage', 'srt0layer'):
                         self.has_type_id = True
                         self.type_id = None
                         self.type_id_numeric = False
@@ -315,32 +452,73 @@ class Command:
                 else:
                     Command.SELECTED = []
                     for x in self.MATERIALS:
-                        Command.SELECTED.extend(x.getLayers(self.SELECT_ID))
-                    if not Command.SELECTED:  # Forcibly adding case if no selected found
-                        # possible todo... make this optional?
-                        Command.SELECTED = [x.forceAdd(self.SELECT_ID) for x in self.MATERIALS]
+                        layers = findAll(self.SELECT_ID, x.layers)
+                        if layers:
+                            Command.SELECTED.extend(layers)
+                    # if not Command.SELECTED:  # Forcibly adding case if no selected found
+                    #     # possible todo... make this optional?
+                    #     Command.SELECTED = [x.forceAdd(self.SELECT_ID) for x in self.MATERIALS]
 
-            # elif self.type == 'srt0':
-            #     pass # todo
             elif type == 'shader' or type == 'stage':
-                shaders = getShadersFromMaterials(self.MATERIALS, self.MODELS)
+                shaders = getShadersFromMaterials(self.MATERIALS)
                 if type == 'shader':
                     Command.SELECTED = shaders
                 else:
-                    Command.SELECTED = []
-                    for x in shaders:
-                        Command.SELECTED.append(x.getStage(self.SELECT_ID))
+                    if self.SELECT_ID == '*':
+                        Command.SELECTED = []
+                        for x in shaders:
+                            Command.SELECTED.extend(x.stages)
+                    else:
+                        Command.SELECTED = [x.getStage(self.SELECT_ID) for x in shaders]
             elif type == 'mdl0':
-                    Command.SELECTED = findAll(self.SELECT_ID, self.MODELS)
+                Command.SELECTED = findAll(self.SELECT_ID, getParents(self.MATERIALS))
             elif type == 'brres':
-                    Command.SELECTED = findAll(self.SELECT_ID, self.ACTIVE_FILES)
+                Command.SELECTED = findAll(self.SELECT_ID, getParents(getParents(self.MATERIALS)))
+            elif 'srt0' in type:
+                srts = [x.srt0 for x in self.MATERIALS if x.srt0]
+                if 'layer' in type:
+                    Command.SELECTED = []
+                    if self.SELECT_ID_NUMERIC:
+                        for x in srts:
+                            anim = x.getTexAnimationByID(self.SELECT_ID)
+                            if anim:
+                                Command.SELECTED.append(anim)
+                    else:
+                        for x in srts:
+                            anim = findAll(self.SELECT_ID, x.tex_animations)
+                            if anim:
+                                Command.SELECTED.extend(anim)
+                else:  # material animation
+                    Command.SELECTED = srts
+            elif 'pat0' in type:
+                Command.SELECTED = [x.pat0 for x in self.MATERIALS if x.pat0]
 
     @staticmethod
     def markModified():
-        if not Command.FILES_MARKED:
-            for x in Command.ACTIVE_FILES:
-                x.isModified = True
-            Command.FILES_MARKED = True
+        marked = Command.FILES_MARKED
+        for f in Command.ACTIVE_FILES:
+            if f not in marked:
+                f.isModified = True
+                Command.FILES_MARKED.add(f)
+
+    # ---------------------------------------------- RUN CMD ---------------------------------------------------
+    @staticmethod
+    def run_commands(commandlist):
+        try:
+            for cmd in commandlist:
+                cmd.runCmd()
+        except ValueError as e:
+            AUTO_FIXER.error(e, 1)
+        except SaveError as e:
+            AUTO_FIXER.error(e, 1)
+        except PasteError as e:
+            AUTO_FIXER.error(e, 1)
+        except MaxFileLimit as e:
+            AUTO_FIXER.error(e, 1)
+        except NoSuchFile as e:
+            AUTO_FIXER.error(e, 1)
+        except ParsingException as e:
+            AUTO_FIXER.error(e, 1)
 
     def runCmd(self):
         if self.hasSelection:
@@ -364,7 +542,7 @@ class Command:
             return True
         self.updateTypeSelection()
         if not self.SELECTED:
-            print("No items found in selection for '{}'".format(self.txt))
+            AUTO_FIXER.error("No items found in selection for '{}'".format(self.txt), 3)
             return False
         else:
             if self.cmd == 'set':
@@ -385,7 +563,47 @@ class Command:
             elif self.cmd == 'remove':
                 self.markModified()
                 self.remove(self.SELECT_TYPE, self.SELECT_ID)
+            elif self.cmd == 'copy':
+                self.run_copy(self.SELECT_TYPE)
+            elif self.cmd == 'paste':
+                self.run_paste(self.SELECT_TYPE)
         return True
+
+    # -------------------------------------------- COPY/PASTE -----------------------------------------------
+    #   Items implementing clipboard must support the methods:
+    #       .clip(clipboard)
+    #       .clip_find(clipboard)
+    #       .paste(item)
+    def run_copy(self, select_type):
+        Command.CLIPBOARD = {}
+        for x in self.SELECTED:
+            x.clip(Command.CLIPBOARD)
+        Command.CLIPTYPE = select_type
+
+    def run_paste(self, select_type):
+        clip = self.CLIPBOARD
+        selected = self.SELECTED
+        if not clip:
+            raise PasteError('No items in clipboard.')
+        # check for compatible types
+        if select_type != self.CLIPTYPE:
+            raise PasteError('Mismatched clipboard types (has {})'.format(self.CLIPTYPE))
+        paste_count = 0
+        if len(clip) == 1:
+            for key in clip:
+                item = clip[key]
+                for x in selected:
+                    x.paste(item)
+                    paste_count += 1
+        else:
+            for x in selected:
+                to_paste = x.clip_find(clip)
+                if to_paste:
+                    x.paste(to_paste)
+                    paste_count += 1
+        if paste_count == 0:
+            raise PasteError('No matches found in clipboard.')
+        return paste_count
 
     def info_keys(self, type):
         if not type:
@@ -395,8 +613,14 @@ class Command:
             print('>{} keys: {}'.format(type, self.TYPE_SETTING_MAP[type]))
 
     def run_save(self):
-        for x in self.ACTIVE_FILES:
-            x.save(self.destination, self.overwrite)
+        files_to_save = findAll(self.file, self.ACTIVE_FILES)
+        if len(files_to_save) > 1 and self.destination is not None:
+            raise SaveError('Detected {} files and only one destination "{}"'.format(len(files_to_save),
+                                                                                     self.destination))
+        else:
+            for x in files_to_save:
+                if not x.save(self.destination, self.overwrite):
+                    raise SaveError('File already Exists!')
 
     def runPreset(self, key):
         """Runs preset"""
@@ -408,17 +632,33 @@ class Command:
         """Add command"""
         if self.SELECT_ID_NUMERIC and type_id == 0:
             type_id = 1
-        if type == 'material':  # add layer case
+        if type == 'material':
+            if self.type == 'srt0':
+                for x in self.SELECTED:
+                    x.add_srt0()
+            elif self.type == 'pat0':
+                for x in self.SELECTED:
+                    x.add_pat0()
+            else:  # layers
+                if self.SELECT_ID_NUMERIC:
+                    for x in self.SELECTED:
+                        for i in range(type_id):
+                            x.addEmptyLayer()
+                else:
+                    for x in self.SELECTED:
+                        x.addLayer(type_id)
+        elif type == 'shader':  # add stage case
+            for x in self.SELECTED:
+                for i in range(type_id):
+                    x.addStage()
+        elif type == 'srt0':  # add srt0 layer
             if self.SELECT_ID_NUMERIC:
                 for x in self.SELECTED:
                     for i in range(type_id):
-                        x.addEmptyLayer()
+                        x.addLayer()
             else:
                 for x in self.SELECTED:
-                    x.addLayer(type_id)
-        elif type == 'shader':  # add stage case
-            for x in self.SELECTED:
-                x.addStage(type_id)
+                    x.addLayerByName(type_id)
         else:
             raise ParsingException(self.txt, 'command "Add" not supported for type {}'.format(type))
 
@@ -426,18 +666,33 @@ class Command:
         """Remove command"""
         if self.SELECT_ID_NUMERIC and type_id == 0:
             type_id = 1
-        if type == 'material':  # remove layer case
-            if self.SELECT_ID_NUMERIC:
+        if type == 'material':
+            if self.type == 'srt0':
                 for x in self.SELECTED:
-                    for i in range(type_id):
-                        x.removeLayerI()
-            else:
+                    x.remove_srt0()
+            elif self.type == 'pat0':
                 for x in self.SELECTED:
-                    x.removeLayer(type_id)
+                    x.remove_pat0()
+            else:  # remove layer case
+                if self.SELECT_ID_NUMERIC:
+                    for x in self.SELECTED:
+                        for i in range(type_id):
+                            x.removeLayerI()
+                else:
+                    for x in self.SELECTED:
+                        x.removeLayer(type_id)
         elif type == 'shader':  # remove stage case
             for x in self.SELECTED:
                 for i in range(type_id):
                     x.removeStage()
+        elif type == 'srt0':  # remove srt0 layer
+            if self.SELECT_ID_NUMERIC:
+                for x in self.SELECTED:
+                    for i in range(type_id):
+                        x.removeLayer()
+            else:
+                for x in self.SELECTED:
+                    x.removeLayerByName(type_id)
         else:
             raise ParsingException(self.txt, 'command "Remove" not supported for type {}'.format(type))
 
@@ -445,80 +700,3 @@ class Command:
         return "{} {}:{} for {} in file {} model {}".format(self.cmd,
                                                             self.key, self.value, self.name, self.file,
                                                             self.model)
-
-
-def run_commands(commandlist):
-    for cmd in commandlist:
-        try:
-            cmd.runCmd()
-        except ValueError as e:
-            print(e)
-
-
-def load_commandfile(filename):
-    if not os.path.exists(filename):
-        print("No such file {}".format(filename))
-        exit(2)
-    f = open(filename, "r")
-    lines = f.readlines()
-    commands = []
-    preset_begin = False
-    preset = []
-    name = None
-    for line in lines:
-        if line[0].isalpha():
-            i = line.find("#")
-            if i != -1:
-                line = line[0:i]
-            if preset_begin:
-                try:
-                    preset.append(Command(line))
-                except ParsingException as e:
-                    print('Preset {} : {}'.format(name, e))
-                    Command.PRESETS[name] = None
-            else:
-                commands.append(Command(line))
-        elif line[0] == '[':  # preset
-            i = line.find(']')
-            if i != -1:
-                if i > 1:
-                    preset_begin = True
-                    preset = []
-                    name = line[1:i]
-                    Command.PRESETS[name] = preset
-                else:
-                    preset_begin = False
-    return commands
-
-
-def getFiles(filename):
-    directory, name = os.path.split(filename)
-    if not directory:
-        directory = "."
-    files = []
-    for file in os.listdir(directory):
-        if fnmatch.fnmatch(file, name):
-            files.append(os.path.join(directory, file))
-    return files
-
-
-def openFiles(filenames, files):
-    # remove any names that are already open
-    opened = []
-    openedNames = []
-    for i in range(len(files)):
-        openedFile = files[i]
-        if not openedFile.name in filenames:
-            openedFile.close()
-        else:
-            opened.append(openedFile)
-            openedNames.append(openedFile.name)
-    # open any that aren't opened
-    for f in filenames:
-        if f not in openedNames:
-            try:
-                brres = Brres(f)
-                opened.append(brres)
-            except UnpackingError as e:
-                print(e)
-    return opened

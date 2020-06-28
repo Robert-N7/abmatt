@@ -1,14 +1,16 @@
 """ Layer class """
-from abmatt.matching import parseValStr, indexListItem, validBool
+from copy import copy, deepcopy
+
+from abmatt.matching import parseValStr, indexListItem, validBool, Clipable, fuzzy_match, fuzzy_strings
 
 from abmatt.wiigraphics.xf import XFTexMatrix, XFDualTex
+from abmatt.autofix import AUTO_FIXER, Bug
 
 
-class Layer:
+class Layer(Clipable):
     # ----------------------------------------------------------------------------
     #   Constants
     # ----------------------------------------------------------------------------
-    NUM_SETTINGS = 22
     SETTINGS = (
         "scale", "rotation", "translation", "scn0cameraref",
         "scn0lightref", "mapmode", "uwrap", "vwrap",
@@ -34,7 +36,6 @@ class Layer:
         self.parent = parent
         self.name = name
         self.enable = True
-        self.scaleDefault = self.rotationDefault = self.translationDefault = True
         self.scale = (1, 1)
         self.rotation = 0
         self.translation = (0, 0)
@@ -63,7 +64,7 @@ class Layer:
     #   GETTERS
     # ----------------------------------------------------------------------------------
     def __getitem__(self, item):
-        for i in range(self.NUM_SETTINGS):
+        for i in range(len(self.SETTINGS)):
             if self.SETTINGS[i] == item:
                 func = self.GET_SETTINGS[i]
                 return func(self)
@@ -132,8 +133,11 @@ class Layer:
         return self.xfDualTex.normalize
 
     def getFlagNibble(self):
-        return self.enable | self.scaleDefault << 1 \
-               | self.rotationDefault << 2 | self.translationDefault << 3
+        scale_default = self.scale[0] == 1 and self.scale[1] == 1
+        rotation_default = self.rotation == 0
+        translation_default = self.translation[0] == 0 and self.translation[1] == 0
+        return self.enable | scale_default << 1 \
+               | rotation_default << 2 | translation_default << 3
 
     def getName(self):
         return self.name
@@ -145,7 +149,7 @@ class Layer:
                     getNormalize, getName)
 
     def getSetter(self, key):
-        for i in range(self.NUM_SETTINGS):
+        for i in range(len(self.SETTINGS)):
             if self.SETTINGS[i] == key:
                 return self.SET_SETTING[i]
 
@@ -164,17 +168,12 @@ class Layer:
         i1 = float(values[0])
         i2 = float(values[1])
         if self.scale[0] != i1 or self.scale[1] != i2:
-            if i1 != 1 or i2 != 1:
-                self.scaleDefault = False
-            else:
-                self.scaleDefault = True
             self.scale = (i1, i2)
 
     def setRotationStr(self, value):
         f = float(value)
         if f != self.rotation:
             self.rotation = f
-            self.rotationDefault = False if self.rotation == 0 else True
 
     def setTranslationStr(self, value):
         values = parseValStr(value)
@@ -184,7 +183,6 @@ class Layer:
         i2 = float(values[1])
         if self.translation[0] != i1 or self.translation[1] != i2:
             self.translation = (i1, i2)
-            self.translationDefault = 1 if i1 == 1 and i2 == 1 else 0
 
     def setCameraRefStr(self, value):
         i = int(value)
@@ -284,15 +282,15 @@ class Layer:
         i = int(value)
         if not 0 <= i <= 7:
             raise ValueError("Value '" + value + "' out of range for emboss source")
-        if self.xfTexMatrix["embossSource"] != i:
-            self.xfTexMatrix["embossSource"] = i
+        if self.xfTexMatrix["embosssource"] != i:
+            self.xfTexMatrix["embosssource"] = i
 
     def setEmbossLightStr(self, value):
         i = int(value)
         if not 0 <= i <= 255:
             raise ValueError("Value '" + value + "' out of range for emboss light")
-        if self.xfTexMatrix["embossLight"] != i:
-            self.xfTexMatrix["embossLight"] = i
+        if self.xfTexMatrix["embosslight"] != i:
+            self.xfTexMatrix["embosslight"] = i
 
     def setNormalizeStr(self, value):
         val = validBool(value)
@@ -302,19 +300,45 @@ class Layer:
     def setLayerFlags(self, nibble):
         """ from lsb, enable, scaledefault, rotationdefault, transdefault """
         self.enable = nibble & 1
-        self.scaleDefault = nibble >> 1 & 1
-        self.rotationDefault = nibble >> 2 & 1
-        self.translationDefault = nibble >> 3 & 1
+        # self.scaleDefault = nibble >> 1 & 1
+        # self.rotationDefault = nibble >> 2 & 1
+        # self.translationDefault = nibble >> 3 & 1
         return self.enable
 
     def setName(self, value):
-        self.name = self.parent.parent.renameLayer(self, value)
+        self.name = self.parent.renameLayer(self, value)
 
     SET_SETTING = (setScaleStr, setRotationStr, setTranslationStr, setCameraRefStr,
                    setLightRefStr, setMapmodeStr, setUWrapStr, setVWrapStr, setMinFilterStr, setMagFilterStr,
                    setLodBiasStr, setAnisotrophyStr, setClampBiasStr, setTexelInterpolateStr, setProjectionStr,
                    setInputFormStr, setTypeStr, setCoordinatesStr, setEmbossSourceStr, setEmbossLightStr,
                    setNormalizeStr, setName)
+
+    def __str__(self):
+        return self.name + ': srt:{} {} {}'.format(self.scale, self.rotation, self.translation)
+
+    # -------------------------------------- PASTE ---------------------------
+    def paste(self, item):
+        if self.name == 'Null':
+            self.setName(item.name)
+        self.uwrap = item.uwrap
+        self.vwrap = item.vwrap
+        self.minfilter = item.minfilter
+        self.magfilter = item.magfilter
+        self.LODBias = item.LODBias
+        self.maxAnisotrophy = item.maxAnisotrophy
+        self.clampBias = item.clampBias
+        self.texelInterpolate = item.texelInterpolate
+        self.scale = (item.scale[0], item.scale[1])
+        self.rotation = item.rotation
+        self.translation = (item.translation[0], item.translation[1])
+        self.scn0CameraRef = item.scn0CameraRef
+        self.scn0LightRef = item.scn0LightRef
+        self.mapMode = item.mapMode
+        self.enableIdentityMatrix = item.enableIdentityMatrix
+        self.texMatrix = copy(item.texMatrix)
+        self.xfTexMatrix = deepcopy(item.xfTexMatrix)
+        self.xfDualTex = deepcopy(item.xfDualTex)
 
     # -------------------------------------------------------------------------
     # Packing things
@@ -341,7 +365,7 @@ class Layer:
         self.texMatrix = binfile.read("12f", 48)
 
     def unpackXF(self, binfile):
-        '''Unpacks Wii graphics '''
+        """Unpacks Wii graphics """
         self.xfTexMatrix.unpack(binfile)
         self.xfDualTex.unpack(binfile)
 
@@ -385,10 +409,42 @@ class Layer:
         trace = '  ' * indentation_level + self.name if indentation_level else '>' + self.parent.name + "->" + self.name
         if key:
             val = self[key]
-            if val:
-                print("{}\t{}:{}".format(trace, key, val))
+            print("{}\t{}:{}".format(trace, key, val))
         else:
             print("{}:\tScale:{} Rot:{} Trans:{} UWrap:{} VWrap:{} MinFilter:{}".format(
-                                                         trace, self.scale, self.rotation, self.translation,
-                                                         self.WRAP[self.uwrap], self.WRAP[self.vwrap],
-                                                         self.FILTER[self.minfilter], self.MAPMODE[self.mapMode]))
+                trace, self.scale, self.rotation, self.translation,
+                self.WRAP[self.uwrap], self.WRAP[self.vwrap],
+                self.FILTER[self.minfilter], self.MAPMODE[self.mapMode]))
+
+    def uses_mipmaps(self):
+        return self.minfilter > 1
+
+    def check(self, texture_map=None):
+        if texture_map is None:
+            texture_map = self.parent.getTextureMap()
+        tex = texture_map.get(self.name)
+        if not tex:
+            # try fuzz
+            result = fuzzy_strings(self.name, texture_map)
+            if result:
+                b = Bug(2, 3, 'No texture matching {}'.format(self.name), 'Rename to {}'.format(result))
+                if b.should_fix():
+                    self.setName(result)
+                    b.resolve()
+                    tex=texture_map.get(self.name)
+            else:
+                AUTO_FIXER.warn('No texture matching {}'.format(self.name))
+        if tex:
+            if self.uses_mipmaps():
+                if tex.num_mips == 0:
+                    b = Bug(4, 4, '{} no mipmaps in tex0'.format(self.name), 'Set minfilter to linear')
+                    if b.should_fix():
+                        self.minfilter = 1  # linear
+                        b.resolve()
+            else:
+                if tex.num_mips > 0:
+                    b = Bug(4, 4, '{} mipmaps disabled but TEX0 has {}'.format(
+                            self.name, tex.num_mips), 'Set minfilter to LinearMipmapLinear')
+                    if b.should_fix():
+                        self.minfilter = 5  # linearmipmaplinear
+                        b.resolve()

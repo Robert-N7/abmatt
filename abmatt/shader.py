@@ -3,20 +3,27 @@
 # ------------------------------------------------------------------------
 from copy import deepcopy, copy
 
-from abmatt.binfile import Folder, printCollectionHex
+from abmatt.binfile import Folder
 from abmatt.matching import *
 from abmatt.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
+from abmatt.autofix import AUTO_FIXER, Bug
 
 
-class ShaderList():
+class ShaderList:
     """For maintaining shader collections"""
     FOLDER = "Shaders"
 
     def __init__(self):
-        self.list = []  # shaders
+        self.list = {}  # shaders
 
     def __len__(self):
         return len(self.list)
+
+    def __iter__(self):
+        return iter(self.list)
+
+    def __next__(self):
+        return next(self.list)
 
     def __getitem__(self, item):
         return self.list[item]
@@ -24,72 +31,35 @@ class ShaderList():
     def __setitem__(self, key, value):
         self.list[key] = value
 
-    def splitShaderOnMaterials(self, shader, material_list):
-        """Splits the shader based on the materials in material list"""
-        new_shader = deepcopy(shader)
-        self.list.append(new_shader)
-        i = 0
-        newMats = []
-        oldMats = []
-        for x in shader.materials:
-            if x in material_list:
-                newMats.append(x)
-                x.shader = new_shader
-            else:
-                oldMats.append(x)
-                # x.shader = shader
-        shader.materials = oldMats
-        new_shader.materials = newMats
-        return new_shader
+    def updateName(self, old_name, new_name):
+        shader = self.list[old_name]
+        shader.name = new_name
+        self.list[new_name] = shader
+        self.list[old_name] = None
 
     def getShaders(self, material_list, for_modification=True):
-        """Gets the shaders, if for modification possibly splitting/creating new ones as necessary"""
-        shaders = []
-        for m in material_list:
-            sh = m.shader
-            if sh not in shaders:  # need to add shader?
-                if not for_modification:
-                    shaders.append(sh)
-                else:
-                    is_split = False
-                    for shader_mat in sh.materials:
-                        if shader_mat not in material_list:  # needs split?
-                            is_split = True
-                            shaders.append(self.splitShaderOnMaterials(sh, material_list))
-                            break
-                    if not is_split:
-                        shaders.append(sh)
-        return shaders
+        """Gets the shaders, previously this was used to split shaders but is no longer applicable"""
+        return [x.shader for x in material_list]
 
     def consolidate(self):
-        """Removes duplicate shaders"""
-        li = self.list
-        i = 0
-        while i < len(li) - 1:
-            x = li[i]
-            j = i + 1
-            while j < len(li):
-                if x == li[j]:
-                    sh = li.pop(j)
-                    x.materials.extend(sh.materials)
-                    for mat in sh.materials:
-                        mat.shader = x
-                else:
-                    j += 1
-            i += 1
+        """Creates two lists, one of shaders, and the other a 2d list of the materials they map to"""
+        shader_list = []
+        material_list = []
+        map = self.list
+        for name in map:
+            found_placement = False
+            for i in range(len(shader_list)):
+                shader = shader_list[i]
+                if map[name] == shader:
+                    material_list[i].append(name)
+                    found_placement = True
+                    break
+            if not found_placement:
+                shader_list.append(map[name])
+                material_list.append([name])
+        return shader_list, material_list
 
-    @staticmethod
-    def hookMatsToShaders(shader_offsets, materials):
-        """Hooks up materials to shaders based on the shader offset
-        :param shader_offsets: the offset:shader map created during unpacking
-        :param materials: the model materials
-        """
-        for mat in materials:
-            shader = shader_offsets[mat.shaderOffset]
-            mat.shader = shader
-            shader.materials.append(mat)
-
-    def unpack(self, binfile):
+    def unpack(self, binfile, materials):
         binfile.recall()  # from offset header
         folder = Folder(binfile, self.FOLDER)
         folder.unpack(binfile)
@@ -97,25 +67,34 @@ class ShaderList():
         offsets = {}  # for tracking the shaders we've unpacked
         while len(folder.entries):
             name = folder.recallEntryI()
-            if not binfile.offset in offsets:
-                d = Shader(name, self)
+            d = Shader(name, self)
+            for x in materials:
+                if x.name == name:
+                    x.shader = d
+                    d.material = x
+                    break
+            if binfile.offset not in offsets:
                 offsets[binfile.offset] = d
                 d.unpack(binfile)
-                list.append(d)
+            else:
+                d.paste(offsets[binfile.offset])
+            list[name] = d
         return offsets
 
     def pack(self, binfile, folder):
         """Packs the shader data, generating material and index group references"""
         li = self.list
-        for i in range(len(li)):
-            x = li[i]
-            for m in x.materials:
-                folder.createEntryRef(m.name)  # create index group reference
-                binfile.createRefFrom(m.offset)  # create the material shader reference
-            x.pack(binfile, i)
+        shaders, names_arr = self.consolidate()
+        for i in range(len(shaders)):
+            shader = shaders[i]
+            names = names_arr[i]
+            for name in names:
+                folder.createEntryRef(name)  # create index group reference
+                binfile.createRefFrom(li[name].material.offset)  # create the material shader reference
+            shader.pack(binfile, i)
 
 
-class Stage():
+class Stage(Clipable):
     """ Single shader stage """
     # COLOR STRINGS
     RASTER_COLORS = ("lightchannel0", "lightchannel1", "bumpalpha", "normalizedbumpalpha", "zero")
@@ -167,7 +146,7 @@ class Stage():
                 "alphascale", "alphadestination",
                 "indirectstage", "indirectformat",
                 "indirectalpha",
-                "indirectbias", "indirectmatrix",
+                "indirectbias", "indirectmatrixselection",
                 "indirectswrap", "indirecttwrap",
                 "indirectuseprevstage", "indirectunmodifiedlod")
 
@@ -190,7 +169,7 @@ class Stage():
             "alphascale": self.SCALE[0], "alphadestination": self.ALPHA_DEST[0],
             "indirectstage": 0, "indirectformat": self.TEX_FORMAT[0],
             "indirectalpha": self.IND_ALPHA[0],
-            "indirectbias": self.IND_BIAS[0], "indirectmatrix": self.IND_MATRIX[0],
+            "indirectbias": self.IND_BIAS[0], "indirectmatrixselection": self.IND_MATRIX[0],
             "indirectswrap": self.WRAP[0], "indirecttwrap": self.WRAP[0],
             "indirectuseprevstage": False, "indirectunmodifiedlod": False
         }
@@ -211,11 +190,28 @@ class Stage():
             else:
                 key = 'colorconstantselection'
         if key not in self.map:
-            raise ValueError("No such shader stage setting {} possible keys are: \n\t{}".format(key, self.map.keys()))
+            raise ValueError("No such shader stage setting {} possible keys are: \n\t{}".format(key, self.SETTINGS))
         return self.map[key]
 
+    def check(self):
+        if not self.map['enabled']:
+            AUTO_FIXER.warn('{} Stage {} not enabled'.format(self.parent.getMaterialName(), self.id), 2)
+
+
+    # -------------------- CLIPBOARD --------------------------------------------------
+    def clip(self, clipboard):
+        clipboard[self.parent.getMaterialName() + str(self.id)] = self
+
+    def clip_find(self, clipboard):
+        return clipboard[self.parent.getMaterialName() + str(self.id)]
+
+    def paste(self, item):
+        # ignores id and parent, since it's shader's job to track ids
+        for key in item.map:
+            self.map[key] = item.map[key]
+
     def info(self, key=None, indentation_level=0):
-        trace = '  ' * indentation_level if indentation_level else '>' + str(self.parent.getMaterialNames())
+        trace = '  ' * indentation_level if indentation_level else '>' + str(self.parent.getMaterialName())
         if key:
             print('{}->Stage:{}\t{}:{}'.format(trace, self.id, key, self[key]))
         else:
@@ -246,7 +242,7 @@ class Stage():
         self.map["alphaconstantselection"] = self.ALPHA_CONSTANTS[i]
 
     def getIndMtxI(self):
-        i = self.IND_MATRIX.index(self.map["indirectmatrix"])
+        i = self.IND_MATRIX.index(self.map["indirectmatrixselection"])
         if i > 3:
             i += 1
         if i > 7:
@@ -258,7 +254,7 @@ class Stage():
             i -= 1
         if i > 4:
             i -= 1
-        self.map["indirectmatrix"] = self.IND_MATRIX[i]
+        self.map["indirectmatrixselection"] = self.IND_MATRIX[i]
 
     def getConstantColorI(self):
         i = self.COLOR_CONSTANTS.index(self.map["colorconstantselection"])
@@ -289,7 +285,8 @@ class Stage():
         elif "swap" in key or "stage" in key:
             self.map[key] = validInt(value, 0, 4)
         elif "id" in key:
-            self.map[key] = validInt(value, 0, 7)
+            i = validInt(value, 0, 7)
+            self.map[key] = i
         else:  # list indexing ones
             value = value.replace('constant', '')
             if "scale" in key:
@@ -342,7 +339,9 @@ class Stage():
             elif "indirect" in key:
                 if key == "indirectformat":
                     indexListItem(self.TEX_FORMAT, value)
-                elif key == "indirectmatrix":
+                elif key == "indirectmatrixselection":
+                    if len(value) < 6:
+                        value = 'matrix' + value
                     indexListItem(self.IND_MATRIX, value)
                 elif key == "indirectalpha":
                     indexListItem(self.IND_ALPHA, value)
@@ -438,7 +437,7 @@ class Stage():
         c.pack(binfile)
 
 
-class Shader():
+class Shader(Clipable):
     BYTESIZE = 512
     # Uses a constant swap table - todo track swap table?
     SWAP_MASK = BPCommand(0xFE, 0xF)
@@ -446,21 +445,19 @@ class Shader():
                   BPCommand(0xF9, 0xC), BPCommand(0xFA, 0x5), BPCommand(0xFB, 0xD),
                   BPCommand(0xFC, 0xA), BPCommand(0xFD, 0xE))
     SEL_MASK = BPCommand(0xFE, 0xFFFFF0)
-    SETTINGS = ('texturerefcount', 'indirectmap', 'indirectcoord', 'stagecount')
+    SETTINGS = ('indirectmap', 'indirectcoord', 'stagecount')
 
     def __init__(self, name, parent):
         self.parent = parent
         self.name = name
         self.stages = []
         self.swap_table = deepcopy(self.SWAP_TABLE)
-        self.materials = []  # materials to be hooked
-        self.texRefCount = 1  # Number of texture references
+        self.material = None  # material to be hooked
         self.indTexMaps = [-1] * 4
         self.indTexCoords = [-1] * 4
 
     def __eq__(self, other):
-        if self.texRefCount != other.texRefCount or len(self.stages) != len(other.stages) or \
-                len(self.indTexMaps) != len(other.indTexMaps) or len(self.indTexCoords) != len(self.indTexCoords):
+        if len(self.stages) != len(other.stages) or self.getTexRefCount() != other.getTexRefCount():
             return False
         my_stages = self.stages
         others = other.stages
@@ -475,10 +472,20 @@ class Shader():
                 return False
         return True
 
+    # ------------------------------------ CLIPBOARD ----------------------------
+    def paste(self, item):
+        # doesn't copy swap table
+        num_stages = len(item.stages)
+        self.set_stage_count(num_stages)
+        for i in range(num_stages):
+            self.stages[i].paste(item.stages[i])
+        self.indTexCoords = [x for x in item.indTexCoords]
+        self.indTexMaps = [x for x in item.indTexMaps]
+
     def getIndirectMatricesUsed(self):
         matrices_used = [False] * 3
         for x in self.stages:
-            matrix = x['indirectmatrix'][-1]
+            matrix = x['indirectmatrixselection'][-1]
             if matrix.isdigit():
                 matrices_used[int(matrix)] = True
         return matrices_used
@@ -499,56 +506,62 @@ class Shader():
         return i
 
     def __getitem__(self, key):
-        if self.SETTINGS[0] == key:
-            return self.texRefCount
+        if self.SETTINGS[0] in key:
+            return self.indTexMaps
         elif self.SETTINGS[1] in key:
-            return self.indTexMaps[self.detectIndirectIndex(key)]
-        elif self.SETTINGS[2] in key:
-            return self.indTexCoords[self.detectIndirectIndex(key)]
-        elif self.SETTINGS[3] == key:  # stage count
+            return self.indTexCoords
+        elif self.SETTINGS[2] == key:  # stage count
             return len(self.stages)
 
     def __setitem__(self, key, value):
+        i = value.find(':')
+        key2 = 0  # key selection
+        if i > -1:
+            try:
+                key2 = value[:i]
+                value = value[i + 1:]
+            except IndexError:
+                raise ValueError('Argument required after ":"')
         value = validInt(value, 0, 8)
-        if self.SETTINGS[0] == key:  # texture refs
-            self.texRefCount = value
-        elif self.SETTINGS[1] in key:  # indirect map
-            self.indTexMaps[self.detectIndirectIndex(key)] = value
-        elif self.SETTINGS[2] in key:  # indirect coord
-            self.indTexCoords[self.detectIndirectIndex(key)] = value
-        elif self.SETTINGS[3] == key:   # stage count
-            current_len = len(self.stages)
-            if current_len < value:
-                while current_len < value:
-                    self.addStage()
-                    current_len += 1
-                self.onUpdateActiveStages(current_len)
-            elif current_len > value:
-                while current_len > value:
-                    self.removeStage()
-                    current_len -= 1
-                self.onUpdateActiveStages(current_len)
+        if self.SETTINGS[0] in key:  # indirect map
+            self.indTexMaps[key2] = value
+        elif self.SETTINGS[1] in key:  # indirect coord
+            self.indTexCoords[key2] = value
+            self.onUpdateIndirectStages(self.countIndirectStages())
+        elif self.SETTINGS[2] == key:  # stage count
+            self.set_stage_count(value)
+        else:
+            raise ValueError('Unknown Key {} for shader'.format(key))
 
-    def getMaterialNames(self):
-        return [mat.name for mat in self.materials]
+    def set_stage_count(self, value):
+        current_len = len(self.stages)
+        if current_len < value:
+            while current_len < value:
+                self.addStage()
+                current_len += 1
+        elif current_len > value:
+            while current_len > value:
+                self.removeStage()
+                current_len -= 1
+
+    def getMaterialName(self):
+        return self.material.name
 
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level if indentation_level else '>'
         if not key:
-            print('{}Shader{}: TextureRefCount:{} IndirectMap:{} IndirectCoord:{}'.format(trace,
-                                                                                  self.getMaterialNames(),
-                                                                                  self.texRefCount,
-                                                                                  self.indTexMaps,
-                                                                                  self.indTexCoords))
+            print('{}(Shader){}: IndirectMap:{} IndirectCoord:{}'.format(trace,
+                                                                         self.getMaterialName(),
+                                                                         self.indTexMaps,
+                                                                         self.indTexCoords))
             indentation_level += 1
             for x in self.stages:
                 x.info(key, indentation_level)
         else:
-            print('{}Shader{}: {}:{} '.format(trace, self.getMaterialNames(), key, self[key]))
+            print('{}(Shader){}: {}:{} '.format(trace, self.getMaterialName(), key, self[key]))
 
     def getStage(self, n):
         if not 0 <= n < len(self.stages):
-            # todo: add shader stage?
             raise ValueError("Shader stage {} out of range, has {} stages".format(n, len(self.stages)))
         return self.stages[n]
 
@@ -560,16 +573,20 @@ class Shader():
         s['mapid'] = mapid
         s['coordinateid'] = mapid
         stages.append(s)
+        self.onUpdateActiveStages(len(stages))
         return s
 
     def onUpdateActiveStages(self, num_stages):
-        for x in self.materials:
-            x.shaderStages = num_stages
+        self.material.shaderStages = num_stages
+
+    def onUpdateIndirectStages(self, num_stages):
+        self.material.indirectStages = num_stages
 
     def removeStage(self, id=-1):
         if len(self.stages) == 1:
             raise Exception('Shader must have at least 1 stage')
         self.stages.pop(id)
+        self.onUpdateActiveStages(len(self.stages))
 
     def __deepcopy__(self, memodict=None):
         ret = Shader(self.name, self.parent)
@@ -579,7 +596,6 @@ class Shader():
             for key, val in x.map.items():
                 map[key] = val
             ret.stages.append(s)
-        ret.texRefCount = self.texRefCount
         ret.indTexMaps = copy(self.indTexMaps)
         ret.indTexCoords = copy(self.indTexCoords)
         return ret
@@ -589,11 +605,6 @@ class Shader():
         binfile.start()
         length, outer, id, stage_count, res0, res1, res2, = binfile.read("3I4B", 16)
         layer_indices = binfile.read("8B", 8)
-        self.texRefCount = 0
-        for x in layer_indices:
-            if x > 10:
-                break
-            self.texRefCount += 1
         assert (stage_count <= 16)
         self.stages = []
         for i in range(stage_count):
@@ -608,10 +619,8 @@ class Shader():
         iref = RAS1_IRef()
         iref.unpack(binfile)
         for i in range(4):
-            x = iref.getTexMap(i)
-            self.indTexMaps[i] = x
-            y = iref.getTexCoord(i)
-            self.indTexCoords[i] = y
+            self.indTexMaps[i] = iref.getTexMap(i)
+            self.indTexCoords[i] = iref.getTexCoord(i)
         binfile.align()
         i = 0
         while i < stage_count:
@@ -663,7 +672,7 @@ class Shader():
         binfile.write("IiI4B", self.BYTESIZE, binfile.getOuterOffset(), id,
                       len(self.stages), 0, 0, 0)
         layer_indices = [0xff] * 8
-        for i in range(self.texRefCount):
+        for i in range(self.getTexRefCount()):
             layer_indices[i] = i
         binfile.write("8B", *layer_indices)
         binfile.align()
@@ -750,6 +759,67 @@ class Shader():
                 break
             i += 1
         return i
+
+    def getIndCoords(self):
+        return {x['indirectstage'] for x in self.stages}
+
+    def getTexRefCount(self):
+        return len(self.material.layers)
+
+    def check(self):
+        """Checks the shader for common errors, returns (direct_stage_count, ind_stage_count)"""
+        prefix = 'Shader {}:'.format(self.getMaterialName())
+        texRefCount = self.getTexRefCount()
+        tex_usage = [0] * texRefCount
+        ind_stage_count = 0
+        mark_to_remove = []
+        # direct check
+        for x in self.stages:
+            if x['enabled']:
+                id = x['mapid']
+                if id >= texRefCount:
+                    id = self.detect_unusedMapId()
+                    if id < texRefCount:
+                        b = Bug(2, 2, '{} Stage {} no such layer {}.'.format(prefix, x.id, id),
+                                'Use layer {}'.format(id))
+                        if b.should_fix():
+                            x['mapid'] = x['coordinateid'] = id
+                            b.resolve()
+                    else:
+                        b = Bug(2, 2, '{} Stage {} no such layer {}.'.format(prefix, x.id, id), 'Remove stage')
+                        if b.should_fix():
+                            mark_to_remove.append(x)
+                            b.resolve()
+                else:
+                    tex_usage[id] += 1
+        for x in mark_to_remove:
+            self.stages.remove(x)
+        # check stages
+        for x in self.stages:
+            x.check()
+        # indirect check
+        ind_stages = self.getIndCoords()
+        for stage_id in range(len(self.indTexCoords)):
+            x = self.indTexCoords[stage_id]
+            if x < 7:
+                if x < texRefCount:
+                    try:
+                        ind_stages.remove(stage_id)
+                        tex_usage[x] += 1
+                        ind_stage_count += 1
+                    except ValueError:
+                        AUTO_FIXER.warn('Ind coord {} set but unused'.format(x), 3)
+        # now check usage count
+        for i in range(len(tex_usage)):
+            x = tex_usage[i]
+            if x == 0:
+                b = Bug(3, 3, '{} Layer {} is not used in shader.'.format(prefix, i), 'remove layer')
+                AUTO_FIXER.notify(b)
+            elif x > 1:
+                b = Bug(4, 4, '{} Layer {} used {} times by shader.'.format(prefix, i, x), 'check shader')
+                AUTO_FIXER.notify(b)
+        ind_matrices_used = self.getIndirectMatricesUsed()
+        self.material.check_shader(len(self.stages), ind_stage_count, ind_matrices_used)
 
 # possibly try to fix ctools bugs later
 # class TexCoord:

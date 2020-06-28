@@ -1,14 +1,17 @@
 """ MDL0 Models """
-from abmatt.binfile import Folder
+# ----------------- Model sub files --------------------------------------------
+from abmatt.autofix import AUTO_FIXER, Bug
+from abmatt.binfile import Folder, printCollectionHex, PackingError
 from abmatt.drawlist import DrawList, Definition
-from abmatt.matching import findAll
+from abmatt.matching import findAll, fuzzy_match
 from abmatt.material import Material
+from abmatt.pat0 import Pat0MatAnimation, Pat0Collection
 from abmatt.polygon import Polygon
 from abmatt.shader import Shader, ShaderList
+from abmatt.srt0 import SRTMatAnim, SRTCollection
 from abmatt.subfile import SubFile
 
 
-# ----------------- Model sub files --------------------------------------------
 class ModelGeneric(object):
     """ A generic model class - most data structures have similar type of header"""
 
@@ -31,6 +34,7 @@ class ModelGeneric(object):
         [self.index] = binfile.read("I", 4)
         # doesn't do much unpacking
         self.data = binfile.readRemaining(self.length)
+        # printCollectionHex(self.data)
         binfile.end()
 
     def pack(self, binfile):
@@ -55,15 +59,20 @@ class TextureLink:
         self.parent = parent
         self.num_references = 0
 
+    def __str__(self):
+        return self.name + ' ' + str(self.num_references)
+
     def unpack(self, binfile):
-        binfile.start()
+        offset = binfile.start()
         [self.num_references] = binfile.read("I", 4)
-        for i in range(self.num_references):    # ignore this?
+        for i in range(self.num_references):  # ignore this?
             link = binfile.read("2i", 8)
+        # print('{} at {}'.format(self, offset))
         binfile.end()
 
     def pack(self, binfile):
         offset = binfile.start()
+        # print('{} at {}'.format(self, offset))
         binfile.write("I", self.num_references)
         for i in range(self.num_references):
             binfile.mark(2)  # marks 2 references
@@ -92,11 +101,54 @@ class FurVector(ModelGeneric):
         super(FurVector, self).__init__(name, parent)
 
 
-class TexCoord(ModelGeneric):
+class TexCoord:
     """ TexCoord model data"""
 
     def __init__(self, name, parent):
-        super(TexCoord, self).__init__(name, parent)
+        self.name = name
+        self.parent = parent
+
+    def __str__(self):
+        return 'UV {} id:{} st:{} format:{} divisor:{} stride:{} count:{}'.format(self.name, self.index, self.is_st,
+                                                                                  self.format, self.divisor,
+                                                                                  self.stride, self.uv_count)
+
+    def check(self):
+        if self.divisor >= 32:
+            b = Bug(1, 3, '{} Corrupted'.format(self.name), 'Set UV divisor to 0')
+            if b.should_fix():
+                self.divisor = 0
+                b.resolve()
+
+    def unpack(self, binfile):
+        offset = binfile.start()
+        # print('UV {} at {}'.format(self.name, offset))
+        binfile.readLen()
+        binfile.advance(4)
+        binfile.store()
+        binfile.advance(4)
+        self.index, self.is_st, self.format, self.divisor, self.stride, self.uv_count = binfile.read('3I2BH', 16)
+        self.minimum = binfile.read('3f', 12)
+        self.maximum = binfile.read('3f', 12)
+        binfile.recall()
+        self.data = binfile.readRemaining()
+        # printCollectionHex(self.data)
+        # print(self)
+        binfile.end()
+
+    def pack(self, binfile):
+        binfile.start()
+        binfile.markLen()
+        binfile.write('i', binfile.getOuterOffset())
+        binfile.mark()
+        binfile.storeNameRef(self.name)
+        binfile.write('3I2BH', self.index, self.is_st, self.format, self.divisor, self.stride, self.uv_count)
+        binfile.write('3f', *self.minimum)
+        binfile.write('3f', *self.maximum)
+        binfile.advance(8)
+        binfile.createRef()
+        binfile.writeRemaining(self.data)
+        binfile.end()
 
 
 class Color(ModelGeneric):
@@ -113,15 +165,60 @@ class Normal(ModelGeneric):
         super(Normal, self).__init__(name, parent)
 
 
-class Vertex(ModelGeneric):
+class Vertex():
     """ Vertex class for storing vertices data """
 
     def __init__(self, name, parent):
-        super(Vertex, self).__init__(name, parent)
+        self.name = name
+        self.parent = parent
+
+    def __str__(self):
+        return 'Vertex {} id:{} xyz:{} format:{} divisor:{} stride:{} count:{}'.format(self.name, self.index,
+                                                                                       self.is_xyz,
+                                                                                       self.format, self.divisor,
+                                                                                       self.stride, self.vertex_count)
+
+    def check(self):
+        if self.divisor >= 32:
+            b = Bug(1, 3, '{} Corrupt vertex'.format(self.name), 'Set to 0')
+            if b.should_fix():
+                self.divisor = 0
+                b.resolve()
+
+    def unpack(self, binfile):
+        """ Unpacks some ptrs but mostly just leaves data as bytes """
+        binfile.start()
+        length = binfile.readLen()
+        binfile.advance(4)
+        binfile.store()  # data pointer
+        binfile.advance(4)  # ignore, we already have name
+        self.index, self.is_xyz, self.format, self.divisor, self.stride, self.vertex_count = binfile.read("3I2BH", 16)
+        self.minimum = binfile.read('3f', 12)
+        self.maximum = binfile.read('3f', 12)
+        binfile.recall()
+        self.data = binfile.readRemaining()
+        binfile.end()
+        return self
+
+    def pack(self, binfile):
+        """ Packs into binfile """
+        binfile.start()
+        binfile.markLen()
+        binfile.write("i", binfile.getOuterOffset())
+        binfile.mark()  # mark the data pointer
+        binfile.storeNameRef(self.name)
+        binfile.write('3I2BH', self.index, self.is_xyz, self.format, self.divisor, self.stride, self.vertex_count)
+        binfile.write('3f', *self.minimum)
+        binfile.write('3f', *self.maximum)
+        binfile.advance(8)
+        binfile.createRef()  # data pointer
+        binfile.writeRemaining(self.data)
+        binfile.end()
 
 
 class Bone(ModelGeneric):
     """ Bone class """
+
     def __init__(self, name, parent):
         super(Bone, self).__init__(name, parent, False)
 
@@ -149,6 +246,7 @@ class Mdl0(SubFile):
     """ Model Subfile """
     MAGIC = "MDL0"
     VERSION_SECTIONCOUNT = {8: 11, 11: 14}
+    EXPECTED_VERSION = 11
     SECTION_NAMES = ("Definitions", "Bones", "Vertices", "Normals", "Colors",
                      "UVs", "FurVectors", "FurLayers",
                      "Materials", "Shaders", "Objects", "Textures", "Palettes")
@@ -165,6 +263,8 @@ class Mdl0(SubFile):
         super(Mdl0, self).__init__(name, parent)
         self.drawXLU = DrawList('DrawXlu', self)
         self.drawOpa = DrawList('DrawOpa', self)
+        self.srt0_collection = None
+        self.pat0_collection = None
         self.definitions = []
         self.bones = []
         self.vertices = []
@@ -192,20 +292,92 @@ class Mdl0(SubFile):
 
     def __setitem__(self, key, value):
         if key == 'name':
-            self.updateName(value)
+            self.rename(value)
         else:
             raise ValueError('Unknown key "{}"'.format(key))
 
-    def updateName(self, name):
+    # ---------------------------------- SRT0 ------------------------------------------
+    def set_srt0(self, srt0_collection):
+        self.srt0_collection = srt0_collection
+        not_found = []
+        for x in srt0_collection:
+            mat = self.getMaterialByName(x.name)
+            if not mat:
+                not_found.append(x)
+            else:
+                mat.set_srt0(x)
+        for x in not_found:
+            mat = fuzzy_match(x.name, self.materials)
+            desc = 'No material matching SRT0 {}'.format(x.name)
+            if mat and not mat.srt0:
+                b = Bug(1, 1, desc, 'Rename to {}'.format(mat.name))
+                if b.should_fix():
+                    if mat.set_srt0(x):
+                        x.rename(mat.name)
+                        b.resolve()
+                    else:
+                        AUTO_FIXER.error('Rename failed')
+            else:
+                b = Bug(1, 1, desc, 'Remove SRT0')
+                if b.should_fix():
+                    srt0_collection.remove(x)
+                    b.resolve()
+
+    def add_srt0(self, material):
+        anim = SRTMatAnim(material.name)
+        if not self.srt0_collection:
+            self.srt0_collection = self.parent.add_srt_collection(SRTCollection(self.name, self.parent))
+        self.srt0_collection.add(anim)
+        return anim
+
+    def remove_srt0(self, animation):
+        return self.srt0_collection.remove(animation)
+
+    # ------------------ Pat0 --------------------------------------
+    def set_pat0(self, pat0_collection):
+        self.pat0_collection = pat0_collection
+        not_found = []
+        for x in pat0_collection:
+            mat = self.getMaterialByName(x.name)
+            if not mat:
+                not_found.append(x)
+            else:
+                mat.set_pat0(x)
+        for x in not_found:
+            mat = fuzzy_match(x.name, self.materials)
+            desc = 'No material matching PAT0 {}'.format(x.name)
+            if mat and not mat.pat0:
+                b = Bug(1, 1, desc, 'Rename to {}'.format(mat.name))
+                if b.should_fix():
+                    if mat.set_pat0(x):
+                        x.rename(mat.name)
+                        b.resolve()
+                    else:
+                        AUTO_FIXER.error('Rename failed')
+            else:
+                b = Bug(1, 1, desc, 'Remove PAT0')
+                if b.should_fix():
+                    pat0_collection.remove(x)
+                    b.resolve()
+
+    def add_pat0(self, material):
+        anim = Pat0MatAnimation(material.name, self.parent.getTextureMap())
+        if not self.pat0_collection:
+            self.pat0_collection = self.parent.add_pat0_collection(Pat0Collection(self.name, self.parent))
+        self.pat0_collection.add(anim)
+        return anim
+
+    def remove_pat0(self, animation):
+        return self.pat0_collection.remove(animation)
+
+    # ------------------ Name --------------------------------------
+    def rename(self, name):
         self.parent.updateModelName(self.name, name)
+        self.srt0_collection.rename(name)
+        self.pat0_collection.rename(name)
         self.name = name
 
-    def getMaterialsByName(self, name):
-        return findAll(name, self.materials)
-
-    def getShaders(self, material_list, for_modification=True):
-        return self.shaders.getShaders(material_list, for_modification)
-
+    # ------------------------------------ Materials ------------------------------
     def getMaterialByName(self, name):
         """Exact naming"""
         for m in self.materials:
@@ -218,48 +390,8 @@ class Mdl0(SubFile):
             if x.id == id:
                 return x
 
-    def getTextureLink(self, name):
-        for x in self.textureLinks:
-            if x.name == name:
-                return x
-
-    def addLayerReference(self, name):
-        link = self.getTextureLink(name)
-        if not link:
-            if name != 'Null' and not self.parent.getTexture(name):
-                print('WARNING: Adding reference to unknown texture "{}"'.format(name))
-            link = TextureLink(name, self)
-            self.textureLinks.append(link)
-        link.num_references += 1
-
-    def removeLayerReference(self, name):
-        link = self.getTextureLink(name)
-        if not link:
-            raise ValueError('No such texture link: {}'.format(name))
-        link.num_references -= 1
-
-    def renameLayer(self, layer, name):
-        """Attempts to rename a layer, raises value error if the texture can't be found"""
-        # first try to get texture link
-        old_link = new_link = None
-        for x in self.textureLinks:
-            if x.name == name:
-                new_link = x
-            if x.name == layer.name:
-                old_link = x
-        assert(old_link)
-        # No link found, try to find texture matching and create link
-        if not new_link:
-            if name != 'Null' and not self.parent.getTexture(name):  # possible todo, regex matching for name?
-                print('WARNING: Adding reference to unknown texture "{}"'.format(name))
-            new_link = TextureLink(name, self)
-            self.textureLinks.append(new_link)
-        old_link.num_references -= 1
-        new_link.num_references += 1
-        return name
-
-    def getTrace(self):
-        return self.parent.getTrace() + "->" + self.name
+    def getMaterialsByName(self, name):
+        return findAll(name, self.materials)
 
     def isMaterialDrawXlu(self, material_id):
         if self.drawXLU.getByMaterialID(material_id):
@@ -287,61 +419,164 @@ class Mdl0(SubFile):
             definition = self.drawOpa.getByMaterialID(material_id)
         return definition.getPriority()
 
+    # ------------------------------- Shaders -------------------------------------------
+    def getShaders(self, material_list, for_modification=True):
+        return self.shaders.getShaders(material_list, for_modification)
+
+    # ----------------------------- Layers/Tex Links -------------------------------------
+    def getTextureLink(self, name):
+        for x in self.textureLinks:
+            if x.name == name:
+                return x
+
+    def addLayerReference(self, name):
+        link = self.getTextureLink(name)
+        if not link:
+            if name != 'Null' and not self.parent.getTexture(name):
+                tex = fuzzy_match(name, self.parent.textures)
+                notify = 'Adding reference to unknown texture "{}"'.format(name)
+                if tex:
+                    notify += ', did you mean ' + tex.name + '?'
+                AUTO_FIXER.notify(notify, 4)
+            link = TextureLink(name, self)
+            self.textureLinks.append(link)
+        link.num_references += 1
+
+    def removeLayerReference(self, name):
+        link = self.getTextureLink(name)
+        if not link:
+            raise ValueError('No such texture link: {}'.format(name))
+        link.num_references -= 1
+
+    def renameLayer(self, layer, name):
+        """Attempts to rename a layer, raises value error if the texture can't be found"""
+        # first try to get texture link
+        old_link = new_link = None
+        for x in self.textureLinks:
+            if x.name == name:
+                new_link = x
+            if x.name == layer.name:
+                old_link = x
+        assert old_link
+        # No link found, try to find texture matching and create link
+        if not new_link:
+            if name != 'Null' and not self.parent.getTexture(name):
+                tex = fuzzy_match(name, self.parent.textures)
+                notify = 'Adding reference to unknown texture "{}"'.format(name)
+                if tex:
+                    notify += ', did you mean ' + tex.name + '?'
+                AUTO_FIXER.info(notify, 4)
+            new_link = TextureLink(name, self)
+            self.textureLinks.append(new_link)
+        old_link.num_references -= 1
+        new_link.num_references += 1
+        return name
+
+    def getTrace(self):
+        return self.parent.getTrace() + "->" + self.name
+
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + '>' + self.name if indentation_level else self.parent.name + "->" + self.name
         print("{}:\t{} material(s)\t{} shader(s)".format(trace, len(self.materials),
-                                                                   len(self.shaders)))
+                                                         len(self.shaders)))
         indentation_level += 1
         # pass it along
         for x in self.materials:
             x.info(key, indentation_level)
         for x in self.shaders:
-            x.info(key, indentation_level)
+            self.shaders[x].info(key, indentation_level)
 
-    # ---------------HOOK REFERENCES -----------------------------------------
-    def hookSRT0ToMats(self, srt0):
-        for animation in srt0.matAnimations:
-            m = self.getMaterialByName(animation.name)
-            if m:
-                m.srt0 = animation
-                animation.material = m
-            else:
-                print('Unknown animation reference "{}"'.format(animation.name))
+    # ---------------------------------------------- CLIPBOARD -------------------------------------------
+    def clip(self, clipboard):
+        clipboard[self.name] = self
 
-    def check(self):
+    def clip_find(self, clipboard):
+        return clipboard.get(self.name)
+
+    def paste(self, item):
         for x in self.materials:
-            x.check()
+            for y in item.materials:
+                if x.name == y.name:
+                    x.paste(y)
+                    break
+
+    def rename_material(self, material, new_name):
+        # first check if name is available
+        for x in self.materials:
+            if new_name == x.name:
+                raise ValueError('The name {} is already taken!'.format(new_name))
+        if material.srt0:
+            material.srt0.rename(new_name)
+        else:
+            anim = self.srt0_collection[new_name]
+            if anim:
+                material.set_srt0(anim)
+        if material.pat0:
+            material.pat0.rename(new_name)
+        else:
+            anim = self.pat0_collection[new_name]
+            if anim:
+                material.set_pat0(anim)
+
+    def getTextureMap(self):
+        return self.parent.getTextureMap()
+
+    # --------------------------------------- Check -----------------------------------
+    def check(self):
+        """Checks model (somewhat) for validity
+            texture_map: dictionary of tex_name:texture
+        """
+        super(Mdl0, self).check()
+        texture_map = self.getTextureMap()
+        for x in self.materials:
+            x.check(texture_map)
         expected_name = self.parent.getExpectedMdl()
-        if expected_name and expected_name != self.name:
-            print('WARNING: Model name {} does not match expected {}'.format(self.name, expected_name))
+        if expected_name:
+            if expected_name != self.name:
+                b = Bug(2, 2, 'Model name does not match file', 'Rename to {}'.format(expected_name))
+                if b.should_fix():
+                    self.rename(expected_name)
+                    b.resolve()
+            if expected_name == 'map':
+                names = [x.name for x in self.bones]
+                if 'posLD' not in names or 'posRU' not in names:
+                    AUTO_FIXER.warn('Missing map model bones')
+        # for x in self.textureLinks:       # check in layers
+        #     if x.num_references and not texture_map.get(x.name):
+        #         AUTO_FIXER.notify('Texture Reference "{}" not found.'.format(x.name), 2)
+        self.checkDrawXLU()
+        for x in self.texCoords:
+            x.check()
+        for x in self.vertices:
+            x.check()
 
     def checkDrawXLU(self):
         count = 0
         for x in self.materials:
             is_draw_xlu = self.isMaterialDrawXlu(x.id)
             if x.xlu != is_draw_xlu:
-                if count == 0:
-                    self.parent.isModified = True
-                count += 1
-                mark = 'xlu' if x.xlu else 'opa'
-                print('Note: Fixing incorrect draw pass for {}, marking as {}'.format(x.name, mark))
-                if x.xlu:
-                    self.setMaterialDrawXlu(x.id)
-                else:
-                    self.setMaterialDrawOpa(x.id)
+                change = 'opa' if x.xlu else 'xlu'
+                b = Bug(1, 4, '{} incorrect draw pass'.format(x.name), 'Change draw pass to {}'.format(change))
+                if b.should_fix():
+                    if count == 0:
+                        self.parent.isModified = True
+                    count += 1
+                    if x.xlu:
+                        self.setMaterialDrawXlu(x.id)
+                    else:
+                        self.setMaterialDrawOpa(x.id)
+                    b.resolve()
         return count
+
+    def get_used_textures(self):
+        return set(x.name for x in self.textureLinks if x.num_references > 0)
 
     # ---------------START PACKING STUFF -------------------------------------
     def clean(self):
         """Cleans up references in preparation for packing"""
-        self.sections[0] = self.definitions = [x for x in self.definitions if x]
-        self.shaders.consolidate()
+        self.sections[0] = [x for x in self.definitions if x]  # changes section but leaves definition, possible bug?
         self.sections[11] = self.textureLinks = [x for x in self.textureLinks if x.num_references > 0]
-        parent = self.parent
-        for x in self.textureLinks:
-            if not parent.getTexture(x.name):
-                print('WARNING: Texture Reference "{}" not found.'.format(x.name))
-        self.check()
+
 
     def unpackSection(self, binfile, section_index):
         """ unpacks section by creating items  of type section_klass
@@ -351,8 +586,8 @@ class Mdl0(SubFile):
         if section_index == 0:
             self.unpackDefinitions(binfile)
         elif section_index == 9:
-            # assumes materials are unpacked.. possible bug?
-            self.shaders.hookMatsToShaders(self.shaders.unpack(binfile), self.materials)
+            # assumes materials are unpacked..
+            self.shaders.unpack(binfile, self.materials)
         elif binfile.recall():  # from offset header
             section_klass = self.SECTION_CLASSES[section_index]
             folder = Folder(binfile, self.SECTION_NAMES[section_index])
@@ -377,7 +612,7 @@ class Mdl0(SubFile):
                     d = self.drawXLU
                     found_xlu = True
                     if not found_opa:
-                        self.definitions.append(self.drawOpa) # empty but it might change
+                        self.definitions.append(self.drawOpa)  # empty but it might change
                 elif 'Opa' in name:
                     d = self.drawOpa
                     found_opa = True
@@ -388,7 +623,7 @@ class Mdl0(SubFile):
             d.unpack(binfile)
             self.definitions.append(d)
         if not found_xlu:
-            self.definitions.append(self.drawXLU)   # empty but might change
+            self.definitions.append(self.drawXLU)  # empty but might change
 
     def unpack(self, binfile):
         """ unpacks model data """
@@ -414,7 +649,6 @@ class Mdl0(SubFile):
             self.unpackSection(binfile, i)
             i += 1
         binfile.end()  # end file
-        self.checkDrawXLU()
 
     def packTextureLinks(self, binfile, folder):
         """Packs texture link section, returning map of names:offsets be filled in by mat/layer refs"""
@@ -424,16 +658,25 @@ class Mdl0(SubFile):
             tex_map[x.name] = x.pack(binfile)
         return tex_map
 
-    def packSection(self, binfile, section_index, folder, extras=None):
-        """ Packs a model section """
+    def pack_definitions(self, binfile, folder):
+        for x in self.sections[0]:
+            folder.createEntryRefI()
+            x.pack(binfile)
+        binfile.align(4)
+
+    def pack_materials(self, binfile, folder, texture_link_map):
+        """packs materials, requires texture link map to offsets that need to be filled"""
+        for x in self.sections[8]:
+            folder.createEntryRefI()
+            x.pack(binfile, texture_link_map)
+
+    def pack_shaders(self, binfile, folder):
+        self.sections[9].pack(binfile, folder)
+
+    def pack_section(self, binfile, section_index, folder):
+        """ Packs a model section (generic) """
         section = self.sections[section_index]
-        if section_index == 9:
-            section.pack(binfile, folder)
-        elif section_index == 8:
-            for x in section:
-                folder.createEntryRefI()
-                x.pack(binfile, extras)
-        elif section:
+        if section:
             # now pack the data
             for x in section:
                 folder.createEntryRefI()  # create reference to current data location
@@ -469,6 +712,8 @@ class Mdl0(SubFile):
 
     def pack(self, binfile):
         """ Packs the model data """
+        if self.sections[6] or self.sections[7] or self.sections[12]:
+            raise PackingError(binfile, 'Packing Fur/palettes not supported')
         self.clean()
         self._pack(binfile)
         binfile.start()  # header
@@ -483,12 +728,20 @@ class Mdl0(SubFile):
         binfile.end()  # end header
         # sections
         folders = self.packFolders(binfile)
+
+        # texture links
         texture_link_map = None
-        for i in self.SECTION_ORDER:
-            folder = folders[i - 2] if i > 5 and self.version < 10 else folders[i]
-            if i == 11:     # special case for texture links
-                texture_link_map = self.packTextureLinks(binfile, folder)
-            else:
-                self.packSection(binfile, i, folder, texture_link_map)
-        binfile.end()  # end file
+        folder = folders[9] if self.version < 10 else folders[11] # texture links
+        texture_link_map = self.packTextureLinks(binfile, folder)
+        self.pack_definitions(binfile, folders[0])
+        self.pack_section(binfile, 1, folders[1])   # bones
+        i = 6 if self.version < 10 else 8
+        self.pack_materials(binfile, folders[i], texture_link_map)
+        i += 1
+        self.pack_shaders(binfile, folders[i])
+        i += 1
+        self.pack_section(binfile, 10, folders[i])  # objects
+        for i in range(2, 6):   # vertices, normals, colors, uvs
+            self.pack_section(binfile, i, folders[i])
+        binfile.alignAndEnd()  # end file
     # -------------- END PACKING STUFF ---------------------------------------
