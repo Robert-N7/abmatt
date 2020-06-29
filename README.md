@@ -28,7 +28,7 @@ ABMatt supports editing the following types:
 
 ## Command Line Usage
 ```
-abmatt [-i -f <file> -b <brres-file> -d <destination> -o -t <type> -k <key> -v <value> -n <name> -m <model> -a -s -q]
+abmatt [-i -f <file> -b <brres-file> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]
 ```
 | Flag |Expanded| Description |
 |---|---|---|
@@ -49,11 +49,11 @@ abmatt [-i -f <file> -b <brres-file> -d <destination> -o -t <type> -k <key> -v <
 ### Command Line Examples
 This command would open *course_model.brres* in overwrite mode and run the commands stored in *my_commands.txt*
 ```
-abmatt -f course_model.brres -o -c my_commands.txt
+abmatt -b course_model.brres -o -f my_commands.txt
 ```
 This next command would enable xlu for all materials starting with the prefix xlu.
 ```
-abmatt -f course_model.brres -o -n xlu.* -k xlu -v true
+abmatt -b course_model.brres -o -n xlu.* -k xlu -v true
 ```
 
 ## File Format
