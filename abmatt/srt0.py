@@ -16,8 +16,9 @@ class SRTCollection:
         self.collection = []
         self.name = name  # takes on model name
         self.parent = parent
-        for x in srts:
-            self.collection.extend(x.matAnimations)
+        if srts:
+            for x in srts:
+                self.collection.extend(x.matAnimations)
 
     def __getitem__(self, material_name):
         """Gets animation in collection matching material name"""

@@ -90,7 +90,7 @@ class Brres(Clipable):
             f = BinFile(filename, mode="w")
             self.pack(f)
             if f.commitWrite():
-                AUTO_FIXER.info("Wrote file '{}'".format(filename), 4)
+                AUTO_FIXER.info("Wrote file '{}'".format(filename), 2)
                 self.name = filename
                 self.isModified = False
             return True

@@ -64,6 +64,7 @@ class BinFile:
         except:
             AUTO_FIXER.error('Unable to open {}, Permission Denied'.format(self.filename), 1)
             return False
+
         return True
 
     def is_aligned(self, alignment=0x20):

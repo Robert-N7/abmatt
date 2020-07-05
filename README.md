@@ -28,12 +28,13 @@ ABMatt supports editing the following types:
 
 ## Command Line Usage
 ```
-abmatt [-i -f <file> -b <brres-file> -d <destination> -o -t <type> -k <key> -v <value> -n <name> -m <model> -a -s -q]
+abmatt [-i -f <file> -b <brres-file> -d <destination> -o -c <command> -t <type> -k <key> -v <value> -n <name> -m <model>]
 ```
 | Flag |Expanded| Description |
 |---|---|---|
 | -a | --auto-fix | Automatic fix options are none, error, warning, check, all, and prompt. (0-5) The default is to fix at the check level without prompting.
 | -b | --brres | Brres file selection. |
+| -c | --command | Command name to run. |
 | -d | --destination | The file path to be written to. Mutliple destinations are not supported. |
 | -f | --file | File with ABMatt commands to be processed as specified in file format. |
 | -h | --help | Displays a help message about program usage. |

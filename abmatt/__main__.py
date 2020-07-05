@@ -9,6 +9,8 @@ import os
 import sys
 from cmd import Cmd
 
+import Levenshtein
+import fuzzywuzzy
 from abmatt.brres import Brres
 from abmatt.mdl0 import TexCoord
 from abmatt.command import Command, ParsingException, NoSuchFile
@@ -16,7 +18,7 @@ from abmatt.autofix import AUTO_FIXER
 
 __version__ = "0.5.0"
 USAGE = "USAGE: abmatt [-i -f <file> -b <brres-file> -d <destination> -o -t <type> -k <key> -v <value> -n <name>\
- -m <model> -u]"
+ -m <model>]"
 
 
 def hlp():
@@ -25,38 +27,6 @@ def hlp():
 ====================================================================================
 ANOOB'S BRRES MATERIAL TOOL
 Version {}
-
-      >>       >==>    >=>     >===>          >===>      >=>>=>    >=>   >=>>=>
-     >>=>      >> >=>  >=>   >=>    >=>     >=>    >=>   >>   >=>   >> >=>    >=>
-    >> >=>     >=> >=> >=> >=>        >=> >=>        >=> >>    >=>      >=>
-   >=>  >=>    >=>  >=>>=> >=>        >=> >=>        >=> >==>>=>          >=>
-  >=====>>=>   >=>   > >=> >=>        >=> >=>        >=> >>    >=>           >=>
- >=>      >=>  >=>    >>=>   >=>     >=>    >=>     >=>  >>     >>     >=>    >=>
->=>        >=> >=>     >=>     >===>          >===>      >===>>=>        >=>>=>
-
->=>>=>    >======>     >======>     >=======>   >=>>=>
->>   >=>  >=>    >=>   >=>    >=>   >=>       >=>    >=>
->>    >=> >=>    >=>   >=>    >=>   >=>        >=>
->==>>=>   >> >==>      >> >==>      >=====>      >=>
->>    >=> >=>  >=>     >=>  >=>     >=>             >=>
->>     >> >=>    >=>   >=>    >=>   >=>       >=>    >=>
->===>>=>  >=>      >=> >=>      >=> >=======>   >=>>=>
-
->=>       >=>       >>       >===>>=====> >=======> >======>     >=>       >>       >=>
->> >=>   >>=>      >>=>           >=>     >=>       >=>    >=>   >=>      >>=>      >=>
->=> >=> > >=>     >> >=>          >=>     >=>       >=>    >=>   >=>     >> >=>     >=>
->=>  >=>  >=>    >=>  >=>         >=>     >=====>   >> >==>      >=>    >=>  >=>    >=>
->=>   >>  >=>   >=====>>=>        >=>     >=>       >=>  >=>     >=>   >=====>>=>   >=>
->=>       >=>  >=>      >=>       >=>     >=>       >=>    >=>   >=>  >=>      >=>  >=>
->=>       >=> >=>        >=>      >=>     >=======> >=>      >=> >=> >=>        >=> >=======>
-
->===>>=====>     >===>          >===>      >=>
-     >=>       >=>    >=>     >=>    >=>   >=>
-     >=>     >=>        >=> >=>        >=> >=>
-     >=>     >=>        >=> >=>        >=> >=>
-     >=>     >=>        >=> >=>        >=> >=>
-     >=>       >=>     >=>    >=>     >=>  >=>
-     >=>         >===>          >===>      >=======>
 ====================================================================================
 
 | Flag |Expanded| Description |
@@ -76,7 +46,7 @@ Version {}
 | -v | --value | Value to set corresponding with key. (set command) |
 
 File command format in extended BNF:
-ommand =  cmd-prefix ['for' selection] EOL;
+command =  cmd-prefix ['for' selection] EOL;
 cmd-prefix = set | info | add | remove | select | preset | save | copy | paste;
 set   = 'set' type setting;
 info  = 'info' type [key | 'keys'];
@@ -187,18 +157,33 @@ class Shell(Cmd):
         print('Syntax error, type ? for help')
 
 
-def load_presets():
-    # Load presets
-    dir = os.path.dirname(os.path.abspath(__file__))
+def load_preset_file(dir):
     preset_path = os.path.join(dir, 'presets.txt')
     if os.path.exists(preset_path):
         Command.load_commandfile(preset_path)
+        return True
+    return False
+
+
+def load_presets():
+    # Load presets in file directory
+    loaded = True
+    dir = os.path.dirname(os.path.abspath(__file__))
+    if not load_preset_file(dir):
+        dir = os.path.join(os.path.dirname(dir), 'etc')
+        if not load_preset_file(dir):
+            loaded = False
     # Load presets in cwd
+    loaded_cwd = False
     cwd = os.getcwd()
     if dir != cwd:
-        preset_path = os.path.join(cwd, 'presets.txt')
-        if os.path.exists(preset_path):
-            Command.load_commandfile(preset_path)
+        loaded_cwd = load_preset_file(cwd)
+    loaded = loaded or loaded_cwd
+    if loaded:
+        AUTO_FIXER.info('Presets loaded...', 4)
+    else:
+        AUTO_FIXER.info('No presets file detected', 4)
+    return loaded
 
 
 def main():
