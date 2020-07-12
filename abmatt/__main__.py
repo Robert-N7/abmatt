@@ -20,8 +20,7 @@ from abmatt.command import Command, ParsingException, NoSuchFile
 from abmatt.autofix import AUTO_FIXER
 
 VERSION = '0.6.0'
-USAGE = "USAGE: abmatt [-i -f <file> -b <brres-file> -d <destination> -o -t <type> -k <key> -v <value> -n <name>\
- -m <model>]"
+USAGE = "USAGE: abmatt [-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]"
 
 
 def hlp():
@@ -32,10 +31,9 @@ ANOOB'S BRRES MATERIAL TOOL
 Version {}
 ====================================================================================
 
-| Flag |Expanded| Description |
-|---|---|---|
 | -a | --auto-fix | Automatic fix options are none, error, warning, check, all, and prompt. (0-5) The default is to fix at the check level without prompting.
 | -b | --brres | Brres file selection. |
+| -c | --command | Command name to run. |
 | -d | --destination | The file path to be written to. Mutliple destinations are not supported. |
 | -f | --file | File with ABMatt commands to be processed as specified in file format. |
 | -h | --help | Displays a help message about program usage. |
@@ -68,11 +66,13 @@ type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id]
     | 'mdl0' | 'brres';
 
 Example file commands:
-    set xlu:true for xlu.* in course_model.brres      # Sets all materials starting with xlu to transparent
-    set scale:(1,1) for *                 # Sets the scale for all layers to 1,1
-    info layer:ef_arrowGradS        # Prints information about the layer 'ef_arrowGradS'
+    set xlu:true for xlu.* in course_model.brres
+    set stage:0 colorscale:multiplyBy4 for bright_mat 
+    info material for *
+    copy material for * in original.brres
+    paste material for * in course_model.brres
 Example command line usage:
-    abmatt -f course_model.brres -o -k xlu -v false -n opaque_material
+    abmatt -b course_model.brres -k xlu -v false -n mat1 -o
 This opens course_model.brres in overwrite mode and disables xlu for material 'opaque_material'.
 For more Help or if you want to contribute visit https://github.com/Robert-N7/abmatt
     '''
@@ -265,7 +265,7 @@ def main():
             Command.updateFile(brres_file)
         except NoSuchFile as e:
             print(e)
-            exit(2)
+            sys.exit(2)
         if command:
             cmd = command + ' ' + type
             if key:
@@ -280,7 +280,7 @@ def main():
     elif command:
         print('File is required to run commands')
         print(USAGE)
-        exit(2)
+        sys.exit(2)
 
     if command_file:
         filecmds = Command.load_commandfile(command_file)

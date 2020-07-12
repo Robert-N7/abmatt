@@ -28,7 +28,7 @@ ABMatt supports editing the following types:
 
 ## Command Line Usage
 ```
-abmatt [-i -f <file> -b <brres-file> -d <destination> -o -c <command> -t <type> -k <key> -v <value> -n <name> -m <model>]
+abmatt [-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]
 ```
 | Flag |Expanded| Description |
 |---|---|---|
