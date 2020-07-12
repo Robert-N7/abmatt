@@ -161,6 +161,8 @@ class Shell(Cmd):
 
 
 def load_preset_file(dir):
+    if dir is None:
+        return False
     preset_path = os.path.join(dir, 'presets.txt')
     if os.path.exists(preset_path):
         Command.load_commandfile(preset_path)
@@ -168,24 +170,20 @@ def load_preset_file(dir):
     return False
 
 
-def load_presets():
+def load_presets(app_dir):
     # Load presets in file directory
     loaded = True
-    dir = os.path.dirname(os.path.abspath(__file__))
-    if not load_preset_file(dir):
-        dir = os.path.join(os.path.dirname(dir), 'etc')
-        if not load_preset_file(dir):
-            loaded = False
+    if not load_preset_file(app_dir):
+        loaded = False
     # Load presets in cwd
     loaded_cwd = False
     cwd = os.getcwd()
-    if dir != cwd:
+    if app_dir != cwd:
         loaded_cwd = load_preset_file(cwd)
-    loaded = loaded or loaded_cwd
-    if loaded:
-        AUTO_FIXER.info('Presets loaded...', 4)
+    if loaded or loaded_cwd:
+        AUTO_FIXER.info('Presets loaded...', 3)
     else:
-        AUTO_FIXER.info('No presets file detected', 4)
+        AUTO_FIXER.info('No presets file detected', 3)
     return loaded
 
 
@@ -250,7 +248,14 @@ def main():
             print(USAGE)
             sys.exit(2)
 
-    load_presets()
+    # determine if application is a script file or frozen exe
+    app_dir = None
+    if getattr(sys, 'frozen', False):
+        base_path = os.path.dirname(os.path.dirname(sys.executable))
+        app_dir = os.path.join(os.path.join(base_path, 'etc'), 'abmatt')
+    elif __file__:
+        app_dir = os.path.dirname(__file__)
+    load_presets(app_dir)
     cmds = []
     if uv_divisor_zero:
         TexCoord.UV_DIVISOR_ZERO = True
