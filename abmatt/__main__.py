@@ -7,6 +7,9 @@ For editing Mario Kart Wii files
 import getopt
 import os
 import sys
+
+import Levenshtein
+import fuzzywuzzy
 from cmd import Cmd
 
 import Levenshtein
@@ -16,7 +19,7 @@ from abmatt.mdl0 import TexCoord
 from abmatt.command import Command, ParsingException, NoSuchFile
 from abmatt.autofix import AUTO_FIXER
 
-__version__ = "0.5.0"
+VERSION = '0.6.0'
 USAGE = "USAGE: abmatt [-i -f <file> -b <brres-file> -d <destination> -o -t <type> -k <key> -v <value> -n <name>\
  -m <model>]"
 
@@ -73,7 +76,7 @@ Example command line usage:
 This opens course_model.brres in overwrite mode and disables xlu for material 'opaque_material'.
 For more Help or if you want to contribute visit https://github.com/Robert-N7/abmatt
     '''
-    print(helpstr.format(__version__))
+    print(helpstr.format(VERSION))
     print("{}".format(USAGE))
 
 
