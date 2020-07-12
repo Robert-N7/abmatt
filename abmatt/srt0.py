@@ -207,7 +207,6 @@ class SRTKeyFrameList:
         else:
             cntry.delta = delta
 
-
     def removeKeyFrame(self, index):
         """ Removes key frame from list, updating delta """
         if index == 0:
@@ -705,10 +704,10 @@ class SRTMatAnim(Clipable):
     def consolidate(self, binfile, has_key_frames, frame_lists_offsets):
         """consolidates and packs the frame lists based on the animations that have key frames"""
         frame_scale = Srt0.calcFrameScale(self.framecount)
-        for j in range(len(self.tex_animations)):   # Each texture
+        for j in range(len(self.tex_animations)):  # Each texture
             has_frames = has_key_frames[j]
             tex = self.tex_animations[j]
-            for i in range(len(has_frames)):    # srt
+            for i in range(len(has_frames)):  # srt
                 if has_frames[i]:
                     test_list = tex.animations[SRTTexAnim.SETTINGS[i]]
                     found = False

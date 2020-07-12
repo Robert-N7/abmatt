@@ -96,7 +96,7 @@ class AutoFix:
     @staticmethod
     def prompt(description, proposed_fix=None):
         while True:
-            result = input('Fix: ' + description + proposed_fix + '? (y/n)').lower()
+            result = input('Fix: ' + description + ',' + proposed_fix + '? (y/n)').lower()
             if result[0] == 'y':
                 return 1
             elif result[0] == 'n':
