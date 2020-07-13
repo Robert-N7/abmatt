@@ -260,7 +260,7 @@ class Command:
                     break
             if len(files) > 1 or Command.ACTIVE_FILES and outside_active:
                 raise SaveError('Multiple files for single destination')
-        Command.ACTIVE_FILES = Command.openFiles(files)
+        Brres.ACTIVE_FILES = Command.ACTIVE_FILES = Command.openFiles(files)
         Command.MODELS = []  # clear models
 
     @staticmethod

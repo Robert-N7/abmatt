@@ -18,6 +18,7 @@ from abmatt.brres import Brres
 from abmatt.mdl0 import TexCoord
 from abmatt.command import Command, ParsingException, NoSuchFile
 from abmatt.autofix import AUTO_FIXER
+from config import Config
 
 VERSION = '0.6.0'
 USAGE = "USAGE: abmatt [-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]"
@@ -187,6 +188,25 @@ def load_presets(app_dir):
     return loaded
 
 
+def load_config(app_dir, loudness=None, autofix_level=None):
+    conf = Config(os.path.join(app_dir, 'config.conf'))
+    if not loudness:
+        loudness = conf['loudness']
+    if loudness:
+        AUTO_FIXER.set_loudness(loudness)
+    if not autofix_level:
+        autofix_level = conf['autofix']
+    if autofix_level:
+        AUTO_FIXER.set_fix_level(autofix_level)
+    max_brres_files = conf['max_brres_files']
+    if max_brres_files:
+        try:
+            i = int(max_brres_files)
+            Command.MAX_FILES_OPEN = i
+        except:
+            pass
+
+
 def main():
     """ Main """
     global USAGE
@@ -209,9 +229,10 @@ def main():
         print('Unknown option {}'.format(args))
         print(USAGE)
         sys.exit(2)
-    interactive = overwrite = uv_divisor_zero = False
+    interactive = overwrite = False
     type = "material"
     command = destination = brres_file = command_file = model = value = key = ""
+    autofix=loudness=None
     name = "*"
     for opt, arg in opts:
         if opt in ("-h", "--help"):
@@ -240,9 +261,9 @@ def main():
         elif opt in ("-i", "--interactive"):
             interactive = True
         elif opt in ("-a", "--auto-fix"):
-            AUTO_FIXER.set_fix_level(arg)
+            autofix = arg
         elif opt in ("-l", "--loudness"):
-            AUTO_FIXER.set_loudness(arg)
+            loudness = arg
         else:
             print("Unknown option '{}'".format(opt))
             print(USAGE)
@@ -255,10 +276,9 @@ def main():
         app_dir = os.path.join(os.path.join(base_path, 'etc'), 'abmatt')
     elif __file__:
         app_dir = os.path.dirname(__file__)
+    load_config(app_dir, loudness, autofix)
     load_presets(app_dir)
     cmds = []
-    if uv_divisor_zero:
-        TexCoord.UV_DIVISOR_ZERO = True
     if destination:
         Command.DESTINATION = destination
         Brres.DESTINATION = destination

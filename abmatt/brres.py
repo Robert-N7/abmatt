@@ -27,6 +27,7 @@ class Brres(Clipable):
     ROOTMAGIC = "root"
     OVERWRITE = False
     DESTINATION = None
+    ACTIVE_FILES = None     # reference to active files
 
     def __init__(self, name, parent=None, readFile=True):
         """
@@ -155,6 +156,14 @@ class Brres(Clipable):
         return findAll(name, self.models)
 
     # -------------------------------- Textures -----------------------------
+    def resolveTexture(self, name):
+        """Attempts to find the texture by name"""
+        for x in self.ACTIVE_FILES:
+            if x is not self:
+                tex = x.getTexture(name)
+                if tex is not None:
+                    return tex
+
     def getTextureMap(self):
         if not self.texture_map:
             self.texture_map = {}
@@ -163,7 +172,10 @@ class Brres(Clipable):
         return self.texture_map
 
     def getTexture(self, name):
-        return self.getTextureMap().get(name)
+        tex = self.getTextureMap().get(name)
+        if tex is None:
+            tex = self.resolveTexture(name)
+        return tex
 
     def getTextures(self, name):
         return findAll(name, self.textures)

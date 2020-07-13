@@ -2,13 +2,13 @@
 This command line tool is for editing materials in _Brres_ files in _Mario Kart Wii_. 
 
 ## Installation
-You can download one of the tagged [releases](https://github.com/Robert-N7/abmatt/releases), or install with python.
+Download compiled [releases](https://github.com/Robert-N7/abmatt/releases) for Linux and Windows, and follow the install.txt instructions.
+Alternatively, install with python:
 ```
 git clone https://github.com/Robert-N7/abmatt
 cd abmatt
 python setup.py install
 ```
-You may need to run with root priveleges.
 
 ## Modes
 ABMatt can be used 
