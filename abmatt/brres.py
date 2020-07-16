@@ -15,7 +15,7 @@ from abmatt.pat0 import Pat0, Pat0Collection
 from abmatt.scn0 import Scn0
 from abmatt.shp0 import Shp0
 from abmatt.srt0 import Srt0, SRTCollection
-from textures.tex0 import Tex0
+from tex0 import Tex0
 
 
 class Brres(Clipable):
