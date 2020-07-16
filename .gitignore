@@ -5,7 +5,9 @@
 *.tags*
 *.pyc
 *.brres
+*.szs
 *.d
 tmp.*
 temp.*
+test*
 __pycache*

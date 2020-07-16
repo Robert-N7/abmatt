@@ -1,0 +1,8 @@
+
+- Shader consolidation
+- Command:
+    - Command completion
+    - dump
+- ignore case matching
+- better info amounts, detect singles vs groups
+- Custom error for parsing key:values
