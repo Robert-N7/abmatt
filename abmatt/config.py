@@ -1,5 +1,6 @@
 #!/usr/bin/python
 """For reading configuration file"""
+import os
 
 
 def parse_line(line):
@@ -16,11 +17,12 @@ def parse_line(line):
 class Config:
     def __init__(self, filename):
         self.config = {}
-        with open(filename, 'r') as f:
-            for cnt, line, in enumerate(f):
-                result = parse_line(line)
-                if result is not None:
-                    self.config[result[0]] = result[1]
+        if os.path.exists(filename):
+            with open(filename, 'r') as f:
+                for cnt, line, in enumerate(f):
+                    result = parse_line(line)
+                    if result is not None:
+                        self.config[result[0]] = result[1]
 
     def __getitem__(self, item):
         return self.config.get(item)

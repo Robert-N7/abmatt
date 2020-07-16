@@ -18,7 +18,7 @@ from abmatt.brres import Brres
 from abmatt.mdl0 import TexCoord
 from abmatt.command import Command, ParsingException, NoSuchFile
 from abmatt.autofix import AUTO_FIXER
-from config import Config
+from abmatt.config import Config
 
 VERSION = '0.6.0'
 USAGE = "USAGE: abmatt [-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]"

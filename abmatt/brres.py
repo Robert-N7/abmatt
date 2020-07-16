@@ -15,7 +15,7 @@ from abmatt.pat0 import Pat0, Pat0Collection
 from abmatt.scn0 import Scn0
 from abmatt.shp0 import Shp0
 from abmatt.srt0 import Srt0, SRTCollection
-from abmatt.tex0 import Tex0
+from textures.tex0 import Tex0
 
 
 class Brres(Clipable):
@@ -156,13 +156,17 @@ class Brres(Clipable):
         return findAll(name, self.models)
 
     # -------------------------------- Textures -----------------------------
-    def resolveTexture(self, name):
+    def findTexture(self, name):
         """Attempts to find the texture by name"""
         for x in self.ACTIVE_FILES:
             if x is not self:
                 tex = x.getTexture(name)
                 if tex is not None:
                     return tex
+
+    def addTexture(self, tex0):
+        self.textures.append(tex0)
+        self.texture_map[tex0.name] = tex0
 
     def getTextureMap(self):
         if not self.texture_map:
@@ -174,7 +178,9 @@ class Brres(Clipable):
     def getTexture(self, name):
         tex = self.getTextureMap().get(name)
         if tex is None:
-            tex = self.resolveTexture(name)
+            tex = self.findTexture(name)
+            if tex:
+                self.addTexture(tex)
         return tex
 
     def getTextures(self, name):
@@ -378,6 +384,8 @@ class Brres(Clipable):
             if b.should_fix():
                 self.remove_unused_textures(unused)
                 b.resolve()
+        for x in self.textures:
+            x.check()
 
     def remove_unused_textures(self, unused_textures):
         tex = self.textures

@@ -300,9 +300,12 @@ class Layer(Clipable):
     def setLayerFlags(self, nibble):
         """ from lsb, enable, scaledefault, rotationdefault, transdefault """
         self.enable = nibble & 1
-        # self.scaleDefault = nibble >> 1 & 1
-        # self.rotationDefault = nibble >> 2 & 1
-        # self.translationDefault = nibble >> 3 & 1
+        if nibble >> 1 & 1:
+            self.scale = (1, 1)
+        if nibble >> 2 & 1:
+            self.rotation = 0
+        if nibble >> 3 & 1:
+            self.translation = (0, 0)
         return self.enable
 
     def setName(self, value):
