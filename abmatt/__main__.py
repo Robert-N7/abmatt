@@ -273,7 +273,7 @@ def main():
     app_dir = None
     if getattr(sys, 'frozen', False):
         base_path = os.path.dirname(os.path.dirname(sys.executable))
-        app_dir = os.path.join(os.path.join(base_path, 'etc'), 'abmatt')
+        app_dir = os.path.join(os.path.join(base_path, 'etc'), 'abmatt') 
     elif __file__:
         app_dir = os.path.dirname(__file__)
     load_config(app_dir, loudness, autofix)

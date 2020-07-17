@@ -9,7 +9,8 @@ VERSION = '0.6.0'
 
 
 def main(version):
-    version_files = ['../../setup.py', 'install.txt', '../__main__.py', 'Makefile', 'update_version.py', 'make_installer.nsi']
+    version_files = ['../../setup.py', 'install-ubu.txt', 'install-win.txt', '../__main__.py', 'Makefile',
+                     'update_version.py', 'make_installer.nsi']
     # version_files = ['test.txt']
     rex = re.compile("(version\s*(\:|\=)?\s*(\"|\')?)\d+\.\d+\.\d+", re.IGNORECASE)
     replacement = '\g<1>' + version
