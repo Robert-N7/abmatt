@@ -1,9 +1,9 @@
 """ MDL0 Models """
 # ----------------- Model sub files --------------------------------------------
 from abmatt.autofix import AUTO_FIXER, Bug
-from abmatt.binfile import Folder, printCollectionHex, PackingError
+from abmatt.binfile import Folder, PackingError
 from abmatt.drawlist import DrawList, Definition
-from abmatt.matching import findAll, fuzzy_match
+from abmatt.matching import fuzzy_match, MATCHING
 from abmatt.material import Material
 from abmatt.pat0 import Pat0MatAnimation, Pat0Collection
 from abmatt.polygon import Polygon
@@ -391,7 +391,7 @@ class Mdl0(SubFile):
                 return x
 
     def getMaterialsByName(self, name):
-        return findAll(name, self.materials)
+        return MATCHING.findAll(name, self.materials)
 
     def isMaterialDrawXlu(self, material_id):
         if self.drawXLU.getByMaterialID(material_id):
@@ -477,14 +477,11 @@ class Mdl0(SubFile):
 
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + '>' + self.name if indentation_level else self.parent.name + "->" + self.name
-        print("{}:\t{} material(s)\t{} shader(s)".format(trace, len(self.materials),
-                                                         len(self.shaders)))
+        print("{}:\t{} material(s)".format(trace, len(self.materials)))
         indentation_level += 1
         # pass it along
         for x in self.materials:
             x.info(key, indentation_level)
-        for x in self.shaders:
-            self.shaders[x].info(key, indentation_level)
 
     # ---------------------------------------------- CLIPBOARD -------------------------------------------
     def clip(self, clipboard):

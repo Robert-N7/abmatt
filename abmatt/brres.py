@@ -9,7 +9,7 @@ from abmatt.autofix import AUTO_FIXER, Bug
 from abmatt.binfile import BinFile, Folder, UnpackingError
 from abmatt.chr0 import Chr0
 from abmatt.clr0 import Clr0
-from abmatt.matching import findAll, Clipable
+from abmatt.matching import Clipable, MATCHING
 from abmatt.mdl0 import Mdl0
 from abmatt.pat0 import Pat0, Pat0Collection
 from abmatt.scn0 import Scn0
@@ -86,6 +86,7 @@ class Brres(Clipable):
             # if not self.isChanged():
             #     return
         if not overwrite and os.path.exists(filename):
+            AUTO_FIXER.warn('Unable to save {}, file {} already exists!'.format(self.name, filename), 2)
             return False
         else:
             f = BinFile(filename, mode="w")
@@ -153,7 +154,7 @@ class Brres(Clipable):
                     x.name = x.name.replace(old_name, new_name)
 
     def getModelsByName(self, name):
-        return findAll(name, self.models)
+        return MATCHING.findAll(name, self.models)
 
     # -------------------------------- Textures -----------------------------
     def findTexture(self, name):
@@ -184,7 +185,7 @@ class Brres(Clipable):
         return tex
 
     def getTextures(self, name):
-        return findAll(name, self.textures)
+        return MATCHING.findAll(name, self.textures)
 
     def getUsedTextures(self):
         ret = set()

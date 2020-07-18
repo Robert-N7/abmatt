@@ -7,18 +7,17 @@ For editing Mario Kart Wii files
 import getopt
 import os
 import sys
-
+import readline
 import Levenshtein
 import fuzzywuzzy
 from cmd import Cmd
 
-import Levenshtein
-import fuzzywuzzy
 from abmatt.brres import Brres
 from abmatt.mdl0 import TexCoord
 from abmatt.command import Command, ParsingException, NoSuchFile
 from abmatt.autofix import AUTO_FIXER
 from abmatt.config import Config
+from matching import MATCHING
 
 VERSION = '0.6.0'
 USAGE = "USAGE: abmatt [-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]"
@@ -84,7 +83,8 @@ For more Help or if you want to contribute visit https://github.com/Robert-N7/ab
 class Shell(Cmd):
     prompt = '>'
 
-    def run(self, prefix, cmd):
+    @staticmethod
+    def run(prefix, cmd):
         try:
             Command.run_commands([Command(prefix + ' ' + cmd)])
         except ParsingException as e:
@@ -92,17 +92,114 @@ class Shell(Cmd):
         except NoSuchFile as e:
             print(e)
 
+    @staticmethod
+    def complete_file(match_text):
+        """Complete file if the last word is appropriate"""
+        path = os.path.join(os.getcwd(), match_text)
+        dir, start = os.path.split(path)
+        files = os.listdir(dir)
+        return [x for x in files if x.startswith(start)]
+
+    @staticmethod
+    def complete_material_name(match_text):
+        matches = []
+        for x in Command.MODELS:
+            matches.extend([mat for mat in x.materials if mat.name.startswith(match_text)])
+        return matches
+
+    @staticmethod
+    def complete_model_name(match_text):
+        matches = []
+        for x in Command.ACTIVE_FILES:
+            matches.extend([mdl for mdl in x.models if mdl.name.startswith(match_text)])
+        return matches
+
+    @staticmethod
+    def complete_type(match_text):
+        return [x for x in Command.TYPE_SETTING_MAP if x.startswith(match_text)]
+
+    @staticmethod
+    def complete_key(match_text, type=None):
+        if type:
+            matches = [x for x in Command.TYPE_SETTING_MAP[type] if x.startswith(match_text)]
+        else:
+            matches = []
+            for key, vals in enumerate(Command.TYPE_SETTING_MAP):
+                matches.extend([val for val in vals if val.startswith(match_text)])
+        return matches
+
+    @staticmethod
+    def find_files(text):
+        directory, name = os.path.split(text)
+        normalize = True
+        if not directory:
+            normalize = False
+            directory = "."
+        files = []
+        for file in os.listdir(directory):
+            if file.startswith(name):
+                if normalize:
+                    files.append(os.path.join(directory, file))
+                else:
+                    files.append(file)
+        return files
+
+    def complete_selection(self, text, sel_words):
+        if not sel_words:
+            return self.complete_material_name(text)
+        elif 'in' not in sel_words:
+            return ['in'] if not text or text in 'in' else None
+        else:
+            last_word = sel_words[-1]
+            if last_word == 'model':
+                return self.complete_model_name(text)
+            elif last_word == 'file':
+                return self.complete_file(text)
+            # last word is 'in' or a model or file
+            possible = []
+            if not 'model' in sel_words and text in 'model':
+                possible.append('model')
+            if 'file' not in sel_words:
+                if last_word == 'in':
+                    possible.extend(self.find_files(text))
+                if text in 'file':
+                    possible.append('file')
+            return possible
+
+    def generic_complete(self, text, words, for_sel_index=1):
+        """ :param text: text to complete
+            :param words: list of words in the line minus the command
+            :param for_sel_index: the index where the word 'for' should be in words
+        """
+        if not words:
+            return self.complete_type(text)
+        if len(words) == for_sel_index:
+            return ['for'] if 'for'.startswith(text) else None
+        elif len(words) > for_sel_index:
+            return self.complete_selection(text, words[for_sel_index + 1:])
+
+    def get_words(self, text, line):
+        if text:  # remove text from end
+            line = line[:-1 - len(text)]
+        return line.split(' ')[1:]  # remove the first command
+
     def do_paste(self, line):
         self.run('paste', line)
 
     def help_paste(self):
         print('paste <type> [for <selection>]')
 
+    def complete_paste(self, text, line, begid, endid):
+        return self.generic_complete(text, self.get_words(text, line))
+
     def do_copy(self, line):
         self.run('copy', line)
 
     def help_copy(self):
         print('copy <type> [for <selection>]')
+
+    def complete_copy(self, text, line, begid, endid):
+        return self.generic_complete(text, self.get_words(text, line))
 
     def do_quit(self, line):
         return True
@@ -119,17 +216,51 @@ class Shell(Cmd):
     def help_set(self):
         print('set <type> <key>:<value> [for <selection>]')
 
+    def complete_set(self, text, line, begid, endid):
+        words = self.get_words(text, line)
+        possible = []
+        if not words:   # could bypass type
+            for key in Command.TYPE_SETTING_MAP:
+                if key.startswith(text):
+                    possible.append(key)
+                for setting in Command.TYPE_SETTING_MAP[key]:
+                    if setting.startswith(text):
+                        possible.append(setting + ':?')
+                        possible.append(setting + ':*')
+        else:
+            # Check for 'for'
+            try:
+                for_index = words.index('for')
+                return self.complete_selection(text, words[for_index + 1:])
+            except ValueError:
+                if 'for'.startswith(text):
+                    possible.append('for')
+            if len(words) < 2:  # maybe a key:val pair, more than that it can't be
+                keys = Command.TYPE_SETTING_MAP.get(words[0])
+                if keys:
+                    for key in keys:
+                        if key.startswith(text):    # slightly weird way of saying, you gotta fill this in yourself
+                            possible.append(key + ':*')
+                            possible.append(key + ':?')
+        return possible
+
     def do_add(self, line):
         self.run('add', line)
 
     def help_add(self):
-        print('add <type>[:<id>] [for <selection>]')
+        print('add <type> [for <selection>]')
+
+    def complete_add(self, text, line, begid, endid):
+        return self.generic_complete(text, self.get_words(text, line))
 
     def do_remove(self, line):
         self.run('remove', line)
 
     def help_remove(self):
-        print('remove <type>[:<id>] [for <selection>]')
+        print('remove <type> [for <selection>]')
+
+    def complete_remove(self, text, line, begid, endid):
+        return self.generic_complete(text, self.get_words(text, line))
 
     def do_info(self, line):
         self.run('info', line)
@@ -137,11 +268,46 @@ class Shell(Cmd):
     def help_info(self):
         print('info <type> [<key>] [for <selection>]')
 
+    def complete_info(self, text, line, begid, endid):
+        words = self.get_words(text, line)
+        possible = []
+        if not words:   # could be type key or 'for'
+            for x in Command.TYPE_SETTING_MAP:
+                if x.startswith(text):
+                    possible.append(x)
+                for key in Command.TYPE_SETTING_MAP[x]:
+                    if key.startswith(text):
+                        possible.append(key)
+            if 'for'.startswith(text):
+                possible.append('for')
+            return possible
+        else:
+            # check if for is present (selection)
+            try:
+                for_index = words.index('for')
+                return self.complete_selection(text, words[for_index + 1:])
+            except ValueError:
+                if 'for'.startswith(text):
+                    possible.append('for')
+            prev = words[-1]
+            if prev in Command.TYPE_SETTING_MAP:    # specified type?
+                possible.extend([x for x in Command.TYPE_SETTING_MAP[prev] if x.startswith(text)])
+            return possible
+
     def do_preset(self, line):
         self.run('preset', line)
 
     def help_preset(self):
         print('preset <preset> [for <selection>]')
+
+    def complete_preset(self, text, line, begid, endid):
+        words = self.get_words(text, line)
+        if not words:
+            return [x for x in Command.PRESETS if x.startswith(text)]
+        elif len(words) == 1:
+            return ['for'] if 'for'.startswith(text) else None
+        else:
+            return self.complete_selection(text, words[2:])     # need to check this
 
     def do_select(self, line):
         self.run('select', line)
@@ -149,11 +315,26 @@ class Shell(Cmd):
     def help_select(self):
         print('select <name> [in <container>]')
 
+    def complete_select(self, text, line, begid, endid):
+        return self.complete_selection(text, self.get_words(text, line))
+
     def do_save(self, line):
         self.run('save', line)
 
     def help_save(self, line):
         print('save [<filename>] [as <destination>] [overwrite]')
+
+    def complete_save(self, text, line, begid, endid):
+        possible = []
+        words = self.get_words(text, line)
+        if not words:
+            possible = [x for x in Command.OPEN_FILES if x.startswith(text)]
+        elif words[-1] == 'as':
+            possible = self.find_files(text)
+        if 'overwrite'.startswith(text) and 'overwrite' not in words:
+            possible.append('overwrite')
+        if 'as'.startswith(text) and 'as' not in words:
+            possible.append('as')
 
     def default(self, line):
         if line == 'x' or line == 'q':
@@ -182,7 +363,7 @@ def load_presets(app_dir):
     if app_dir != cwd:
         loaded_cwd = load_preset_file(cwd)
     if loaded or loaded_cwd:
-        AUTO_FIXER.info('Presets loaded...', 3)
+        AUTO_FIXER.info('Presets loaded...', 5)
     else:
         AUTO_FIXER.info('No presets file detected', 3)
     return loaded
@@ -205,6 +386,10 @@ def load_config(app_dir, loudness=None, autofix_level=None):
             Command.MAX_FILES_OPEN = i
         except:
             pass
+    # Matching stuff
+    MATCHING.set_case_sensitive(conf['case_sensitive'])
+    MATCHING.set_partial_matching(conf['partial_matching'])
+    MATCHING.set_regex_enable(conf['regex_matching'])
 
 
 def main():
@@ -232,7 +417,7 @@ def main():
     interactive = overwrite = False
     type = "material"
     command = destination = brres_file = command_file = model = value = key = ""
-    autofix=loudness=None
+    autofix = loudness = None
     name = "*"
     for opt, arg in opts:
         if opt in ("-h", "--help"):
@@ -273,7 +458,7 @@ def main():
     app_dir = None
     if getattr(sys, 'frozen', False):
         base_path = os.path.dirname(os.path.dirname(sys.executable))
-        app_dir = os.path.join(os.path.join(base_path, 'etc'), 'abmatt') 
+        app_dir = os.path.join(os.path.join(base_path, 'etc'), 'abmatt')
     elif __file__:
         app_dir = os.path.dirname(__file__)
     load_config(app_dir, loudness, autofix)
@@ -313,8 +498,10 @@ def main():
 
     # Run Commands
     if cmds:
-        Command.run_commands(cmds)
+        if not Command.run_commands(cmds):
+            sys.exit(1)
     if interactive:
+        readline.set_completer_delims(' \t\n')
         Shell().cmdloop('Interactive shell started...')
 
     # cleanup

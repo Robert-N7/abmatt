@@ -3,7 +3,7 @@
 from copy import deepcopy, copy
 
 from abmatt.binfile import Folder, printCollectionHex
-from abmatt.matching import validInt, validBool, validFloat, splitKeyVal, matches, Clipable
+from abmatt.matching import validInt, validBool, validFloat, splitKeyVal, Clipable, MATCHING
 from abmatt.subfile import SubFile
 from abmatt.autofix import AUTO_FIXER, Bug
 
@@ -624,7 +624,7 @@ class SRTMatAnim(Clipable):
 
     def addLayerByName(self, name):
         """Adds layer if found"""
-        i = self.material.find(name)
+        i = self.material.getLayerByName(name)
         if i > 0:
             self.texEnable(i)
         raise ValueError('{} Unknown layer {}'.format(self.name, name))
@@ -640,9 +640,10 @@ class SRTMatAnim(Clipable):
     def removeLayerByName(self, name):
         """Removes the layer if found"""
         j = 0
+        matches = MATCHING.findAll(name, self.tex_animations)
         for i in range(len(self.texEnabled)):
             if self.texEnabled[i]:
-                if matches(name, self.tex_animations[j].name):
+                if self.tex_animations[j] in matches:
                     self.texEnabled[i] = False
                     self.tex_animations.pop(j)
                     return

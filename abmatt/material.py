@@ -5,7 +5,7 @@
 # ---------------------------------------------------------------------
 from copy import deepcopy
 
-from abmatt.matching import validBool, indexListItem, validInt, validFloat, findAll, matches, Clipable, splitKeyVal
+from abmatt.matching import validBool, indexListItem, validInt, validFloat, Clipable, splitKeyVal, MATCHING
 from abmatt.layer import Layer
 from abmatt.wiigraphics.matgx import MatGX
 from abmatt.autofix import AUTO_FIXER
@@ -166,15 +166,9 @@ class Material(Clipable):
         if 0 <= layer_index < len(self.layers):
             return self.layers[layer_index]
 
-    def find(self, key):
-        for i in range(len(self.layers)):
-            if matches(key, self.layers[i].name):
-                return i
-        return -1
-
     def getLayerByName(self, key):
         """Attempts to get layer(s) by string key"""
-        layers = findAll(key, self.layers)
+        layers = MATCHING.findAll(key, self.layers)
         if layers:
             return layers[0]
 

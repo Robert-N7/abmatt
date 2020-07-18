@@ -7,7 +7,7 @@ import os
 from abmatt.binfile import UnpackingError
 from abmatt.brres import Brres
 from abmatt.layer import Layer
-from abmatt.matching import validInt, findAll
+from abmatt.matching import validInt, MATCHING
 from abmatt.material import Material
 from abmatt.mdl0 import Mdl0
 from abmatt.shader import Shader, Stage
@@ -18,7 +18,7 @@ from abmatt.autofix import AUTO_FIXER
 
 class ParsingException(Exception):
     def __init__(self, txt, message=''):
-        super(ParsingException, self).__init__("ERROR parsing: '" + txt + "' " + message)
+        super(ParsingException, self).__init__("Failed to parse: '" + txt + "' " + message)
 
 
 class SaveError(Exception):
@@ -304,12 +304,9 @@ class Command:
             Command.closeFiles(to_close)
         # open any that aren't opened
         for f in to_open:
-            try:
-                brres = Brres(f)
-                active.append(brres)
-                opened[f] = brres
-            except UnpackingError as e:
-                AUTO_FIXER.notify(e, 1)
+            brres = Brres(f)
+            active.append(brres)
+            opened[f] = brres
         return active
 
     @staticmethod
@@ -452,7 +449,7 @@ class Command:
                 else:
                     Command.SELECTED = []
                     for x in self.MATERIALS:
-                        layers = findAll(self.SELECT_ID, x.layers)
+                        layers = MATCHING.findAll(self.SELECT_ID, x.layers)
                         if layers:
                             Command.SELECTED.extend(layers)
                     # if not Command.SELECTED:  # Forcibly adding case if no selected found
@@ -471,9 +468,9 @@ class Command:
                     else:
                         Command.SELECTED = [x.getStage(self.SELECT_ID) for x in shaders]
             elif type == 'mdl0':
-                Command.SELECTED = findAll(self.SELECT_ID, getParents(self.MATERIALS))
+                Command.SELECTED = MATCHING.findAll(self.SELECT_ID, getParents(self.MATERIALS))
             elif type == 'brres':
-                Command.SELECTED = findAll(self.SELECT_ID, getParents(getParents(self.MATERIALS)))
+                Command.SELECTED = MATCHING.findAll(self.SELECT_ID, getParents(getParents(self.MATERIALS)))
             elif 'srt0' in type:
                 srts = [x.srt0 for x in self.MATERIALS if x.srt0]
                 if 'layer' in type:
@@ -485,7 +482,7 @@ class Command:
                                 Command.SELECTED.append(anim)
                     else:
                         for x in srts:
-                            anim = findAll(self.SELECT_ID, x.tex_animations)
+                            anim = MATCHING.findAll(self.SELECT_ID, x.tex_animations)
                             if anim:
                                 Command.SELECTED.extend(anim)
                 else:  # material animation
@@ -509,16 +506,26 @@ class Command:
                 cmd.runCmd()
         except ValueError as e:
             AUTO_FIXER.error(e, 1)
+            return False
         except SaveError as e:
             AUTO_FIXER.error(e, 1)
+            return False
         except PasteError as e:
             AUTO_FIXER.error(e, 1)
+            return False
         except MaxFileLimit as e:
             AUTO_FIXER.error(e, 1)
+            return False
         except NoSuchFile as e:
             AUTO_FIXER.error(e, 1)
+            return False
+        except FileNotFoundError as e:
+            AUTO_FIXER.error(e, 1)
+            return False
         except ParsingException as e:
             AUTO_FIXER.error(e, 1)
+            return False
+        return True
 
     def runCmd(self):
         if self.hasSelection:
@@ -613,7 +620,7 @@ class Command:
             print('>{} keys: {}'.format(type, self.TYPE_SETTING_MAP[type]))
 
     def run_save(self):
-        files_to_save = findAll(self.file, self.ACTIVE_FILES)
+        files_to_save = MATCHING.findAll(self.file, self.ACTIVE_FILES)
         if len(files_to_save) > 1 and self.destination is not None:
             raise SaveError('Detected {} files and only one destination "{}"'.format(len(files_to_save),
                                                                                      self.destination))

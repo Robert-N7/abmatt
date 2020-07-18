@@ -197,7 +197,6 @@ class Stage(Clipable):
         if not self.map['enabled']:
             AUTO_FIXER.warn('{} Stage {} not enabled'.format(self.parent.getMaterialName(), self.id), 2)
 
-
     # -------------------- CLIPBOARD --------------------------------------------------
     def clip(self, clipboard):
         clipboard[self.parent.getMaterialName() + str(self.id)] = self

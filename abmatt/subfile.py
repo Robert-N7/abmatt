@@ -67,6 +67,7 @@ class SubFile(object):
                     'set to {}'.format(self.EXPECTED_VERSION))
             if b.should_fix():
                 self.version = self.EXPECTED_VERSION
+                b.resolve()
 
     def _unpack(self, binfile):
         """ unpacks the sub file, subclass must use binfile.end() """

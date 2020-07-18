@@ -22,7 +22,7 @@ class Config:
                 for cnt, line, in enumerate(f):
                     result = parse_line(line)
                     if result is not None:
-                        self.config[result[0]] = result[1]
+                        self.config[result[0]] = result[1].lower()
 
     def __getitem__(self, item):
         return self.config.get(item)
