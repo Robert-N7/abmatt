@@ -7,7 +7,6 @@ For editing Mario Kart Wii files
 import getopt
 import os
 import sys
-import readline
 import Levenshtein
 import fuzzywuzzy
 from cmd import Cmd
@@ -129,19 +128,15 @@ class Shell(Cmd):
         return matches
 
     @staticmethod
-    def find_files(text):
-        directory, name = os.path.split(text)
-        normalize = True
+    def find_files(path, text):
+        """finds the files at path, that start with text (removes anything on the path before text)"""
+        directory, name = os.path.split(path)
         if not directory:
-            normalize = False
             directory = "."
         files = []
         for file in os.listdir(directory):
             if file.startswith(name):
-                if normalize:
-                    files.append(os.path.join(directory, file))
-                else:
-                    files.append(file)
+                files.append(name[name.rindex(text):])
         return files
 
     def complete_selection(self, text, sel_words):
@@ -501,7 +496,6 @@ def main():
         if not Command.run_commands(cmds):
             sys.exit(1)
     if interactive:
-        readline.set_completer_delims(' \t\n')
         Shell().cmdloop('Interactive shell started...')
 
     # cleanup
