@@ -23,7 +23,7 @@ def main(version):
                 file.write(fixed)
                 count += 1
     print('Updated version {} in {} files'.format(version, count))
-    with open('version.txt', 'w') as f:
+    with open('version', 'w') as f:
         f.write(version)
 
 
