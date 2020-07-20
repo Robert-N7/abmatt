@@ -511,8 +511,8 @@ class Command:
         try:
             for cmd in commandlist:
                 cmd.runCmd()
-        except (ValueError, SaveError, PasteError, MaxFileLimit, NoSuchFile, FileNotFoundError, ParsingException,
-                IsADirectoryError, UnpackingError) as e:
+        except (ValueError, SaveError, PasteError, MaxFileLimit, NoSuchFile, ParsingException,
+                OSError, UnpackingError) as e:
             AUTO_FIXER.error(e, 1)
             return False
         return True

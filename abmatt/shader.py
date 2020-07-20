@@ -96,6 +96,7 @@ class ShaderList:
 
 class Stage(Clipable):
     """ Single shader stage """
+    REMOVE_UNUSED_LAYERS = False
     # COLOR STRINGS
     RASTER_COLORS = ("lightchannel0", "lightchannel1", "bumpalpha", "normalizedbumpalpha", "zero")
     COLOR_CONSTANTS = ("1_1", "7_8", "3_4", "5_8", "1_2", "3_8", "1_4", "1_8",
@@ -194,7 +195,10 @@ class Stage(Clipable):
 
     def check(self):
         if not self.map['enabled']:
-            AUTO_FIXER.warn('{} Stage {} not enabled'.format(self.parent.getMaterialName(), self.name), 2)
+            b = Bug(2, 2, '{} Stage {} disabled'.format(self.parent.getMaterialName(), self.name), 'Remove stage')
+            if self.REMOVE_UNUSED_LAYERS:
+                self.parent.removeStage(self.name)
+                b.resolve()
 
     # -------------------- CLIPBOARD --------------------------------------------------
     def clip(self, clipboard):
@@ -443,6 +447,7 @@ class Shader(Clipable):
     SEL_MASK = BPCommand(0xFE, 0xFFFFF0)
     SETTINGS = ('indirectmap', 'indirectcoord', 'stagecount')
     MAP_ID_AUTO = True
+    REMOVE_UNUSED_LAYERS = False
 
     def __init__(self, name, parent):
         super(Shader, self).__init__(name, parent)
@@ -802,13 +807,17 @@ class Shader(Clipable):
                     except ValueError:
                         AUTO_FIXER.warn('Ind coord {} set but unused'.format(x), 3)
         # now check usage count
+        removal_index = 0
         for i in range(len(tex_usage)):
             x = tex_usage[i]
             if x == 0:
                 b = Bug(3, 3, '{} Layer {} is not used in shader.'.format(prefix, i), 'remove layer')
-                AUTO_FIXER.notify(b)
+                if self.REMOVE_UNUSED_LAYERS:
+                    self.material.removeLayerI(removal_index)
+                    b.resolve()
+                    continue    # don't increment removal index (shift)
             elif x > 1:
                 b = Bug(4, 4, '{} Layer {} used {} times by shader.'.format(prefix, i, x), 'check shader')
-                AUTO_FIXER.notify(b)
+            removal_index += 1
         ind_matrices_used = self.getIndirectMatricesUsed()
         self.material.check_shader(len(self.stages), ind_stage_count, ind_matrices_used)

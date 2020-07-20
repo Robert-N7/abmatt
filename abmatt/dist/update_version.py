@@ -5,9 +5,6 @@ import os
 import re
 import sys
 
-VERSION = '0.6.0'
-
-
 def main(version):
     version_files = ['../../setup.py', 'install-ubu.txt', 'install-win.txt', '../__main__.py', 'Makefile',
                      'update_version.py', 'make_installer.nsi']
@@ -27,5 +24,13 @@ def main(version):
         f.write(version)
 
 
-version = sys.argv[1] if len(sys.argv) >= 2 else VERSION
+version = None
+if len(sys.argv) > 1:
+    version = sys.argv[1]
+else:
+    with open('version') as f:
+        version = f.read()
+if not version:
+    print('No version detected! Run ./update_version.py x.x.x')
+    sys.exit(1)
 main(version)

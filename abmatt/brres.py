@@ -396,8 +396,6 @@ class Brres(Clipable):
                 self.remove_unused_textures(unused)
                 b.resolve()
                 self.mark_modified()
-            else:
-                AUTO_FIXER.notify(b)
         for x in self.textures:
             x.check()
 

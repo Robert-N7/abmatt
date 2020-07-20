@@ -18,7 +18,7 @@ from abmatt.autofix import AUTO_FIXER
 from abmatt.config import Config, load_config
 from matching import MATCHING
 
-VERSION = '0.6.0'
+VERSION = '0.6.1'
 USAGE = "USAGE: abmatt [-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]"
 
 
@@ -79,7 +79,7 @@ For more Help or if you want to contribute visit https://github.com/Robert-N7/ab
     print("{}".format(USAGE))
 
 
-class Shell(Cmd):
+class Shell(Cmd, object):
     prompt = '>'
 
     def __init__(self):
@@ -241,7 +241,7 @@ class Shell(Cmd):
                 if 'for'.startswith(text):
                     possible.append('for')
             if len(words) < 2:  # maybe a key:val pair, more than that it can't be
-                keys = Command.TYPE_SETTING_MAP.get(words[0])
+                keys = Command.TYPE_SETTING_MAP.get(words[0].split(':')[0])
                 if keys:
                     for key in keys:
                         if key.startswith(text):    # slightly weird way of saying, you gotta fill this in yourself
@@ -294,9 +294,10 @@ class Shell(Cmd):
             except ValueError:
                 if 'for'.startswith(text):
                     possible.append('for')
-            prev = words[-1]
-            if prev in Command.TYPE_SETTING_MAP:    # specified type?
-                possible.extend([x for x in Command.TYPE_SETTING_MAP[prev] if x.startswith(text)])
+            sel_type = words[0].split(':')[0]
+            settings = Command.TYPE_SETTING_MAP.get(sel_type)
+            if settings:    # specified type?
+                possible.extend([x for x in settings if x.startswith(text)])
             return possible
 
     def do_preset(self, line):
@@ -334,12 +335,24 @@ class Shell(Cmd):
         words = self.get_words(text, line)
         if not words:
             possible = [x for x in Command.OPEN_FILES if x.startswith(text)]
-        elif words[-1] == 'as':
-            possible = self.find_files(text)
+        elif 'as' in words:
+            file_words = words[words.index('as')+1:]
+            if file_words:
+                path = file_words.pop(0)
+                for x in file_words:
+                    path = os.path.join(path, x)
+                path = os.path.join(path, text)
+            else:
+                path = text
+            try:
+                possible = self.find_files(path, text)
+            except OSError as e:
+                pass
         if 'overwrite'.startswith(text) and 'overwrite' not in words:
             possible.append('overwrite')
         if 'as'.startswith(text) and 'as' not in words:
             possible.append('as')
+        return possible
 
     def do_dump(self, line):
         words = line.split()

@@ -1,19 +1,19 @@
-VERSION=0.6.0
+VERSION := $(shell cat version)
+DIR := abmatt-ubu_x64-${VERSION}
 
-windows: version build_windows clean_windows dist add_windows_files zip
+windows: update_version build_windows clean_windows dist add_windows_files zip
 	echo ...done
 
-linux: version build_linux clean_linux dist add_linux_files tar
+linux: update_version build_linux clean_linux dist add_linux_files tar
 	echo ...done
 
 # updates the version
-version:
+update_version:
 	./update_version.py
 
-
 build_linux:
-	DIR=abmatt-ubu_x64-${VERSION}
-	./build.sh && ./__main__ -b ..\test.brres -d test.brres -o
+	$(eval DIR=abmatt-ubu_x64-${VERSION})
+	./build.sh && ./__main__ -b ../test.brres -d test.brres -o
 
 build_windows:
 	@echo off
@@ -31,7 +31,7 @@ dist:
 	cp __main__ "${DIR}"/bin/abmatt
 
 tar:
-	tar -czvf ($DIR).tar.gz "${DIR}"
+	tar -czvf "${DIR}".tar.gz "${DIR}"
 
 zip:
 	7z a -tzip "${DIR}".zip "${DIR}"

@@ -187,8 +187,6 @@ class Pat0MatAnimation(Clipable):
                     if self.REMOVE_UNKNOWN_REFS:
                         mark_for_removal.append(f.tex_name)
                         b.resolve()
-                    else:
-                        AUTO_FIXER.notify(b)
         if mark_for_removal:
             self.frames = [x for x in self.frames if x.tex_name not in mark_for_removal]
 

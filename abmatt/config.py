@@ -8,10 +8,10 @@ from abmatt.subfile import SubFile
 from abmatt.matching import MATCHING, validBool
 from abmatt.brres import Brres
 from abmatt.layer import Layer
-from abmatt.mdl0 import Mdl0
+from abmatt.mdl0 import Mdl0, TexCoord
 from abmatt.pat0 import Pat0
 from abmatt.srt0 import Srt0
-from abmatt.shader import Shader
+from abmatt.shader import Shader, Stage
 
 
 def parse_line(line):
@@ -57,6 +57,12 @@ def set_remove_unknown(val):
         pass
 
 
+def set_remove_unused(val):
+    try:
+        Shader.REMOVE_UNUSED_LAYERS = Stage.REMOVE_UNUSED_LAYERS = validBool(val)
+    except ValueError:
+        pass
+
 def load_config(app_dir, loudness=None, autofix_level=None):
     conf = Config(os.path.join(app_dir, 'config.conf'))
     if not loudness:
@@ -99,6 +105,7 @@ def load_config(app_dir, loudness=None, autofix_level=None):
         pass
     set_rename_unknown(conf['rename_unknown_refs'])
     set_remove_unknown(conf['remove_unknown_refs'])
+    set_remove_unused(conf['remove_unused_layers'])
     try:
         Mdl0.DETECT_MODEL_NAME = validBool(conf['detect_model_name'])
     except ValueError:
@@ -109,5 +116,9 @@ def load_config(app_dir, loudness=None, autofix_level=None):
         pass
     try:
         Shader.MAP_ID_AUTO = validBool(conf['map_id_auto'])
+    except ValueError:
+        pass
+    try:
+        TexCoord.INVALID_DIVISOR_ZERO = validBool(conf['invalid_divisor_zero'])
     except ValueError:
         pass

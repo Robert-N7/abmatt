@@ -10,20 +10,21 @@ class Bug:
     # Suggest 4
     # Prompt 5
     # notify levels, 0 silent, 1 quiet, 2 mid, 3 loud, 4 max, 5 debug
-    def __init__(self, bug_level, notify_level, description, fix_des):
+    def __init__(self, bug_level, notify_level, description, fix_des=None):
         self.bug_level = bug_level
         self.notify_level = notify_level        # lower numbers mean notify when quiet
         self.description = description
         self.fix_des = fix_des
         self.is_resolved = False
+        AUTO_FIXER.notify(self)
 
-    def should_fix(self):
-        return not self.is_resolved and AUTO_FIXER.should_fix(self)
+    # def should_fix(self):
+    #     return not self.is_resolved and AUTO_FIXER.should_fix(self)
 
-    def resolve(self, result_level=4, result_message=None):
-        if result_level < 4:
-            self.is_resolved = True
-        return AUTO_FIXER.display_result(self, result_level, result_message)
+    def resolve(self):
+        self.is_resolved = True
+        if AUTO_FIXER.loudness >= self.notify_level:
+            print('(FIXED): {}'.format(self.fix_des))
 
 
 class AutoFixAbort(BaseException):
@@ -44,8 +45,8 @@ class AutoFix:
 
     # Loudness levels, 0 silent, 1 quiet, 2 mid, 3 loud, 4 max, 5 debug
     LOUD_LEVELS = ('SILENT', 'QUIET', 'MID', 'LOUD', 'MAX', 'DEBUG')
-    ERROR_LEVELS = ('NONE', 'ERROR', 'WARNING', 'CHECK', 'SUGGEST', 'PROMPT')
-    RESULTS = ('NONE', 'ERROR', 'WARNING', 'CHECK', 'SUCCESS')
+    ERROR_LEVELS = ('NONE', 'ERROR', 'WARN', 'CHECK', 'SUGGEST', 'PROMPT')
+    RESULTS = ('NONE', 'ERROR', 'WARN', 'CHECK', 'SUCCESS')
 
     def __init__(self, fix_level=3, loudness=3):
         self.loudness = loudness
@@ -79,19 +80,19 @@ class AutoFix:
     def error(self, message, loudness=1):
         print('ERROR: {}'.format(message))
 
-    def should_fix(self, bug):
-        """Determines if a bug should be fixed"""
-        fix_level = self.fix_level
-        if fix_level >= bug.bug_level:
-            should_fix = True
-            if fix_level == self.FIX_PROMPT:
-                should_fix = self.prompt(bug.description, bug.fix_des)
-            if should_fix:
-                if self.loudness >= bug.notify_level:
-                    print('FIX: {}'.format(bug.description))
-                return True
-        self.notify(bug)
-        return False
+    # def should_fix(self, bug):
+    #     """Determines if a bug should be fixed"""
+    #     fix_level = self.fix_level
+    #     if fix_level >= bug.bug_level:
+    #         should_fix = True
+    #         if fix_level == self.FIX_PROMPT:
+    #             should_fix = self.prompt(bug.description, bug.fix_des)
+    #         if should_fix:
+    #             if self.loudness >= bug.notify_level:
+    #                 print('FIX: {}'.format(bug.description))
+    #             return True
+    #     self.notify(bug)
+    #     return False
 
     @staticmethod
     def prompt(description, proposed_fix=None):
