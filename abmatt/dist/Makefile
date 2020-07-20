@@ -1,9 +1,9 @@
 VERSION=0.6.0
 
-windows: clean_windows version build_windows dist add_windows_files zip
+windows: version build_windows clean_windows dist add_windows_files zip
 	echo ...done
 
-linux: clean_linux version build_linux dist add_linux_files tar
+linux: version build_linux clean_linux dist add_linux_files tar
 	echo ...done
 
 # updates the version
@@ -16,7 +16,7 @@ build_linux:
 	./build.sh && ./__main__ -b ..\test.brres -d test.brres -o
 
 build_windows:
-    @echo off
+	@echo off
 	$(eval DIR=abmatt-win10_x64-$(VERSION))
 	build.bat && __main__ -b ..\test.brres -d test.brres -o
 
