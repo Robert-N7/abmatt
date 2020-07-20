@@ -22,15 +22,26 @@ VERSION = '0.6.1'
 USAGE = "USAGE: abmatt [-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]"
 
 
-def hlp():
+def hlp(cmd=None):
+    cmd_help = {'set': Shell.help_set, 'info': Shell.help_info, 'add': Shell.help_add, 'remove': Shell.help_remove,
+                'select': Shell.help_select, 'preset': Shell.help_preset, 'save': Shell.help_save,
+                'copy': Shell.help_copy, 'paste': Shell.help_paste}
+    help_fptr = cmd_help.get(cmd)
+    if help_fptr:
+        help_fptr(None)
+        return
     """ displays help message """
     helpstr = '''
 ====================================================================================
 ANOOB'S BRRES MATERIAL TOOL
 Version {}
+commands = set | info | add | remove | select | preset | save | copy | paste
+type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id]
+    | 'srt0' | 'srt0layer' [':' id] | 'pat0'
+    | 'mdl0' | 'brres';
+To see what keys are available, try `info keys`
 ====================================================================================
-
-| -a | --auto-fix | Automatic fix options are none, error, warning, check, all, and prompt. (0-5) The default is to fix at the check level without prompting.
+## Command Line Usage:
 | -b | --brres | Brres file selection. |
 | -c | --command | Command name to run. |
 | -d | --destination | The file path to be written to. Mutliple destinations are not supported. |
@@ -45,34 +56,6 @@ Version {}
 | -t | --type | Type selection. |
 | -v | --value | Value to set corresponding with key. (set command) |
 
-File command format in extended BNF:
-command =  cmd-prefix ['for' selection] EOL;
-cmd-prefix = set | info | add | remove | select | preset | save | copy | paste;
-set   = 'set' type setting;
-info  = 'info' type [key | 'keys'];
-add   = 'add' type;
-remove = 'remove' type;
-select = 'select' selection;    Note: does not support 'for' selection clause
-preset = 'preset' preset_name;
-save = 'save' [filename] ['as' destination] ['overwrite']
-copy = 'copy' type;
-paste = 'paste' type;
-
-selection = name ['in' container]
-container = ['brres' filename] ['model' name];
-type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id]
-    | 'srt0' | 'srt0layer' [':' id] | 'pat0'
-    | 'mdl0' | 'brres';
-
-Example file commands:
-    set xlu:true for xlu.* in course_model.brres
-    set stage:0 colorscale:multiplyBy4 for bright_mat 
-    info material for *
-    copy material for * in original.brres
-    paste material for * in course_model.brres
-Example command line usage:
-    abmatt -b course_model.brres -k xlu -v false -n mat1 -o
-This opens course_model.brres in overwrite mode and disables xlu for material 'opaque_material'.
 For more Help or if you want to contribute visit https://github.com/Robert-N7/abmatt
     '''
     print(helpstr.format(VERSION))
@@ -224,7 +207,7 @@ class Shell(Cmd, object):
     def complete_set(self, text, line, begid, endid):
         words = self.get_words(text, line)
         possible = []
-        if not words:   # could bypass type
+        if not words:  # could bypass type
             for key in Command.TYPE_SETTING_MAP:
                 if key.startswith(text):
                     possible.append(key)
@@ -244,7 +227,7 @@ class Shell(Cmd, object):
                 keys = Command.TYPE_SETTING_MAP.get(words[0].split(':')[0])
                 if keys:
                     for key in keys:
-                        if key.startswith(text):    # slightly weird way of saying, you gotta fill this in yourself
+                        if key.startswith(text):  # slightly weird way of saying, you gotta fill this in yourself
                             possible.append(key + ':*')
                             possible.append(key + ':?')
         return possible
@@ -276,7 +259,7 @@ class Shell(Cmd, object):
     def complete_info(self, text, line, begid, endid):
         words = self.get_words(text, line)
         possible = []
-        if not words:   # could be type key or 'for'
+        if not words:  # could be type key or 'for'
             for x in Command.TYPE_SETTING_MAP:
                 if x.startswith(text):
                     possible.append(x)
@@ -296,7 +279,7 @@ class Shell(Cmd, object):
                     possible.append('for')
             sel_type = words[0].split(':')[0]
             settings = Command.TYPE_SETTING_MAP.get(sel_type)
-            if settings:    # specified type?
+            if settings:  # specified type?
                 possible.extend([x for x in settings if x.startswith(text)])
             return possible
 
@@ -313,7 +296,7 @@ class Shell(Cmd, object):
         elif len(words) == 1:
             return ['for'] if 'for'.startswith(text) else None
         else:
-            return self.complete_selection(text, words[2:])     # need to check this
+            return self.complete_selection(text, words[2:])  # need to check this
 
     def do_select(self, line):
         self.run('select', line)
@@ -336,7 +319,7 @@ class Shell(Cmd, object):
         if not words:
             possible = [x for x in Command.OPEN_FILES if x.startswith(text)]
         elif 'as' in words:
-            file_words = words[words.index('as')+1:]
+            file_words = words[words.index('as') + 1:]
             if file_words:
                 path = file_words.pop(0)
                 for x in file_words:
@@ -435,14 +418,14 @@ def main():
         print(USAGE)
         sys.exit(2)
     interactive = overwrite = False
-    type = "material"
+    type = ""
     command = destination = brres_file = command_file = model = value = key = ""
     autofix = loudness = None
-    name = "*"
+    name = None
+    do_help = False
     for opt, arg in opts:
         if opt in ("-h", "--help"):
-            hlp()
-            sys.exit()
+            do_help = True
         elif opt in ('-b', '--brres'):
             brres_file = arg
         elif opt in ("-f", "--file"):
@@ -474,6 +457,10 @@ def main():
             print(USAGE)
             sys.exit(2)
 
+    if do_help:
+        hlp(command)
+        sys.exit()
+
     # determine if application is a script file or frozen exe
     app_dir = None
     if getattr(sys, 'frozen', False):
@@ -484,6 +471,19 @@ def main():
     load_config(app_dir, loudness, autofix)
     load_presets(app_dir)
     cmds = []
+    if command:
+        cmd = command + ' ' + type
+        if key:
+            cmd += ' ' + key
+            if value:
+                cmd += ':' + value
+        if not name and key != 'keys':
+            name = '*'
+        if name or model:
+            cmd += ' for ' + name
+            if model:
+                cmd += ' in model ' + model
+        cmds.append(Command(cmd))
     if destination:
         Command.DESTINATION = destination
         Brres.DESTINATION = destination
@@ -496,18 +496,7 @@ def main():
         except NoSuchFile as e:
             AUTO_FIXER.error(e)
             sys.exit(2)
-        if command:
-            cmd = command + ' ' + type
-            if key:
-                cmd += ' ' + key
-                if value:
-                    cmd += ':' + value
-            if name or model:
-                cmd += ' for ' + name
-                if model:
-                    cmd += ' in model ' + model
-            cmds.append(Command(cmd))
-    elif command:
+    elif command and (command != 'info' or key != 'keys' and type != 'keys'):
         print('File is required to run commands')
         print(USAGE)
         sys.exit(2)

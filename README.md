@@ -32,7 +32,6 @@ abmatt [-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> 
 ```
 | Flag |Expanded| Description |
 |---|---|---|
-| -a | --auto-fix | Automatic fix level (deprecated, use config file) |
 | -b | --brres | Brres file selection. |
 | -c | --command | Command name to run. |
 | -d | --destination | The file path to be written to. Multiple destinations are not supported. |
