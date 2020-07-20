@@ -31,7 +31,7 @@ def fuzzy_strings(text, strings, acceptable_ratio=84):
     return bssf if best_ratio > acceptable_ratio else None
 
 
-class Clipable:
+class Clipable(object):
     """Clipable interface"""
     def __init__(self, name, parent=None):
         self.name = name

@@ -103,6 +103,7 @@ class FurVector(ModelGeneric):
 
 class TexCoord:
     """ TexCoord model data"""
+    INVALID_DIVISOR_ZERO = True
 
     def __init__(self, name, parent):
         self.name = name
@@ -115,8 +116,10 @@ class TexCoord:
 
     def check(self):
         if self.divisor >= 32:
-            AUTO_FIXER.warn('UV {} divisor {} out of range, setting to 0'.format(self.name, self.divisor))
-            self.divisor = 0
+            b = Bug(2, 2, 'UV {} divisor {} out of range'.format(self.name, self.divisor), 'Set to 0')
+            if self.INVALID_DIVISOR_ZERO:
+                self.divisor = 0
+                b.resolve()
 
     def unpack(self, binfile):
         offset = binfile.start()
@@ -178,8 +181,10 @@ class Vertex():
 
     def check(self):
         if self.divisor >= 32:
-            AUTO_FIXER.warn('vertex {} divisor {} out of range, setting to 0'.format(self.name, self.divisor))
-            self.divisor = 0
+            b = Bug(2, 2, 'Vertex {} divisor {} out of range'.format(self.name, self.divisor), 'Set to 0')
+            if TexCoord.INVALID_DIVISOR_ZERO:
+                self.divisor = 0
+                b.resolve()
 
     def unpack(self, binfile):
         """ Unpacks some ptrs but mostly just leaves data as bytes """
@@ -320,8 +325,6 @@ class Mdl0(SubFile):
                 if self.REMOVE_UNKNOWN_REFS:
                     srt0_collection.remove(x)
                     b.resolve()
-                else:
-                    AUTO_FIXER.notify(b)
 
     def add_srt0(self, material):
         anim = SRTMatAnim(material.name)
@@ -356,8 +359,6 @@ class Mdl0(SubFile):
                     b.fix_des = 'remove pat0'
                     pat0_collection.remove(x)
                     b.resolve()
-                else:
-                    AUTO_FIXER.notify(b)
 
     def add_pat0(self, material):
         anim = Pat0MatAnimation(material.name, self.parent.get_texture_map())
@@ -530,8 +531,6 @@ class Mdl0(SubFile):
                     self.rename(expected_name)
                     b.resolve()
                     self.mark_modified()
-                else:
-                    AUTO_FIXER.notify(b)
             if expected_name == 'map':
                 names = [x.name for x in self.bones]
                 if 'posLD' not in names or 'posRU' not in names:

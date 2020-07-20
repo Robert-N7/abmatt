@@ -67,8 +67,6 @@ class SubFile(Clipable):
                 self.version = self.EXPECTED_VERSION
                 b.resolve()
                 self.parent.isModified = True
-            else:
-                AUTO_FIXER.notify(b)
 
     def _unpack(self, binfile):
         """ unpacks the sub file, subclass must use binfile.end() """

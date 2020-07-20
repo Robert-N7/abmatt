@@ -444,8 +444,6 @@ class Layer(Clipable):
                     self.parent.removeLayer(self.name)
                     b.resolve()
                     return
-                else:
-                    AUTO_FIXER.warn('No texture matching {}'.format(self.name))
         if tex:
             if self.uses_mipmaps():
                 if tex.num_mips == 0:
@@ -454,8 +452,6 @@ class Layer(Clipable):
                         self.minfilter = 1  # linear
                         b.resolve()
                         self.mark_modified()
-                    else:
-                        AUTO_FIXER.notify(b)
             else:
                 if tex.num_mips > 0:
                     b = Bug(4, 4, '{} mipmaps disabled but TEX0 has {}'.format(
@@ -464,5 +460,3 @@ class Layer(Clipable):
                         self.minfilter = 5  # linearmipmaplinear
                         b.resolve()
                         self.mark_modified()
-                    else:
-                        AUTO_FIXER.notify(b)

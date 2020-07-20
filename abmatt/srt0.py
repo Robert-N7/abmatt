@@ -674,8 +674,6 @@ class SRTMatAnim(Clipable):
                     if self.REMOVE_UNKNOWN_REFS:
                         self.texDisable(i)
                         b.resolve()
-                    else:
-                        AUTO_FIXER.notify(b)
         if not enabled:
             self.parent.remove_srt0()
 
