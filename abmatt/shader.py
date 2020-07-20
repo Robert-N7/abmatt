@@ -150,11 +150,10 @@ class Stage(Clipable):
                 "indirectswrap", "indirecttwrap",
                 "indirectuseprevstage", "indirectunmodifiedlod")
 
-    def __init__(self, id, parent):
-        self.id = id
-        self.parent = parent
+    def __init__(self, name, parent):
+        super(Stage, self).__init__(name, parent)
         self.map = {
-            "enabled": True, "mapid": id, "coordinateid": id,
+            "enabled": True, "mapid": name, "coordinateid": name,
             "textureswapselection": 0, "rastercolor": self.RASTER_COLORS[-1],
             "rasterswapselection": 0,
             "colorconstantselection": self.COLOR_CONSTANTS[8], "colora": self.COLOR_SELS[-1],
@@ -176,7 +175,7 @@ class Stage(Clipable):
 
     def __eq__(self, stage):
         """Determines if stages are equal"""
-        return self.id == stage.id and self.map == stage.map
+        return self.name == stage.name and self.map == stage.map
 
     def __str__(self):
         return str(self.map)
@@ -195,28 +194,27 @@ class Stage(Clipable):
 
     def check(self):
         if not self.map['enabled']:
-            AUTO_FIXER.warn('{} Stage {} not enabled'.format(self.parent.getMaterialName(), self.id), 2)
+            AUTO_FIXER.warn('{} Stage {} not enabled'.format(self.parent.getMaterialName(), self.name), 2)
 
     # -------------------- CLIPBOARD --------------------------------------------------
     def clip(self, clipboard):
-        clipboard[self.parent.getMaterialName() + str(self.id)] = self
+        clipboard[self.parent.getMaterialName() + str(self.name)] = self
 
     def clip_find(self, clipboard):
-        return clipboard[self.parent.getMaterialName() + str(self.id)]
+        return clipboard[self.parent.getMaterialName() + str(self.name)]
 
     def paste(self, item):
-        # ignores id and parent, since it's shader's job to track ids
+        # ignores name and parent, since it's shader's job to track names
         for key in item.map:
             self.map[key] = item.map[key]
 
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level if indentation_level else '>' + str(self.parent.getMaterialName())
         if key:
-            print('{}->Stage:{}\t{}:{}'.format(trace, self.id, key, self[key]))
+            print('{}->Stage:{}\t{}:{}'.format(trace, self.name, key, self[key]))
         else:
-            print('{}Stage:{}\tMapId:{} CoordinateId:{} ColorScale:{} ColorDestination:{}'.format(
-                trace, self.id, self['mapid'], self['coordinateid'],
-                self['colorscale'], self['colordestination']))
+            print('{}Stage:{}\tMapId:{} ColorScale:{}'.format(
+                trace, self.name, self['mapid'], self['colorscale']))
 
     def getRasterColorI(self):
         i = self.RASTER_COLORS.index(self.map["rastercolor"])
@@ -323,7 +321,6 @@ class Stage(Clipable):
                 if len(key) < 7:  # abcd
                     if value == '0':
                         value = 'zero'
-
                     else:
                         indexListItem(self.ALPHA_SELS, value)
                 elif key == "alphaconstantselection":
@@ -352,7 +349,7 @@ class Stage(Clipable):
 
     def unpackColorEnv(self, binfile):
         """ Unpacks the color env """
-        ce = ColorEnv(self.id)
+        ce = ColorEnv(self.name)
         ce.unpack(binfile)
         self.map["colora"] = self.COLOR_SELS[ce.getSelA()]
         self.map["colorb"] = self.COLOR_SELS[ce.getSelB()]
@@ -365,8 +362,8 @@ class Stage(Clipable):
         self.map["colordestination"] = self.COLOR_DEST[ce.getDest()]
 
     def unpackAlphaEnv(self, binfile):
-        ''' Unpacks alpha env '''
-        ae = AlphaEnv(self.id)
+        """ Unpacks alpha env """
+        ae = AlphaEnv(self.name)
         ae.unpack(binfile)
         self.map["alphaa"] = self.ALPHA_SELS[ae.getSelA()]
         self.map["alphab"] = self.ALPHA_SELS[ae.getSelB()]
@@ -381,7 +378,7 @@ class Stage(Clipable):
         self.map["rasterswapselection"] = ae.getRSwap()
 
     def unpackIndirect(self, binfile):
-        c = IndCmd(self.id)
+        c = IndCmd(self.name)
         c.unpack(binfile)
         self.map["indirectstage"] = c.getStage()
         self.map["indirectformat"] = self.TEX_FORMAT[c.getFormat()]
@@ -394,7 +391,7 @@ class Stage(Clipable):
         self.map["indirectunmodifiedlod"] = c.getUnmodifiedLOD()
 
     def packColorEnv(self, binfile):
-        ce = ColorEnv(self.id)
+        ce = ColorEnv(self.name)
         a = self.COLOR_SELS.index(self["colora"])
         b = self.COLOR_SELS.index(self["colorb"])
         c = self.COLOR_SELS.index(self["colorc"])
@@ -408,7 +405,7 @@ class Stage(Clipable):
         ce.pack(binfile)
 
     def packAlphaEnv(self, binfile):
-        ae = AlphaEnv(self.id)
+        ae = AlphaEnv(self.name)
         a = self.ALPHA_SELS.index(self["alphaa"])
         b = self.ALPHA_SELS.index(self["alphab"])
         c = self.ALPHA_SELS.index(self["alphac"])
@@ -423,7 +420,7 @@ class Stage(Clipable):
         ae.pack(binfile)
 
     def packIndirect(self, binfile):
-        c = IndCmd(self.id)
+        c = IndCmd(self.name)
         f = self.TEX_FORMAT.index(self["indirectformat"])
         b = self.IND_BIAS.index(self["indirectbias"])
         a = self.IND_ALPHA.index(self["indirectalpha"])
@@ -445,10 +442,10 @@ class Shader(Clipable):
                   BPCommand(0xFC, 0xA), BPCommand(0xFD, 0xE))
     SEL_MASK = BPCommand(0xFE, 0xFFFFF0)
     SETTINGS = ('indirectmap', 'indirectcoord', 'stagecount')
+    MAP_ID_AUTO = True
 
     def __init__(self, name, parent):
-        self.parent = parent
-        self.name = name
+        super(Shader, self).__init__(name, parent)
         self.stages = []
         self.swap_table = deepcopy(self.SWAP_TABLE)
         self.material = None  # material to be hooked
@@ -549,10 +546,7 @@ class Shader(Clipable):
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level if indentation_level else '>'
         if not key:
-            print('{}(Shader){}: IndirectMap:{} IndirectCoord:{}'.format(trace,
-                                                                         self.getMaterialName(),
-                                                                         self.indTexMaps,
-                                                                         self.indTexCoords))
+            print('{}(Shader){}'.format(trace, self.getMaterialName()))
             indentation_level += 1
             for x in self.stages:
                 x.info(key, indentation_level)
@@ -590,7 +584,7 @@ class Shader(Clipable):
     def __deepcopy__(self, memodict=None):
         ret = Shader(self.name, self.parent)
         for x in self.stages:
-            s = Stage(x.id, ret)
+            s = Stage(x.name, ret)
             map = s.map
             for key, val in x.map.items():
                 map[key] = val
@@ -767,6 +761,9 @@ class Shader(Clipable):
 
     def check(self):
         """Checks the shader for common errors, returns (direct_stage_count, ind_stage_count)"""
+        # check stages
+        for x in self.stages:
+            x.check()
         prefix = 'Shader {}:'.format(self.getMaterialName())
         texRefCount = self.getTexRefCount()
         tex_usage = [0] * texRefCount
@@ -777,25 +774,21 @@ class Shader(Clipable):
             if x['enabled']:
                 id = x['mapid']
                 if id >= texRefCount:
-                    id = self.detect_unusedMapId()
-                    if id < texRefCount:
-                        b = Bug(2, 2, '{} Stage {} no such layer {}.'.format(prefix, x.id, id),
+                    if self.MAP_ID_AUTO:
+                        id = self.detect_unusedMapId()
+                        b = Bug(2, 2, '{} Stage {} no such layer'.format(prefix, x.name),
                                 'Use layer {}'.format(id))
-                        if b.should_fix():
+                        if id < texRefCount:
                             x['mapid'] = x['coordinateid'] = id
                             b.resolve()
-                    else:
-                        b = Bug(2, 2, '{} Stage {} no such layer {}.'.format(prefix, x.id, id), 'Remove stage')
-                        if b.should_fix():
+                        else:
+                            b.fix_des = 'Remove stage'
                             mark_to_remove.append(x)
                             b.resolve()
                 else:
                     tex_usage[id] += 1
         for x in mark_to_remove:
             self.stages.remove(x)
-        # check stages
-        for x in self.stages:
-            x.check()
         # indirect check
         ind_stages = self.getIndCoords()
         for stage_id in range(len(self.indTexCoords)):
@@ -819,29 +812,3 @@ class Shader(Clipable):
                 AUTO_FIXER.notify(b)
         ind_matrices_used = self.getIndirectMatricesUsed()
         self.material.check_shader(len(self.stages), ind_stage_count, ind_matrices_used)
-
-# possibly try to fix ctools bugs later
-# class TexCoord:
-#     TEX_FORMAT = ("u8", "s8", "u16", "s16", "float")
-#     def __init__(self, file):
-#         self.offset = file.offset
-#         data = file.read(Struct("> I i 5I 2B H 2f 2f"), 0x30)
-#         # print("Texture header: {}".format(data))
-#         self.length = data[0]
-#         self.mdl0Offset = data[1]
-#         self.dataOffset = data[2]
-#         self.nameOffset = data[3]
-#         self.id = data[4]
-#         self.component = data[5]
-#         self.format = data[6]
-#         self.divisor = data[7]
-#         self.stride = data[8]
-#         self.size = data[9]
-#         self.minimum = data[10:12]
-#         self.maximum = data[12:14]
-#         file.offset = self.offset + self.dataOffset
-#         data = file.read(Struct("> " + color_str(self.length - 0x30) + "B"), self.length - 0x30)
-#         # print("TCoord: {}".format(data))
-#
-#     def __str__(self):
-#         return "UV {} size {} format {} divisor {} stride {}".format(self.id, self.size, self.TEX_FORMAT[self.format], self.divisor, self.stride)

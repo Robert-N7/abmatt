@@ -15,7 +15,7 @@ from abmatt.brres import Brres
 from abmatt.mdl0 import TexCoord
 from abmatt.command import Command, ParsingException, NoSuchFile
 from abmatt.autofix import AUTO_FIXER
-from abmatt.config import Config
+from abmatt.config import Config, load_config
 from matching import MATCHING
 
 VERSION = '0.6.0'
@@ -82,22 +82,19 @@ For more Help or if you want to contribute visit https://github.com/Robert-N7/ab
 class Shell(Cmd):
     prompt = '>'
 
-    @staticmethod
-    def run(prefix, cmd):
+    def __init__(self):
+        super(Shell, self).__init__()
+        self.cmd_queue = []
+
+    def run(self, prefix, cmd):
+        line = prefix + ' ' + cmd
+        self.cmd_queue.append(line)
         try:
-            Command.run_commands([Command(prefix + ' ' + cmd)])
+            Command.run_commands([Command(line)])
         except ParsingException as e:
             print('{}, Type "?" for help.'.format(e))
         except NoSuchFile as e:
-            print(e)
-
-    @staticmethod
-    def complete_file(match_text):
-        """Complete file if the last word is appropriate"""
-        path = os.path.join(os.getcwd(), match_text)
-        dir, start = os.path.split(path)
-        files = os.listdir(dir)
-        return [x for x in files if x.startswith(start)]
+            AUTO_FIXER.error(e)
 
     @staticmethod
     def complete_material_name(match_text):
@@ -136,8 +133,23 @@ class Shell(Cmd):
         files = []
         for file in os.listdir(directory):
             if file.startswith(name):
-                files.append(name[name.rindex(text):])
+                files.append(file[name.rindex(text):])
         return files
+
+    @staticmethod
+    def construct_file_path(sel_words):
+        start_file = False
+        path = None
+        for x in sel_words:
+            if x == 'in':
+                start_file = True
+            elif x == 'model':
+                start_file = False
+            elif x == 'file':
+                start_file = True
+            elif start_file:
+                path = x if path is None else os.path.join(path, x)
+        return path
 
     def complete_selection(self, text, sel_words):
         if not sel_words:
@@ -149,16 +161,15 @@ class Shell(Cmd):
             if last_word == 'model':
                 return self.complete_model_name(text)
             elif last_word == 'file':
-                return self.complete_file(text)
+                return self.find_files(text, text)
             # last word is 'in' or a model or file
             possible = []
-            if not 'model' in sel_words and text in 'model':
+            if 'model'.startswith(text):
                 possible.append('model')
-            if 'file' not in sel_words:
-                if last_word == 'in':
-                    possible.extend(self.find_files(text))
-                if text in 'file':
-                    possible.append('file')
+            elif 'file'.startswith(text):
+                possible.append('file')
+            sel_words.append(text)
+            possible.extend(self.find_files(self.construct_file_path(sel_words), text))
             return possible
 
     def generic_complete(self, text, words, for_sel_index=1):
@@ -182,7 +193,7 @@ class Shell(Cmd):
         self.run('paste', line)
 
     def help_paste(self):
-        print('paste <type> [for <selection>]')
+        print('USAGE: paste <type> [for <selection>]')
 
     def complete_paste(self, text, line, begid, endid):
         return self.generic_complete(text, self.get_words(text, line))
@@ -191,7 +202,7 @@ class Shell(Cmd):
         self.run('copy', line)
 
     def help_copy(self):
-        print('copy <type> [for <selection>]')
+        print('USAGE: copy <type> [for <selection>]')
 
     def complete_copy(self, text, line, begid, endid):
         return self.generic_complete(text, self.get_words(text, line))
@@ -203,13 +214,12 @@ class Shell(Cmd):
         print('Ends the interactive shell.')
 
     do_EOF = do_quit
-    help_EOF = help_quit
 
     def do_set(self, line):
         self.run('set', line)
 
     def help_set(self):
-        print('set <type> <key>:<value> [for <selection>]')
+        print('USAGE: set <type> <key>:<value> [for <selection>]')
 
     def complete_set(self, text, line, begid, endid):
         words = self.get_words(text, line)
@@ -243,7 +253,7 @@ class Shell(Cmd):
         self.run('add', line)
 
     def help_add(self):
-        print('add <type> [for <selection>]')
+        print('USAGE: add <type> [for <selection>]')
 
     def complete_add(self, text, line, begid, endid):
         return self.generic_complete(text, self.get_words(text, line))
@@ -252,7 +262,7 @@ class Shell(Cmd):
         self.run('remove', line)
 
     def help_remove(self):
-        print('remove <type> [for <selection>]')
+        print('USAGE: remove <type> [for <selection>]')
 
     def complete_remove(self, text, line, begid, endid):
         return self.generic_complete(text, self.get_words(text, line))
@@ -261,7 +271,7 @@ class Shell(Cmd):
         self.run('info', line)
 
     def help_info(self):
-        print('info <type> [<key>] [for <selection>]')
+        print('USAGE: info <type> [<key>] [for <selection>]')
 
     def complete_info(self, text, line, begid, endid):
         words = self.get_words(text, line)
@@ -293,7 +303,7 @@ class Shell(Cmd):
         self.run('preset', line)
 
     def help_preset(self):
-        print('preset <preset> [for <selection>]')
+        print('USAGE: preset <preset> [for <selection>]')
 
     def complete_preset(self, text, line, begid, endid):
         words = self.get_words(text, line)
@@ -308,7 +318,7 @@ class Shell(Cmd):
         self.run('select', line)
 
     def help_select(self):
-        print('select <name> [in <container>]')
+        print('USAGE: select <name> [in <container>]')
 
     def complete_select(self, text, line, begid, endid):
         return self.complete_selection(text, self.get_words(text, line))
@@ -316,8 +326,8 @@ class Shell(Cmd):
     def do_save(self, line):
         self.run('save', line)
 
-    def help_save(self, line):
-        print('save [<filename>] [as <destination>] [overwrite]')
+    def help_save(self):
+        print('USAGE: save [<filename>] [as <destination>] [overwrite]')
 
     def complete_save(self, text, line, begid, endid):
         possible = []
@@ -330,6 +340,31 @@ class Shell(Cmd):
             possible.append('overwrite')
         if 'as'.startswith(text) and 'as' not in words:
             possible.append('as')
+
+    def do_dump(self, line):
+        words = line.split()
+        if not words:
+            print('USAGE: dump <filename> [overwrite]')
+        elif not self.cmd_queue:
+            print('Nothing in queue.')
+        else:
+            file = words.pop(0)
+            overwrite = True if 'overwrite' in words or Command.OVERWRITE else False
+            if os.path.exists(file) and not overwrite:
+                AUTO_FIXER.error('File {} already exists!'.format(file))
+            else:
+                with open(file, 'w') as f:
+                    f.write('\n'.join(self.cmd_queue))
+
+    def help_dump(self):
+        print('Dumps interactive shell commands to file.')
+        print('USAGE: dump <filename> [overwrite]')
+
+    def do_clear(self, line):
+        self.cmd_queue = []
+
+    def help_clear(self):
+        print('Clears the interactive shell command queue.')
 
     def default(self, line):
         if line == 'x' or line == 'q':
@@ -362,29 +397,6 @@ def load_presets(app_dir):
     else:
         AUTO_FIXER.info('No presets file detected', 3)
     return loaded
-
-
-def load_config(app_dir, loudness=None, autofix_level=None):
-    conf = Config(os.path.join(app_dir, 'config.conf'))
-    if not loudness:
-        loudness = conf['loudness']
-    if loudness:
-        AUTO_FIXER.set_loudness(loudness)
-    if not autofix_level:
-        autofix_level = conf['autofix']
-    if autofix_level:
-        AUTO_FIXER.set_fix_level(autofix_level)
-    max_brres_files = conf['max_brres_files']
-    if max_brres_files:
-        try:
-            i = int(max_brres_files)
-            Command.MAX_FILES_OPEN = i
-        except:
-            pass
-    # Matching stuff
-    MATCHING.set_case_sensitive(conf['case_sensitive'])
-    MATCHING.set_partial_matching(conf['partial_matching'])
-    MATCHING.set_regex_enable(conf['regex_matching'])
 
 
 def main():
@@ -469,7 +481,7 @@ def main():
         try:
             Command.updateFile(brres_file)
         except NoSuchFile as e:
-            print(e)
+            AUTO_FIXER.error(e)
             sys.exit(2)
         if command:
             cmd = command + ' ' + type
@@ -488,8 +500,12 @@ def main():
         sys.exit(2)
 
     if command_file:
-        filecmds = Command.load_commandfile(command_file)
-        cmds = cmds + filecmds
+        try:
+            filecmds = Command.load_commandfile(command_file)
+            if filecmds:
+                cmds = cmds + filecmds
+        except NoSuchFile as err:
+            AUTO_FIXER.error(err)
 
     # Run Commands
     if cmds:
@@ -497,7 +513,6 @@ def main():
             sys.exit(1)
     if interactive:
         Shell().cmdloop('Interactive shell started...')
-
     # cleanup
     for file in Command.ACTIVE_FILES:
         file.close()

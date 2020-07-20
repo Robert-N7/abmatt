@@ -54,7 +54,7 @@ class AutoFix:
     def set_fix_level(self, fix_level):
         try:
             self.fix_level = int(fix_level)
-        except:
+        except ValueError:
             fix_level = fix_level.upper()
             if fix_level == 'ALL':
                 self.fix_level = 4

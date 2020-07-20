@@ -29,12 +29,14 @@ class Layer(Clipable):
     COORDINATES = ("geometry", "normals", "colors", "binfileormalst", "binfileormalsb",
                    "texcoord0", "texcoord1", "texcoord2", "texcoord3", "texcoord4", "texcoord5", "texcoord6",
                    "texcoord7")
+    MINFILTER_AUTO = False
+    RENAME_UNKNOWN_REFS = True
+    REMOVE_UNKNOWN_REFS = True
 
     def __init__(self, id, name, parent):
         """ Initializes, id (position of layer), name, and parent material """
+        super(Layer, self).__init__(name, parent)
         self.id = id
-        self.parent = parent
-        self.name = name
         self.enable = True
         self.scale = (1, 1)
         self.rotation = 0
@@ -414,40 +416,53 @@ class Layer(Clipable):
             val = self[key]
             print("{}\t{}:{}".format(trace, key, val))
         else:
-            print("{}:\tScale:{} Rot:{} Trans:{} UWrap:{} VWrap:{} MinFilter:{}".format(
-                trace, self.scale, self.rotation, self.translation,
-                self.WRAP[self.uwrap], self.WRAP[self.vwrap],
-                self.FILTER[self.minfilter], self.MAPMODE[self.mapMode]))
+            print("{}:\tScale:{} Rot:{} Trans:{}".format(
+                trace, self.scale, self.rotation, self.translation))
 
     def uses_mipmaps(self):
         return self.minfilter > 1
 
     def check(self, texture_map=None):
         if texture_map is None:
-            texture_map = self.parent.getTextureMap()
+            texture_map = self.parent.get_texture_map()
         tex = texture_map.get(self.name)
         if not tex:
             # try fuzz
-            result = fuzzy_strings(self.name, texture_map)
-            if result:
-                b = Bug(2, 3, 'No texture matching {}'.format(self.name), 'Rename to {}'.format(result))
-                if b.should_fix():
+            result = None
+            b = Bug(2, 3, 'No texture matching {}'.format(self.name), '')
+            if self.RENAME_UNKNOWN_REFS:
+                result = fuzzy_strings(self.name, texture_map)
+                if result is not None:
+                    b.fix_des = 'Rename to {}'.format(result)
                     self.setName(result)
                     b.resolve()
-                    tex=texture_map.get(self.name)
-            else:
-                AUTO_FIXER.warn('No texture matching {}'.format(self.name))
+                    tex = texture_map.get(self.name)
+                    self.mark_modified()
+            if result is None:
+                if self.REMOVE_UNKNOWN_REFS:
+                    b.fix_des = 'Remove reference'
+                    self.parent.removeLayer(self.name)
+                    b.resolve()
+                    return
+                else:
+                    AUTO_FIXER.warn('No texture matching {}'.format(self.name))
         if tex:
             if self.uses_mipmaps():
                 if tex.num_mips == 0:
                     b = Bug(4, 4, '{} no mipmaps in tex0'.format(self.name), 'Set minfilter to linear')
-                    if b.should_fix():
+                    if self.MINFILTER_AUTO:
                         self.minfilter = 1  # linear
                         b.resolve()
+                        self.mark_modified()
+                    else:
+                        AUTO_FIXER.notify(b)
             else:
                 if tex.num_mips > 0:
                     b = Bug(4, 4, '{} mipmaps disabled but TEX0 has {}'.format(
-                            self.name, tex.num_mips), 'Set minfilter to LinearMipmapLinear')
-                    if b.should_fix():
+                        self.name, tex.num_mips), 'Set minfilter to LinearMipmapLinear')
+                    if self.MINFILTER_AUTO:
                         self.minfilter = 5  # linearmipmaplinear
                         b.resolve()
+                        self.mark_modified()
+                    else:
+                        AUTO_FIXER.notify(b)

@@ -33,8 +33,20 @@ def fuzzy_strings(text, strings, acceptable_ratio=84):
 
 class Clipable:
     """Clipable interface"""
+    def __init__(self, name, parent=None):
+        self.name = name
+        self.parent = parent
 
     # ---------------------------------------------- CLIPBOARD -------------------------------------------
+    @staticmethod
+    def paste_group(paste_group, clip_group):
+        for x in clip_group:
+            name = x.name
+            for y in paste_group:
+                if y.name == name:
+                    y.paste(x)
+                    break
+
     def clip(self, clipboard):
         clipboard[self.name] = self
 
@@ -43,6 +55,12 @@ class Clipable:
 
     def paste(self, item):
         pass
+
+    def mark_modified(self):
+        self.parent.mark_modified()
+
+    def get_texture_map(self):
+        return self.parent.get_texture_map()
 
 
 def info_default(obj, prefix='', key=None, indentation=0):

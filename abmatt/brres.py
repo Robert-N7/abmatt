@@ -28,6 +28,7 @@ class Brres(Clipable):
     OVERWRITE = False
     DESTINATION = None
     ACTIVE_FILES = None     # reference to active files
+    REMOVE_UNUSED_TEXTURES=False
 
     def __init__(self, name, parent=None, readFile=True):
         """
@@ -36,6 +37,7 @@ class Brres(Clipable):
             parent - optional for supporting containing files in future
             readfile - optional start reading and unpacking file
         """
+        super(Brres, self).__init__(name, parent)
         self.models = []
         self.textures = []
         self.anmSrt = []
@@ -68,11 +70,19 @@ class Brres(Clipable):
 
     # ---------------------------------------------- CLIPBOARD ------------------------------------------
     def paste(self, brres):
-        for x in self.models:
-            for y in brres.models:
-                if x.name == y.name:
-                    x.paste(y)
-                    break
+        self.paste_group(self.models, brres.models)
+        # textures
+        t1 = self.get_texture_map()
+        t2 = brres.get_texture_map()
+        for x in t2:
+            tex = t1.get(x)
+            if tex:
+                tex.paste(t2[x])
+        # todo chr0 paste
+
+
+    def mark_modified(self):
+        self.isModified = True
 
     # -------------------------- SAVE/ CLOSE --------------------------------------------
     def close(self):
@@ -86,7 +96,7 @@ class Brres(Clipable):
             # if not self.isChanged():
             #     return
         if not overwrite and os.path.exists(filename):
-            AUTO_FIXER.warn('Unable to save {}, file {} already exists!'.format(self.name, filename), 2)
+            AUTO_FIXER.warn('File {} already exists!'.format(filename), 2)
             return False
         else:
             f = BinFile(filename, mode="w")
@@ -150,7 +160,7 @@ class Brres(Clipable):
     def updateModelName(self, old_name, new_name):
         for folder in self.folders[2:]:
             for x in folder:
-                if old_name in x.name:
+                if old_name == x.name:      # possible bug... model animations with similar names may be renamed
                     x.name = x.name.replace(old_name, new_name)
 
     def getModelsByName(self, name):
@@ -169,7 +179,7 @@ class Brres(Clipable):
         self.textures.append(tex0)
         self.texture_map[tex0.name] = tex0
 
-    def getTextureMap(self):
+    def get_texture_map(self):
         if not self.texture_map:
             self.texture_map = {}
             for x in self.textures:
@@ -177,7 +187,7 @@ class Brres(Clipable):
         return self.texture_map
 
     def getTexture(self, name):
-        tex = self.getTextureMap().get(name)
+        tex = self.get_texture_map().get(name)
         if tex is None:
             tex = self.findTexture(name)
             if tex:
@@ -234,7 +244,7 @@ class Brres(Clipable):
             anim_collections.append(collection)
             mdl = self.getModel(key)
             if not mdl:
-                AUTO_FIXER.notify('No model found matching srt0 animation {}'.format(key), 3)
+                AUTO_FIXER.info('No model found matching srt0 animation {}'.format(key), 3)
             else:
                 mdl.set_srt0(collection)
         return anim_collections
@@ -248,7 +258,7 @@ class Brres(Clipable):
             anim_collections.append(collection)
             mdl = self.getModel(key)
             if not mdl:
-                AUTO_FIXER.notify('No model found matching pat0 animation {}'.format(key), 3)
+                AUTO_FIXER.info('No model found matching pat0 animation {}'.format(key), 3)
             else:
                 mdl.set_pat0(collection)
         return anim_collections
@@ -377,14 +387,17 @@ class Brres(Clipable):
         AUTO_FIXER.info('checking file {}'.format(self.name), 3)
         for mdl in self.models:
             mdl.check()
-        tex_names = set(self.getTextureMap().keys())
+        tex_names = set(self.get_texture_map().keys())
         tex_used = self.getUsedTextures()
         unused = tex_names - tex_used
         if unused:
             b = Bug(4, 3, 'Unused textures: {}'.format(unused), 'Remove textures')
-            if b.should_fix():
+            if self.REMOVE_UNUSED_TEXTURES:
                 self.remove_unused_textures(unused)
                 b.resolve()
+                self.mark_modified()
+            else:
+                AUTO_FIXER.notify(b)
         for x in self.textures:
             x.check()
 

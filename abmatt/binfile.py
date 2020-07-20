@@ -40,9 +40,9 @@ class BinFile:
         self.c_length = None  # for tracking current length
         self.isWriteMode = (mode == 'w')
         if not self.isWriteMode:
-            file = open(filename, "rb")
-            self.file = file.read()
-            file.close()
+            with open(filename, "rb") as file:
+                self.file = file.read()
+                file.close()
         else:
             self.file = bytearray()
         self.start()

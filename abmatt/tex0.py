@@ -1,8 +1,10 @@
 """Tex0 subfile"""
+from copy import copy
 from math import log
 
 from abmatt.subfile import SubFile
 from abmatt.autofix import AUTO_FIXER, Bug
+
 
 class Tex0(SubFile):
     """ Tex0 Class """
@@ -22,7 +24,7 @@ class Tex0(SubFile):
 
     @staticmethod
     def nearest_power_of_two(v):
-        return pow(2, round(log(v)/log(2)))
+        return pow(2, round(log(v) / log(2)))
 
     def encode(self, img_file, num_mips):
         pass
@@ -30,10 +32,18 @@ class Tex0(SubFile):
     def decode(self, img_file):
         pass
 
+    def paste(self, item):
+        self.width = item.width
+        self.height = item.height
+        self.format = item.format
+        self.num_images = item.num_images
+        self.num_mips = item.num_mips
+        self.data = item.data
+
     def check(self):
         super(Tex0, self).check()
         if not self.is_power_of_two(self.width) or not self.is_power_of_two(self.height):
-            print('CHECK: TEX0 {} not a power of 2'.format(self.name))
+            AUTO_FIXER.warn('TEX0 {} not a power of 2'.format(self.name))
 
     def unpack(self, binfile):
         self._unpack(binfile)

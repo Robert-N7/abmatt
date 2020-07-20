@@ -263,23 +263,13 @@ class SRTKeyFrameList:
             binfile.write("3f", x.index, x.value, x.delta)
 
 
-class SRTTexAnim():
+class SRTTexAnim(Clipable):
     """ A single texture animation entry in srt0 under material """
     SETTINGS = ('xscale', 'yscale', 'rot', 'xtranslation', 'ytranslation')
 
     def __init__(self, id, framecount, parent):
+        super(SRTTexAnim, self).__init__(None, parent)
         self.id = id
-        self.name = None
-        self.parent = parent
-        self.scaleDefault = True  # scale = 1
-        self.rotationDefault = True  # rotation = zero
-        self.translationDefault = True  # translation = zero
-        self.scaleIsotropic = True  # xscale == yscale
-        self.xScaleFixed = True
-        self.yScaleFixed = True
-        self.rotationFixed = True
-        self.xTranslationFixed = True
-        self.yTranslationFixed = True
         self.animations = {
             'xscale': SRTKeyFrameList(framecount, 1),
             'yscale': SRTKeyFrameList(framecount, 1),
@@ -287,6 +277,10 @@ class SRTTexAnim():
             'xtranslation': SRTKeyFrameList(framecount),
             'ytranslation': SRTKeyFrameList(framecount)
         }
+
+    # ---------------------- CLIPABLE -------------------------------------------------------------
+    def paste(self, item):
+        self.animations = deepcopy(item.animations)
 
     # -------------------------------------------------------------------------
     # interfacing
@@ -314,7 +308,9 @@ class SRTTexAnim():
         trace = '  ' * indentation_level + 'Tex:' + id if indentation_level else '>(SRT0)' + self.parent.name + '->Tex:' + id
         if not key:
             for x in self.SETTINGS:
-                trace += ' ' + x + ':' + str(self[x])
+                anim = self[x]
+                if len(anim) > 1:
+                    trace += ' ' + x + ':' + str(anim)
             print(trace)
         else:
             print('{}\t{}:{}'.format(trace, key, self[key]))
@@ -346,69 +342,63 @@ class SRTTexAnim():
     # ----------------------------------------------------------------------
 
     # ----------------------------------------------------------------------
-    # Code and flags and things
-    #       Animation Code Notes
-    # //0000 0000 0000 0000 0000 0000 0000 0001       Always set
-    #
-    # //0000 0000 0000 0000 0000 0000 0000 0010       Scale One
-    # //0000 0000 0000 0000 0000 0000 0000 0100       Rot Zero
-    # //0000 0000 0000 0000 0000 0000 0000 1000       Trans Zero
-    # //0000 0000 0000 0000 0000 0000 0001 0000		Scale Isotropic
-    #
-    # //0000 0000 0000 0000 0000 0000 0010 0000		Fixed Scale X
-    # //0000 0000 0000 0000 0000 0000 0100 0000		Fixed Scale Y
-    # //0000 0000 0000 0000 0000 0000 1000 0000		Fixed Rotation
-    # //0000 0000 0000 0000 0000 0001 0000 0000		Fixed X Translation
-    # //0000 0000 0000 0000 0000 0010 0000 0000		Fixed Y Translation
-    def calculateCode(self):
+    def calc_flags(self):
         """ calculates flags based on values"""
+        flags = [False] * 9
         # Scale
         x = self.animations['xscale']  # XScale
         y = self.animations['yscale']  # yscale
-        self.xScaleFixed = x.isFixed()
-        self.yScaleFixed = y.isFixed()
-        self.scaleDefault = x.isDefault(True) and y.isDefault(True)
-        self.scaleIsotropic = self.scaleDefault or x == y
+        flags[4] = x.isFixed()
+        flags[5] = y.isFixed()
+        flags[0] = (x.isDefault(True) and y.isDefault(True))
+        flags[3] = flags[0] or x == y
         # Rotation
         rot = self.animations['rot']
-        self.rotationFixed = rot.isFixed()
-        self.rotationDefault = rot.isDefault(False)
+        flags[6] = rot.isFixed()
+        flags[1] = rot.isDefault(False)
         # Translation
         x = self.animations['xtranslation']
         y = self.animations['ytranslation']
-        self.xTranslationFixed = x.isFixed()
-        self.yTranslationFixed = y.isFixed()
-        self.translationDefault = x.isDefault(False) and y.isDefault(False)
-        return self.flagsToInt()
+        flags[7] = x.isFixed()
+        flags[8] = y.isFixed()
+        flags[2] = x.isDefault(False) and y.isDefault(False)
+        return flags
 
     def parseIntCode(self, code):
         """ Parses the integer code to the class variables """
         code >>= 1
-        self.scaleDefault = code & 1
-        self.rotationDefault = code >> 1 & 1
-        self.translationDefault = code >> 2 & 1
-        self.scaleIsotropic = code >> 3 & 1
-        self.xScaleFixed = code >> 4 & 1
-        self.yScaleFixed = code >> 5 & 1
-        self.rotationFixed = code >> 6 & 1
-        self.xTranslationFixed = code >> 7 & 1
-        self.yTranslationFixed = code >> 8 & 1
+        flags = []
+        for i in range(9):
+            flags.append(code & 1)
+            code >>= 1
+        return flags
+        # self.scaleDefault = code & 1
+        # self.rotationDefault = code >> 1 & 1
+        # self.translationDefault = code >> 2 & 1
+        # self.scaleIsotropic = code >> 3 & 1
+        # self.xScaleFixed = code >> 4 & 1
+        # self.yScaleFixed = code >> 5 & 1
+        # self.rotationFixed = code >> 6 & 1
+        # self.xTranslationFixed = code >> 7 & 1
+        # self.yTranslationFixed = code >> 8 & 1
 
-    def flagsToInt(self):
+    def flagsToInt(self, flags):
         """ Returns integer from flags """
-        return 1 | self.scaleDefault << 1 | self.rotationDefault << 2 | self.translationDefault << 3 \
-               | self.scaleIsotropic << 4 | self.xScaleFixed << 5 | self.yScaleFixed << 6 | self.rotationFixed << 7 \
-               | self.xTranslationFixed << 8 | self.yTranslationFixed << 9
+        code = 0
+        for i in range(len(flags)):
+            code |= flags[i] << i
+        code <<= 1 | 1
+        return code
 
     # -------------------------------------------------------
     # UNPACKING/PACKING
     # probably a better way to do all this
-    def unpackScale(self, binfile):
+    def unpackScale(self, binfile, flags):
         """ unpacks scale data """
-        if self.scaleDefault:
+        if flags[0]:
             return
-        if self.scaleIsotropic:
-            if self.xScaleFixed:
+        if flags[3]:    # isotropic
+            if flags[4]:    # scale fixed
                 [val] = binfile.read("f", 4)
                 self.animations['xscale'].setFixed(val)
                 self.animations['yscale'].setFixed(val)
@@ -417,36 +407,36 @@ class SRTTexAnim():
                 keyframelist = binfile.bl_unpack(self.animations['xscale'].unpack, False)
                 self.animations['yscale'] = deepcopy(keyframelist)
         else:  # not isotropic
-            if self.xScaleFixed:
+            if flags[4]:  # xscale-fixed
                 [val] = binfile.read("f", 4)
                 self.animations['xscale'].setFixed(val)
             else:
                 binfile.bl_unpack(self.animations['xscale'].unpack, False)
-            if self.yScaleFixed:
+            if flags[5]:    # y-scale-fixed
                 [val] = binfile.read("f", 4)
                 self.animations['yscale'].setFixed(val)
             else:
                 binfile.bl_unpack(self.animations['yscale'].unpack, False)
 
-    def unpackTranslation(self, binfile):
+    def unpackTranslation(self, binfile, flags):
         """ unpacks translation data """
-        if self.translationDefault:
+        if flags[2]:    # default translation
             return
-        if self.xTranslationFixed:
+        if flags[7]:    # x-trans-fixed
             [val] = binfile.read("f", 4)
             self.animations['xtranslation'].setFixed(val)
         else:
             binfile.bl_unpack(self.animations['xtranslation'].unpack, False)
-        if self.yTranslationFixed:
+        if flags[8]:    # y-trans-fixed
             [val] = binfile.read("f", 4)
             self.animations['ytranslation'].setFixed(val)
         else:
             binfile.bl_unpack(self.animations['ytranslation'].unpack, False)
 
-    def unpackRotation(self, binfile):
+    def unpackRotation(self, binfile, flags):
         """ unpacks rotation """
-        if not self.rotationDefault:
-            if self.rotationFixed:
+        if not flags[1]:    # rotation default
+            if flags[6]:    # rotation fixed
                 [val] = binfile.read("f", 4)
                 self.animations['rot'].setFixed(val)
             else:
@@ -457,51 +447,52 @@ class SRTTexAnim():
         # m = binfile.read('200B', 0)
         # printCollectionHex(m)
         [code] = binfile.read("I", 4)
+        flags = self.parseIntCode(code)
         # print('(SRT0){}->{} code:{}'.format(self.parent.name, self.id, code))
-        self.parseIntCode(code)
-        self.unpackScale(binfile)
-        self.unpackRotation(binfile)
-        self.unpackTranslation(binfile)
+        # self.parseIntCode(code)
+        self.unpackScale(binfile, flags)
+        self.unpackRotation(binfile, flags)
+        self.unpackTranslation(binfile, flags)
 
-    def packScale(self, binfile):
+    def packScale(self, binfile, flags):
         """ packs scale data
             returning a tuple (hasxListOffset, hasyListOffset)
         """
         has_y_list_offset = has_x_list_offset = False
-        if not self.scaleDefault:
-            if self.xScaleFixed:
+        if not flags[0]:    # not scale default
+            if flags[4]:    # x-scale-fixed
                 binfile.write("f", self.animations['xscale'].getValue())
             else:
                 binfile.mark()  # mark to be stored
                 has_x_list_offset = True
-            if not self.scaleIsotropic:
-                if self.yScaleFixed:
+            if not flags[3]:    # not isotropic
+                if flags[5]:    # y-scale-fixed
                     binfile.write("f", self.animations['yscale'].getValue())
                 else:
                     binfile.mark()
                     has_y_list_offset = True
         return [has_x_list_offset, has_y_list_offset]
 
-    def packRotation(self, binfile):
+    def packRotation(self, binfile, flags):
         """ packs rotation data """
-        if not self.rotationDefault:
-            if self.rotationFixed:
+        if not flags[1]:    # rotation not default
+            if flags[6]:    # rotation fixed
                 binfile.write("f", self.animations['rot'].getValue())
             else:
                 binfile.mark()
                 return True
         return False
 
-    def packTranslation(self, binfile):
+    def packTranslation(self, binfile, flags):
         """ packs translation data, returning tuple (hasXTransOffset, hasYTransOffset) """
         hasXTransOffset = hasYTransOffset = False
-        if not self.translationDefault:
-            if self.xTranslationFixed:
+        if not flags[2]:    # not trans-default
+            if flags[7]:    # x-trans
                 binfile.write("f", self.animations['xtranslation'].getValue())
             else:
                 binfile.mark()
                 hasXTransOffset = True
-            if self.yTranslationFixed:
+            if flags[8]:    # y-trans
                 binfile.write("f", self.animations['ytranslation'].getValue())
             else:
                 binfile.mark()
@@ -513,12 +504,11 @@ class SRTTexAnim():
             returns offset markers to be passed to pack data
             (after packing all headers for material)
         """
-        code = self.calculateCode()
-        # code = self.flagsToInt()
-        binfile.write("I", code)
-        have_offsets = self.packScale(binfile)
-        have_offsets.append(self.packRotation(binfile))
-        have_offsets.extend(self.packTranslation(binfile))
+        flags = self.calc_flags()
+        binfile.write("I", self.flagsToInt(flags))
+        have_offsets = self.packScale(binfile, flags)
+        have_offsets.append(self.packRotation(binfile, flags))
+        have_offsets.extend(self.packTranslation(binfile, flags))
         return have_offsets
 
 
@@ -526,10 +516,11 @@ class SRTMatAnim(Clipable):
     """ An entry in the SRT, supports multiple tex refs """
 
     SETTINGS = ('framecount', 'loop', 'layerenable')
+    REMOVE_UNKNOWN_REFS = True
 
-    def __init__(self, name, frame_count=1, looping=True, material=None):
-        self.name = name
-        self.material = material  # to be filled
+    def __init__(self, name, frame_count=1, looping=True, parent=None):
+        super(SRTMatAnim, self).__init__(name, parent)
+        self.parent = parent  # to be filled
         self.framecount = frame_count
         self.tex_animations = []
         self.texEnabled = [False] * 8
@@ -569,6 +560,7 @@ class SRTMatAnim(Clipable):
         # setup parent
         for x in self.tex_animations:
             x.parent = self
+        self.updateLayerNames(self.parent)
 
     def setFrameCount(self, count):
         self.framecount = count
@@ -576,7 +568,7 @@ class SRTMatAnim(Clipable):
             x.setFrameCount(count)
 
     def setMaterial(self, material):
-        self.material = material
+        self.parent = material
         self.updateLayerNames(material)
 
     def texEnable(self, i):
@@ -584,7 +576,7 @@ class SRTMatAnim(Clipable):
             self.texEnabled[i] = True
             anim = SRTTexAnim(i, self.framecount, self)
             self.tex_animations.append(anim)
-            layer = self.material.getLayerI(i)
+            layer = self.parent.getLayerI(i)
             if layer:
                 anim.name = layer.name
 
@@ -624,7 +616,7 @@ class SRTMatAnim(Clipable):
 
     def addLayerByName(self, name):
         """Adds layer if found"""
-        i = self.material.getLayerByName(name)
+        i = self.parent.getLayerByName(name)
         if i > 0:
             self.texEnable(i)
         raise ValueError('{} Unknown layer {}'.format(self.name, name))
@@ -670,31 +662,29 @@ class SRTMatAnim(Clipable):
                 j += 1
 
     def check(self):
-        if not self.material:
+        if not self.parent:
             return
-        max = len(self.material.layers)
+        max = len(self.parent.layers)
         enabled = 0
         for i in range(8):
             if self.texEnabled[i]:
                 enabled += 1
                 if i >= max:
-                    b = Bug(1, 3, "{} SRT layer {} doesn't exist".format(self.material.name, i), 'Remove srt0 layer')
-                    if b.should_fix():
+                    b = Bug(1, 3, "{} SRT layer {} doesn't exist".format(self.parent.name, i), 'Remove srt0 layer')
+                    if self.REMOVE_UNKNOWN_REFS:
                         self.texDisable(i)
                         b.resolve()
+                    else:
+                        AUTO_FIXER.notify(b)
         if not enabled:
-            b = Bug(3, 2, '{} no SRT0 layers enabled'.format(self.material.name), 'Remove SRT0')
-            if b.should_fix():
-                self.material.remove_srt0()
-                b.resolve()
+            self.parent.remove_srt0()
 
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + '(SRT0)' + self.name if indentation_level else '>(SRT0):' + self.name
         if key in self.SETTINGS:
             print('{}\t{}'.format(trace, self[key]))
         else:
-            for x in self.SETTINGS:
-                trace += ' ' + x + ':' + str(self[x])
+            trace += ' {} frames loop:{}'.format(self.framecount, self.looping)
             print(trace)
             indentation_level += 1
             for x in self.tex_animations:

@@ -304,9 +304,12 @@ class Command:
             Command.closeFiles(to_close)
         # open any that aren't opened
         for f in to_open:
-            brres = Brres(f)
-            active.append(brres)
-            opened[f] = brres
+            try:
+                brres = Brres(f)
+                active.append(brres)
+                opened[f] = brres
+            except UnpackingError as e:
+                AUTO_FIXER.error(e)
         return active
 
     @staticmethod
@@ -314,7 +317,11 @@ class Command:
         files = Command.getFiles(filename)
         commands = []
         with open(files[0], "r") as f:
-            lines = f.readlines()
+            try:
+                lines = f.readlines()
+            except UnicodeDecodeError:
+                AUTO_FIXER.error('Not a text file {}'.format(filename))
+                return
             preset_begin = False
             preset = []
             name = None
@@ -327,7 +334,7 @@ class Command:
                         try:
                             preset.append(Command(line))
                         except ParsingException as e:
-                            AUTO_FIXER.notify('Preset {} : {}'.format(name, e), 1)
+                            AUTO_FIXER.error('Preset {} : {}'.format(name, e), 1)
                             Command.PRESETS[name] = None
                     else:
                         commands.append(Command(line))
@@ -504,25 +511,8 @@ class Command:
         try:
             for cmd in commandlist:
                 cmd.runCmd()
-        except ValueError as e:
-            AUTO_FIXER.error(e, 1)
-            return False
-        except SaveError as e:
-            AUTO_FIXER.error(e, 1)
-            return False
-        except PasteError as e:
-            AUTO_FIXER.error(e, 1)
-            return False
-        except MaxFileLimit as e:
-            AUTO_FIXER.error(e, 1)
-            return False
-        except NoSuchFile as e:
-            AUTO_FIXER.error(e, 1)
-            return False
-        except FileNotFoundError as e:
-            AUTO_FIXER.error(e, 1)
-            return False
-        except ParsingException as e:
+        except (ValueError, SaveError, PasteError, MaxFileLimit, NoSuchFile, FileNotFoundError, ParsingException,
+                IsADirectoryError, UnpackingError) as e:
             AUTO_FIXER.error(e, 1)
             return False
         return True

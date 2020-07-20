@@ -115,10 +115,8 @@ class TexCoord:
 
     def check(self):
         if self.divisor >= 32:
-            b = Bug(1, 3, '{} Corrupted'.format(self.name), 'Set UV divisor to 0')
-            if b.should_fix():
-                self.divisor = 0
-                b.resolve()
+            AUTO_FIXER.warn('UV {} divisor {} out of range, setting to 0'.format(self.name, self.divisor))
+            self.divisor = 0
 
     def unpack(self, binfile):
         offset = binfile.start()
@@ -180,10 +178,8 @@ class Vertex():
 
     def check(self):
         if self.divisor >= 32:
-            b = Bug(1, 3, '{} Corrupt vertex'.format(self.name), 'Set to 0')
-            if b.should_fix():
-                self.divisor = 0
-                b.resolve()
+            AUTO_FIXER.warn('vertex {} divisor {} out of range, setting to 0'.format(self.name, self.divisor))
+            self.divisor = 0
 
     def unpack(self, binfile):
         """ Unpacks some ptrs but mostly just leaves data as bytes """
@@ -257,6 +253,10 @@ class Mdl0(SubFile):
                        FurLayer, Material, Shader, Polygon, TextureLink, TextureLink)
 
     SETTINGS = ('name')
+    DETECT_MODEL_NAME = True
+    DRAW_PASS_AUTO = True
+    RENAME_UNKNOWN_REFS = True
+    REMOVE_UNKNOWN_REFS = True
 
     def __init__(self, name, parent):
         """ initialize with name and parent """
@@ -309,19 +309,19 @@ class Mdl0(SubFile):
         for x in not_found:
             mat = fuzzy_match(x.name, self.materials)
             desc = 'No material matching SRT0 {}'.format(x.name)
-            if mat and not mat.srt0:
-                b = Bug(1, 1, desc, 'Rename to {}'.format(mat.name))
-                if b.should_fix():
-                    if mat.set_srt0(x):
-                        x.rename(mat.name)
-                        b.resolve()
-                    else:
-                        AUTO_FIXER.error('Rename failed')
+            b = Bug(1, 1, desc, 'Rename to {}'.format(mat.name))
+            if self.RENAME_UNKNOWN_REFS and mat and not mat.srt0:
+                if mat.set_srt0(x):
+                    x.rename(mat.name)
+                    b.resolve()
+                    self.mark_modified()
             else:
-                b = Bug(1, 1, desc, 'Remove SRT0')
-                if b.should_fix():
+                b.fix_des = 'Remove SRT0'
+                if self.REMOVE_UNKNOWN_REFS:
                     srt0_collection.remove(x)
                     b.resolve()
+                else:
+                    AUTO_FIXER.notify(b)
 
     def add_srt0(self, material):
         anim = SRTMatAnim(material.name)
@@ -344,24 +344,23 @@ class Mdl0(SubFile):
             else:
                 mat.set_pat0(x)
         for x in not_found:
-            mat = fuzzy_match(x.name, self.materials)
             desc = 'No material matching PAT0 {}'.format(x.name)
-            if mat and not mat.pat0:
-                b = Bug(1, 1, desc, 'Rename to {}'.format(mat.name))
-                if b.should_fix():
-                    if mat.set_pat0(x):
-                        x.rename(mat.name)
-                        b.resolve()
-                    else:
-                        AUTO_FIXER.error('Rename failed')
+            mat = fuzzy_match(x.name, self.materials)
+            b = Bug(1, 1, desc, 'Rename to {}'.format(mat.name))
+            if self.RENAME_UNKNOWN_REFS and mat and not mat.pat0:
+                if mat.set_pat0(x):
+                    x.rename(mat.name)
+                    b.resolve()
             else:
-                b = Bug(1, 1, desc, 'Remove PAT0')
-                if b.should_fix():
+                if self.REMOVE_UNKNOWN_REFS:
+                    b.fix_des = 'remove pat0'
                     pat0_collection.remove(x)
                     b.resolve()
+                else:
+                    AUTO_FIXER.notify(b)
 
     def add_pat0(self, material):
-        anim = Pat0MatAnimation(material.name, self.parent.getTextureMap())
+        anim = Pat0MatAnimation(material.name, self.parent.get_texture_map())
         if not self.pat0_collection:
             self.pat0_collection = self.parent.add_pat0_collection(Pat0Collection(self.name, self.parent))
         self.pat0_collection.add(anim)
@@ -437,7 +436,7 @@ class Mdl0(SubFile):
                 notify = 'Adding reference to unknown texture "{}"'.format(name)
                 if tex:
                     notify += ', did you mean ' + tex.name + '?'
-                AUTO_FIXER.notify(notify, 4)
+                AUTO_FIXER.info(notify, 4)
             link = TextureLink(name, self)
             self.textureLinks.append(link)
         link.num_references += 1
@@ -491,11 +490,7 @@ class Mdl0(SubFile):
         return clipboard.get(self.name)
 
     def paste(self, item):
-        for x in self.materials:
-            for y in item.materials:
-                if x.name == y.name:
-                    x.paste(y)
-                    break
+        self.paste_group(self.materials, item.materials)
 
     def rename_material(self, material, new_name):
         # first check if name is available
@@ -516,7 +511,7 @@ class Mdl0(SubFile):
                 material.set_pat0(anim)
 
     def getTextureMap(self):
-        return self.parent.getTextureMap()
+        return self.parent.get_texture_map()
 
     # --------------------------------------- Check -----------------------------------
     def check(self):
@@ -531,16 +526,16 @@ class Mdl0(SubFile):
         if expected_name:
             if expected_name != self.name:
                 b = Bug(2, 2, 'Model name does not match file', 'Rename to {}'.format(expected_name))
-                if b.should_fix():
+                if self.DETECT_MODEL_NAME:
                     self.rename(expected_name)
                     b.resolve()
+                    self.mark_modified()
+                else:
+                    AUTO_FIXER.notify(b)
             if expected_name == 'map':
                 names = [x.name for x in self.bones]
                 if 'posLD' not in names or 'posRU' not in names:
                     AUTO_FIXER.warn('Missing map model bones')
-        # for x in self.textureLinks:       # check in layers
-        #     if x.num_references and not texture_map.get(x.name):
-        #         AUTO_FIXER.notify('Texture Reference "{}" not found.'.format(x.name), 2)
         self.checkDrawXLU()
         for x in self.texCoords:
             x.check()
@@ -554,9 +549,9 @@ class Mdl0(SubFile):
             if x.xlu != is_draw_xlu:
                 change = 'opa' if x.xlu else 'xlu'
                 b = Bug(1, 4, '{} incorrect draw pass'.format(x.name), 'Change draw pass to {}'.format(change))
-                if b.should_fix():
+                if self.DRAW_PASS_AUTO:
                     if count == 0:
-                        self.parent.isModified = True
+                        self.mark_modified()
                     count += 1
                     if x.xlu:
                         self.setMaterialDrawXlu(x.id)
@@ -573,7 +568,6 @@ class Mdl0(SubFile):
         """Cleans up references in preparation for packing"""
         self.sections[0] = [x for x in self.definitions if x]  # changes section but leaves definition, possible bug?
         self.sections[11] = self.textureLinks = [x for x in self.textureLinks if x.num_references > 0]
-
 
     def unpackSection(self, binfile, section_index):
         """ unpacks section by creating items  of type section_klass
@@ -728,17 +722,17 @@ class Mdl0(SubFile):
 
         # texture links
         texture_link_map = None
-        folder = folders[9] if self.version < 10 else folders[11] # texture links
+        folder = folders[9] if self.version < 10 else folders[11]  # texture links
         texture_link_map = self.packTextureLinks(binfile, folder)
         self.pack_definitions(binfile, folders[0])
-        self.pack_section(binfile, 1, folders[1])   # bones
+        self.pack_section(binfile, 1, folders[1])  # bones
         i = 6 if self.version < 10 else 8
         self.pack_materials(binfile, folders[i], texture_link_map)
         i += 1
         self.pack_shaders(binfile, folders[i])
         i += 1
         self.pack_section(binfile, 10, folders[i])  # objects
-        for i in range(2, 6):   # vertices, normals, colors, uvs
+        for i in range(2, 6):  # vertices, normals, colors, uvs
             self.pack_section(binfile, i, folders[i])
         binfile.alignAndEnd()  # end file
     # -------------- END PACKING STUFF ---------------------------------------
