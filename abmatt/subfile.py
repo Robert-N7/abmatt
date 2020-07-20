@@ -5,11 +5,11 @@
 # Most Brres Subfiles
 # --------------------------------------------------------
 from abmatt.binfile import Folder, PackingError, printCollectionHex, UnpackingError
-from abmatt.matching import info_default
+from abmatt.matching import info_default, Clipable
 from abmatt.autofix import AUTO_FIXER, Bug
 
 
-class SubFile(object):
+class SubFile(Clipable):
     """
     Brres Sub file Class
     classes must implement the following:
@@ -20,11 +20,11 @@ class SubFile(object):
     SETTINGS = ('version', 'sections')
     VERSION_SECTIONCOUNT = {}
     EXPECTED_VERSION = 0    # override this
+    FORCE_VERSION = True
 
     def __init__(self, name, parent):
         """ initialize with parent of this file """
-        self.name = name
-        self.parent = parent
+        super(SubFile, self).__init__(name, parent)
         self.version = self.EXPECTED_VERSION
 
     def __getitem__(self, item):
@@ -57,16 +57,18 @@ class SubFile(object):
         binfile.end()
 
     def _getNumSections(self):
-        if self.version not in self.VERSION_SECTIONCOUNT:
-            raise ("{} {} unsupported version {}".format(self.MAGIC, self.name, self.version))
         return self.VERSION_SECTIONCOUNT[self.version]
 
     def check(self):
         if self.version != self.EXPECTED_VERSION:
             b = Bug(2, 3, '{} {} unusual version {}'.format(self.MAGIC, self.name, self.version),
                     'set to {}'.format(self.EXPECTED_VERSION))
-            if b.should_fix():
+            if self.FORCE_VERSION:
                 self.version = self.EXPECTED_VERSION
+                b.resolve()
+                self.parent.isModified = True
+            else:
+                AUTO_FIXER.notify(b)
 
     def _unpack(self, binfile):
         """ unpacks the sub file, subclass must use binfile.end() """
@@ -74,9 +76,12 @@ class SubFile(object):
         # print('{} {} at {}'.format(self.MAGIC, self.name, offset))
         magic = binfile.readMagic()
         if magic != self.MAGIC:
-            raise UnpackingError('Magic {} does not match expected {}'.format(magic, self.MAGIC))
+            raise UnpackingError(binfile, 'Magic {} does not match expected {}'.format(magic, self.MAGIC))
         self.byte_len, self.version, outerOffset = binfile.read("2Ii", 12)
-        self.numSections = self._getNumSections()
+        try:
+            self.numSections = self._getNumSections()
+        except ValueError:
+            raise UnpackingError(binfile, "{} {} unsupported version {}".format(self.MAGIC, self.name, self.version))
         binfile.store(self.numSections)  # store section offsets
         self.name = binfile.unpack_name()
 

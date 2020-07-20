@@ -2,13 +2,13 @@
 This command line tool is for editing materials in _Brres_ files in _Mario Kart Wii_. 
 
 ## Installation
-You can download one of the tagged [releases](https://github.com/Robert-N7/abmatt/releases), or install with python.
+Download compiled [releases](https://github.com/Robert-N7/abmatt/releases) for Linux and Windows, and follow the install.txt instructions.
+Alternatively, install with python:
 ```
 git clone https://github.com/Robert-N7/abmatt
 cd abmatt
 python setup.py install
 ```
-You may need to run with root priveleges.
 
 ## Modes
 ABMatt can be used 
@@ -28,13 +28,14 @@ ABMatt supports editing the following types:
 
 ## Command Line Usage
 ```
-abmatt [-i -f <file> -b <brres-file> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]
+abmatt [-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]
 ```
 | Flag |Expanded| Description |
 |---|---|---|
-| -a | --auto-fix | Automatic fix options are none, error, warning, check, all, and prompt. (0-5) The default is to fix at the check level without prompting.
+| -a | --auto-fix | Automatic fix level (deprecated, use config file) |
 | -b | --brres | Brres file selection. |
-| -d | --destination | The file path to be written to. Mutliple destinations are not supported. |
+| -c | --command | Command name to run. |
+| -d | --destination | The file path to be written to. Multiple destinations are not supported. |
 | -f | --file | File with ABMatt commands to be processed as specified in file format. |
 | -h | --help | Displays a help message about program usage. |
 | -i | --interactive | Interactive shell mode. |

@@ -40,9 +40,9 @@ class BinFile:
         self.c_length = None  # for tracking current length
         self.isWriteMode = (mode == 'w')
         if not self.isWriteMode:
-            file = open(filename, "rb")
-            self.file = file.read()
-            file.close()
+            with open(filename, "rb") as file:
+                self.file = file.read()
+                file.close()
         else:
             self.file = bytearray()
         self.start()
@@ -64,6 +64,7 @@ class BinFile:
         except:
             AUTO_FIXER.error('Unable to open {}, Permission Denied'.format(self.filename), 1)
             return False
+
         return True
 
     def is_aligned(self, alignment=0x20):
@@ -352,12 +353,11 @@ class BinFile:
         [name_lens] = self.readOffset("I", offset - 4)
         if name_lens > 256:
             # For debugging
-            data = self.readOffset('64s', offset - 4)
-            print(data)
+            # data = self.readOffset('64s', offset - 4)
+            # print(data)
             raise UnpackingError(self, "Incorrect name offset".format(self.filename))
         else:
             name = self.readOffset(str(name_lens) + "s", offset)
-            # print("Name: {}".format(name[0]))
             return name[0].decode()
 
     def storeNameRef(self, name, is_encoded=False):
@@ -378,20 +378,19 @@ class BinFile:
     def packNames(self):
         """packs in the names"""
         names = self.nameRefMap
-        out = []
-        for key in names:
-            reflist = names[key]
-            for x in reflist:
-                out.append(x[1])
-        with open('names.txt', 'w') as f:
-            f.write(str(out))
+        # Debugging
+        # out = []
+        # for key in names:
+        #     reflist = names[key]
+        #     for x in reflist:
+        #         out.append(x[1])
+        # with open('names.txt', 'w') as f:
+        #     f.write(str(out))
         for key in sorted(names):
             if key is not None and key != b'':
-                # self.advance(4)
                 self.align(4)
                 offset = self.offset + 4
                 length = len(key)
-                # self.writeOffset('I', offset, length)
                 self.write("I{}sB".format(length), length, key, 0)
                 # write name reference pointers
                 reflist = names[key]

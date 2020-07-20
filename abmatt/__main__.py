@@ -7,16 +7,19 @@ For editing Mario Kart Wii files
 import getopt
 import os
 import sys
+import Levenshtein
+import fuzzywuzzy
 from cmd import Cmd
 
 from abmatt.brres import Brres
 from abmatt.mdl0 import TexCoord
 from abmatt.command import Command, ParsingException, NoSuchFile
 from abmatt.autofix import AUTO_FIXER
+from abmatt.config import Config, load_config
+from matching import MATCHING
 
-__version__ = "0.5.0"
-USAGE = "USAGE: abmatt [-i -f <file> -b <brres-file> -d <destination> -o -t <type> -k <key> -v <value> -n <name>\
- -m <model> -u]"
+VERSION = '0.6.0'
+USAGE = "USAGE: abmatt [-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]"
 
 
 def hlp():
@@ -25,44 +28,11 @@ def hlp():
 ====================================================================================
 ANOOB'S BRRES MATERIAL TOOL
 Version {}
-
-      >>       >==>    >=>     >===>          >===>      >=>>=>    >=>   >=>>=>
-     >>=>      >> >=>  >=>   >=>    >=>     >=>    >=>   >>   >=>   >> >=>    >=>
-    >> >=>     >=> >=> >=> >=>        >=> >=>        >=> >>    >=>      >=>
-   >=>  >=>    >=>  >=>>=> >=>        >=> >=>        >=> >==>>=>          >=>
-  >=====>>=>   >=>   > >=> >=>        >=> >=>        >=> >>    >=>           >=>
- >=>      >=>  >=>    >>=>   >=>     >=>    >=>     >=>  >>     >>     >=>    >=>
->=>        >=> >=>     >=>     >===>          >===>      >===>>=>        >=>>=>
-
->=>>=>    >======>     >======>     >=======>   >=>>=>
->>   >=>  >=>    >=>   >=>    >=>   >=>       >=>    >=>
->>    >=> >=>    >=>   >=>    >=>   >=>        >=>
->==>>=>   >> >==>      >> >==>      >=====>      >=>
->>    >=> >=>  >=>     >=>  >=>     >=>             >=>
->>     >> >=>    >=>   >=>    >=>   >=>       >=>    >=>
->===>>=>  >=>      >=> >=>      >=> >=======>   >=>>=>
-
->=>       >=>       >>       >===>>=====> >=======> >======>     >=>       >>       >=>
->> >=>   >>=>      >>=>           >=>     >=>       >=>    >=>   >=>      >>=>      >=>
->=> >=> > >=>     >> >=>          >=>     >=>       >=>    >=>   >=>     >> >=>     >=>
->=>  >=>  >=>    >=>  >=>         >=>     >=====>   >> >==>      >=>    >=>  >=>    >=>
->=>   >>  >=>   >=====>>=>        >=>     >=>       >=>  >=>     >=>   >=====>>=>   >=>
->=>       >=>  >=>      >=>       >=>     >=>       >=>    >=>   >=>  >=>      >=>  >=>
->=>       >=> >=>        >=>      >=>     >=======> >=>      >=> >=> >=>        >=> >=======>
-
->===>>=====>     >===>          >===>      >=>
-     >=>       >=>    >=>     >=>    >=>   >=>
-     >=>     >=>        >=> >=>        >=> >=>
-     >=>     >=>        >=> >=>        >=> >=>
-     >=>     >=>        >=> >=>        >=> >=>
-     >=>       >=>     >=>    >=>     >=>  >=>
-     >=>         >===>          >===>      >=======>
 ====================================================================================
 
-| Flag |Expanded| Description |
-|---|---|---|
 | -a | --auto-fix | Automatic fix options are none, error, warning, check, all, and prompt. (0-5) The default is to fix at the check level without prompting.
 | -b | --brres | Brres file selection. |
+| -c | --command | Command name to run. |
 | -d | --destination | The file path to be written to. Mutliple destinations are not supported. |
 | -f | --file | File with ABMatt commands to be processed as specified in file format. |
 | -h | --help | Displays a help message about program usage. |
@@ -76,7 +46,7 @@ Version {}
 | -v | --value | Value to set corresponding with key. (set command) |
 
 File command format in extended BNF:
-ommand =  cmd-prefix ['for' selection] EOL;
+command =  cmd-prefix ['for' selection] EOL;
 cmd-prefix = set | info | add | remove | select | preset | save | copy | paste;
 set   = 'set' type setting;
 info  = 'info' type [key | 'keys'];
@@ -95,40 +65,147 @@ type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id]
     | 'mdl0' | 'brres';
 
 Example file commands:
-    set xlu:true for xlu.* in course_model.brres      # Sets all materials starting with xlu to transparent
-    set scale:(1,1) for *                 # Sets the scale for all layers to 1,1
-    info layer:ef_arrowGradS        # Prints information about the layer 'ef_arrowGradS'
+    set xlu:true for xlu.* in course_model.brres
+    set stage:0 colorscale:multiplyBy4 for bright_mat 
+    info material for *
+    copy material for * in original.brres
+    paste material for * in course_model.brres
 Example command line usage:
-    abmatt -f course_model.brres -o -k xlu -v false -n opaque_material
+    abmatt -b course_model.brres -k xlu -v false -n mat1 -o
 This opens course_model.brres in overwrite mode and disables xlu for material 'opaque_material'.
 For more Help or if you want to contribute visit https://github.com/Robert-N7/abmatt
     '''
-    print(helpstr.format(__version__))
+    print(helpstr.format(VERSION))
     print("{}".format(USAGE))
 
 
 class Shell(Cmd):
     prompt = '>'
 
+    def __init__(self):
+        super(Shell, self).__init__()
+        self.cmd_queue = []
+
     def run(self, prefix, cmd):
+        line = prefix + ' ' + cmd
+        self.cmd_queue.append(line)
         try:
-            Command.run_commands([Command(prefix + ' ' + cmd)])
+            Command.run_commands([Command(line)])
         except ParsingException as e:
             print('{}, Type "?" for help.'.format(e))
         except NoSuchFile as e:
-            print(e)
+            AUTO_FIXER.error(e)
+
+    @staticmethod
+    def complete_material_name(match_text):
+        matches = []
+        for x in Command.MODELS:
+            matches.extend([mat for mat in x.materials if mat.name.startswith(match_text)])
+        return matches
+
+    @staticmethod
+    def complete_model_name(match_text):
+        matches = []
+        for x in Command.ACTIVE_FILES:
+            matches.extend([mdl for mdl in x.models if mdl.name.startswith(match_text)])
+        return matches
+
+    @staticmethod
+    def complete_type(match_text):
+        return [x for x in Command.TYPE_SETTING_MAP if x.startswith(match_text)]
+
+    @staticmethod
+    def complete_key(match_text, type=None):
+        if type:
+            matches = [x for x in Command.TYPE_SETTING_MAP[type] if x.startswith(match_text)]
+        else:
+            matches = []
+            for key, vals in enumerate(Command.TYPE_SETTING_MAP):
+                matches.extend([val for val in vals if val.startswith(match_text)])
+        return matches
+
+    @staticmethod
+    def find_files(path, text):
+        """finds the files at path, that start with text (removes anything on the path before text)"""
+        directory, name = os.path.split(path)
+        if not directory:
+            directory = "."
+        files = []
+        for file in os.listdir(directory):
+            if file.startswith(name):
+                files.append(file[name.rindex(text):])
+        return files
+
+    @staticmethod
+    def construct_file_path(sel_words):
+        start_file = False
+        path = None
+        for x in sel_words:
+            if x == 'in':
+                start_file = True
+            elif x == 'model':
+                start_file = False
+            elif x == 'file':
+                start_file = True
+            elif start_file:
+                path = x if path is None else os.path.join(path, x)
+        return path
+
+    def complete_selection(self, text, sel_words):
+        if not sel_words:
+            return self.complete_material_name(text)
+        elif 'in' not in sel_words:
+            return ['in'] if not text or text in 'in' else None
+        else:
+            last_word = sel_words[-1]
+            if last_word == 'model':
+                return self.complete_model_name(text)
+            elif last_word == 'file':
+                return self.find_files(text, text)
+            # last word is 'in' or a model or file
+            possible = []
+            if 'model'.startswith(text):
+                possible.append('model')
+            elif 'file'.startswith(text):
+                possible.append('file')
+            sel_words.append(text)
+            possible.extend(self.find_files(self.construct_file_path(sel_words), text))
+            return possible
+
+    def generic_complete(self, text, words, for_sel_index=1):
+        """ :param text: text to complete
+            :param words: list of words in the line minus the command
+            :param for_sel_index: the index where the word 'for' should be in words
+        """
+        if not words:
+            return self.complete_type(text)
+        if len(words) == for_sel_index:
+            return ['for'] if 'for'.startswith(text) else None
+        elif len(words) > for_sel_index:
+            return self.complete_selection(text, words[for_sel_index + 1:])
+
+    def get_words(self, text, line):
+        if text:  # remove text from end
+            line = line[:-1 - len(text)]
+        return line.split(' ')[1:]  # remove the first command
 
     def do_paste(self, line):
         self.run('paste', line)
 
     def help_paste(self):
-        print('paste <type> [for <selection>]')
+        print('USAGE: paste <type> [for <selection>]')
+
+    def complete_paste(self, text, line, begid, endid):
+        return self.generic_complete(text, self.get_words(text, line))
 
     def do_copy(self, line):
         self.run('copy', line)
 
     def help_copy(self):
-        print('copy <type> [for <selection>]')
+        print('USAGE: copy <type> [for <selection>]')
+
+    def complete_copy(self, text, line, begid, endid):
+        return self.generic_complete(text, self.get_words(text, line))
 
     def do_quit(self, line):
         return True
@@ -137,49 +214,157 @@ class Shell(Cmd):
         print('Ends the interactive shell.')
 
     do_EOF = do_quit
-    help_EOF = help_quit
 
     def do_set(self, line):
         self.run('set', line)
 
     def help_set(self):
-        print('set <type> <key>:<value> [for <selection>]')
+        print('USAGE: set <type> <key>:<value> [for <selection>]')
+
+    def complete_set(self, text, line, begid, endid):
+        words = self.get_words(text, line)
+        possible = []
+        if not words:   # could bypass type
+            for key in Command.TYPE_SETTING_MAP:
+                if key.startswith(text):
+                    possible.append(key)
+                for setting in Command.TYPE_SETTING_MAP[key]:
+                    if setting.startswith(text):
+                        possible.append(setting + ':?')
+                        possible.append(setting + ':*')
+        else:
+            # Check for 'for'
+            try:
+                for_index = words.index('for')
+                return self.complete_selection(text, words[for_index + 1:])
+            except ValueError:
+                if 'for'.startswith(text):
+                    possible.append('for')
+            if len(words) < 2:  # maybe a key:val pair, more than that it can't be
+                keys = Command.TYPE_SETTING_MAP.get(words[0])
+                if keys:
+                    for key in keys:
+                        if key.startswith(text):    # slightly weird way of saying, you gotta fill this in yourself
+                            possible.append(key + ':*')
+                            possible.append(key + ':?')
+        return possible
 
     def do_add(self, line):
         self.run('add', line)
 
     def help_add(self):
-        print('add <type>[:<id>] [for <selection>]')
+        print('USAGE: add <type> [for <selection>]')
+
+    def complete_add(self, text, line, begid, endid):
+        return self.generic_complete(text, self.get_words(text, line))
 
     def do_remove(self, line):
         self.run('remove', line)
 
     def help_remove(self):
-        print('remove <type>[:<id>] [for <selection>]')
+        print('USAGE: remove <type> [for <selection>]')
+
+    def complete_remove(self, text, line, begid, endid):
+        return self.generic_complete(text, self.get_words(text, line))
 
     def do_info(self, line):
         self.run('info', line)
 
     def help_info(self):
-        print('info <type> [<key>] [for <selection>]')
+        print('USAGE: info <type> [<key>] [for <selection>]')
+
+    def complete_info(self, text, line, begid, endid):
+        words = self.get_words(text, line)
+        possible = []
+        if not words:   # could be type key or 'for'
+            for x in Command.TYPE_SETTING_MAP:
+                if x.startswith(text):
+                    possible.append(x)
+                for key in Command.TYPE_SETTING_MAP[x]:
+                    if key.startswith(text):
+                        possible.append(key)
+            if 'for'.startswith(text):
+                possible.append('for')
+            return possible
+        else:
+            # check if for is present (selection)
+            try:
+                for_index = words.index('for')
+                return self.complete_selection(text, words[for_index + 1:])
+            except ValueError:
+                if 'for'.startswith(text):
+                    possible.append('for')
+            prev = words[-1]
+            if prev in Command.TYPE_SETTING_MAP:    # specified type?
+                possible.extend([x for x in Command.TYPE_SETTING_MAP[prev] if x.startswith(text)])
+            return possible
 
     def do_preset(self, line):
         self.run('preset', line)
 
     def help_preset(self):
-        print('preset <preset> [for <selection>]')
+        print('USAGE: preset <preset> [for <selection>]')
+
+    def complete_preset(self, text, line, begid, endid):
+        words = self.get_words(text, line)
+        if not words:
+            return [x for x in Command.PRESETS if x.startswith(text)]
+        elif len(words) == 1:
+            return ['for'] if 'for'.startswith(text) else None
+        else:
+            return self.complete_selection(text, words[2:])     # need to check this
 
     def do_select(self, line):
         self.run('select', line)
 
     def help_select(self):
-        print('select <name> [in <container>]')
+        print('USAGE: select <name> [in <container>]')
+
+    def complete_select(self, text, line, begid, endid):
+        return self.complete_selection(text, self.get_words(text, line))
 
     def do_save(self, line):
         self.run('save', line)
 
-    def help_save(self, line):
-        print('save [<filename>] [as <destination>] [overwrite]')
+    def help_save(self):
+        print('USAGE: save [<filename>] [as <destination>] [overwrite]')
+
+    def complete_save(self, text, line, begid, endid):
+        possible = []
+        words = self.get_words(text, line)
+        if not words:
+            possible = [x for x in Command.OPEN_FILES if x.startswith(text)]
+        elif words[-1] == 'as':
+            possible = self.find_files(text)
+        if 'overwrite'.startswith(text) and 'overwrite' not in words:
+            possible.append('overwrite')
+        if 'as'.startswith(text) and 'as' not in words:
+            possible.append('as')
+
+    def do_dump(self, line):
+        words = line.split()
+        if not words:
+            print('USAGE: dump <filename> [overwrite]')
+        elif not self.cmd_queue:
+            print('Nothing in queue.')
+        else:
+            file = words.pop(0)
+            overwrite = True if 'overwrite' in words or Command.OVERWRITE else False
+            if os.path.exists(file) and not overwrite:
+                AUTO_FIXER.error('File {} already exists!'.format(file))
+            else:
+                with open(file, 'w') as f:
+                    f.write('\n'.join(self.cmd_queue))
+
+    def help_dump(self):
+        print('Dumps interactive shell commands to file.')
+        print('USAGE: dump <filename> [overwrite]')
+
+    def do_clear(self, line):
+        self.cmd_queue = []
+
+    def help_clear(self):
+        print('Clears the interactive shell command queue.')
 
     def default(self, line):
         if line == 'x' or line == 'q':
@@ -187,18 +372,31 @@ class Shell(Cmd):
         print('Syntax error, type ? for help')
 
 
-def load_presets():
-    # Load presets
-    dir = os.path.dirname(os.path.abspath(__file__))
+def load_preset_file(dir):
+    if dir is None:
+        return False
     preset_path = os.path.join(dir, 'presets.txt')
     if os.path.exists(preset_path):
         Command.load_commandfile(preset_path)
+        return True
+    return False
+
+
+def load_presets(app_dir):
+    # Load presets in file directory
+    loaded = True
+    if not load_preset_file(app_dir):
+        loaded = False
     # Load presets in cwd
+    loaded_cwd = False
     cwd = os.getcwd()
-    if dir != cwd:
-        preset_path = os.path.join(cwd, 'presets.txt')
-        if os.path.exists(preset_path):
-            Command.load_commandfile(preset_path)
+    if app_dir != cwd:
+        loaded_cwd = load_preset_file(cwd)
+    if loaded or loaded_cwd:
+        AUTO_FIXER.info('Presets loaded...', 5)
+    else:
+        AUTO_FIXER.info('No presets file detected', 3)
+    return loaded
 
 
 def main():
@@ -223,9 +421,10 @@ def main():
         print('Unknown option {}'.format(args))
         print(USAGE)
         sys.exit(2)
-    interactive = overwrite = uv_divisor_zero = False
+    interactive = overwrite = False
     type = "material"
     command = destination = brres_file = command_file = model = value = key = ""
+    autofix = loudness = None
     name = "*"
     for opt, arg in opts:
         if opt in ("-h", "--help"):
@@ -254,18 +453,24 @@ def main():
         elif opt in ("-i", "--interactive"):
             interactive = True
         elif opt in ("-a", "--auto-fix"):
-            AUTO_FIXER.set_fix_level(arg)
+            autofix = arg
         elif opt in ("-l", "--loudness"):
-            AUTO_FIXER.set_loudness(arg)
+            loudness = arg
         else:
             print("Unknown option '{}'".format(opt))
             print(USAGE)
             sys.exit(2)
 
-    load_presets()
+    # determine if application is a script file or frozen exe
+    app_dir = None
+    if getattr(sys, 'frozen', False):
+        base_path = os.path.dirname(os.path.dirname(sys.executable))
+        app_dir = os.path.join(os.path.join(base_path, 'etc'), 'abmatt')
+    elif __file__:
+        app_dir = os.path.dirname(__file__)
+    load_config(app_dir, loudness, autofix)
+    load_presets(app_dir)
     cmds = []
-    if uv_divisor_zero:
-        TexCoord.UV_DIVISOR_ZERO = True
     if destination:
         Command.DESTINATION = destination
         Brres.DESTINATION = destination
@@ -276,8 +481,8 @@ def main():
         try:
             Command.updateFile(brres_file)
         except NoSuchFile as e:
-            print(e)
-            exit(2)
+            AUTO_FIXER.error(e)
+            sys.exit(2)
         if command:
             cmd = command + ' ' + type
             if key:
@@ -292,18 +497,22 @@ def main():
     elif command:
         print('File is required to run commands')
         print(USAGE)
-        exit(2)
+        sys.exit(2)
 
     if command_file:
-        filecmds = Command.load_commandfile(command_file)
-        cmds = cmds + filecmds
+        try:
+            filecmds = Command.load_commandfile(command_file)
+            if filecmds:
+                cmds = cmds + filecmds
+        except NoSuchFile as err:
+            AUTO_FIXER.error(err)
 
     # Run Commands
     if cmds:
-        Command.run_commands(cmds)
+        if not Command.run_commands(cmds):
+            sys.exit(1)
     if interactive:
         Shell().cmdloop('Interactive shell started...')
-
     # cleanup
     for file in Command.ACTIVE_FILES:
         file.close()

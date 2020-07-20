@@ -18,7 +18,7 @@ def fuzzy_match(text, group, acceptable_ratio=84):
     return bssf if best_ratio > acceptable_ratio else None
 
 
-def fuzzy_strings(text, strings, acceptable_ratio=50):
+def fuzzy_strings(text, strings, acceptable_ratio=84):
     """Same as fuzzy_match except expects group of strings"""
     bssf = None
     best_ratio = 0
@@ -33,7 +33,20 @@ def fuzzy_strings(text, strings, acceptable_ratio=50):
 
 class Clipable:
     """Clipable interface"""
+    def __init__(self, name, parent=None):
+        self.name = name
+        self.parent = parent
+
     # ---------------------------------------------- CLIPBOARD -------------------------------------------
+    @staticmethod
+    def paste_group(paste_group, clip_group):
+        for x in clip_group:
+            name = x.name
+            for y in paste_group:
+                if y.name == name:
+                    y.paste(x)
+                    break
+
     def clip(self, clipboard):
         clipboard[self.name] = self
 
@@ -42,6 +55,12 @@ class Clipable:
 
     def paste(self, item):
         pass
+
+    def mark_modified(self):
+        self.parent.mark_modified()
+
+    def get_texture_map(self):
+        return self.parent.get_texture_map()
 
 
 def info_default(obj, prefix='', key=None, indentation=0):
@@ -85,9 +104,9 @@ def validInt(str, min, max):
 
 def validBool(str):
     """ Checks if its a valid boolean string """
-    if str == "false" or not str or str == "0" or str == "disable" or str == "none":
+    if str == "false" or not str or str == "0" or "disable" in str or str == "none":
         return False
-    elif str == "true" or str == "1" or str == "enable":
+    elif str == "true" or str == "1" or "enable" in str:
         return True
     raise ValueError("Not a boolean '" + str + "', expected true|false")
 
@@ -110,38 +129,164 @@ def parseValStr(value):
     return value.strip('()').split(",")
 
 
-# finds a name in group, group instances must have .name
-# possible todo, fuzzy searching?
-def findAll(name, group):
-    """ Finds all names matching in a group, either by direct matching or regex if direct fails."""
-    if not name or name == "*":
-        return group
-    items = []
-    # direct matching?
-    for item in group:
-        if item.name == name:
-            items.append(item)
-    if not items:
+""" Matching class """
+
+
+class Matching:
+    PARTIAL_ON_NONE_FOUND = 2
+    PARTIAL_ENABLED = 1
+    PARTIAL_DISABLED = 0
+    REGEX_ON_NONE_FOUND = 2
+    REGEX_ENABLED = 1
+    REGEX_DISABLED = 0
+
+    def __init__(self, case_sensitive=True, partial_matching=2, regex_enable=2):
+        self.case_sensitive = case_sensitive
+        self.partial_matching = partial_matching
+        self.regex_enable = regex_enable
+        self.update()
+
+    def update(self):
+        if self.partial_matching == 1:
+            if self.case_sensitive:
+                self.direct_group_function = self.match_group_partial_insensitive
+                self.regex_group_function = self.regex_group_partial_insensitive
+            else:
+                self.direct_group_function = self.match_group_partial_sensitive
+                self.regex_group_function = self.regex_group_partial_sensitive
+        else:
+            if self.case_sensitive:
+                self.direct_group_function = self.match_group_full_sensitive
+                self.regex_group_function = self.regex_group_full_sensitive
+            else:
+                self.direct_group_function = self.match_group_full_insensitive
+                self.regex_group_function = self.regex_group_full_sensitive
+
+    def set_case_sensitive(self, val):
         try:
-            regex = re.compile(name)
-            for item in group:
-                if regex.search(item.name):
-                    items.append(item)
+            val = validBool(val)
+            self.case_sensitive = val
+        except ValueError:
+            return False
+        self.update()
+        return True
+
+    def set_partial_matching(self, val):
+        if val == 'on_none_found':
+            self.partial_matching = self.PARTIAL_ON_NONE_FOUND
+        try:
+            enable = validBool(val)
+            self.partial_matching = 1 if enable else 0
+        except ValueError:
+            return False
+        self.update()
+        return True
+
+    def set_regex_enable(self, val):
+        if val == 'on_none_found':
+            self.regex_enable = self.REGEX_ON_NONE_FOUND
+        try:
+            enable = validBool(val)
+            self.regex_enable = 1 if enable else 0
+            self.update()
+        except ValueError:
+            return False
+        return True
+
+
+    @staticmethod
+    def match_group_partial_insensitive(name, group, results):
+        name = name.lower()
+        for x in group:
+            if name in x.name.lower():
+                results.append(x)
+        return results
+
+    @staticmethod
+    def match_group_partial_sensitive(name, group, results):
+        for x in group:
+            if name in x.name:
+                results.append(x)
+        return results
+
+    @staticmethod
+    def match_group_full_insensitive(name, group, results):
+        name = name.lower()
+        for x in group:
+            if name == x.name.lower():
+                results.append(x)
+        return results
+
+    @staticmethod
+    def match_group_full_sensitive(name, group, results):
+        for x in group:
+            if name == x.name:
+                results.append(x)
+        return results
+
+    @staticmethod
+    def regex_group_full_insensitive(name, group, results):
+        try:
+            regex = re.compile(name, re.IGNORECASE)
+            for x in group:
+                if regex.match(x.name):
+                    results.append(x)
         except re.error:
             pass
-    return items
+
+    @staticmethod
+    def regex_group_full_sensitive(name, group, results):
+        try:
+            regex = re.compile(name)
+            for x in group:
+                if regex.match(x.name):
+                    results.append(x)
+        except re.error:
+            pass
+
+    @staticmethod
+    def regex_group_partial_insensitive(name, group, results):
+        try:
+            regex = re.compile(name, re.IGNORECASE)
+            for x in group:
+                if regex.search(x.name):
+                    results.append(x)
+        except re.error:
+            pass
+
+    @staticmethod
+    def regex_group_partial_sensitive(name, group, results):
+        try:
+            regex = re.compile(name)
+            for x in group:
+                if regex.search(x.name):
+                    results.append(x)
+        except re.error:
+            pass
+
+    # finds a name in group, group instances must have .name
+    def findAll(self, name, group):
+        """ Finds all names matching in a group, either by direct matching or regex if direct fails."""
+        if not name or name == "*":
+            return group
+        items = []
+        # direct matching
+        self.direct_group_function(name, group, items)
+        # regex
+        if self.regex_enable == self.REGEX_ENABLED or not items and self.regex_enable:
+            self.regex_group_function(name, group, items)
+            if not items and self.partial_matching == self.PARTIAL_ON_NONE_FOUND:
+                if self.case_sensitive:
+                    self.regex_group_partial_sensitive(name, group, items)
+                else:
+                    self.regex_group_partial_insensitive(name, group, items)
+        # partial if none found?
+        elif not items and self.partial_matching == self.PARTIAL_ON_NONE_FOUND:
+            if self.case_sensitive:
+                self.match_group_partial_sensitive(name, group, items)
+            else:
+                self.match_group_partial_insensitive(name, group, items)
+        return items
 
 
-def matches(regexname, name):
-    """ checks if two names match by direct or regex matching """
-    if not regexname or regexname == "*":
-        return True
-    if regexname == name:
-        return True
-    try:
-        result = re.search(regexname, name)
-        if result:
-            return True
-    except re.error:
-        pass
-    return False
+MATCHING = Matching()

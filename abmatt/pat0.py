@@ -4,7 +4,7 @@ from copy import deepcopy
 
 from abmatt.subfile import SubFile
 from abmatt.binfile import Folder
-from abmatt.matching import validBool, validInt, validFloat, splitKeyVal, Clipable
+from abmatt.matching import validBool, validInt, validFloat, splitKeyVal, Clipable, fuzzy_strings
 from abmatt.autofix import AUTO_FIXER, Bug
 
 
@@ -74,15 +74,18 @@ class Pat0MatAnimation(Clipable):
 
     SETTINGS = ('framecount', 'loop', 'keyframe')
     LOUDNESS = 2
+    RENAME_UNKNOWN_REFS = True
+    REMOVE_UNKNOWN_REFS = True
 
-    def __init__(self, name, brres_textures, frame_count=2, loop=True):
+    def __init__(self, name, brres_textures, frame_count=2, loop=True, material=None):
+        super(Pat0MatAnimation, self).__init__(name, material)
         self.enabled = True
         self.fixedTexture = False
         self.hasTexture = True
         self.hasPalette = False
         self.frames = []
         self.name = name
-        self.material = None  # to be filled in
+        self.material = material  # to be filled in
         self.brres_textures = brres_textures
         self.framecount = frame_count
         self.loop = loop
@@ -170,17 +173,28 @@ class Pat0MatAnimation(Clipable):
         mark_for_removal = []
         for f in self.frames:
             if f.tex_name not in self.brres_textures and f.tex_name not in mark_for_removal:
-                b = Bug(4, 1, 'No Tex0 matching {} in Pat0'.format(f.tex_name), 'Remove Tex0')
-                if b.should_fix():
-                    mark_for_removal.append(f.tex_name)
-                    b.resolve()
+                result = None
+                b = Bug(3, 1, 'No Tex0 matching {} in Pat0'.format(f.tex_name), 'Rename reference')
+                if self.RENAME_UNKNOWN_REFS:
+                    # fuzz time
+                    result = fuzzy_strings(f.tex_name, self.brres_textures)
+                    if result:
+                        b.fix_des = 'Rename to {}'.format(result)
+                        f.tex_name = result
+                        b.resolve()
+                if not result:
+                    b.fix_des = 'Remove ref'
+                    if self.REMOVE_UNKNOWN_REFS:
+                        mark_for_removal.append(f.tex_name)
+                        b.resolve()
+                    else:
+                        AUTO_FIXER.notify(b)
         if mark_for_removal:
             self.frames = [x for x in self.frames if x.tex_name not in mark_for_removal]
-            AUTO_FIXER.notify('Removed Pat0 frames {}'.format(mark_for_removal), 4)
 
     def check_name(self, name):
         if name not in self.brres_textures:
-            AUTO_FIXER.notify('No texture found matching frame {}'.format(name), 3)
+            AUTO_FIXER.warn('No texture found matching frame {}'.format(name), 3)
 
     def set_frame(self, key_frame_id, tex_name):
         if not 0 <= key_frame_id <= self.framecount:
@@ -229,7 +243,7 @@ class Pat0MatAnimation(Clipable):
         for i in range(size):
             frame_id, tex_id, plt_id = binfile.read('f2H', 8)
             if frame_id > self.framecount:
-                AUTO_FIXER.notify('unpacked Pat0 frame index out of range', 1)
+                AUTO_FIXER.warn('unpacked Pat0 frame index out of range', 1)
                 break
             if tex_id >= len(textures):
                 tex_id = 0
@@ -327,8 +341,8 @@ class Pat0(SubFile):
         folder.unpack(binfile)
         while len(folder):
             name = folder.recallEntryI()
-            anim = Pat0MatAnimation(name, self.parent.getTextureMap(), self.frame_count, self.loop).unpack(binfile,
-                                                                                                           textures)
+            anim = Pat0MatAnimation(name, self.parent.get_texture_map(), self.frame_count, self.loop).unpack(binfile,
+                                                                                                             textures)
             self.mat_anims.append(anim)
         # remaining = binfile.readRemaining(self.byte_len)
         # printCollectionHex(remaining)

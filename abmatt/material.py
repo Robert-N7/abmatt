@@ -5,10 +5,10 @@
 # ---------------------------------------------------------------------
 from copy import deepcopy
 
-from abmatt.matching import validBool, indexListItem, validInt, validFloat, findAll, matches, Clipable, splitKeyVal
+from abmatt.matching import validBool, indexListItem, validInt, validFloat, Clipable, splitKeyVal, MATCHING
 from abmatt.layer import Layer
 from abmatt.wiigraphics.matgx import MatGX
-from abmatt.autofix import AUTO_FIXER
+from abmatt.autofix import AUTO_FIXER, Bug
 
 
 def parse_color(color_str):
@@ -59,8 +59,7 @@ class Material(Clipable):
     SHADERCOLOR_ERROR = "Invalid color '{}', Expected [constant]<i>:<r>,<g>,<b>,<a>"
 
     def __init__(self, name, parent=None):
-        self.parent = parent
-        self.name = name
+        super(Material, self).__init__(name, parent)
         self.layers = []
         self.lightChannels = []
         self.shader = None  # to be hooked up
@@ -166,15 +165,9 @@ class Material(Clipable):
         if 0 <= layer_index < len(self.layers):
             return self.layers[layer_index]
 
-    def find(self, key):
-        for i in range(len(self.layers)):
-            if matches(key, self.layers[i].name):
-                return i
-        return -1
-
     def getLayerByName(self, key):
         """Attempts to get layer(s) by string key"""
-        layers = findAll(key, self.layers)
+        layers = MATCHING.findAll(key, self.layers)
         if layers:
             return layers[0]
 
@@ -498,7 +491,7 @@ class Material(Clipable):
 
     def set_pat0(self, anim):
         if self.pat0:
-            AUTO_FIXER.notify('Multiple Pat0 for {}!'.format(self.name), 1)
+            AUTO_FIXER.error('Multiple Pat0 for {}!'.format(self.name), 1)
             return False
         self.pat0 = anim
         anim.setMaterial(self)
@@ -516,23 +509,18 @@ class Material(Clipable):
                 print("{}\t{}:{}".format(trace, key, val))
             return
         elif not key:
-            print("{}\tLayerCount:{} Xlu:{} CullMode:{} CompBeforeTexture:{}".format(trace, len(self.layers), self.xlu,
-                                                                         self.CULL_STRINGS[self.cullmode],
-                                                                         self.compareBeforeTexture))
+            print("{}\txlu:{} cull:{}".format(trace, self.xlu, self.CULL_STRINGS[self.cullmode]))
         indentation_level += 1
         for x in self.layers:
             x.info(key, indentation_level)
 
     # ------------------------------------- Check ----------------------------------------
-    def getTextureMap(self):
-        return self.parent.getTextureMap()
-
     def check(self, texture_map=None):
-        self.shader.check()
         if texture_map is None:
             texture_map = self.getTextureMap()
         for layer in self.layers:
             layer.check(texture_map)
+        self.shader.check()
         if self.pat0:
             self.pat0.check()
         if self.srt0:
@@ -579,11 +567,6 @@ class Material(Clipable):
 
     def addLayer(self, name):
         """ Creates and returns new layer """
-        # check to see if we already have layer
-        for x in self.layers:
-            if x.name == name:
-                if not AUTO_FIXER.should_fix('Layer {} already exists in {}, add anyway?'.format(name, self.name), 5):
-                    return x
         self.parent.addLayerReference(name)  # update model texture link/check that exists
         i = len(self.layers)
         l = Layer(i, name, self)

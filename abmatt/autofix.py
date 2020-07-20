@@ -52,9 +52,9 @@ class AutoFix:
         self.fix_level = fix_level
 
     def set_fix_level(self, fix_level):
-        if fix_level.isDigit():
+        try:
             self.fix_level = int(fix_level)
-        else:
+        except ValueError:
             fix_level = fix_level.upper()
             if fix_level == 'ALL':
                 self.fix_level = 4
@@ -96,7 +96,7 @@ class AutoFix:
     @staticmethod
     def prompt(description, proposed_fix=None):
         while True:
-            result = input('Fix: ' + description + proposed_fix + '? (y/n)').lower()
+            result = input('Fix: ' + description + ',' + proposed_fix + '? (y/n)').lower()
             if result[0] == 'y':
                 return 1
             elif result[0] == 'n':
@@ -120,16 +120,16 @@ class AutoFix:
 
     def get_level(self, level_str):
         """Expects level to be a string, as a number or one of the Error levels"""
-        if level_str.isDigit():
+        try:
             level = int(level_str)
             if not 0 <= level < 6:
                 raise ValueError('Loudness level out of range (0-6)')
             return int(level)
-        else:
+        except:
             level_str = level_str.upper()
             if level_str == 'ALL':
                 return 4
-            return self.ERROR_LEVELS.index(level_str)
+            return self.LOUD_LEVELS.index(level_str)
 
     def set_loudness(self, level_str):
         self.loudness = self.get_level(level_str)

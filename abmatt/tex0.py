@@ -1,5 +1,9 @@
 """Tex0 subfile"""
+from copy import copy
+from math import log
+
 from abmatt.subfile import SubFile
+from abmatt.autofix import AUTO_FIXER, Bug
 
 
 class Tex0(SubFile):
@@ -18,10 +22,28 @@ class Tex0(SubFile):
     def is_power_of_two(n):
         return n & (n - 1) == 0
 
-    def check(self, loudness):
-        super(Tex0, self).check(loudness)
+    @staticmethod
+    def nearest_power_of_two(v):
+        return pow(2, round(log(v) / log(2)))
+
+    def encode(self, img_file, num_mips):
+        pass
+
+    def decode(self, img_file):
+        pass
+
+    def paste(self, item):
+        self.width = item.width
+        self.height = item.height
+        self.format = item.format
+        self.num_images = item.num_images
+        self.num_mips = item.num_mips
+        self.data = item.data
+
+    def check(self):
+        super(Tex0, self).check()
         if not self.is_power_of_two(self.width) or not self.is_power_of_two(self.height):
-            print('CHECK: TEX0 {} not a power of 2'.format(self.name))
+            AUTO_FIXER.warn('TEX0 {} not a power of 2'.format(self.name))
 
     def unpack(self, binfile):
         self._unpack(binfile)
@@ -41,14 +63,3 @@ class Tex0(SubFile):
     def info(self, key=None, indentation=0):
         print('{} {}: {} {}x{} mips:{}'.format(self.MAGIC, self.name, self.FORMATS[self.format],
                                                self.width, self.height, self.num_mips))
-
-    # def unpackData(self, binfile):
-    #     ''' Unpacks tex0 from binfile '''
-    #     super(SubFile)()._unpack(binfile)
-    #     # Header
-    #     uk, pixelWidth, pixelHeight, format = binfile.read("I2HI", 12)
-    #     self.numImages, uk, self.numMipmaps, uk = binfile.read("2IfI", 16)
-    #     remaining = self.len - (binfile.offset - binfile.start)
-    #     # todo? possibly unpack the data in specified format?
-    #     self.data = binfile.read("{}B".format(remaining), remaining)
-    #     binfile.end()
