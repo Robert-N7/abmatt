@@ -50,11 +50,11 @@ abmatt [-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> 
 ### Command Line Examples
 This command would open *course_model.brres* in overwrite mode and run the commands stored in *my_commands.txt*
 ```
-abmatt -f course_model.brres -o -c my_commands.txt
+abmatt -b course_model.brres -o -f my_commands.txt
 ```
 This next command would enable xlu for all materials starting with the prefix xlu.
 ```
-abmatt -f course_model.brres -o -n xlu.* -k xlu -v true
+abmatt -b course_model.brres -o -n xlu.* -k xlu -v true
 ```
 
 ## File Format
