@@ -3,7 +3,7 @@
 from struct import *
 import sys
 
-from abmatt.autofix import AUTO_FIXER
+from brres.lib.autofix import AUTO_FIXER
 
 # which version?
 IS_PY3 = sys.version[0] == '3'
@@ -36,6 +36,7 @@ class BinFile:
         self.references = {}  # used for forward references in relation to start
         self.bom = bom  # byte order mark > | <
         self.nameRefMap = {}  # for packing name references
+        self.names_packed = False
         self.lenMap = {}  # used for tracking length of files
         self.c_length = None  # for tracking current length
         self.isWriteMode = (mode == 'w')
@@ -56,6 +57,8 @@ class BinFile:
         #         print("Unused reference {} in relation to {}".format(item, x))
         if len(self.stack) > 1:
             raise PackingError(self, 'Incorrect stack, {} items still on'.format(len(self.stack) - 1))
+        if not self.names_packed:
+            self.packNames()
         # write
         # print('Length of file is {}'.format(len(self.file)))
         try:
@@ -396,6 +399,8 @@ class BinFile:
                 reflist = names[key]
                 for ref in reflist:
                     self.writeOffset("I", ref[1], offset - ref[0])
+        self.names_packed = True
+        self.align()
 
     def convertByteArr(self):
         if type(self.file) != bytearray:
@@ -487,8 +492,8 @@ class FolderEntry:
         current = entrylist[head.left]
         is_right = False
         # loop
-        while self.id <= current.id < prev.id:
-            if self.id == current.id:
+        while self.id <= current.name < prev.name:
+            if self.id == current.name:
                 # calculate new brres entry
                 self.calc_brres_id(current.name)
                 if current.get_brres_id_bit(self.id):
@@ -498,7 +503,7 @@ class FolderEntry:
                     self.left = current.idx
                     self.right = self.idx
             prev = current
-            is_right = self.get_brres_id_bit(current.id)
+            is_right = self.get_brres_id_bit(current.name)
             if is_right:
                 current = entrylist[current.right]
             else:

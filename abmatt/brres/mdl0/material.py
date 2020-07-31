@@ -5,10 +5,11 @@
 # ---------------------------------------------------------------------
 from copy import deepcopy
 
-from abmatt.matching import validBool, indexListItem, validInt, validFloat, Clipable, splitKeyVal, MATCHING
-from abmatt.layer import Layer
+from brres.lib.matching import validBool, indexListItem, validInt, validFloat, splitKeyVal, MATCHING
+from brres.lib.node import Clipable
+from brres.mdl0.layer import Layer
 from abmatt.wiigraphics.matgx import MatGX
-from abmatt.autofix import AUTO_FIXER, Bug
+from brres.lib.autofix import AUTO_FIXER
 
 
 def parse_color(color_str):
@@ -32,6 +33,7 @@ class Material(Clipable):
     # -----------------------------------------------------------------------
     #   CONSTANTS
     # -----------------------------------------------------------------------
+    EXT = 'matl'
     SETTINGS = ("xlu", "ref0", "ref1",
                 "comp0", "comp1", "comparebeforetexture", "blend",
                 "blendsrc", "blendlogic", "blenddest", "constantalpha",
@@ -58,15 +60,17 @@ class Material(Clipable):
 
     SHADERCOLOR_ERROR = "Invalid color '{}', Expected [constant]<i>:<r>,<g>,<b>,<a>"
 
-    def __init__(self, name, parent=None):
-        super(Material, self).__init__(name, parent)
+    def __init__(self, name, parent=None, binfile=None):
         self.layers = []
         self.lightChannels = []
         self.shader = None  # to be hooked up
-        self.drawlist = None  # to be hooked up
         self.srt0 = None  # to be hooked up
         self.pat0 = None  # to be hooked up
         self.matGX = MatGX()
+        super(Material, self).__init__(name, parent, binfile)
+
+    def begin(self):
+        pass # todo
 
     def __str__(self):
         return "Mt{} {}: xlu {} layers {} culling {} blend {}".format(self.id, self.name,
@@ -196,7 +200,7 @@ class Material(Clipable):
                    getShaderColor, getLightChannel, getLightset, getFogset, getMatrixMode, getEnableDepthTest,
                    getEnableDepthUpdate, getDepthFunction, getDrawPriority, getIndMatrix, getName, getLayerCount)
 
-    def __getitem__(self, key):
+    def get_str(self, key):
         for i in range(len(self.SETTINGS)):
             if key == self.SETTINGS[i]:
                 return self.SET_SETTING[i]
@@ -205,7 +209,7 @@ class Material(Clipable):
     #   SETTERS
     # ---------------------------------------------------------------------------
 
-    def __setitem__(self, key, value):
+    def set_str(self, key, value):
         for i in range(len(self.SETTINGS)):
             if key == self.SETTINGS[i]:
                 func = self.SET_SETTING[i]
@@ -577,7 +581,7 @@ class Material(Clipable):
 
     def renameLayer(self, layer, name):
         if self.srt0:
-            self.srt0.updateLayerNameI(layer.id, name)
+            self.srt0.updateLayerNameI(layer.name, name)
         return self.parent.renameLayer(layer, name)
 
     # ---------------------------------PASTE------------------------------------------

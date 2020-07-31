@@ -4,16 +4,16 @@
 import fnmatch
 import os
 
-from abmatt.binfile import UnpackingError
+from brres.lib.binfile import UnpackingError
 from abmatt.brres import Brres
-from abmatt.layer import Layer
-from abmatt.matching import validInt, MATCHING
-from abmatt.material import Material
-from abmatt.mdl0 import Mdl0
-from abmatt.shader import Shader, Stage
-from abmatt.pat0 import Pat0, Pat0MatAnimation
-from abmatt.srt0 import Srt0, SRTMatAnim, SRTTexAnim
-from abmatt.autofix import AUTO_FIXER
+from brres.mdl0.layer import Layer
+from brres.lib.matching import validInt, MATCHING
+from brres.mdl0.material import Material
+from brres.mdl0 import Mdl0
+from brres.mdl0.shader import Shader, Stage
+from brres.pat0 import Pat0MatAnimation
+from brres.srt0 import SRTMatAnim, SRTTexAnim
+from brres.lib.autofix import AUTO_FIXER
 
 
 class ParsingException(Exception):

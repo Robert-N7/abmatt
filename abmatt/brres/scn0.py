@@ -1,6 +1,8 @@
 """SCN0 Subfile"""
-from abmatt.subfile import SubFile
-from abmatt.binfile import Folder, printCollectionHex
+from copy import deepcopy
+
+from brres.subfile import SubFile, set_anim_str, get_anim_str
+from brres.lib.binfile import Folder
 
 
 def unpack_header(binfile):
@@ -179,28 +181,47 @@ class Scn0KeyFrameList:
 
 class Scn0(SubFile):
     MAGIC = "SCN0"
+    EXT = 'scn0'
     VERSION_SECTIONCOUNT = {4: 6, 5: 7}
     EXPECTED_VERSION = 5
     SETTINGS = ('framecount', 'loop')
     FOLDERS = ('LightSet(NW4R)', 'AmbLights(NW4R)', 'Lights(NW4R)', 'Fog(NW4R)', 'Cameras(NW4R)')
     KLASSES = (LightSet, AmbientLight, Light, Fog, Camera)
 
-    def __init__(self, name, parent):
-        super(Scn0, self).__init__(name, parent)
-        self.framecount = 1
-        self.loop = True
+    def __init__(self, name, parent, binfile=None):
         self.animations = []
         self.lightsets = []
         self.ambient_lights = []
         self.lights = []
         self.fogs = []
         self.cameras = []
+        super(Scn0, self).__init__(name, parent, binfile)
+
+    def begin(self):
+        self.framecount = 1
+        self.loop = True
 
     def __getitem__(self, item):
         if item == self.SETTINGS[0]:
             return self.framecount
         elif item == self.SETTINGS[1]:
             return self.loop
+
+    def set_str(self, key, value):
+        return set_anim_str(self, key, value)
+
+    def get_str(self, key):
+        return get_anim_str(self, key)
+
+    def paste(self, item):
+        self.framecount = item.framecount
+        self.loop = item.loop
+        self.animations = deepcopy(item.animations)
+        self.lightsets = deepcopy(item.lightsets)
+        self.ambient_lights = deepcopy(item.ambient_lights)
+        self.lights = deepcopy(item.lights)
+        self.fogs = deepcopy(item.fogs)
+        self.cameras = deepcopy(item.cameras)
 
     def unpack(self, binfile):
         self._unpack(binfile)

@@ -1,10 +1,11 @@
 """ Layer class """
 from copy import copy, deepcopy
 
-from abmatt.matching import parseValStr, indexListItem, validBool, Clipable, fuzzy_match, fuzzy_strings
+from brres.lib.matching import parseValStr, indexListItem, validBool, fuzzy_strings
+from brres.lib.node import Clipable
 
 from abmatt.wiigraphics.xf import XFTexMatrix, XFDualTex
-from abmatt.autofix import AUTO_FIXER, Bug
+from brres.lib.autofix import Bug
 
 
 class Layer(Clipable):
@@ -18,6 +19,7 @@ class Layer(Clipable):
         "clampbias", "texelinterpolate", "projection", "inputform",
         "type", "coordinates", "embosssource", "embosslight",
         "normalize", "name")
+    EXT = 'layr'
     WRAP = ("clamp", "repeat", "mirror")
     FILTER = ("nearest", "linear", "nearestmipmapnearest", "linearmipmapnearest", "nearestmipmaplinear",
               "linearmipmaplinear")
@@ -65,7 +67,7 @@ class Layer(Clipable):
     # ----------------------------------------------------------------------------------
     #   GETTERS
     # ----------------------------------------------------------------------------------
-    def __getitem__(self, item):
+    def get_str(self, item):
         for i in range(len(self.SETTINGS)):
             if self.SETTINGS[i] == item:
                 func = self.GET_SETTINGS[i]
@@ -159,7 +161,7 @@ class Layer(Clipable):
     #   SETTERS
     # ----------------------------------------------------------------------------------
 
-    def __setitem__(self, key, value):
+    def set_str(self, key, value):
         fun = self.getSetter(key)
         return fun(self, value)
 

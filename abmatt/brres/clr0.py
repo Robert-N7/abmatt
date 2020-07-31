@@ -1,6 +1,8 @@
 """CLR0 BRRES SUBFILE"""
-from abmatt.subfile import SubFile
-from abmatt.binfile import Folder, printCollectionHex
+from copy import deepcopy
+
+from brres.subfile import SubFile, get_anim_str, set_anim_str
+from brres.lib.binfile import Folder
 
 
 class Clr0Animation:
@@ -86,19 +88,29 @@ class Clr0Animation:
 class Clr0(SubFile):
     """ Clr0 class """
     MAGIC = "CLR0"
+    EXT = 'clr0'
     VERSION_SECTIONCOUNT = {4: 2, 3: 1}
     EXPECTED_VERSION = 4
     SETTINGS = ('framecount', 'loop')
 
-    def __init__(self, name, parent):
-        super(Clr0, self).__init__(name, parent)
+    def __init__(self, name, parent, binfile=None):
+        super(Clr0, self).__init__(name, parent, binfile)
         self.animations = []
 
-    def __getitem__(self, item):
-        if item == self.SETTINGS[0]:
-            return self.framecount
-        elif item == self.SETTINGS[1]:
-            return self.loop
+    def begin(self, initial_values=None):
+        self.loop = True
+        self.framecount = 1
+
+    def paste(self, item):
+        self.animations = deepcopy(item.animations)
+        self.loop = item.loop
+        self.framecount = item.framecount
+
+    def set_str(self, key, value):
+        return set_anim_str(self, key, value)
+
+    def get_str(self, key):
+        return get_anim_str(self, key)
 
     def unpack(self, binfile):
         # data = binfile.read('256B', 0)

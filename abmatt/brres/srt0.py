@@ -2,10 +2,11 @@
 """ Srt0 Brres subfile """
 from copy import deepcopy, copy
 
-from abmatt.binfile import Folder, printCollectionHex
-from abmatt.matching import validInt, validBool, validFloat, splitKeyVal, Clipable, MATCHING
-from abmatt.subfile import SubFile
-from abmatt.autofix import AUTO_FIXER, Bug
+from brres.lib.binfile import Folder
+from brres.lib.matching import validInt, validBool, validFloat, splitKeyVal, MATCHING
+from brres.lib.node import Clipable
+from brres.subfile import SubFile, set_anim_str, get_anim_str
+from brres.lib.autofix import Bug
 
 
 # ---------------------------------------------------------
@@ -58,7 +59,7 @@ class SRTCollection:
                     break
             if not added:  # create new one
                 postfix = str(len(srts) + 1) if len(srts) > 0 else ''
-                s = Srt0(self.name + postfix, self.parent, x.framecount, x.looping)
+                s = Srt0(self.name + postfix, self.parent)
                 if not s.add(x):
                     print('Error has occurred')
                 srts.append(s)
@@ -267,9 +268,7 @@ class SRTTexAnim(Clipable):
     """ A single texture animation entry in srt0 under material """
     SETTINGS = ('xscale', 'yscale', 'rot', 'xtranslation', 'ytranslation')
 
-    def __init__(self, id, framecount, parent):
-        super(SRTTexAnim, self).__init__(None, parent)
-        self.id = id
+    def __init__(self, name, framecount, parent, binfile=None):
         self.animations = {
             'xscale': SRTKeyFrameList(framecount, 1),
             'yscale': SRTKeyFrameList(framecount, 1),
@@ -277,6 +276,7 @@ class SRTTexAnim(Clipable):
             'xtranslation': SRTKeyFrameList(framecount),
             'ytranslation': SRTKeyFrameList(framecount)
         }
+        super(SRTTexAnim, self).__init__(name, parent, binfile)
 
     # ---------------------- CLIPABLE -------------------------------------------------------------
     def paste(self, item):
@@ -284,10 +284,10 @@ class SRTTexAnim(Clipable):
 
     # -------------------------------------------------------------------------
     # interfacing
-    def __getitem__(self, item):
+    def get_str(self, item):
         return self.animations[item]
 
-    def __setitem__(self, key, value):
+    def set_str(self, key, value):
         if value in ('disabled', 'none', 'remove'):
             is_scale = True if 'scale' in key else False
             self.animations[key].clearFrames(is_scale)
@@ -299,16 +299,16 @@ class SRTTexAnim(Clipable):
                 anim[key2] = value
 
     def __deepcopy__(self, memodict={}):
-        ret = SRTTexAnim(self.id, self.parent.framecount, None)
+        ret = SRTTexAnim(self.name, self.parent.framecount, None)
         ret.animations = deepcopy(self.animations)
         return ret
 
     def info(self, key=None, indentation_level=0):
-        id = self.name if self.name else str(self.id)
+        id = self.name if self.name else str(self.name)
         trace = '  ' * indentation_level + 'Tex:' + id if indentation_level else '>(SRT0)' + self.parent.name + '->Tex:' + id
         if not key:
             for x in self.SETTINGS:
-                anim = self[x]
+                anim = self.get_str(x)
                 if len(anim) > 1:
                     trace += ' ' + x + ':' + str(anim)
             print(trace)
@@ -331,7 +331,8 @@ class SRTTexAnim(Clipable):
         """ clears frames for an animation type
             animType: xscale|yscale|rotation|xtranslation|ytranslation
         """
-        return self.animations[animType].clearFrames()
+        is_scale = True if 'scale' in animType else False
+        return self.animations[animType].clearFrames(is_scale)
 
     def setFrameCount(self, frameCount):
         """ Sets the frame count """
@@ -499,7 +500,7 @@ class SRTTexAnim(Clipable):
                 hasYTransOffset = True
         return [hasXTransOffset, hasYTransOffset]
 
-    def packHead(self, binfile):
+    def pack(self, binfile):
         """ packs the texture animation entry,
             returns offset markers to be passed to pack data
             (after packing all headers for material)
@@ -518,30 +519,30 @@ class SRTMatAnim(Clipable):
     SETTINGS = ('framecount', 'loop', 'layerenable')
     REMOVE_UNKNOWN_REFS = True
 
-    def __init__(self, name, frame_count=1, looping=True, parent=None):
-        super(SRTMatAnim, self).__init__(name, parent)
+    def __init__(self, name, frame_count=1, looping=True, parent=None, binfile=None):
         self.parent = parent  # to be filled
         self.framecount = frame_count
         self.tex_animations = []
         self.texEnabled = [False] * 8
-        self.looping = looping
+        self.loop = looping
+        super(SRTMatAnim, self).__init__(name, parent, binfile)
 
-    def __getitem__(self, key):
+    def get_str(self, key):
         if key == 'framecount':
             return self.framecount
         elif key == 'loop':
-            return self.looping
+            return self.loop
         elif key == 'layerenable':
             return self.texEnabled
 
-    def __setitem__(self, key, value):
+    def set_str(self, key, value):
         if key == 'framecount':
             i = validInt(value, 1, 0x7FFFFFFF)
             self.framecount = i
             for x in self.tex_animations:
                 x.setFrameCount(i)
         elif key == 'loop':
-            self.looping = validBool(value)
+            self.loop = validBool(value)
         elif key == 'layerenable':
             key, value = splitKeyVal(value)
             key = validInt(key, 0, 8)
@@ -553,7 +554,7 @@ class SRTMatAnim(Clipable):
 
     # ------------------ PASTE ---------------------------
     def paste(self, item):
-        self.looping = item.looping
+        self.loop = item.loop
         self.texEnabled = copy(item.texEnabled)
         self.setFrameCount(item.framecount)
         self.tex_animations = [deepcopy(x) for x in item.tex_animations]
@@ -584,7 +585,7 @@ class SRTMatAnim(Clipable):
         if self.texEnabled[i]:
             self.texEnabled[i] = False
             for x in self.tex_animations:
-                if x.id == i:
+                if x.name == i:
                     self.tex_animations.remove(x)
                     break
 
@@ -677,12 +678,17 @@ class SRTMatAnim(Clipable):
         if not enabled:
             self.parent.remove_srt0()
 
+    def save(self, dest, overwrite):
+        s = Srt0(self.name, self.parent)
+        s.add(self)
+        s.save(dest, overwrite)
+
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + '(SRT0)' + self.name if indentation_level else '>(SRT0):' + self.name
         if key in self.SETTINGS:
             print('{}\t{}'.format(trace, self[key]))
         else:
-            trace += ' {} frames loop:{}'.format(self.framecount, self.looping)
+            trace += ' {} frames loop:{}'.format(self.framecount, self.loop)
             print(trace)
             indentation_level += 1
             for x in self.tex_animations:
@@ -754,7 +760,7 @@ class SRTMatAnim(Clipable):
         animations = self.tex_animations
         for tex in animations:
             binfile.createRef()
-            has_offsets.append(tex.packHead(binfile))
+            has_offsets.append(tex.pack(binfile))
         # self.consolidate(binfile, offsets)
         binfile.end()
         return has_offsets
@@ -763,17 +769,34 @@ class SRTMatAnim(Clipable):
 
 class Srt0(SubFile):
     """ Srt0 Animation """
+    SETTINGS = ('framecount', 'loop')
     MAGIC = "SRT0"
+    EXT = 'srt0'
     VERSION_SECTIONCOUNT = {4: 1, 5: 2}
     EXPECTED_VERSION = 5
 
-    def __init__(self, name, parent, frame_count=1, loop=True):
-        super(Srt0, self).__init__(name, parent)
+    def __init__(self, name, parent, binfile=None):
         self.matAnimations = []
-        self.framecount = frame_count
-        self.looping = loop
-        self.version = 5
+        super(Srt0, self).__init__(name, parent, binfile)
+
+    def begin(self):
+        self.framecount = 200
+        self.loop = True
         self.matrixmode = 0
+
+
+    def set_str(self, key, value):
+        set_anim_str(self, key, value)
+        for x in self.matAnimations:
+            x.set_str(key, value)
+
+    def get_str(self, key):
+        return get_anim_str(self, key)
+
+    def paste(self, item):
+        self.setFrameCount(item.framecount)
+        self.setLooping(item.loop)
+        Clipable.paste_group(self.matAnimations, item.matAnimations)
 
     # ---------------------------------------------------------------------
     # interfacing
@@ -793,10 +816,13 @@ class Srt0(SubFile):
 
     def add(self, mat_animation):
         """ Adds a material animation """
-        if self.framecount == mat_animation.framecount and self.looping == mat_animation.looping:
-            self.matAnimations.append(mat_animation)
-            return True
-        return False
+        if not self.matAnimations:
+            self.loop = mat_animation.loop
+            self.framecount = mat_animation.framecount
+        elif self.framecount != mat_animation.framecount or self.loop != mat_animation.loop:
+            return False
+        self.matAnimations.append(mat_animation)
+        return True
 
     def removeMatAnimation(self, material):
         """ Removes a material animation """
@@ -807,7 +833,9 @@ class Srt0(SubFile):
         return None
 
     def setLooping(self, val):
-        self.looping = val
+        self.loop = val
+        for x in self.matAnimations:
+            x.set_str('loop', 'true')
 
     @staticmethod
     def calcFrameScale(frameCount):
@@ -818,7 +846,7 @@ class Srt0(SubFile):
     #   PACKING
     def unpack(self, binfile):
         self._unpack(binfile)
-        uk, self.framecount, self.size, self.matrixmode, self.looping = binfile.read("I2H2I", 16)
+        uk, self.framecount, size, self.matrixmode, self.loop = binfile.read("I2H2I", 16)
         # advance to section 0
         binfile.recall()
         folder = Folder(binfile, "srt0root")
@@ -839,7 +867,7 @@ class Srt0(SubFile):
         self._pack(binfile)
         # self._packData(binfile)
         binfile.write("I2H2I", 0, self.framecount, len(self.matAnimations),
-                      self.matrixmode, self.looping)
+                      self.matrixmode, self.loop)
         binfile.createRef()  # create ref to section 0
         # create index group
         folder = Folder(binfile, "srt0root")

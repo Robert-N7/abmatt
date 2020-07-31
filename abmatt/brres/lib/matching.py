@@ -31,38 +31,6 @@ def fuzzy_strings(text, strings, acceptable_ratio=84):
     return bssf if best_ratio > acceptable_ratio else None
 
 
-class Clipable(object):
-    """Clipable interface"""
-    def __init__(self, name, parent=None):
-        self.name = name
-        self.parent = parent
-
-    # ---------------------------------------------- CLIPBOARD -------------------------------------------
-    @staticmethod
-    def paste_group(paste_group, clip_group):
-        for x in clip_group:
-            name = x.name
-            for y in paste_group:
-                if y.name == name:
-                    y.paste(x)
-                    break
-
-    def clip(self, clipboard):
-        clipboard[self.name] = self
-
-    def clip_find(self, clipboard):
-        return clipboard.get(self.name)
-
-    def paste(self, item):
-        pass
-
-    def mark_modified(self):
-        self.parent.mark_modified()
-
-    def get_texture_map(self):
-        return self.parent.get_texture_map()
-
-
 def info_default(obj, prefix='', key=None, indentation=0):
     s = '  ' * indentation if indentation else ''
     if key:
@@ -94,7 +62,7 @@ def validFloat(str, min, max):
     return f
 
 
-def validInt(str, min, max):
+def validInt(str, min=-0x7fffffff, max=0x7fffffff):
     """ checks if a string is a valid integer """
     i = int(str)
     if not min <= i < max:

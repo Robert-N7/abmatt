@@ -4,38 +4,58 @@
 # --------------------------------------------------------
 # Most Brres Subfiles
 # --------------------------------------------------------
-from abmatt.binfile import Folder, PackingError, printCollectionHex, UnpackingError
-from abmatt.matching import info_default, Clipable
-from abmatt.autofix import AUTO_FIXER, Bug
+import os
+
+from brres.lib.binfile import UnpackingError, BinFile
+from brres.lib.matching import validInt, validBool
+from brres.lib.node import Clipable
+from brres.lib.autofix import Bug, AUTO_FIXER
+
+
+def set_anim_str(animation, key, value):
+    if key == 'framecount':  # framecount
+        val = validInt(value, 1)
+        animation.framecount = val
+    elif key == 'loop':  # loop
+        val = validBool(value)
+        animation.loop = val
+
+
+def get_anim_str(animation, key):
+    if key == 'framecount':  # framecount
+        return animation.framecount
+    elif key == 'loop':  # loop
+        return animation.loop
 
 
 class SubFile(Clipable):
     """
     Brres Sub file Class
-    classes must implement the following:
-    vars: MAGIC, VERSION_SECTIONCOUNT
-    functions: byteSize, unpack, pack, unpackData, packData
     """
-    MAGIC = 'NONE'
-    SETTINGS = ('version', 'sections')
-    VERSION_SECTIONCOUNT = {}
-    EXPECTED_VERSION = 0    # override this
     FORCE_VERSION = True
 
-    def __init__(self, name, parent):
+    # Properties
+    @property
+    def MAGIC(self):
+        raise NotImplementedError()
+
+    @property
+    def EXT(self):
+        raise NotImplementedError()
+
+    @property
+    def VERSION_SECTIONCOUNT(self):
+        raise NotImplementedError()
+
+
+    @property
+    def EXPECTED_VERSION(self):
+        raise NotImplementedError()
+
+    def __init__(self, name, parent, binfile):
         """ initialize with parent of this file """
-        super(SubFile, self).__init__(name, parent)
+        super(SubFile, self).__init__(name, parent, binfile)
         self.version = self.EXPECTED_VERSION
-
-    def __getitem__(self, item):
-        if item == self.SETTINGS[0]:
-            return self.version
-        elif item == self.SETTINGS[1]:
-            return self._getNumSections()
-
-    def _byteSize(self):
-        """ should be overriden if size changes """
-        return self.byte_len
 
     def _unpackData(self, binfile):
         """ should be overriden if modifying or has changeable offsets, unpacks the data after header """
@@ -94,6 +114,16 @@ class SubFile(Clipable):
         # name offset to be packed separately
         binfile.storeNameRef(self.name)
 
-    def info(self, key=None, indentation=0):
-        info_default(self, '>(' + self.MAGIC + ')' + self.name, key, indentation)
-
+    def save(self, dest, overwrite):
+        if dest is None:
+            dest = self.name
+            ext = '.' + self.EXT
+            if not dest.endswith(ext):
+                dest += ext
+        if os.path.exists(dest) and not overwrite and not self.OVERWRITE_MODE:
+            AUTO_FIXER.error('{} already exists!'.format(dest))
+            return
+        bin = BinFile(dest, 'w')
+        self.pack(bin)
+        bin.commitWrite()
+        return dest

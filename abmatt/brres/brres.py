@@ -5,17 +5,18 @@
 import os
 import string
 
-from abmatt.autofix import AUTO_FIXER, Bug
-from abmatt.binfile import BinFile, Folder, UnpackingError
-from abmatt.chr0 import Chr0
-from abmatt.clr0 import Clr0
-from abmatt.matching import Clipable, MATCHING
-from abmatt.mdl0 import Mdl0
-from abmatt.pat0 import Pat0, Pat0Collection
-from abmatt.scn0 import Scn0
-from abmatt.shp0 import Shp0
-from abmatt.srt0 import Srt0, SRTCollection
-from abmatt.tex0 import Tex0
+from brres.lib.autofix import AUTO_FIXER, Bug
+from brres.lib.binfile import BinFile, Folder, UnpackingError
+from brres.chr0 import Chr0
+from brres.clr0 import Clr0
+from brres.lib.matching import MATCHING
+from brres.lib.node import Clipable
+from brres.mdl0 import Mdl0
+from brres.pat0 import Pat0, Pat0Collection
+from brres.scn0 import Scn0
+from brres.shp0 import Shp0
+from brres.srt0 import Srt0, SRTCollection
+from brres.tex0 import Tex0
 
 
 class Brres(Clipable):
@@ -37,7 +38,6 @@ class Brres(Clipable):
             parent - optional for supporting containing files in future
             readfile - optional start reading and unpacking file
         """
-        super(Brres, self).__init__(name, parent)
         self.models = []
         self.textures = []
         self.anmSrt = []
@@ -49,20 +49,19 @@ class Brres(Clipable):
         self.folders = [self.models, self.textures, self.anmPat, self.anmSrt, self.anmChr,
                         self.anmScn, self.anmShp, self.anmClr]
         self.isModified = False
-        self.isUpdated = False
         self.parent = parent
         self.name = name
-        self.texture_map = None
-        if readFile:
-            self.unpack(BinFile(self.name))
+        self.texture_map = {}
+        binfile = BinFile(self.name) if readFile else None
+        super(Brres, self).__init__(name, parent, binfile)
 
-    def __getitem__(self, key):
+    def get_str(self, key):
         if key == 'name':
             return self.name
         else:
             raise ValueError('Unknown key "{}"'.format(key))
 
-    def __setitem__(self, key, value):
+    def set_str(self, key, value):
         if key == 'name':
             self.name = value
         else:
@@ -126,15 +125,7 @@ class Brres(Clipable):
                     x.info(key, indentation_level)
 
     def isChanged(self):
-        if self.isModified:
-            return True
-        if self.isUpdated:
-            for mdl in self.models:
-                if mdl.isChanged():
-                    self.isModified = True  # to prevent checking further
-                    return True
-        self.isUpdated = False
-        return False
+        return self.isModified
 
     def getNumSections(self, folders):
         """ gets the number of sections, including root"""
@@ -179,11 +170,12 @@ class Brres(Clipable):
         self.textures.append(tex0)
         self.texture_map[tex0.name] = tex0
 
+    def rename_texture(self, tex0, name):
+        self.texture_map[tex0.name] = None
+        tex0.name = name
+        self.texture_map[tex0.name] = tex0
+
     def get_texture_map(self):
-        if not self.texture_map:
-            self.texture_map = {}
-            for x in self.textures:
-                self.texture_map[x.name] = x
         return self.texture_map
 
     def getTexture(self, name):
@@ -269,6 +261,8 @@ class Brres(Clipable):
     def post_unpacking(self):
         self.folders[2] = self.anmPat = self.generate_pat0_collections()
         self.folders[3] = self.anmSrt = self.generate_srt_collections()
+        for x in self.textures:
+            self.texture_map[x.name] = x
 
     def pre_packing(self):
         self.check()
@@ -379,7 +373,6 @@ class Brres(Clipable):
                     file.pack(binfile)
                 folder_index += 1
         binfile.packNames()
-        binfile.align()
         binfile.end()
 
     # --------------------------------------------------------------------------

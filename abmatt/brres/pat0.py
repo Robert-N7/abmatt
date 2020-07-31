@@ -1,11 +1,11 @@
 """PAT0 Animations"""
-import math
 from copy import deepcopy
 
-from abmatt.subfile import SubFile
-from abmatt.binfile import Folder
-from abmatt.matching import validBool, validInt, validFloat, splitKeyVal, Clipable, fuzzy_strings
-from abmatt.autofix import AUTO_FIXER, Bug
+from brres.subfile import SubFile, set_anim_str, get_anim_str
+from brres.lib.binfile import Folder
+from brres.lib.matching import validBool, validInt, validFloat, splitKeyVal, fuzzy_strings
+from brres.lib.node import Clipable
+from brres.lib.autofix import AUTO_FIXER, Bug
 
 
 class Pat0Collection:
@@ -62,7 +62,7 @@ class Pat0Collection:
                     break
             if not added:  # create new one
                 postfix = str(len(pats)) if len(pats) > 0 else ''
-                s = Pat0(self.name + postfix, self.parent, x.framecount, x.loop)
+                s = Pat0(self.name + postfix, self.parent)
                 if not s.add(x):
                     print('Error has occurred')
                 pats.append(s)
@@ -77,18 +77,16 @@ class Pat0MatAnimation(Clipable):
     RENAME_UNKNOWN_REFS = True
     REMOVE_UNKNOWN_REFS = True
 
-    def __init__(self, name, brres_textures, frame_count=2, loop=True, material=None):
-        super(Pat0MatAnimation, self).__init__(name, material)
+    def __init__(self, name, parent, framecount=100, loop=True, binfile=None):
         self.enabled = True
         self.fixedTexture = False
         self.hasTexture = True
         self.hasPalette = False
         self.frames = []
-        self.name = name
-        self.material = material  # to be filled in
-        self.brres_textures = brres_textures
-        self.framecount = frame_count
+        self.framecount = framecount
         self.loop = loop
+        self.brres_textures = parent.get_texture_map() if parent else None
+        super(Pat0MatAnimation, self).__init__(name, parent, binfile)
 
     def paste(self, item):
         self.enabled = item.enabled
@@ -102,13 +100,10 @@ class Pat0MatAnimation(Clipable):
     def create_brres_tex_ref(self, brres_textures):
         self.brres_textures = brres_textures
 
-    def setMaterial(self, material):
-        self.material = material
-
     def get_used_textures(self):
-        return {x.tex_name for x in self.frames}
+        return {x.tex for x in self.frames}
 
-    def __setitem__(self, key, value):
+    def set_str(self, key, value):
         if key == 'loop':
             self.loop = validBool(value)
         elif key == 'framecount':
@@ -126,7 +121,7 @@ class Pat0MatAnimation(Clipable):
             for i in range(len(frame_ids)):
                 self.set_frame(frame_ids[i], names[i])
 
-    def __getitem__(self, item):
+    def get_str(self, item):
         if item == 'loop':
             return self.loop
         elif item == 'framecount':
@@ -136,13 +131,13 @@ class Pat0MatAnimation(Clipable):
         raise ValueError('Unknown setting {}, possible are {}'.format(item, self.SETTINGS))
 
     class Frame:
-        def __init__(self, frame_id, tex_name, palette_id=0):
+        def __init__(self, frame_id, tex, palette_id=0):
             self.frame_id = frame_id
-            self.tex_name = tex_name
+            self.tex = tex
             self.palette_id = palette_id
 
         def __str__(self):
-            return str(self.frame_id) + ':' + self.tex_name
+            return str(self.frame_id) + ':' + self.tex
 
     def updateName(self, new_name):
         self.name = new_name
@@ -170,28 +165,30 @@ class Pat0MatAnimation(Clipable):
         return False
 
     def check(self):
+        if not self.brres_textures:
+            return
         mark_for_removal = []
         for f in self.frames:
-            if f.tex_name not in self.brres_textures and f.tex_name not in mark_for_removal:
+            if f.tex not in self.brres_textures and f.tex not in mark_for_removal:
                 result = None
-                b = Bug(3, 1, 'No Tex0 matching {} in Pat0'.format(f.tex_name), 'Rename reference')
+                b = Bug(3, 1, 'No Tex0 matching {} in Pat0'.format(f.tex), 'Rename reference')
                 if self.RENAME_UNKNOWN_REFS:
                     # fuzz time
-                    result = fuzzy_strings(f.tex_name, self.brres_textures)
+                    result = fuzzy_strings(f.tex, self.brres_textures)
                     if result:
                         b.fix_des = 'Rename to {}'.format(result)
-                        f.tex_name = result
+                        f.tex = result
                         b.resolve()
                 if not result:
                     b.fix_des = 'Remove ref'
                     if self.REMOVE_UNKNOWN_REFS:
-                        mark_for_removal.append(f.tex_name)
+                        mark_for_removal.append(f.tex)
                         b.resolve()
         if mark_for_removal:
-            self.frames = [x for x in self.frames if x.tex_name not in mark_for_removal]
+            self.frames = [x for x in self.frames if x.tex not in mark_for_removal]
 
     def check_name(self, name):
-        if name not in self.brres_textures:
+        if self.brres_textures and name not in self.brres_textures:
             AUTO_FIXER.warn('No texture found matching frame {}'.format(name), 3)
 
     def set_frame(self, key_frame_id, tex_name):
@@ -203,7 +200,7 @@ class Pat0MatAnimation(Clipable):
         for i in range(len(self.frames)):
             x = self.frames[i]
             if key_frame_id == x.frame_id:
-                x.tex_name = tex_name
+                x.tex = tex_name
                 return x
             elif key_frame_id < x.frame_id:
                 anim = self.Frame(key_frame_id, tex_name, 0)
@@ -215,45 +212,57 @@ class Pat0MatAnimation(Clipable):
         return anim
 
     def getTextures(self, tex_list):
-        for tex in self.frames:
-            if tex.tex_name not in tex_list:
-                tex_list.append(tex.tex_name)
+        for frame in self.frames:
+            if frame.tex not in tex_list:
+                tex_list.append(frame.tex)
         return tex_list
 
-    def info(self, key=None, indentation=0):
+    def info(self, prefix='', key=None, indentation=0):
         prefix = '  ' * indentation + self.name if indentation else '>(PAT0)' + self.name
         if key:
-            print('{}: {}'.format(prefix, self[key]))
+            print('{}: {}'.format(prefix, self.get_str(key)))
         else:
             val = prefix + ': '
             for x in self.SETTINGS:
-                val += ' ' + x + ':' + str(self[x])
+                val += ' ' + x + ':' + str(self.get_str(x))
             print(val)
 
     def calcFrameScale(self):
         return 1 / (self.frames[-1].frame_id - self.frames[0].frame_id)
 
     # ------------------------------------------ PACKING -------------------------------------------------------------
-    def unpack_frames(self, binfile, textures):
+    def unpack_frames(self, binfile):
         # frame header
         size, _, scale_factor = binfile.read('2Hf', 8)
         frames = self.frames
         for i in range(size):
             frame_id, tex_id, plt_id = binfile.read('f2H', 8)
             if frame_id > self.framecount:
-                AUTO_FIXER.warn('unpacked Pat0 frame index out of range', 1)
+                AUTO_FIXER.warn('Unpacked Pat0 {} frame index out of range'.format(self.name), 1)
                 break
-            if tex_id >= len(textures):
-                tex_id = 0
-                AUTO_FIXER.warn('Unpacked Pat0 tex_id out of range', 1)
-            frames.append(self.Frame(frame_id, textures[tex_id], plt_id))
+            frames.append(self.Frame(frame_id, tex_id, plt_id))
+
+    def hook_textures(self, textures):
+        m = len(textures)
+        for x in self.frames:
+            if x.tex >= m:
+                x.tex = textures[0]
+                AUTO_FIXER.warn('Unpacked Pat0 {} tex_id out of range'.format(self.name), 1)
+            else:
+                x.tex = textures[x.tex]
 
     def pack_frames(self, binfile, textures):
         frames = self.frames
         binfile.write('2Hf', len(frames), 0, self.calcFrameScale())
         for x in frames:
-            texture_id = textures.index(x.tex_name)
+            texture_id = textures.index(x.tex)
             binfile.write('f2H', x.frame_id, texture_id, 0)
+
+    def save(self, dest, overwrite):
+        # create the pat0
+        p = Pat0(self.name, self.parent)
+        p.add(self)
+        p.save(dest, overwrite)
 
     def pack(self, binfile):
         offset = binfile.start()
@@ -275,12 +284,12 @@ class Pat0MatAnimation(Clipable):
         self.hasTexture = flags >> 2 & 1
         self.hasPalette = flags >> 3 & 1
 
-    def unpack(self, binfile, textures):
+    def unpack(self, binfile):
         binfile.start()
         self.unpack_flags(binfile)
         [offset] = binfile.read('I', 4)
         binfile.offset = offset + binfile.beginOffset
-        self.unpack_frames(binfile, textures)
+        self.unpack_frames(binfile)
         binfile.end()
         return self
 
@@ -288,6 +297,8 @@ class Pat0MatAnimation(Clipable):
 class Pat0(SubFile):
     """ Pat0 animation class """
 
+    EXT = 'pat0'
+    SETTINGS = ('framecount', 'loop')
     MAGIC = "PAT0"
     # Sections:
     #   0: data
@@ -299,20 +310,24 @@ class Pat0(SubFile):
     VERSION_SECTIONCOUNT = {3: 5, 4: 6}
     EXPECTED_VERSION = 4
 
-    def __init__(self, name, parent, frame_count=2, loop=True):
-        super(Pat0, self).__init__(name, parent)
-        self.frame_count = frame_count
-        self.loop = loop
-        self.num_entries = 1
+    def __init__(self, name, parent, binfile=None):
         self.n_str = 1
         self.version = 4
         self.mat_anims = []
-        self.textures = []
+        super(Pat0, self).__init__(name, parent, binfile)
+
+    def begin(self):
+        self.framecount = 100
+        self.loop = True
 
     def add(self, x):
-        if x.framecount == self.frame_count and x.loop == self.loop:
+        if not self.mat_anims:
+            self.framecount = x.framecount
+            self.loop = x.loop
             self.mat_anims.append(x)
-            x.getTextures(self.textures)
+            return True
+        elif x.framecount == self.framecount and x.loop == self.loop:
+            self.mat_anims.append(x)
             return True
         return False
 
@@ -322,41 +337,47 @@ class Pat0(SubFile):
             x.getTextures(textures)
         return textures
 
+    def set_str(self, key, value):
+        return set_anim_str(self, key, value)
+
+    def get_str(self, key):
+        return get_anim_str(self, key)
+
+    def paste(self, item):
+        self.framecount = item.framecount
+        self.loop = item.loop
+        self.mat_anims = deepcopy(item.mat_anims)
+
+
     def unpack(self, binfile):
         self._unpack(binfile)
-        origPathOffset, self.frame_count, num_mats, num_tex, num_plt, self.loop = binfile.read('I4HI', 24)
+        origPathOffset, self.framecount, num_mats, num_tex, num_plt, self.loop = binfile.read('I4HI', 24)
         if num_plt:
             raise ValueError('Palettes unsupported! Detected palette while parsing')
         assert origPathOffset == 0
-        binfile.recall(1)  # section 1
-        textures = []
-        binfile.start()
-        for i in range(num_tex):
-            textures.append(binfile.unpack_name())
-        binfile.end()
         binfile.recall()  # section 0
         folder = Folder(binfile)
         folder.unpack(binfile)
         while len(folder):
             name = folder.recallEntryI()
-            anim = Pat0MatAnimation(name, self.parent.get_texture_map(), self.frame_count, self.loop).unpack(binfile,
-                                                                                                             textures)
+            anim = Pat0MatAnimation(name, self.parent.get_texture_map(), self.framecount, self.loop).unpack(binfile)
             self.mat_anims.append(anim)
-        # remaining = binfile.readRemaining(self.byte_len)
-        # printCollectionHex(remaining)
-        # ignore the rest
-        # binfile.recall()    # section 2: palette
-        # binfile.recall()    # section 3: texture ptr table
-        # binfile.recall()    # section 4: palette ptr table
-        # binfile.recall()    # section 5: user data
+        binfile.recall()  # section 1
+        textures = []
+        binfile.start()
+        for i in range(num_tex):
+            textures.append(binfile.unpack_name())
+        binfile.end()
+        for x in self.mat_anims:
+            x.hook_textures(textures)
         binfile.end()
 
     def pack(self, binfile):
         textures = self.getTextures()
         anims = self.mat_anims
         self._pack(binfile)
-        binfile.write('I4HI', 0, self.frame_count, len(anims), len(textures), 0, self.loop)
-        binfile.createRef(0, False)  # section 0: data
+        binfile.write('I4HI', 0, self.framecount, len(anims), len(textures), 0, self.loop)
+        binfile.createRef()  # section 0: data
         folder = Folder(binfile)  # index group
         for x in anims:
             folder.addEntry(x.name)
@@ -369,7 +390,7 @@ class Pat0(SubFile):
             binfile.createRefFrom(offsets.pop(0))
             x.pack_frames(binfile, textures)
 
-        binfile.createRef(1, False)  # section 1: textures
+        binfile.createRef()  # section 1: textures
         binfile.start()
         for x in textures:
             binfile.storeNameRef(x)
@@ -377,6 +398,4 @@ class Pat0(SubFile):
         # skip palettes
         binfile.createRef(3, False)  # section 3: bunch of null
         binfile.advance(len(textures) * 4)
-        # skip palettes/userdata
-        # binfile.align()
         binfile.end()

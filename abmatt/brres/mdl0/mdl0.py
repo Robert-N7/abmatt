@@ -1,15 +1,16 @@
 """ MDL0 Models """
 # ----------------- Model sub files --------------------------------------------
-from abmatt.autofix import AUTO_FIXER, Bug
-from abmatt.binfile import Folder, PackingError
-from abmatt.drawlist import DrawList, Definition
-from abmatt.matching import fuzzy_match, MATCHING
-from abmatt.material import Material
-from abmatt.pat0 import Pat0MatAnimation, Pat0Collection
-from abmatt.polygon import Polygon
-from abmatt.shader import Shader, ShaderList
-from abmatt.srt0 import SRTMatAnim, SRTCollection
-from abmatt.subfile import SubFile
+from brres.lib.autofix import AUTO_FIXER, Bug
+from brres.lib.binfile import Folder, PackingError
+from brres.mdl0.drawlist import DrawList, Definition
+from brres.lib.matching import fuzzy_match, MATCHING
+from brres.mdl0.material import Material
+from brres.mdl0.vertex import Vertex
+from brres.pat0 import Pat0MatAnimation, Pat0Collection
+from brres.mdl0.polygon import Polygon
+from brres.mdl0.shader import Shader, ShaderList
+from brres.srt0 import SRTMatAnim, SRTCollection
+from brres.subfile import SubFile
 
 
 class ModelGeneric(object):
@@ -79,14 +80,6 @@ class TextureLink:
         binfile.end()
         return offset
 
-
-class ModelObject(ModelGeneric):
-    """ Object model data """
-
-    def __init__(self, name, parent=None):
-        super(ModelObject, self).__init__(name, parent, False, False)
-
-
 class FurLayer(ModelGeneric):
     """ Fur Layer model data """
 
@@ -100,144 +93,6 @@ class FurVector(ModelGeneric):
     def __init__(self, name, parent):
         super(FurVector, self).__init__(name, parent)
 
-
-class TexCoord:
-    """ TexCoord model data"""
-    INVALID_DIVISOR_ZERO = True
-
-    def __init__(self, name, parent):
-        self.name = name
-        self.parent = parent
-
-    def __str__(self):
-        return 'UV {} id:{} st:{} format:{} divisor:{} stride:{} count:{}'.format(self.name, self.index, self.is_st,
-                                                                                  self.format, self.divisor,
-                                                                                  self.stride, self.uv_count)
-
-    def check(self):
-        if self.divisor >= 32:
-            b = Bug(2, 2, 'UV {} divisor {} out of range'.format(self.name, self.divisor), 'Set to 0')
-            if self.INVALID_DIVISOR_ZERO:
-                self.divisor = 0
-                b.resolve()
-
-    def unpack(self, binfile):
-        offset = binfile.start()
-        # print('UV {} at {}'.format(self.name, offset))
-        binfile.readLen()
-        binfile.advance(4)
-        binfile.store()
-        binfile.advance(4)
-        self.index, self.is_st, self.format, self.divisor, self.stride, self.uv_count = binfile.read('3I2BH', 16)
-        self.minimum = binfile.read('3f', 12)
-        self.maximum = binfile.read('3f', 12)
-        binfile.recall()
-        self.data = binfile.readRemaining()
-        # printCollectionHex(self.data)
-        # print(self)
-        binfile.end()
-
-    def pack(self, binfile):
-        binfile.start()
-        binfile.markLen()
-        binfile.write('i', binfile.getOuterOffset())
-        binfile.mark()
-        binfile.storeNameRef(self.name)
-        binfile.write('3I2BH', self.index, self.is_st, self.format, self.divisor, self.stride, self.uv_count)
-        binfile.write('3f', *self.minimum)
-        binfile.write('3f', *self.maximum)
-        binfile.advance(8)
-        binfile.createRef()
-        binfile.writeRemaining(self.data)
-        binfile.end()
-
-
-class Color(ModelGeneric):
-    """ Colors model data """
-
-    def __init__(self, name, parent):
-        super(Color, self).__init__(name, parent)
-
-
-class Normal(ModelGeneric):
-    """ Normals model data """
-
-    def __init__(self, name, parent):
-        super(Normal, self).__init__(name, parent)
-
-
-class Vertex():
-    """ Vertex class for storing vertices data """
-
-    def __init__(self, name, parent):
-        self.name = name
-        self.parent = parent
-
-    def __str__(self):
-        return 'Vertex {} id:{} xyz:{} format:{} divisor:{} stride:{} count:{}'.format(self.name, self.index,
-                                                                                       self.is_xyz,
-                                                                                       self.format, self.divisor,
-                                                                                       self.stride, self.vertex_count)
-
-    def check(self):
-        if self.divisor >= 32:
-            b = Bug(2, 2, 'Vertex {} divisor {} out of range'.format(self.name, self.divisor), 'Set to 0')
-            if TexCoord.INVALID_DIVISOR_ZERO:
-                self.divisor = 0
-                b.resolve()
-
-    def unpack(self, binfile):
-        """ Unpacks some ptrs but mostly just leaves data as bytes """
-        binfile.start()
-        length = binfile.readLen()
-        binfile.advance(4)
-        binfile.store()  # data pointer
-        binfile.advance(4)  # ignore, we already have name
-        self.index, self.is_xyz, self.format, self.divisor, self.stride, self.vertex_count = binfile.read("3I2BH", 16)
-        self.minimum = binfile.read('3f', 12)
-        self.maximum = binfile.read('3f', 12)
-        binfile.recall()
-        self.data = binfile.readRemaining()
-        binfile.end()
-        return self
-
-    def pack(self, binfile):
-        """ Packs into binfile """
-        binfile.start()
-        binfile.markLen()
-        binfile.write("i", binfile.getOuterOffset())
-        binfile.mark()  # mark the data pointer
-        binfile.storeNameRef(self.name)
-        binfile.write('3I2BH', self.index, self.is_xyz, self.format, self.divisor, self.stride, self.vertex_count)
-        binfile.write('3f', *self.minimum)
-        binfile.write('3f', *self.maximum)
-        binfile.advance(8)
-        binfile.createRef()  # data pointer
-        binfile.writeRemaining(self.data)
-        binfile.end()
-
-
-class Bone(ModelGeneric):
-    """ Bone class """
-
-    def __init__(self, name, parent):
-        super(Bone, self).__init__(name, parent, False)
-
-
-class BoneTable:
-    """ Bonetable class """
-
-    def unpack(self, binfile):
-        """ unpacks bonetable """
-        [length] = binfile.read("I", 4)
-        self.entries = binfile.read("{}I".format(length), length * 4)
-
-    def pack(self, binfile):
-        length = len(self.entries)
-        binfile.write("I", length)
-        binfile.write("{}I".format(length), *self.entries)
-
-
 # ---------------------------------------------------------------------
 
 # ---------------------------------------------------------------------
@@ -245,7 +100,9 @@ class BoneTable:
 # ---------------------------------------------------------------------
 class Mdl0(SubFile):
     """ Model Subfile """
+
     MAGIC = "MDL0"
+    EXT = 'mdl0'
     VERSION_SECTIONCOUNT = {8: 11, 11: 14}
     EXPECTED_VERSION = 11
     SECTION_NAMES = ("Definitions", "Bones", "Vertices", "Normals", "Colors",
@@ -257,15 +114,14 @@ class Mdl0(SubFile):
     SECTION_CLASSES = (DrawList, Bone, Vertex, Normal, Color, TexCoord, FurVector,
                        FurLayer, Material, Shader, Polygon, TextureLink, TextureLink)
 
-    SETTINGS = ('name')
+    SETTINGS = ('name')  # todo, more settings
     DETECT_MODEL_NAME = True
     DRAW_PASS_AUTO = True
     RENAME_UNKNOWN_REFS = True
     REMOVE_UNKNOWN_REFS = True
 
-    def __init__(self, name, parent):
-        """ initialize with name and parent """
-        super(Mdl0, self).__init__(name, parent)
+    def __init__(self, name, parent, binfile=None):
+        """ initialize model """
         self.drawXLU = DrawList('DrawXlu', self)
         self.drawOpa = DrawList('DrawOpa', self)
         self.srt0_collection = None
@@ -288,14 +144,15 @@ class Mdl0(SubFile):
                          self.colors, self.texCoords, self.furVectors, self.furLayers,
                          self.materials, self.shaders, self.objects,
                          self.textureLinks, self.paletteLinks]
+        super(Mdl0, self).__init__(name, parent, binfile)
 
-    def __getitem__(self, key):
+    def get_str(self, key):
         if key == 'name':
             return self.name
         else:
             raise ValueError('Unknown key "{}"'.format(key))
 
-    def __setitem__(self, key, value):
+    def set_str(self, key, value):
         if key == 'name':
             self.rename(value)
         else:
@@ -387,7 +244,7 @@ class Mdl0(SubFile):
 
     def getMaterialByID(self, id):
         for x in self.materials:
-            if x.id == id:
+            if x.name == id:
                 return x
 
     def getMaterialsByName(self, name):
@@ -544,7 +401,7 @@ class Mdl0(SubFile):
     def checkDrawXLU(self):
         count = 0
         for x in self.materials:
-            is_draw_xlu = self.isMaterialDrawXlu(x.id)
+            is_draw_xlu = self.isMaterialDrawXlu(x.name)
             if x.xlu != is_draw_xlu:
                 change = 'opa' if x.xlu else 'xlu'
                 b = Bug(1, 4, '{} incorrect draw pass'.format(x.name), 'Change draw pass to {}'.format(change))
@@ -553,9 +410,9 @@ class Mdl0(SubFile):
                         self.mark_modified()
                     count += 1
                     if x.xlu:
-                        self.setMaterialDrawXlu(x.id)
+                        self.setMaterialDrawXlu(x.name)
                     else:
-                        self.setMaterialDrawOpa(x.id)
+                        self.setMaterialDrawOpa(x.name)
                     b.resolve()
         return count
 

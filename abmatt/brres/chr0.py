@@ -1,31 +1,46 @@
 """CHR0 Subfile"""
-from abmatt.subfile import SubFile
-from abmatt.binfile import Folder, printCollectionHex
+from copy import copy
+
+from brres.lib.matching import validInt, validBool
+from brres.subfile import SubFile, set_anim_str, get_anim_str
+from brres.lib.binfile import Folder
 
 
 class Chr0(SubFile):
     """ Chr0 class representation """
+
     MAGIC = "CHR0"
+    EXT = 'chr0'
     VERSION_SECTIONCOUNT = {5: 2, 3: 1}
     EXPECTED_VERSION = 5
     SETTINGS = ('framecount', 'loop')
 
-    def __init__(self, name, parent):
-        super(Chr0, self).__init__(name, parent)
+    def __init__(self, name, parent, binfile=None):
         self.animations = []
+        super(Chr0, self).__init__(name, parent, binfile)
+
+    def begin(self, initial_values=None):
         self.framecount = 1
         self.loop = True
-
-    def __getitem__(self, item):
-        if item == self.SETTINGS[0]:
-            return self.framecount
-        elif item == self.SETTINGS[1]:
-            return self.loop
+        self.scaling_rule = 0
 
     class ModelAnim:
         def __init__(self, name, offset):
             self.name = name
             self.offset = offset  # since we don't parse data... store name offsetg
+
+    def set_str(self, key, value):
+        return set_anim_str(self, key, value)
+
+    def get_str(self, key):
+        return get_anim_str(self, key)
+
+    def paste(self, item):
+        self.framecount = item.framecount
+        self.loop = item.loop
+        self.data = copy(item.data)
+
+
 
     def unpack(self, binfile):
         self._unpack(binfile)

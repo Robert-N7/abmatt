@@ -7,16 +7,12 @@ For editing Mario Kart Wii files
 import getopt
 import os
 import sys
-import Levenshtein
-import fuzzywuzzy
 from cmd import Cmd
 
 from abmatt.brres import Brres
-from abmatt.mdl0 import TexCoord
 from abmatt.command import Command, ParsingException, NoSuchFile
-from abmatt.autofix import AUTO_FIXER
-from abmatt.config import Config, load_config
-from matching import MATCHING
+from brres.lib.autofix import AUTO_FIXER
+from abmatt.config import load_config
 
 VERSION = '0.6.1'
 USAGE = "USAGE: abmatt [-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]"

@@ -2,16 +2,16 @@
 """For reading configuration file"""
 import os
 
-from abmatt.autofix import AUTO_FIXER
+from brres.lib.autofix import AUTO_FIXER
 from abmatt.command import Command
-from abmatt.subfile import SubFile
-from abmatt.matching import MATCHING, validBool
+from brres.subfile import SubFile
+from brres.lib.matching import MATCHING, validBool
 from abmatt.brres import Brres
-from abmatt.layer import Layer
-from abmatt.mdl0 import Mdl0, TexCoord
-from abmatt.pat0 import Pat0
-from abmatt.srt0 import Srt0
-from abmatt.shader import Shader, Stage
+from brres.mdl0.layer import Layer
+from brres.mdl0 import Mdl0
+from brres.pat0 import Pat0
+from brres.srt0 import Srt0
+from brres.mdl0.shader import Shader, Stage
 
 
 def parse_line(line):
@@ -116,9 +116,5 @@ def load_config(app_dir, loudness=None, autofix_level=None):
         pass
     try:
         Shader.MAP_ID_AUTO = validBool(conf['map_id_auto'])
-    except ValueError:
-        pass
-    try:
-        TexCoord.INVALID_DIVISOR_ZERO = validBool(conf['invalid_divisor_zero'])
     except ValueError:
         pass
