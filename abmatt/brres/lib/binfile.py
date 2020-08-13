@@ -492,8 +492,8 @@ class FolderEntry:
         current = entrylist[head.left]
         is_right = False
         # loop
-        while self.id <= current.name < prev.name:
-            if self.id == current.name:
+        while self.id <= current.id < prev.id:
+            if self.id == current.id:
                 # calculate new brres entry
                 self.calc_brres_id(current.name)
                 if current.get_brres_id_bit(self.id):
@@ -503,7 +503,7 @@ class FolderEntry:
                     self.left = current.idx
                     self.right = self.idx
             prev = current
-            is_right = self.get_brres_id_bit(current.name)
+            is_right = self.get_brres_id_bit(current.id)
             if is_right:
                 current = entrylist[current.right]
             else:

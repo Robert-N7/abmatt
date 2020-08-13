@@ -53,9 +53,17 @@ class Definition():
 
 class DrawList():
     """List exclusively with drawing definitions such as opacity"""
-    class DrawEntry():
-        def __init__(self, binfile):  # unpacks immediately
-            self.matIndex, self.objIndex, self.boneIndex, self.priority = binfile.read("3HB", 7)
+    class DrawEntry:
+        def __init__(self, binfile=None):  # unpacks immediately
+            if binfile:
+                self.matIndex, self.objIndex, self.boneIndex, self.priority = binfile.read("3HB", 7)
+
+        def begin(self, mat_id, obj_id, bone_id, priority=0):
+            self.matIndex = mat_id
+            self.objIndex = obj_id
+            self.boneIndex = bone_id
+            self.priority = priority
+            return self
 
         def pack(self, binfile):
             binfile.write("3HB", self.matIndex, self.objIndex, self.boneIndex, self.priority)
@@ -82,6 +90,9 @@ class DrawList():
         for i in range(len(li)):
             if li[i].matIndex == materialID:
                 return li.pop(i)
+
+    def add_entry(self, material_id, polygon_id, bone_id=0, priority=0):
+        self.list.append(self.DrawEntry().begin(material_id, polygon_id, bone_id, priority))
 
     def insert(self, drawEntry):
         priority = drawEntry.priority

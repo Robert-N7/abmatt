@@ -1,37 +1,35 @@
 """ MDL0 Models """
 # ----------------- Model sub files --------------------------------------------
+import numpy as np
+
 from brres.lib.autofix import AUTO_FIXER, Bug
 from brres.lib.binfile import Folder, PackingError
+from brres.lib.node import Node, Clipable
+from brres.mdl0.color import Color, ColorCollection
 from brres.mdl0.drawlist import DrawList, Definition
 from brres.lib.matching import fuzzy_match, MATCHING
 from brres.mdl0.material import Material
+from brres.mdl0.normal import Normal
+from brres.mdl0.texcoord import TexCoord
 from brres.mdl0.vertex import Vertex
 from brres.pat0 import Pat0MatAnimation, Pat0Collection
 from brres.mdl0.polygon import Polygon
 from brres.mdl0.shader import Shader, ShaderList
 from brres.srt0 import SRTMatAnim, SRTCollection
 from brres.subfile import SubFile
+from brres.mdl0.bone import Bone, BoneTable
 
 
-class ModelGeneric(object):
+class ModelGeneric(Node):
     """ A generic model class - most data structures have similar type of header"""
-
-    def __init__(self, name, parent, has_data_ptr=True, has_name_ptr=True):
-        """ Each model subfile has len, mdloffset, [dataptr], [nameptr], index"""
-        self.parent = parent
-        self.hasDataptr = has_data_ptr
-        self.hasNamePtr = has_name_ptr
-        self.name = name
 
     def unpack(self, binfile):
         """ Unpacks some ptrs but mostly just leaves data as bytes """
         binfile.start()
         self.length, mdl = binfile.read("Ii", 8)
         offset = binfile.beginOffset + mdl
-        if self.hasDataptr:
-            [self.dataPtr] = binfile.read("I", 4)
-        if self.hasNamePtr:
-            binfile.advance(4)  # ignore, we already have name
+        [self.dataPtr] = binfile.read("I", 4)
+        binfile.advance(4)  # ignore, we already have name
         [self.index] = binfile.read("I", 4)
         # doesn't do much unpacking
         self.data = binfile.readRemaining(self.length)
@@ -42,23 +40,20 @@ class ModelGeneric(object):
         """ Packs into binfile """
         binfile.start()
         binfile.write("Ii", self.length, binfile.getOuterOffset())
-        if self.hasDataptr:
-            binfile.write("I", self.dataPtr)
-        if self.hasNamePtr:
-            binfile.storeNameRef(self.name)
+        binfile.write("I", self.dataPtr)
+        binfile.storeNameRef(self.name)
         binfile.write("I", self.index)
         binfile.writeRemaining(self.data)
         binfile.end()
 
 
-class TextureLink:
+class TextureLink(Node):
     """ Links from textures to materials and layers """
 
-    def __init__(self, name, parent=None):
+    def __init__(self, name, parent=None, binfile=None):
         """Only tracks number of references, which serve as placeholders to be filled in by the layers"""
-        self.name = name
-        self.parent = parent
         self.num_references = 0
+        super(TextureLink, self).__init__(name, parent, binfile)
 
     def __str__(self):
         return self.name + ' ' + str(self.num_references)
@@ -80,18 +75,16 @@ class TextureLink:
         binfile.end()
         return offset
 
+
 class FurLayer(ModelGeneric):
     """ Fur Layer model data """
-
-    def __init__(self, name, parent=None):
-        super(FurLayer, self).__init__(name, parent)
+    pass
 
 
 class FurVector(ModelGeneric):
     """ Fur Vector model data """
+    pass
 
-    def __init__(self, name, parent):
-        super(FurVector, self).__init__(name, parent)
 
 # ---------------------------------------------------------------------
 
@@ -157,6 +150,81 @@ class Mdl0(SubFile):
             self.rename(value)
         else:
             raise ValueError('Unknown key "{}"'.format(key))
+
+    @staticmethod
+    def add_to_group(group, item):
+        i = len(group)
+        item.index = i
+        group.append(item)
+
+    def add_material(self, material):
+        self.add_to_group(self.materials, material)
+        for x in material.layers:
+            self.add_texture_link(x.name)
+        return material
+
+    def add_bone(self, name):
+        b = Bone(name, self)
+        self.add_to_group(self.bones, b)
+        return b
+
+    def add_geometry(self, name, vertices, normals, colors, tex_coord_groups):
+        """
+        Adds the geometry, note that point collection face indices must match in size!
+        :param name: obj name
+        :param vertices: point_collection
+        :param normals: optional point_collection
+        :param colors: optional color_collection
+        :param tex_coord_groups: list of up to 8 tex coord point_collection(s)
+        """
+        vert = Vertex(name, self)
+        vert.encode_data(vertices)
+        self.add_to_group(self.vertices, vert)
+        index_groups = vertices.face_indicies
+        if self.normals:
+            normal = Normal(name, self)
+            normal.encode_data(normals)
+            self.add_to_group(self.normals, normal)
+            np.append(index_groups, normals.face_indicies, axis=1)
+        else:
+            normal = None
+        if colors:
+            color = Color(name, self)
+            color.encode_data(colors)
+            self.add_to_group(self.colors, color)
+            np.append(index_groups, colors.face_indicies, axis=1)
+        else:
+            color = self.get_default_color()
+        uvs = []
+        uv_i = len(self.texCoords)
+        for x in tex_coord_groups:
+            tex = TexCoord('#{}'.format(uv_i), self)
+            tex.index = uv_i
+            self.texCoords.append(tex)
+            uv_i += 1
+            uvs.append(tex)
+            np.append(index_groups, x.face_indicies, axis=1)
+        p = Polygon(name, self)
+        p.encode_data(vert, normal, color, uvs, index_groups)
+        self.add_to_group(self.objects, p)
+        return p
+
+    def add_definition(self, material, polygon, bone=None, priority=0):
+        if bone is None:
+            bone = self.bones[0]
+        definitions = self.drawOpa if material.xlu else self.drawXLU
+        definitions.add_entry(material.index, polygon.index, bone.index, priority)
+
+    def get_default_color(self):
+        default_name = 'default'
+        for x in self.colors:
+            if x.name == default_name:
+                return x
+        color = Color(default_name, self)
+        color.encode_data(ColorCollection([[0x80, 0x80, 0x80, 0xff]], [0]))
+        color.index = len(self.colors)
+        self.colors.append(color)
+        return color
 
     # ---------------------------------- SRT0 ------------------------------------------
     def set_srt0(self, srt0_collection):
@@ -280,14 +348,14 @@ class Mdl0(SubFile):
     def getShaders(self, material_list, for_modification=True):
         return self.shaders.getShaders(material_list, for_modification)
 
-    # ----------------------------- Layers/Tex Links -------------------------------------
-    def getTextureLink(self, name):
+    # ----------------------------- Tex Links -------------------------------------
+    def get_texture_link(self, name):
         for x in self.textureLinks:
             if x.name == name:
                 return x
 
-    def addLayerReference(self, name):
-        link = self.getTextureLink(name)
+    def add_texture_link(self, name):
+        link = self.get_texture_link(name)
         if not link:
             if name != 'Null' and not self.parent.getTexture(name):
                 tex = fuzzy_match(name, self.parent.textures)
@@ -299,13 +367,13 @@ class Mdl0(SubFile):
             self.textureLinks.append(link)
         link.num_references += 1
 
-    def removeLayerReference(self, name):
-        link = self.getTextureLink(name)
+    def remove_texture_link(self, name):
+        link = self.get_texture_link(name)
         if not link:
             raise ValueError('No such texture link: {}'.format(name))
         link.num_references -= 1
 
-    def renameLayer(self, layer, name):
+    def rename_texture_link(self, layer, name):
         """Attempts to rename a layer, raises value error if the texture can't be found"""
         # first try to get texture link
         old_link = new_link = None
@@ -420,10 +488,12 @@ class Mdl0(SubFile):
         return set(x.name for x in self.textureLinks if x.num_references > 0)
 
     # ---------------START PACKING STUFF -------------------------------------
-    def clean(self):
+    def pre_pack(self):
         """Cleans up references in preparation for packing"""
-        self.sections[0] = [x for x in self.definitions if x]  # changes section but leaves definition, possible bug?
         self.sections[11] = self.textureLinks = [x for x in self.textureLinks if x.num_references > 0]
+
+    def post_unpack(self):
+        Bone.post_unpack(self.bones)
 
     def unpackSection(self, binfile, section_index):
         """ unpacks section by creating items  of type section_klass
@@ -442,9 +512,7 @@ class Mdl0(SubFile):
             section = self.sections[section_index]
             while len(folder.entries):
                 name = folder.recallEntryI()
-                d = section_klass(name, self)
-                d.unpack(binfile)
-                section.append(d)
+                section.append(section_klass(name, self, binfile))
             return len(section)
 
     def unpackDefinitions(self, binfile):
@@ -496,6 +564,7 @@ class Mdl0(SubFile):
             self.unpackSection(binfile, i)
             i += 1
         binfile.end()  # end file
+        self.post_unpack()
 
     def packTextureLinks(self, binfile, folder):
         """Packs texture link section, returning map of names:offsets be filled in by mat/layer refs"""
@@ -507,8 +576,9 @@ class Mdl0(SubFile):
 
     def pack_definitions(self, binfile, folder):
         for x in self.sections[0]:
-            folder.createEntryRefI()
-            x.pack(binfile)
+            if x:
+                folder.createEntryRefI()
+                x.pack(binfile)
         binfile.align(4)
 
     def pack_materials(self, binfile, folder, texture_link_map):
@@ -526,8 +596,9 @@ class Mdl0(SubFile):
         if section:
             # now pack the data
             for x in section:
-                folder.createEntryRefI()  # create reference to current data location
-                x.pack(binfile)
+                 if x:
+                    folder.createEntryRefI()  # create reference to current data location
+                    x.pack(binfile)
 
     def packFolders(self, binfile):
         """ Generates the root folders
@@ -539,15 +610,14 @@ class Mdl0(SubFile):
         # Create folder for each section the MDL0 has
         i = j = 0
         while i < len(sections):
-            if i == 6 and self.version < 10:
-                i += 2
             section = sections[i]
             if i == 9:  # special case for shaders: must add entry for each material
                 section = sections[i - 1]
             if section:
                 f = Folder(binfile, self.SECTION_NAMES[i])
-                for k in range(len(section)):
-                    f.addEntry(section[k].name)
+                for x in section:
+                    if x:
+                        f.addEntry(x.name)
                 root_folders.append(f)
                 binfile.createRef(j, False)  # create the ref from stored offsets
                 f.pack(binfile)
@@ -561,7 +631,7 @@ class Mdl0(SubFile):
         """ Packs the model data """
         if self.sections[6] or self.sections[7] or self.sections[12]:
             raise PackingError(binfile, 'Packing Fur/palettes not supported')
-        self.clean()
+        self.pre_pack()
         self._pack(binfile)
         binfile.start()  # header
         binfile.write("Ii7I", 0x40, binfile.getOuterOffset(), 0, 0, self.vertexCount, self.faceCount,
@@ -577,12 +647,10 @@ class Mdl0(SubFile):
         folders = self.packFolders(binfile)
 
         # texture links
-        texture_link_map = None
-        folder = folders[9] if self.version < 10 else folders[11]  # texture links
-        texture_link_map = self.packTextureLinks(binfile, folder)
+        texture_link_map = self.packTextureLinks(binfile, folders[11])
         self.pack_definitions(binfile, folders[0])
         self.pack_section(binfile, 1, folders[1])  # bones
-        i = 6 if self.version < 10 else 8
+        i = 8
         self.pack_materials(binfile, folders[i], texture_link_map)
         i += 1
         self.pack_shaders(binfile, folders[i])

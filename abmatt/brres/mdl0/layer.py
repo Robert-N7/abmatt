@@ -4,7 +4,7 @@ from copy import copy, deepcopy
 from brres.lib.matching import parseValStr, indexListItem, validBool, fuzzy_strings
 from brres.lib.node import Clipable
 
-from abmatt.wiigraphics.xf import XFTexMatrix, XFDualTex
+from brres.mdl0.wiigraphics.xf import XFTexMatrix, XFDualTex
 from brres.lib.autofix import Bug
 
 
@@ -35,10 +35,18 @@ class Layer(Clipable):
     RENAME_UNKNOWN_REFS = True
     REMOVE_UNKNOWN_REFS = True
 
-    def __init__(self, id, name, parent):
+    def __init__(self, layer_index, name, parent, binfile=None):
         """ Initializes, id (position of layer), name, and parent material """
-        super(Layer, self).__init__(name, parent)
-        self.id = id
+        self.layer_index = layer_index
+        self.xfTexMatrix = XFTexMatrix(layer_index)
+        self.xfDualTex = XFDualTex(layer_index)
+        self.enableIdentityMatrix = True
+        self.texMatrix = [1.0, 0, 0, 0,
+                          0, 1.0, 0, 0,
+                          0, 0, 1.0, 0]
+        super(Layer, self).__init__(name, parent, binfile)
+
+    def begin(self):
         self.enable = True
         self.scale = (1, 1)
         self.rotation = 0
@@ -51,12 +59,6 @@ class Layer(Clipable):
         self.LODBias = 0
         self.maxAnisotrophy = 0
         self.texelInterpolate = self.clampBias = False
-        self.xfTexMatrix = XFTexMatrix(id)
-        self.xfDualTex = XFDualTex(id)
-        self.enableIdentityMatrix = True
-        self.texMatrix = [1.0, 0, 0, 0,
-                          0, 1.0, 0, 0,
-                          0, 0, 1.0, 0]
 
     def __value__(self):
         return "Layer {}: scale {} rot {} trans {} uwrap {} vwrap {} minfilter {}".format(self.name,
@@ -313,7 +315,7 @@ class Layer(Clipable):
         return self.enable
 
     def setName(self, value):
-        self.name = self.parent.renameLayer(self, value)
+        self.name = self.parent.rename_texture_link(self, value)
 
     SET_SETTING = (setScaleStr, setRotationStr, setTranslationStr, setCameraRefStr,
                    setLightRefStr, setMapmodeStr, setUWrapStr, setVWrapStr, setMinFilterStr, setMagFilterStr,
@@ -380,7 +382,7 @@ class Layer(Clipable):
         binfile.start()
         binfile.storeNameRef(self.name)
         binfile.advance(12)  # ignoring pallete name / offsets
-        binfile.write("6IfI2BH", self.id, self.id,
+        binfile.write("6IfI2BH", self.layer_index, self.layer_index,
                       self.uwrap, self.vwrap, self.minfilter, self.magfilter,
                       self.LODBias, self.maxAnisotrophy, self.clampBias,
                       self.texelInterpolate, 0)

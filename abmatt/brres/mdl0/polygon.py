@@ -1,4 +1,6 @@
 """Objects (Polygons)"""
+from struct import pack
+
 from brres.lib.binfile import printCollectionHex
 from brres.lib.node import Node
 
@@ -26,17 +28,73 @@ class Polygon(Node):
         self.color0_has_alpha = 0
         self.color1_has_alpha = 0
         self.num_colors = 1
-        self.normal_type = 1
+        self.normal_type = 0
         self.num_tex = 1
         self.vertex_count = 0
         self.face_count = 0
         self.flags = 0
         self.index = 0
         self.bone = 0
+        self.bone_table = None
         self.vertex_group_index = 0
         self.normal_group_index = 0
         self.color_group_indices = [0, -1] * 2
         self.tex_coord_group_indices = [0] + [-1] * 7
+
+    def encode_data(self, vertex, normal, color, uvs, face_indices):
+        # set up vertex declaration
+        self.vertex_format = vertex.format
+        self.vertex_divisor = vertex.divisor
+        if len(vertex) > 0xff:
+            self.vertex_index_format = self.INDEX_FORMAT_SHORT
+            fmt_str = 'H'
+        else:
+            fmt_str = 'B'
+        self.vertex_count = len(vertex)
+        self.vertex_group_index = vertex.index
+        if normal:
+            self.normal_type = normal.comp_count
+            self.normal_group_index = normal.index
+            self.normal_format = normal.format
+            if len(normal) > 0xff:
+                self.normal_index_format = self.INDEX_FORMAT_SHORT
+                fmt_str += 'H'
+            else:
+                fmt_str += 'B'
+        else:
+            self.normal_index_format = self.INDEX_FORMAT_NONE
+        if color:
+            if len(color) > 0xff:
+                self.color0_index_format = self.INDEX_FORMAT_SHORT
+                fmt_str += 'H'
+            else:
+                fmt_str += 'B'
+            self.color0_has_alpha = color.has_alpha
+            self.color_group_indices[0] = color.index
+        else:
+            self.color0_index_format = self.INDEX_FORMAT_NONE
+            self.num_colors = 0
+        self.num_tex = len(uvs)
+        for i in range(len(uvs)):
+            uv = uvs[i]
+            self.tex_coord_group_indices[i] = uv.index
+            self.tex_format[i] = uv.format
+            self.tex_divisor[i] = uv.divisor
+            if len(uv) > 0xff:
+                self.tex_index_format[i] = self.INDEX_FORMAT_SHORT
+                fmt_str += 'H'
+            else:
+                self.tex_index_format[i] = self.INDEX_FORMAT_BYTE
+                fmt_str += 'B'
+        face_point_len = len(face_indices[0])
+        self.face_count = face_point_len / 3
+        data = bytearray(pack('>BH', 0x90, face_point_len))
+        for i in range(face_point_len):
+            data.extend(pack(fmt_str, [x[i] for x in face_indices]))
+        self.vt_data = data
+
+
+
 
     def get_vertex_group(self):
         if self.vertex_index_format >= self.INDEX_FORMAT_BYTE:
@@ -97,8 +155,8 @@ class Polygon(Node):
         # vertex data
         vt_ref = binfile.offset - vt_offset + 8
         binfile.writeOffset('I', vt_offset, vt_ref)
-        binfile.writeRemaining(self.vt_data)
-        binfile.end()
+        binfile.write('{}B'.format(len(self.vt_data)), *self.vt_data)
+        binfile.alignAndEnd()
 
     def unpack(self, binfile):
         binfile.start()
@@ -121,18 +179,20 @@ class Polygon(Node):
             binfile.advance(4)  # ignore
         binfile.store()  # bt offset
         binfile.recall()  # bt
-        bt_length = binfile.read('I', 4)
-        self.bone_table = binfile.read('{}H'.format(bt_length), bt_length * 2) if bt_length else None
+        [bt_length] = binfile.read('I', 4)
+        self.bone_table = binfile.read('{}H'.format(bt_length), bt_length * 2) if bt_length > 0 else None
         binfile.offset = vt_dec_offset + 12
-        assert cp_vert_lo == [binfile.read('I', 4)]
+        assert cp_vert_lo == binfile.read('I', 4)[0]
         binfile.advance(2)
-        assert cp_vert_hi == [binfile.read('I', 4)]
+        assert cp_vert_hi == binfile.read('I', 4)[0]
         binfile.advance(5)
-        assert xf_vert == [binfile.read('I', 5)]
+        assert xf_vert == binfile.read('I', 5)[0]
         uvat = binfile.read('HIHIHI', 18)
         self.parse_uvat(uvat[1], uvat[3], uvat[5])
         binfile.offset = vt_offset
-        self.vt_data = binfile.readRemaining(vt_size)
+        self.vt_data = binfile.read('{}B'.format(vt_size), vt_size)
+        # print('\n\n' + self.name)
+        # printCollectionHex(self.vt_data)
         binfile.end()
 
     def parse_cp_vertex_format(self, hi, lo):

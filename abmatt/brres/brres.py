@@ -67,6 +67,15 @@ class Brres(Clipable):
         else:
             raise ValueError('Unknown key "{}"'.format(key))
 
+    def add_mdl0(self, mdl0):
+        prev = self.getModel(mdl0.name)
+        if prev:
+            self.models.remove(prev)
+            mdl0.paste(prev)
+        self.models.append(mdl0)
+        mdl0.parent = self
+        return mdl0
+
     # ---------------------------------------------- CLIPBOARD ------------------------------------------
     def paste(self, brres):
         self.paste_group(self.models, brres.models)
@@ -78,7 +87,6 @@ class Brres(Clipable):
             if tex:
                 tex.paste(t2[x])
         # todo chr0 paste
-
 
     def mark_modified(self):
         self.isModified = True
@@ -185,6 +193,9 @@ class Brres(Clipable):
             if tex:
                 self.addTexture(tex)
         return tex
+
+    def hasTexture(self, name):
+        return True if name in self.texture_map else False
 
     def getTextures(self, name):
         return MATCHING.findAll(name, self.textures)

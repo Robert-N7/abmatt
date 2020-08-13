@@ -8,7 +8,8 @@ from copy import deepcopy
 from brres.lib.matching import validBool, indexListItem, validInt, validFloat, splitKeyVal, MATCHING
 from brres.lib.node import Clipable
 from brres.mdl0.layer import Layer
-from abmatt.wiigraphics.matgx import MatGX
+from brres.mdl0.shader import Shader
+from brres.mdl0.wiigraphics.matgx import MatGX
 from brres.lib.autofix import AUTO_FIXER
 
 
@@ -70,10 +71,21 @@ class Material(Clipable):
         super(Material, self).__init__(name, parent, binfile)
 
     def begin(self):
-        pass # todo
+        self.shaderStages = 0
+        self.indirectStages = 0
+        self.cullmode = 2
+        self.compareBeforeTexture = True
+        self.lightset = -1
+        self.fogset = 0
+        self.xlu = 0
+        self.textureMatrixMode = 0
+        self.lightChannels.append(LightChannel())
+        self.shader = Shader(self.name, self.parent)
+        self.parent.shaders[self.name] = self.shader
+        self.shader.material = self
 
     def __str__(self):
-        return "Mt{} {}: xlu {} layers {} culling {} blend {}".format(self.id, self.name,
+        return "Mt{} {}: xlu {} layers {} culling {} blend {}".format(self.index, self.name,
                                                                       self.xlu, len(self.layers),
                                                                       self.CULL_STRINGS[self.cullmode], self.getBlend())
 
@@ -160,7 +172,7 @@ class Material(Clipable):
         return self.COMP_STRINGS[self.matGX.zmode.getDepthFunction()]
 
     def getDrawPriority(self):
-        return self.parent.getDrawPriority(self.id)
+        return self.parent.getDrawPriority(self.index)
 
     def getName(self):
         return self.name
@@ -182,7 +194,7 @@ class Material(Clipable):
         return self.addLayer(key)
 
     def getDrawXLU(self):
-        return self.parent.isMaterialDrawXlu(self.id)
+        return self.parent.isMaterialDrawXlu(self.index)
 
     def getIndMatrix(self):
         ret = ''
@@ -392,13 +404,13 @@ class Material(Clipable):
 
     def setDrawPriorityStr(self, str):
         i = validInt(str, 0, 255)
-        self.parent.setDrawPriority(self.id, i)
+        self.parent.setDrawPriority(self.index, i)
 
     def setDrawXLU(self, enabled):
         if enabled:
-            self.parent.setMaterialDrawXlu(self.id)
+            self.parent.setMaterialDrawXlu(self.index)
         else:
-            self.parent.setMaterialDrawOpa(self.id)
+            self.parent.setMaterialDrawOpa(self.index)
 
     MATRIX_ERR = 'Error parsing "{}", Usage: IndirectMatrix:[<i>:]<scale>,<r1c1>,<r1c2>,<r1c3>,<r2c1>,<r2c2>,<r2c3>'
 
@@ -498,11 +510,18 @@ class Material(Clipable):
             AUTO_FIXER.error('Multiple Pat0 for {}!'.format(self.name), 1)
             return False
         self.pat0 = anim
-        anim.setMaterial(self)
         return True
 
     def get_pat0(self):
         return self.pat0
+
+    def enable_blend(self):
+        self.compareBeforeTexture = True
+        self.matGX.blendmode.setEnabled(True)
+        self.setXluStr('True')
+        self.matGX.alphafunction.setXlu(False)
+        self.matGX.zmode.setDepthUpdate(False)
+        self.setDrawPriorityStr('1')
 
     # ----------------------------INFO ------------------------------------------
     def info(self, key=None, indentation_level=0):
@@ -548,7 +567,7 @@ class Material(Clipable):
     def removeLayerI(self, index=-1):
         """Removes layer at index"""
         layer = self.layers[index]
-        self.parent.removeLayerReference(layer.name)
+        self.parent.remove_texture_link(layer.name)
         self.layers.pop(index)
         if self.srt0:
             self.srt0.updateLayerNameI(index, None)
@@ -565,13 +584,13 @@ class Material(Clipable):
     def addEmptyLayer(self):
         """Adds 1 layer"""
         name = 'Null'
-        self.parent.addLayerReference(name)
+        self.parent.add_texture_link(name)
         self.layers.append(Layer(len(self.layers), name, self))
         return len(self.layers)
 
     def addLayer(self, name):
         """ Creates and returns new layer """
-        self.parent.addLayerReference(name)  # update model texture link/check that exists
+        self.parent.add_texture_link(name)  # update model texture link/check that exists
         i = len(self.layers)
         l = Layer(i, name, self)
         self.layers.append(l)
@@ -582,7 +601,7 @@ class Material(Clipable):
     def renameLayer(self, layer, name):
         if self.srt0:
             self.srt0.updateLayerNameI(layer.name, name)
-        return self.parent.renameLayer(layer, name)
+        return self.parent.rename_texture_link(layer, name)
 
     # ---------------------------------PASTE------------------------------------------
     def paste(self, item):
@@ -624,13 +643,13 @@ class Material(Clipable):
     # -----------------------------------------------------------------------------
     # PACKING
     # -----------------------------------------------------------------------------
-    def pack(self, binfile, texture_link_map):
+    def pack(self, binfile, texture_link_map=None):
         """ Packs the material """
         self.offset = binfile.start()
         binfile.markLen()
         binfile.write("i", binfile.getOuterOffset())
         binfile.storeNameRef(self.name)
-        binfile.write("2I4BI3b", self.id, self.xlu << 31, len(self.layers), len(self.lightChannels),
+        binfile.write("2I4BI3b", self.index, self.xlu << 31, len(self.layers), len(self.lightChannels),
                       self.shaderStages, self.indirectStages, self.cullmode,
                       self.compareBeforeTexture, self.lightset, self.fogset)
         binfile.write("BI4B", 0, 0, 0xff, 0xff, 0xff, 0xff)  # padding, indirect method, light normal map
@@ -720,9 +739,7 @@ class Material(Clipable):
     def unpackLightChannels(self, binfile, nlights):
         """ Unpacks the light channels """
         for i in range(nlights):
-            lc = LightChannel()
-            self.lightChannels.append(lc)
-            lc.unpack(binfile)
+            self.lightChannels.append(LightChannel(binfile))
 
     def unpack(self, binfile):
         """ Unpacks material """
@@ -730,7 +747,7 @@ class Material(Clipable):
         # print('Material {} offset {}'.format(self.name, offset))
         l, mdOff = binfile.read("Ii", 8)
         binfile.advance(4)
-        self.id, xluFlags, ntexgens, nlights, \
+        self.index, xluFlags, ntexgens, nlights, \
         self.shaderStages, self.indirectStages, \
         self.cullmode, self.compareBeforeTexture, \
         self.lightset, self.fogset, pad = binfile.read("2I2B2BI4b", 20)
@@ -773,13 +790,20 @@ class LightChannel:
     LC_ERROR = 'Invalid Light "{}", Expected ((color|alpha)control:key:value|[material|ambient|raster]\
 (color|alpha)(enable|rgba))'
 
-    def __init__(self):
-        self.materialColorEnabled = False
-        self.materialAlphaEnabled = False
-        self.ambientColorEnabled = False
-        self.ambientAlphaEnabled = False
-        self.rasterColorEnabled = False
-        self.rasterAlphaEnabled = False
+    def __init__(self, binfile=None):
+        if binfile:
+            self.unpack(binfile)
+        else:
+            self.begin()
+
+    def begin(self):
+        self.materialColorEnabled = self.materialAlphaEnabled = True
+        self.ambientAlphaEnabled = self.ambientColorEnabled = True
+        self.rasterAlphaEnabled = self.rasterColorEnabled = True
+        self.materialColor = [255, 255, 255, 255]
+        self.ambientColor = [0, 0, 0, 255]
+        self.colorLightControl = self.LightChannelControl(1793)
+        self.alphaLightControl = self.LightChannelControl(1793)
 
     def __str__(self):
         return 'Flags:{:02X} Mat:{} Amb:{}\n\tColorControl: {}\n\tAlphaControl: {}'.format(self.flagsToInt(),

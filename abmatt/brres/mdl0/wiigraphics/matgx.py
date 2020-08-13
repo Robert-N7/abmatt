@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """ Material wii graphics"""
-from abmatt.wiigraphics.bp import ColorReg, AlphaFunction, ZMode, BPCommand, BlendMode, ConstantAlpha, IndMatrix
+from brres.mdl0.wiigraphics.bp import ColorReg, AlphaFunction, ZMode, BPCommand, BlendMode, ConstantAlpha, IndMatrix
 
 
 class TevRegister:

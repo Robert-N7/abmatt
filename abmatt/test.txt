@@ -1,2 +1,2 @@
-select * in Course/ridgehighway_course.d/course_model.brres
-save as test.brres overwrite
+select * in ..\beginner_course.d\course_model.brres
+save as test2.brres overwrite

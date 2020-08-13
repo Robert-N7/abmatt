@@ -5,7 +5,7 @@ from copy import deepcopy, copy
 
 from brres.lib.binfile import Folder
 from brres.lib.matching import *
-from abmatt.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
+from brres.mdl0.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
 from brres.lib.autofix import AUTO_FIXER, Bug
 from brres.lib.node import Clipable
 
@@ -152,8 +152,7 @@ class Stage(Clipable):
                 "indirectswrap", "indirecttwrap",
                 "indirectuseprevstage", "indirectunmodifiedlod")
 
-    def __init__(self, name, parent):
-        super(Stage, self).__init__(name, parent)
+    def __init__(self, name, parent, binfile=None):
         self.map = {
             "enabled": True, "mapid": name, "coordinateid": name,
             "textureswapselection": 0, "rastercolor": self.RASTER_COLORS[-1],
@@ -174,6 +173,7 @@ class Stage(Clipable):
             "indirectswrap": self.WRAP[0], "indirecttwrap": self.WRAP[0],
             "indirectuseprevstage": False, "indirectunmodifiedlod": False
         }
+        super(Stage, self).__init__(name, parent, binfile)
 
     def __eq__(self, stage):
         """Determines if stages are equal"""
@@ -450,13 +450,16 @@ class Shader(Clipable):
     MAP_ID_AUTO = True
     REMOVE_UNUSED_LAYERS = False
 
-    def __init__(self, name, parent):
-        super(Shader, self).__init__(name, parent)
+    def __init__(self, name, parent, binfile=None):
         self.stages = []
         self.swap_table = deepcopy(self.SWAP_TABLE)
         self.material = None  # material to be hooked
         self.indTexMaps = [-1] * 4
         self.indTexCoords = [-1] * 4
+        super(Shader, self).__init__(name, parent, binfile)
+
+    def begin(self):
+        self.stages.append(Stage(0, self))
 
     def __eq__(self, other):
         if len(self.stages) != len(other.stages) or self.getTexRefCount() != other.getTexRefCount():

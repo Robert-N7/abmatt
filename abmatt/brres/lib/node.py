@@ -6,13 +6,13 @@ from brres.lib.binfile import BinFile
 
 class Node:
     """A node with name and parent"""
-    def __init__(self, name, parent, binfile):
+    def __init__(self, name, parent, binfile=None):
+        self.parent = parent
+        self.name = name
         if binfile is not None:
             self.unpack(binfile)
         else:
             self.begin()
-        self.parent = parent
-        self.name = name
 
     def begin(self):
         pass

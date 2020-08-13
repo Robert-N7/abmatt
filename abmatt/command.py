@@ -304,12 +304,12 @@ class Command:
             Command.closeFiles(to_close)
         # open any that aren't opened
         for f in to_open:
-            try:
+            # try:
                 brres = Brres(f)
                 active.append(brres)
                 opened[f] = brres
-            except UnpackingError as e:
-                AUTO_FIXER.error(e)
+            # except UnpackingError as e:
+            #     AUTO_FIXER.error(e)
         return active
 
     @staticmethod
