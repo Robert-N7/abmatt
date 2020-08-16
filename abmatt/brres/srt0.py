@@ -313,7 +313,7 @@ class SRTTexAnim(Clipable):
                     trace += ' ' + x + ':' + str(anim)
             print(trace)
         else:
-            print('{}\t{}:{}'.format(trace, key, self[key]))
+            print('{}\t{}:{}'.format(trace, key, self.get_str(key)))
 
     def setKeyFrame(self, animType, value, index=0):
         """ Adds a key frame to the animation
@@ -579,7 +579,7 @@ class SRTMatAnim(Clipable):
             self.tex_animations.append(anim)
             layer = self.parent.getLayerI(i)
             if layer:
-                anim.name = layer.name
+                anim.real_name = layer.name
 
     def texDisable(self, i):
         if self.texEnabled[i]:
@@ -594,18 +594,15 @@ class SRTMatAnim(Clipable):
 
     def getTexAnimationByName(self, name):
         for x in self.tex_animations:
-            if x.name == name:
+            if x.real_name == name:
                 return x
 
     def getTexAnimationByID(self, id):
         if not self.texEnabled[id]:
             return None
-        j = 0  # indexing tex anims (enabled)
-        for i in range(len(self.texEnabled)):
-            if self.texEnabled[i]:
-                if i == id:
-                    return self.tex_animations[j]
-                j += 1
+        for x in self.tex_animations:
+            if x.name == id:
+                return x
 
     # ------------------------------- ADD -----------------------------
     def addLayer(self):
@@ -630,8 +627,15 @@ class SRTMatAnim(Clipable):
                 return self.texDisable(i)
         raise ValueError('{} No layers left to remove'.format(self.name))
 
+    def removeLayerI(self, i):
+        # removes the layer i, shifting as necessary (for removing the layer and animation)
+        if self.texEnabled[i]:
+            self.tex_animations.remove(self.getTexAnimationByID(i))
+            for j in range(i + 1, len(self.texEnabled)):
+                self.texEnabled[j-1] = self.texEnabled[j]
+
     def removeLayerByName(self, name):
-        """Removes the layer if found"""
+        """Removes the layer if found, (for removing only the animation)"""
         j = 0
         matches = MATCHING.findAll(name, self.tex_animations)
         for i in range(len(self.texEnabled)):
@@ -651,7 +655,7 @@ class SRTMatAnim(Clipable):
         """updates layer i name"""
         tex = self.getTexAnimationByID(i)
         if tex:
-            tex.name = name
+            tex.real_name = name
 
     def updateLayerNames(self, material):
         """Updates the underlying reference names given material"""
@@ -659,7 +663,7 @@ class SRTMatAnim(Clipable):
         j = 0  # tex indexer
         for i in range(len(layers)):
             if self.texEnabled[i]:
-                self.tex_animations[j].name = layers[i].name
+                self.tex_animations[j].real_name = layers[i].name
                 j += 1
 
     def check(self):
@@ -686,7 +690,7 @@ class SRTMatAnim(Clipable):
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + '(SRT0)' + self.name if indentation_level else '>(SRT0):' + self.name
         if key in self.SETTINGS:
-            print('{}\t{}'.format(trace, self[key]))
+            print('{}\t{}'.format(trace, self.get_str(key)))
         else:
             trace += ' {} frames loop:{}'.format(self.framecount, self.loop)
             print(trace)

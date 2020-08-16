@@ -15,6 +15,7 @@ class Polygon(Node):
         self.tex_index_format = [0] * 8
         self.tex_format = [0] * 8
         self.tex_divisor = [0] * 8
+        self.tex_e = [0] * 8
         super(Polygon, self).__init__(name, parent, binfile)
 
     def begin(self):
@@ -40,6 +41,8 @@ class Polygon(Node):
         self.normal_group_index = 0
         self.color_group_indices = [0, -1] * 2
         self.tex_coord_group_indices = [0] + [-1] * 7
+        self.fur_vector_id = -1
+        self.fur_coord_id = -1
 
     def encode_data(self, vertex, normal, color, uvs, face_indices):
         # set up vertex declaration
@@ -112,7 +115,7 @@ class Polygon(Node):
         pass
 
     def check(self):
-        pass
+        pass    # todo, check the vertex/normal/texcoord/color referenced formats
 
     # --------------------------------------------------
     # PACKING
@@ -134,6 +137,8 @@ class Polygon(Node):
                       self.vertex_group_index, self.normal_group_index)
         binfile.write('2h', *self.color_group_indices)
         binfile.write('8h', *self.tex_coord_group_indices)
+        if self.parent.version >= 10:
+            binfile.write('2h', self.fur_vector_id, self.fur_coord_id)
         binfile.mark()
         # bone table
         binfile.createRef()
@@ -150,12 +155,15 @@ class Polygon(Node):
         binfile.write('HIHI', 0x0850, lo, 0x0860, hi)
         binfile.write('B2HIB', 0x10, 0, 0x1008, xf_specs, 0)
         uvat = self.get_uvat()
+        # if uvat[0] != self.uvat[1] or uvat[1] != self.uvat[3] or uvat[2] != self.uvat[5]:
+        #     print('No match!')
         binfile.write('HIHIHI', 0x0870, uvat[0], 0x0880, uvat[1], 0x0890, uvat[2])
         binfile.advance(end_dec - binfile.offset)
         # vertex data
         vt_ref = binfile.offset - vt_offset + 8
         binfile.writeOffset('I', vt_offset, vt_ref)
         binfile.write('{}B'.format(len(self.vt_data)), *self.vt_data)
+        assert binfile.is_aligned()
         binfile.alignAndEnd()
 
     def unpack(self, binfile):
@@ -176,18 +184,15 @@ class Polygon(Node):
         self.color_group_indices = binfile.read('2h', 4)
         self.tex_coord_group_indices = binfile.read('8h', 16)
         if self.parent.version >= 10:
-            binfile.advance(4)  # ignore
+            self.fur_vector_id, self.fur_coord_id = binfile.read('2h', 4)
+            # binfile.advance(4)  # ignore
         binfile.store()  # bt offset
         binfile.recall()  # bt
         [bt_length] = binfile.read('I', 4)
         self.bone_table = binfile.read('{}H'.format(bt_length), bt_length * 2) if bt_length > 0 else None
-        binfile.offset = vt_dec_offset + 12
-        assert cp_vert_lo == binfile.read('I', 4)[0]
-        binfile.advance(2)
-        assert cp_vert_hi == binfile.read('I', 4)[0]
-        binfile.advance(5)
-        assert xf_vert == binfile.read('I', 5)[0]
+        binfile.offset = vt_dec_offset + 32     # ignores most of the beginning since we arleady have it
         uvat = binfile.read('HIHIHI', 18)
+        # self.uvat = uvat
         self.parse_uvat(uvat[1], uvat[3], uvat[5])
         binfile.offset = vt_offset
         self.vt_data = binfile.read('{}B'.format(vt_size), vt_size)
@@ -215,42 +220,69 @@ class Polygon(Node):
         return hi, lo
 
     def parse_uvat(self, uvata, uvatb, uvatc):
+        self.vertex_e = uvata & 0x1
         self.vertex_format = uvata >> 1 & 0x7
         self.vertex_divisor = uvata >> 4 & 0x1f
+        self.normal_e = uvata >> 9 & 1
         self.normal_format = uvata >> 10 & 7
+        self.color0_e = uvata >> 13 & 1
         self.color0_has_alpha = uvata >> 14 & 7
+        self.color1_e = uvata >> 17 & 1
         self.color1_has_alpha = uvata >> 18 & 7
+        self.tex_e[0] = uvata >> 21 & 1
         self.tex_format[0] = uvata >> 22 & 7
         self.tex_divisor[0] = uvata >> 25 & 0x1f
-        uvatb >>= 1
+        self.normal_index3 = uvata >> 31
         for i in range(1, 4):
-            self.tex_format[i] = uvatb & 0x7
-            self.tex_divisor[i] = uvatb >> 3 & 0x1f
+            self.tex_e[i] = uvatb & 1
+            self.tex_format[i] = uvatb >> 1 & 0x7
+            self.tex_divisor[i] = uvatb >> 4 & 0x1f
             uvatb >>= 9
-        self.tex_format[4] = uvatb
+        self.tex_e[4] = uvatb & 1
+        self.tex_format[4] = uvatb >> 1
         self.tex_divisor[4] = uvatc & 0x1f
-        uvatc >>= 6
+        uvatc >>= 5
         for i in range(5, 8):
-            self.tex_format[i] = uvatc & 0x7
-            self.tex_divisor[i] = uvatc >> 3 & 0x1f
+            self.tex_e[i] = uvatc & 0x1
+            self.tex_format[i] = uvatc >> 1 & 0x7
+            self.tex_divisor[i] = uvatc >> 4 & 0x1f
             uvatc >>= 9
+
+    def has_vertex_data(self):
+        return self.vertex_index_format > 0
+
+    def has_normal_data(self):
+        return self.normal_index_format > 0
+
+    def has_color0_data(self):
+        return self.color0_index_format > 0
+
+    def has_color1_data(self):
+        return self.color1_index_format > 0
+
+    def has_tex_data(self, i):
+        return self.tex_index_format[i] > 0
 
     def get_uvat(self):
         tex_format = self.tex_format
         tex_divisor = self.tex_divisor
-        uvata = 0x40222201 | self.vertex_format << 1 | self.vertex_divisor << 4 | self.normal_format << 10 \
-                | self.color0_has_alpha << 14 | self.color1_has_alpha << 18 \
-                | tex_format[0] << 22 | tex_divisor[0] << 27
+        tex_e = self.tex_e
+        uvata = self.vertex_e | self.vertex_format << 1 | self.vertex_divisor << 4 \
+            | self.normal_e << 9 | self.normal_format << 10 \
+            | self.color0_e << 13 | self.color0_has_alpha << 14 \
+            | self.color1_e << 17 | self.color1_has_alpha << 18 \
+            | tex_e[0] << 21 | tex_format[0] << 22 | tex_divisor[0] << 25 \
+            | 1 << 30 | self.normal_index3 << 31
 
-        shifter = uvatb = 1
+        shifter = uvatb = 0
         for i in range(1, 4):
-            uvatb |= (tex_format[i] | tex_divisor[i] << 3 | 0x100) << shifter
+            uvatb |= (tex_format[i] << 1 | tex_divisor[i] << 4 | tex_e[i]) << shifter
             shifter += 9
-        uvatb |= tex_format[4] << shifter
+        uvatb |= self.tex_e[4] << shifter | tex_format[4] << shifter + 1 | 1 << 31
         shifter = 5
         uvatc = tex_divisor[4]
         for i in range(5, 8):
-            uvatc |= (1 | tex_format[i] << 1 | tex_divisor[i] << 3) << shifter
+            uvatc |= (tex_e[i] | tex_format[i] << 1 | tex_divisor[i] << 3) << shifter
             shifter += 9
         return uvata, uvatb, uvatc
 

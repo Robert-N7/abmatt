@@ -1,7 +1,7 @@
 """Tex0 subfile"""
 from math import log
-import os
 from PIL import Image
+import os
 
 from brres.lib.binfile import BinFile
 from brres.lib.matching import parseValStr, validInt
@@ -143,6 +143,8 @@ class NoImgConverterError(Exception):
 
 
 class ImgConverterI:
+    IMG_FORMAT = 'cmpr'
+
     def __init__(self, converter):
         self.converter = converter
 
@@ -185,11 +187,13 @@ class ImgConverter:
                 program = None
             super(ImgConverter.Wimgt, self).__init__(program)
 
-        def encode(self, img_file, tex_format, num_mips=-1):
+        def encode(self, img_file, tex_format=None, num_mips=-1):
             # encode
             dir, fname = os.path.split(img_file)
             name = os.path.splitext(fname)[0]
             mips = str(num_mips) if num_mips >= 0 else 'auto'
+            if not tex_format:
+                tex_format = self.IMG_FORMAT
             result = os.system(
                 '{} encode {} -d {} -x {} --n-mm={} -o'.format(self.converter, img_file, self.temp_dest, tex_format,
                                                                mips))

@@ -16,7 +16,7 @@ from brres.pat0 import Pat0, Pat0Collection
 from brres.scn0 import Scn0
 from brres.shp0 import Shp0
 from brres.srt0 import Srt0, SRTCollection
-from brres.tex0 import Tex0
+from brres.tex0 import Tex0, ImgConverter
 
 
 class Brres(Clipable):
@@ -28,7 +28,7 @@ class Brres(Clipable):
     ROOTMAGIC = "root"
     OVERWRITE = False
     DESTINATION = None
-    ACTIVE_FILES = None     # reference to active files
+    OPEN_FILES = None     # reference to active files
     REMOVE_UNUSED_TEXTURES=False
 
     def __init__(self, name, parent=None, readFile=True):
@@ -168,7 +168,7 @@ class Brres(Clipable):
     # -------------------------------- Textures -----------------------------
     def findTexture(self, name):
         """Attempts to find the texture by name"""
-        for x in self.ACTIVE_FILES:
+        for x in self.OPEN_FILES:
             if x is not self:
                 tex = x.getTexture(name)
                 if tex is not None:
@@ -177,6 +177,12 @@ class Brres(Clipable):
     def addTexture(self, tex0):
         self.textures.append(tex0)
         self.texture_map[tex0.name] = tex0
+
+    def addTextureFromFile(self, image_path):
+        tex0 = ImgConverter().encode(image_path)
+        if tex0:
+            self.addTexture(tex0)
+        return tex0
 
     def rename_texture(self, tex0, name):
         self.texture_map[tex0.name] = None

@@ -230,8 +230,7 @@ class Material(Clipable):
     def setName(self, value):
         if value == self.name:
             return True
-        if self.parent.rename_material(self, value):
-            self.name = value
+        self.name = self.parent.rename_material(self, value)
 
     def setXluStr(self, str_value):
         val = validBool(str_value)
@@ -570,7 +569,7 @@ class Material(Clipable):
         self.parent.remove_texture_link(layer.name)
         self.layers.pop(index)
         if self.srt0:
-            self.srt0.updateLayerNameI(index, None)
+            self.srt0.removeLayerI(index)
         return len(self.layers)
 
     def removeLayer(self, name):
@@ -599,8 +598,10 @@ class Material(Clipable):
         return l
 
     def renameLayer(self, layer, name):
+        if name == self.name:
+            return name
         if self.srt0:
-            self.srt0.updateLayerNameI(layer.name, name)
+            self.srt0.updateLayerNameI(layer.layer_index, name)
         return self.parent.rename_texture_link(layer, name)
 
     # ---------------------------------PASTE------------------------------------------
@@ -639,6 +640,7 @@ class Material(Clipable):
         self.setLayerCount(num_layers)
         for i in range(num_layers):
             my_layers[i].paste(item_layers[i])
+            my_layers[i].setName(item_layers[i].name)
 
     # -----------------------------------------------------------------------------
     # PACKING

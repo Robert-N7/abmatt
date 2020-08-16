@@ -235,7 +235,7 @@ class Matching:
     # finds a name in group, group instances must have .name
     def findAll(self, name, group):
         """ Finds all names matching in a group, either by direct matching or regex if direct fails."""
-        if not name or name == "*":
+        if not name or name == "*" or not group:
             return group
         items = []
         # direct matching

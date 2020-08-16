@@ -251,16 +251,22 @@ class Command:
     # ----------------------------  FILE STUFF ---------------------------------------------------------
     @staticmethod
     def updateFile(filename):
-        files = Command.getFiles(filename)
-        if Command.DESTINATION:  # check for multiple files with single destination
-            outside_active = True
-            for x in Command.ACTIVE_FILES:
-                if files[0] == x.name:
-                    outside_active = False
-                    break
-            if len(files) > 1 or Command.ACTIVE_FILES and outside_active:
-                raise SaveError('Multiple files for single destination')
-        Brres.ACTIVE_FILES = Command.ACTIVE_FILES = Command.openFiles(files)
+        # check in opened files
+        files = MATCHING.findAll(filename, Command.OPEN_FILES.values())
+        if files:
+            Command.ACTIVE_FILES = files
+        else:
+            # try to find file path
+            files = Command.getFiles(filename)
+            if Command.DESTINATION:  # check for multiple files with single destination
+                outside_active = True
+                for x in Command.ACTIVE_FILES:
+                    if files[0] == x.name:
+                        outside_active = False
+                        break
+                if len(files) > 1 or Command.ACTIVE_FILES and outside_active:
+                    raise SaveError('Multiple files for single destination')
+            Command.ACTIVE_FILES = Command.openFiles(files)
         Command.MODELS = []  # clear models
 
     @staticmethod
@@ -282,8 +288,8 @@ class Command:
         total = len(to_open) + len(opened)
         needs_close = total > max
         can_close = []  # modified but can close
-        to_close = []   # going to close
-        active = []     # active files to return
+        to_close = []   # going to close if needs closing
+        active = []
         # first pass, mark non-modified files for closing, and appending active
         for x in opened:
             if x not in filenames:
@@ -306,10 +312,11 @@ class Command:
         for f in to_open:
             # try:
                 brres = Brres(f)
-                active.append(brres)
                 opened[f] = brres
+                active.append(brres)
             # except UnpackingError as e:
             #     AUTO_FIXER.error(e)
+        Brres.OPEN_FILES = opened.values()
         return active
 
     @staticmethod
@@ -545,7 +552,7 @@ class Command:
             if self.cmd == 'set':
                 self.markModified()
                 for x in self.SELECTED:
-                    x[self.key] = self.value
+                    x.set_str(self.key, self.value)
             elif self.cmd == 'info':
                 if self.key == 'keys':
                     self.info_keys(self.SELECT_TYPE)

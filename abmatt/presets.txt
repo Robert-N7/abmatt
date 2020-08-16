@@ -96,9 +96,9 @@ preset default_shader
 set material CompareBeforeTexture:False
 set material xlu:False
 set material ref0:128
-set material comp0:LessOrEqual
+set material comp0:GreaterOrEqual
 set material ref1:255
-set material comp1:GreaterOrEqual
+set material comp1:LessOrEqual
 
 [blend]
 set material CompareBeforeTexture:True

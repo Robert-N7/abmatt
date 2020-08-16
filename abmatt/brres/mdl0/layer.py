@@ -315,7 +315,7 @@ class Layer(Clipable):
         return self.enable
 
     def setName(self, value):
-        self.name = self.parent.rename_texture_link(self, value)
+        self.name = self.parent.renameLayer(self, value)
 
     SET_SETTING = (setScaleStr, setRotationStr, setTranslationStr, setCameraRefStr,
                    setLightRefStr, setMapmodeStr, setUWrapStr, setVWrapStr, setMinFilterStr, setMagFilterStr,
@@ -417,7 +417,7 @@ class Layer(Clipable):
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + self.name if indentation_level else '>' + self.parent.name + "->" + self.name
         if key:
-            val = self[key]
+            val = self.get_str(key)
             print("{}\t{}:{}".format(trace, key, val))
         else:
             print("{}:\tScale:{} Rot:{} Trans:{}".format(

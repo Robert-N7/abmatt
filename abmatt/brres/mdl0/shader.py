@@ -33,10 +33,9 @@ class ShaderList:
         self.list[key] = value
 
     def updateName(self, old_name, new_name):
-        shader = self.list[old_name]
+        shader = self.list.pop(old_name)
         shader.name = new_name
         self.list[new_name] = shader
-        self.list[old_name] = None
 
     def getShaders(self, material_list, for_modification=True):
         """Gets the shaders, previously this was used to split shaders but is no longer applicable"""
@@ -182,7 +181,13 @@ class Stage(Clipable):
     def __str__(self):
         return str(self.map)
 
-    def __getitem__(self, key):
+    def __getitem__(self, item):
+        return self.get_str(item)
+
+    def __setitem__(self, key, value):
+        return self.set_str(key, value)
+
+    def get_str(self, key):
         i = key.find('constant')
         if 0 <= i < 5:  # out of order
             is_alpha = True if 'alpha' in key else False
@@ -195,11 +200,7 @@ class Stage(Clipable):
         return self.map[key]
 
     def check(self):
-        if not self.map['enabled']:
-            b = Bug(2, 2, '{} Stage {} disabled'.format(self.parent.getMaterialName(), self.name), 'Remove stage')
-            if self.REMOVE_UNUSED_LAYERS:
-                self.parent.removeStage(self.name)
-                b.resolve()
+        pass
 
     # -------------------- CLIPBOARD --------------------------------------------------
     def clip(self, clipboard):
@@ -269,7 +270,7 @@ class Stage(Clipable):
             index -= 4
         self.map["colorconstantselection"] = self.COLOR_CONSTANTS[index]
 
-    def __setitem__(self, key, value):
+    def set_str(self, key, value):
         i = key.find('constant')
         is_alpha = True if 'alpha' in key else False
         if 0 <= i < 5:  # out of order
@@ -510,7 +511,13 @@ class Shader(Clipable):
             raise ValueError('Indirect index {} out of range (0-3).'.format(i))
         return i
 
-    def __getitem__(self, key):
+    def __getitem__(self, item):
+        return self.get_str(item)
+
+    def __setitem__(self, key, value):
+        return self.set_str(key, value)
+
+    def get_str(self, key):
         if self.SETTINGS[0] in key:
             return self.indTexMaps
         elif self.SETTINGS[1] in key:
@@ -518,7 +525,7 @@ class Shader(Clipable):
         elif self.SETTINGS[2] == key:  # stage count
             return len(self.stages)
 
-    def __setitem__(self, key, value):
+    def set_str(self, key, value):
         i = value.find(':')
         key2 = 0  # key selection
         if i > -1:
@@ -585,8 +592,6 @@ class Shader(Clipable):
         self.material.indirectStages = num_stages
 
     def removeStage(self, id=-1):
-        if len(self.stages) == 1:
-            raise Exception('Shader must have at least 1 stage')
         self.stages.pop(id)
         self.onUpdateActiveStages(len(self.stages))
 
@@ -780,8 +785,8 @@ class Shader(Clipable):
         mark_to_remove = []
         # direct check
         for x in self.stages:
-            if x['enabled']:
-                id = x['mapid']
+            if x.get_str('enabled'):
+                id = x.get_str('mapid')
                 if id >= texRefCount:
                     if self.MAP_ID_AUTO:
                         id = self.detect_unusedMapId()

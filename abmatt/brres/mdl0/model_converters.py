@@ -12,8 +12,6 @@ from brres.tex0 import ImgConverter
 
 
 class Converter:
-    IMG_DEFAULT_FORMAT = 'cmpr'
-
     def __init__(self, brres, mdl_file):
         self.brres = brres
         self.mdl_file = mdl_file
@@ -29,7 +27,7 @@ class Converter:
         raise NotImplementedError()
 
 
-class Dae_Converter(Converter):
+class DaeConverter(Converter):
 
     def convert_map_to_layer(self, map, material):
         if not map or isinstance(map, tuple):
@@ -39,7 +37,7 @@ class Dae_Converter(Converter):
         base_name = os.path.splitext(os.path.basename(image_path))[0]
         # try to add texture?
         if not self.brres.hasTexture(base_name):
-            self.brres.addTexture(ImgConverter().encode(image_path, self.IMG_DEFAULT_FORMAT))
+            self.brres.addTextureFromFile(image_path)
         # create the layer
         l = material.addLayer(base_name)
         if sampler.minfilter:

@@ -389,6 +389,7 @@ class BinFile:
         #         out.append(x[1])
         # with open('names.txt', 'w') as f:
         #     f.write(str(out))
+
         for key in sorted(names):
             if key is not None and key != b'':
                 self.align(4)
@@ -400,7 +401,7 @@ class BinFile:
                 for ref in reflist:
                     self.writeOffset("I", ref[1], offset - ref[0])
         self.names_packed = True
-        self.align()
+        self.align(64)
 
     def convertByteArr(self):
         if type(self.file) != bytearray:

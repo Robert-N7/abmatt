@@ -52,19 +52,21 @@ class TextureLink(Node):
 
     def __init__(self, name, parent=None, binfile=None):
         """Only tracks number of references, which serve as placeholders to be filled in by the layers"""
-        self.num_references = 0
         super(TextureLink, self).__init__(name, parent, binfile)
 
     def __str__(self):
         return self.name + ' ' + str(self.num_references)
 
+    def begin(self):
+        self.num_references = 1
+
     def unpack(self, binfile):
-        offset = binfile.start()
+        # offset = binfile.start()
         [self.num_references] = binfile.read("I", 4)
-        for i in range(self.num_references):  # ignore this?
-            link = binfile.read("2i", 8)
+        # for i in range(self.num_references):  # ignore this?
+        #     link = binfile.read("2i", 8)
         # print('{} at {}'.format(self, offset))
-        binfile.end()
+        # binfile.end()
 
     def pack(self, binfile):
         offset = binfile.start()
@@ -239,7 +241,7 @@ class Mdl0(SubFile):
         for x in not_found:
             mat = fuzzy_match(x.name, self.materials)
             desc = 'No material matching SRT0 {}'.format(x.name)
-            b = Bug(1, 1, desc, 'Rename to {}'.format(mat.name))
+            b = Bug(1, 1, desc, 'Rename material')
             if self.RENAME_UNKNOWN_REFS and mat and not mat.srt0:
                 if mat.set_srt0(x):
                     x.rename(mat.name)
@@ -355,46 +357,25 @@ class Mdl0(SubFile):
                 return x
 
     def add_texture_link(self, name):
-        link = self.get_texture_link(name)
-        if not link:
-            if name != 'Null' and not self.parent.getTexture(name):
-                tex = fuzzy_match(name, self.parent.textures)
-                notify = 'Adding reference to unknown texture "{}"'.format(name)
-                if tex:
-                    notify += ', did you mean ' + tex.name + '?'
-                AUTO_FIXER.info(notify, 4)
-            link = TextureLink(name, self)
-            self.textureLinks.append(link)
-        link.num_references += 1
+        if name != 'Null' and not self.parent.getTexture(name):
+            tex = fuzzy_match(name, self.parent.textures)
+            notify = 'Adding reference to unknown texture "{}"'.format(name)
+            if tex:
+                notify += ', did you mean ' + tex.name + '?'
+            AUTO_FIXER.info(notify, 4)
 
     def remove_texture_link(self, name):
-        link = self.get_texture_link(name)
-        if not link:
-            raise ValueError('No such texture link: {}'.format(name))
-        link.num_references -= 1
+        pass    # No longer applicable since tex links are rebuilt
 
     def rename_texture_link(self, layer, name):
         """Attempts to rename a layer, raises value error if the texture can't be found"""
-        # first try to get texture link
-        old_link = new_link = None
-        for x in self.textureLinks:
-            if x.name == name:
-                new_link = x
-            if x.name == layer.name:
-                old_link = x
-        assert old_link
         # No link found, try to find texture matching and create link
-        if not new_link:
-            if name != 'Null' and not self.parent.getTexture(name):
-                tex = fuzzy_match(name, self.parent.textures)
-                notify = 'Adding reference to unknown texture "{}"'.format(name)
-                if tex:
-                    notify += ', did you mean ' + tex.name + '?'
-                AUTO_FIXER.info(notify, 4)
-            new_link = TextureLink(name, self)
-            self.textureLinks.append(new_link)
-        old_link.num_references -= 1
-        new_link.num_references += 1
+        if name != 'Null' and not self.parent.getTexture(name):
+            tex = fuzzy_match(name, self.parent.textures)
+            notify = 'Adding reference to unknown texture "{}"'.format(name)
+            if tex:
+                notify += ', did you mean ' + tex.name + '?'
+            AUTO_FIXER.info(notify, 4)
         return name
 
     def getTrace(self):
@@ -425,16 +406,18 @@ class Mdl0(SubFile):
                 raise ValueError('The name {} is already taken!'.format(new_name))
         if material.srt0:
             material.srt0.rename(new_name)
-        else:
+        elif self.srt0_collection:
             anim = self.srt0_collection[new_name]
             if anim:
                 material.set_srt0(anim)
         if material.pat0:
             material.pat0.rename(new_name)
-        else:
+        elif self.pat0_collection:
             anim = self.pat0_collection[new_name]
             if anim:
                 material.set_pat0(anim)
+        self.shaders.updateName(material.name, new_name)
+        return new_name
 
     def getTextureMap(self):
         return self.parent.get_texture_map()
@@ -485,12 +468,33 @@ class Mdl0(SubFile):
         return count
 
     def get_used_textures(self):
-        return set(x.name for x in self.textureLinks if x.num_references > 0)
+        textures = set()
+        for x in self.materials:
+            for y in x.layers:
+                textures.add(y.name)
+        return textures
 
     # ---------------START PACKING STUFF -------------------------------------
     def pre_pack(self):
         """Cleans up references in preparation for packing"""
-        self.sections[11] = self.textureLinks = [x for x in self.textureLinks if x.num_references > 0]
+        definitions = [x for x in self.sections[0] if x]
+        if self.drawOpa and self.drawOpa not in definitions:
+            if self.drawXLU in definitions:
+                definitions.remove(self.drawXLU)
+            definitions.append(self.drawOpa)
+        if self.drawXLU and self.drawXLU not in definitions:
+            definitions.append(self.drawXLU)
+        self.sections[0] = definitions
+        # rebuild texture links
+        texture_links = {}
+        for x in self.materials:
+            for y in x.layers:
+                name = y.name
+                if name not in texture_links:
+                    texture_links[name] = TextureLink(name, self)
+                else:
+                    texture_links[name].num_references += 1
+        self.sections[11] = self.textureLinks = texture_links.values()
 
     def post_unpack(self):
         Bone.post_unpack(self.bones)
@@ -586,6 +590,9 @@ class Mdl0(SubFile):
         for x in self.sections[8]:
             folder.createEntryRefI()
             x.pack(binfile, texture_link_map)
+        for x in texture_link_map:
+            if binfile.references[texture_link_map[x]]:
+                raise PackingError(binfile, 'Unused texture link {}!'.format(x))
 
     def pack_shaders(self, binfile, folder):
         self.sections[9].pack(binfile, folder)
