@@ -1,6 +1,7 @@
 """Objects (Polygons)"""
 from struct import pack
 
+from brres.lib.autofix import AUTO_FIXER
 from brres.lib.binfile import printCollectionHex
 from brres.lib.node import Node
 
@@ -96,9 +97,6 @@ class Polygon(Node):
             data.extend(pack(fmt_str, [x[i] for x in face_indices]))
         self.vt_data = data
 
-
-
-
     def get_vertex_group(self):
         if self.vertex_index_format >= self.INDEX_FORMAT_BYTE:
             return self.parent.vertices[self.vertex_group_index]
@@ -111,11 +109,39 @@ class Polygon(Node):
         if self.tex_index_format[tex_i] >= self.INDEX_FORMAT_BYTE:
             return self.parent.texCoords[self.tex_coord_group_indices[tex_i]]
 
-    def get_color_group(self):
-        pass
+    def get_color_group(self, i):
+        if i == 0:
+            if self.color0_index_format >= self.INDEX_FORMAT_BYTE:
+                return self.parent.colors[self.color_group_indices[0]]
+        elif i == 1:
+            if self.color1_index_format >= self.INDEX_FORMAT_BYTE:
+                return self.parent.colors[self.color_group_indices[1]]
 
     def check(self):
-        pass    # todo, check the vertex/normal/texcoord/color referenced formats
+        vertices = self.get_vertex_group()
+        if vertices:
+            if self.vertex_format != vertices.format:
+                AUTO_FIXER.warn('Mismatching format for vertices {}'.format(self.name))
+                self.vertex_format = vertices.format
+            if self.vertex_divisor != vertices.divisor:
+                AUTO_FIXER.warn('Mismatching divisor for vertices {}'.format(self.name))
+                self.vertex_divisor = vertices.divisor
+        normals = self.get_normal_group()
+        if normals:
+            if self.normal_format != normals.format:
+                AUTO_FIXER.warn('Mismatching format for normals {}'.format(self.name))
+                self.normal_format = normals.format
+        for i in range(8):
+            tex = self.get_tex_group(i)
+            if tex:
+                if self.tex_format[i] != tex.format:
+                    AUTO_FIXER.warn('Mismatching format for uv group {} {} '.format(i, self.name))
+                    self.tex_format[i] = tex.format
+                if self.tex_divisor[i] != tex.divisor:
+                    AUTO_FIXER.warn('Mismatching divisor for uv group {} {}'.format(i, self.name))
+                    self.tex_divisor[i] = tex.divisor
+            else:
+                break
 
     # --------------------------------------------------
     # PACKING
@@ -190,7 +216,7 @@ class Polygon(Node):
         binfile.recall()  # bt
         [bt_length] = binfile.read('I', 4)
         self.bone_table = binfile.read('{}H'.format(bt_length), bt_length * 2) if bt_length > 0 else None
-        binfile.offset = vt_dec_offset + 32     # ignores most of the beginning since we arleady have it
+        binfile.offset = vt_dec_offset + 32  # ignores most of the beginning since we arleady have it
         uvat = binfile.read('HIHIHI', 18)
         # self.uvat = uvat
         self.parse_uvat(uvat[1], uvat[3], uvat[5])
@@ -268,11 +294,11 @@ class Polygon(Node):
         tex_divisor = self.tex_divisor
         tex_e = self.tex_e
         uvata = self.vertex_e | self.vertex_format << 1 | self.vertex_divisor << 4 \
-            | self.normal_e << 9 | self.normal_format << 10 \
-            | self.color0_e << 13 | self.color0_has_alpha << 14 \
-            | self.color1_e << 17 | self.color1_has_alpha << 18 \
-            | tex_e[0] << 21 | tex_format[0] << 22 | tex_divisor[0] << 25 \
-            | 1 << 30 | self.normal_index3 << 31
+                | self.normal_e << 9 | self.normal_format << 10 \
+                | self.color0_e << 13 | self.color0_has_alpha << 14 \
+                | self.color1_e << 17 | self.color1_has_alpha << 18 \
+                | tex_e[0] << 21 | tex_format[0] << 22 | tex_divisor[0] << 25 \
+                | 1 << 30 | self.normal_index3 << 31
 
         shifter = uvatb = 0
         for i in range(1, 4):

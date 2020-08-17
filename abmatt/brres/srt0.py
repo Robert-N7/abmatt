@@ -388,7 +388,7 @@ class SRTTexAnim(Clipable):
         code = 0
         for i in range(len(flags)):
             code |= flags[i] << i
-        code <<= 1 | 1
+        code = code << 1 | 1
         return code
 
     # -------------------------------------------------------
