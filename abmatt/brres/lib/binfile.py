@@ -61,13 +61,8 @@ class BinFile:
             self.packNames()
         # write
         # print('Length of file is {}'.format(len(self.file)))
-        try:
-            with open(self.filename, "wb") as f:
-                f.write(self.file)
-        except:
-            AUTO_FIXER.error('Unable to open {}, Permission Denied'.format(self.filename), 1)
-            return False
-
+        f = open(self.filename, "wb")
+        f.write(self.file)
         return True
 
     def is_aligned(self, alignment=0x20):

@@ -8,4 +8,4 @@ copy material for ef_dushBoard in water.brres
 paste for boost in fresh.brres
 copy for WT_VTaki in water.brres
 paste for a18 in fresh.brres
-save as C:\Users\rober\Desktop\dp\a.d\course_model.brres overwrite
+save as C:\Users\rober\Desktop\dp\b.d\course_model.brres overwrite
