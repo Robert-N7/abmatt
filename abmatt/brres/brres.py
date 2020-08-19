@@ -67,6 +67,9 @@ class Brres(Clipable):
         else:
             raise ValueError('Unknown key "{}"'.format(key))
 
+    def import_model(self, file_path):
+        pass    # todo
+
     def add_mdl0(self, mdl0):
         prev = self.getModel(mdl0.name)
         if prev:
@@ -75,6 +78,15 @@ class Brres(Clipable):
         self.models.append(mdl0)
         mdl0.parent = self
         return mdl0
+
+    def remove_mdl0(self, name):
+        for x in self.models:
+            if x.name == name:
+                self.models.remove(x)
+                break
+
+    def remove_mdl0_i(self, i):
+        self.models.pop(i)
 
     # ---------------------------------------------- CLIPBOARD ------------------------------------------
     def paste(self, brres):
@@ -174,14 +186,14 @@ class Brres(Clipable):
                 if tex is not None:
                     return tex
 
-    def addTexture(self, tex0):
+    def add_tex0(self, tex0):
         self.textures.append(tex0)
         self.texture_map[tex0.name] = tex0
 
-    def addTextureFromFile(self, image_path):
+    def import_texture(self, image_path):
         tex0 = ImgConverter().encode(image_path)
         if tex0:
-            self.addTexture(tex0)
+            self.add_tex0(tex0)
         return tex0
 
     def rename_texture(self, tex0, name):
@@ -197,7 +209,7 @@ class Brres(Clipable):
         if tex is None:
             tex = self.findTexture(name)
             if tex:
-                self.addTexture(tex)
+                self.add_tex0(tex)
         return tex
 
     def hasTexture(self, name):
@@ -205,6 +217,16 @@ class Brres(Clipable):
 
     def getTextures(self, name):
         return MATCHING.findAll(name, self.textures)
+
+    def remove_tex0(self, name):
+        tex = self.texture_map.pop(name)
+        if tex:
+            self.textures.remove(tex)
+
+    def remove_tex0_i(self, i):
+        tex = self.textures.pop(i)
+        if tex:
+            self.texture_map.pop(tex.name)
 
     def getUsedTextures(self):
         ret = set()

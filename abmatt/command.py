@@ -14,6 +14,7 @@ from brres.mdl0.shader import Shader, Stage
 from brres.pat0 import Pat0MatAnimation
 from brres.srt0 import SRTMatAnim, SRTTexAnim
 from brres.lib.autofix import AUTO_FIXER
+from brres.tex0 import Tex0, ImgConverter
 
 
 class ParsingException(Exception):
@@ -88,7 +89,8 @@ class Command:
         "brres": Brres.SETTINGS,
         "srt0": SRTMatAnim.SETTINGS,
         "srt0layer": SRTTexAnim.SETTINGS,
-        "pat0": Pat0MatAnimation.SETTINGS
+        "pat0": Pat0MatAnimation.SETTINGS,
+        "tex0": Tex0.SETTINGS
     }
 
     def __init__(self, text):
@@ -99,9 +101,9 @@ class Command:
         x = [x.strip() for x in text.split()]
         if not x:
             raise ParsingException(self.txt, 'No Command detected')
-        is_preset = self.setCmd(x.pop(0).lower())
+        cmd = self.setCmd(x.pop(0).lower())
         if not x:
-            if self.cmd != 'info' and self.cmd != 'save':
+            if cmd != 'info' and cmd != 'save':
                 raise ParsingException(self.txt, 'Not enough parameters')
             else:
                 self.type = None
@@ -110,27 +112,35 @@ class Command:
                 return
         if self.setType(x[0]):
             x.pop(0)
-        if self.cmd == 'select':
+        if cmd == 'select':
             self.setSelection(x)
             return
-        elif self.cmd == 'save':
+        elif cmd == 'save':
             self.setSave(x)
             return
-        for_index = -1
+        in_index = for_index = -1
         for i in range(len(x)):
             if x[i].lower() == 'for':
                 for_index = i
+                x[i] = 'for'
+                break
+            elif x[i].lower() == 'in':
+                in_index = i
+                x[i] = 'in'
                 break
         if for_index >= 0:
             self.setSelection(x[for_index + 1:])
             x = x[0:for_index]
-        if is_preset:
+        elif in_index >= 0:
+            self.setSelection(x[in_index:])
+            x = x[0:in_index]
+        if cmd == 'preset':
             key = x[0]
             if key not in self.PRESETS:
                 raise ParsingException(self.txt, 'No such preset {}'.format(key))
             self.key = key
             return
-        elif self.cmd == 'set':
+        elif cmd == 'set':
             if not x:
                 raise ParsingException(self.txt, 'Not enough parameters')
             if ':' not in x[0]:
@@ -142,7 +152,7 @@ class Command:
             else:
                 self.value = value
         elif len(x):
-            if self.cmd != 'info':
+            if cmd != 'info':
                 raise ParsingException(self.txt, "Unknown parameter(s) {}".format(x))
             else:
                 self.key = x[0].lower()
@@ -169,12 +179,16 @@ class Command:
                 self.file = x
                 self.hasSelection = True
 
+    def detectImportType(self, ext):
+        if ext.lower() in ('dae', 'obj'):
+            return 'model'
+
     def setType(self, val):
         """Returns true if the type is set by val (consumed)"""
         if self.cmd == 'preset':
             self.type = 'material'
             return False
-        elif self.cmd == 'select' or self.cmd == 'save':
+        elif self.cmd in ('select', 'save'):
             return False
         i = val.find(':')
         type_id = None
@@ -185,7 +199,7 @@ class Command:
         if val in ('material', 'shader'):
             if self.cmd == 'add' or self.cmd == 'remove':
                 raise ParsingException(self.txt, 'Add/Remove not supported for {}.'.format(val))
-        elif val in ('layer', 'srt0layer', 'stage'):
+        elif val in ('layer', 'srt0layer', 'stage', 'mdl0', 'tex0'):
             self.has_type_id = True
             try:
                 self.type_id = validInt(type_id, 0, 16) if type_id else None
@@ -195,7 +209,7 @@ class Command:
                 self.type_id_numeric = False
             # elif 'srt0' in val:
         #     self.type = 'srt0'
-        elif val in ('mdl0', 'brres'):
+        elif val == 'brres':
             if self.cmd == 'add' or self.cmd == 'remove':
                 raise ParsingException(self.txt, 'Add/Remove not supported for {}.'.format(val))
             if type_id:
@@ -217,24 +231,36 @@ class Command:
         if not li:
             raise ParsingException("No selection given")
         self.hasSelection = True
-        self.name = li[0]
-        self.model = self.file = x = None
-        if len(li) > 1:
-            if li[1] != 'in':
-                raise ParsingException(self.txt, 'Expected "in"')
-            li = li[2:]
+        in_sel = self.model = self.file = x = None
+        self.name = '*'
+        if li[0] == 'for':
+            li.pop(0)
+        # split on 'in'
+        if 'in' in li:
+            in_index = li.index('in')
+            in_sel = li[in_index + 1:]
+            sel = li[:in_index]
+        else:
+            sel = li
+        # set name
+        if len(sel) == 1:
+            self.name = sel[0]
+        elif len(sel) > 1:
+            raise ParsingException(self.txt, 'Unexpected param {}'.format(sel[1]))
+        # parse 'in' clause
+        if in_sel:
             i = 0
             try:  # to get args
-                while i < len(li):
-                    x = li[i].lower()
+                while i < len(in_sel):
+                    x = in_sel[i].lower()
                     if x == 'file':
                         i += 1
-                        self.file = li[i]  # possible exception
+                        self.file = in_sel[i]  # possible exception
                     elif x == 'model':
                         i += 1
-                        self.model = li[i]
+                        self.model = in_sel[i]
                     elif not self.file:
-                        self.file = li[i]
+                        self.file = in_sel[i]
                     else:
                         raise ParsingException(self.txt, 'Unknown argument {}'.format(li[i]))
                     i += 1
@@ -246,7 +272,7 @@ class Command:
             raise ParsingException(self.txt, "Unknown command '{}'".format(val))
         else:
             self.cmd = val
-        return self.cmd == 'preset'
+        return self.cmd
 
     # ----------------------------  FILE STUFF ---------------------------------------------------------
     @staticmethod
@@ -432,6 +458,8 @@ class Command:
                 Command.SELECT_TYPE = 'srt0'
             elif self.type == 'pat0layer':
                 Command.SELECT_TYPE = 'pat0'
+            elif self.type in ('tex0', 'mdl0'):
+                Command.SELECT_TYPE = 'brres'
             elif self.type in ('srt0', 'pat0'):
                 Command.SELECT_TYPE = 'material'
         else:
@@ -484,7 +512,10 @@ class Command:
             elif type == 'mdl0':
                 Command.SELECTED = MATCHING.findAll(self.SELECT_ID, getParents(self.MATERIALS))
             elif type == 'brres':
-                Command.SELECTED = MATCHING.findAll(self.SELECT_ID, getParents(getParents(self.MATERIALS)))
+                if self.cmd in ('add', 'remove'):
+                    Command.SELECTED = getParents(getParents(self.MATERIALS))
+                else:
+                    Command.SELECTED = MATCHING.findAll(self.SELECT_ID, getParents(getParents(self.MATERIALS)))
             elif 'srt0' in type:
                 srts = [x.srt0 for x in self.MATERIALS if x.srt0]
                 if 'layer' in type:
@@ -524,6 +555,32 @@ class Command:
             return False
         return True
 
+    def run_import(self, files, converted_format=None):
+        mdl_extensions = ('dae', 'obj')
+        tex0_extensions = ('png')
+        for file in files:
+            name, ext = os.path.splitext(os.path.basename(files[0]))
+            ext = ext.lower()
+            is_mdl = ext in mdl_extensions
+            if not is_mdl:
+                is_tex0 = ext in tex0_extensions
+                if not is_tex0:
+                    raise ParsingException(self.txt, 'ext {} not supported.'.format(ext))
+            if is_mdl:
+                mdl = self.import_model(file)
+                for x in self.SELECTED:
+                    x.add_mdl0(mdl)
+            else:
+                tex0 = self.import_texture(file, converted_format)
+                for x in self.SELECTED:
+                    x.add_tex0(tex0)
+
+    def import_model(self, file):
+        raise NotImplementedError()    # todo
+
+    def import_texture(self, file, tex_format=None):
+        return ImgConverter().encode(file, tex_format)
+
     def runCmd(self):
         if self.hasSelection:
             if not self.updateSelection():
@@ -548,29 +605,28 @@ class Command:
         if not self.SELECTED:
             AUTO_FIXER.error("No items found in selection for '{}'".format(self.txt), 3)
             return False
-        else:
-            if self.cmd == 'set':
-                self.markModified()
+        if self.cmd == 'set':
+            self.markModified()
+            for x in self.SELECTED:
+                x.set_str(self.key, self.value)
+        elif self.cmd == 'info':
+            if self.key == 'keys':
+                self.info_keys(self.SELECT_TYPE)
+            else:
                 for x in self.SELECTED:
-                    x.set_str(self.key, self.value)
-            elif self.cmd == 'info':
-                if self.key == 'keys':
-                    self.info_keys(self.SELECT_TYPE)
-                else:
-                    for x in self.SELECTED:
-                        x.info(self.key)
-                # for y in self.ACTIVE_FILES:
-                #     print(y.name)
-            elif self.cmd == 'add':
-                self.markModified()
-                self.add(self.SELECT_TYPE, self.SELECT_ID)
-            elif self.cmd == 'remove':
-                self.markModified()
-                self.remove(self.SELECT_TYPE, self.SELECT_ID)
-            elif self.cmd == 'copy':
-                self.run_copy(self.SELECT_TYPE)
-            elif self.cmd == 'paste':
-                self.run_paste(self.SELECT_TYPE)
+                    x.info(self.key)
+            # for y in self.ACTIVE_FILES:
+            #     print(y.name)
+        elif self.cmd == 'add':
+            self.markModified()
+            self.add(self.SELECT_TYPE, self.SELECT_ID)
+        elif self.cmd == 'remove':
+            self.markModified()
+            self.remove(self.SELECT_TYPE, self.SELECT_ID)
+        elif self.cmd == 'copy':
+            self.run_copy(self.SELECT_TYPE)
+        elif self.cmd == 'paste':
+            self.run_paste(self.SELECT_TYPE)
         return True
 
     # -------------------------------------------- COPY/PASTE -----------------------------------------------
@@ -663,6 +719,15 @@ class Command:
             else:
                 for x in self.SELECTED:
                     x.addLayerByName(type_id)
+        elif type == 'brres':
+            if self.type == 'tex0':
+                tex = self.import_texture(type_id)
+                for x in self.SELECTED:
+                    x.add_tex0(tex)
+            elif self.type == 'mdl0':
+                mdl = self.import_model(type_id)
+                for x in self.SELECTED:
+                    x.add_mdl0(mdl)
         else:
             raise ParsingException(self.txt, 'command "Add" not supported for type {}'.format(type))
 
@@ -697,6 +762,20 @@ class Command:
             else:
                 for x in self.SELECTED:
                     x.removeLayerByName(type_id)
+        elif type == 'tex0':
+            if self.SELECT_ID_NUMERIC:
+                for x in self.SELECTED:
+                    x.remove_tex0_i(type_id)
+            else:
+                for x in self.SELECTED:
+                    x.remove_tex0(type_id)
+        elif type == 'mdl0':
+            if self.SELECT_ID_NUMERIC:
+                for x in self.SELECTED:
+                    x.remove_mdl0_i(type_id)
+            else:
+                for x in self.SELECTED:
+                    x.remove_mdl0(type_id)
         else:
             raise ParsingException(self.txt, 'command "Remove" not supported for type {}'.format(type))
 

@@ -37,7 +37,7 @@ class DaeConverter(Converter):
         base_name = os.path.splitext(os.path.basename(image_path))[0]
         # try to add texture?
         if not self.brres.hasTexture(base_name):
-            self.brres.addTextureFromFile(image_path)
+            self.brres.import_texture(image_path)
         # create the layer
         l = material.addLayer(base_name)
         if sampler.minfilter:

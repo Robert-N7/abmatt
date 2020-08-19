@@ -121,9 +121,14 @@ class Tex0(SubFile):
 
 
 def which(program):
+    def is_exe(exe_file):
+        return os.path.isfile(exe_file) and os.access(exe_file, os.X_OK)
     for path in os.environ["PATH"].split(os.pathsep):
         exe_file = os.path.join(path, program)
-        if os.path.isfile(exe_file) and os.access(exe_file, os.X_OK):
+        if is_exe(exe_file):
+            return exe_file
+        exe_file += '.exe'
+        if is_exe(exe_file):
             return exe_file
 
 
@@ -164,7 +169,7 @@ class ImgConverterI:
         raise NotImplementedError()
 
     def __bool__(self):
-        return self.converter
+        return self.converter is not None
 
 
 class ImgConverter:
@@ -195,7 +200,7 @@ class ImgConverter:
             if not tex_format:
                 tex_format = self.IMG_FORMAT
             result = os.system(
-                '{} encode {} -d {} -x {} --n-mm={} -o'.format(self.converter, img_file, self.temp_dest, tex_format,
+                '{} encode {} -d {} -x {} -q --n-mm={} -o'.format(self.converter, img_file, self.temp_dest, tex_format,
                                                                mips))
             if result:
                 raise EncodeError()
@@ -212,7 +217,7 @@ class ImgConverter:
             f = BinFile(self.temp_dest, 'w')
             tex0.pack(f)
             f.commitWrite()
-            result = os.system('{} decode {} -d {} -o'.format(self.converter, self.temp_dest, dest_file))
+            result = os.system('{} decode {} -q -d {} -o'.format(self.converter, self.temp_dest, dest_file))
             os.remove(self.temp_dest)
             if result:
                 raise DecodeError()
@@ -222,7 +227,7 @@ class ImgConverter:
             f = BinFile(self.temp_dest, 'w')
             tex0.pack(f)
             f.commitWrite()
-            result = os.system('{} encode {} -o -x {}'.format(self.converter, self.temp_dest, tex_format))
+            result = os.system('{} encode {} -q -o -x {}'.format(self.converter, self.temp_dest, tex_format))
             if result:
                 raise EncodeError()
             t = Tex0(tex0.name, tex0.parent, BinFile(self.temp_dest))
