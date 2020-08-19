@@ -762,20 +762,21 @@ class Command:
             else:
                 for x in self.SELECTED:
                     x.removeLayerByName(type_id)
-        elif type == 'tex0':
-            if self.SELECT_ID_NUMERIC:
-                for x in self.SELECTED:
-                    x.remove_tex0_i(type_id)
-            else:
-                for x in self.SELECTED:
-                    x.remove_tex0(type_id)
-        elif type == 'mdl0':
-            if self.SELECT_ID_NUMERIC:
-                for x in self.SELECTED:
-                    x.remove_mdl0_i(type_id)
-            else:
-                for x in self.SELECTED:
-                    x.remove_mdl0(type_id)
+        elif type == 'brres':
+            if self.type == 'tex0':
+                if self.SELECT_ID_NUMERIC:
+                    for x in self.SELECTED:
+                        x.remove_tex0_i(type_id)
+                else:
+                    for x in self.SELECTED:
+                        x.remove_tex0(type_id)
+            elif self.type == 'mdl0':
+                if self.SELECT_ID_NUMERIC:
+                    for x in self.SELECTED:
+                        x.remove_mdl0_i(type_id)
+                else:
+                    for x in self.SELECTED:
+                        x.remove_mdl0(type_id)
         else:
             raise ParsingException(self.txt, 'command "Remove" not supported for type {}'.format(type))
 

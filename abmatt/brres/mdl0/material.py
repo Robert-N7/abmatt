@@ -150,6 +150,12 @@ class Material(Clipable):
     def getFogset(self):
         return self.fogset
 
+    def getColor(self, i):
+        return self.matGX.tevRegs[i].getColor()
+
+    def getConstantColor(self, i):
+        return self.matGX.cctevRegs[i].getColor()
+
     def getShaderColor(self):
         ret = ""
         for i in range(3):

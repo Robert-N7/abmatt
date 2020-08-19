@@ -574,6 +574,19 @@ class Shader(Clipable):
             raise ValueError("Shader stage {} out of range, has {} stages".format(n, len(self.stages)))
         return self.stages[n]
 
+    def set_single_color(self):
+        self.set_stage_count(1)
+        stage = self.stages[0]
+        stage['colora'] = 'color0'
+        stage['colorb'] = 'zero'
+        stage['colorc'] = 'zero'
+        stage['colord'] = 'zero'
+        stage['alphaa'] = 'alpha0'
+        stage['alphab'] = 'zero'
+        stage['alphac'] = 'zero'
+        stage['alphad'] = 'zero'
+        stage['enabled'] = 'false'
+
     def addStage(self):
         """Adds stage to shader"""
         stages = self.stages
@@ -803,6 +816,12 @@ class Shader(Clipable):
                     tex_usage[id] += 1
         for x in mark_to_remove:
             self.stages.remove(x)
+        if not self.stages:
+            b = Bug(2, 2, '{} has no stages!'.format(prefix)
+                    , 'Set solid color {}'.format(self.material.getColor(0)))
+            self.set_single_color()
+            b.resolve()
+
         # indirect check
         ind_stages = self.getIndCoords()
         for stage_id in range(len(self.indTexCoords)):

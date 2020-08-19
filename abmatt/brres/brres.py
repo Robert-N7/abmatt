@@ -219,9 +219,12 @@ class Brres(Clipable):
         return MATCHING.findAll(name, self.textures)
 
     def remove_tex0(self, name):
-        tex = self.texture_map.pop(name)
-        if tex:
+        try:
+            tex = self.texture_map.pop(name)
             self.textures.remove(tex)
+        except KeyError:
+            AUTO_FIXER.warn('No texture {} in {}'.format(name, self.name))
+
 
     def remove_tex0_i(self, i):
         tex = self.textures.pop(i)

@@ -88,7 +88,6 @@ class DaeConverter(Converter):
             poly = mdl.add_geometry(base_name, vertex_group, normal_group,
                              colors, tex_coords)
             mdl.add_definition(mdl.getMaterialByName(triset.material), poly, bone)
-
         # add model to brres
         brres.add_mdl0(mdl)
 

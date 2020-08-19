@@ -377,13 +377,13 @@ class BinFile:
         """packs in the names"""
         names = self.nameRefMap
         # Debugging
-        out = []
-        for key in names:
-            reflist = names[key]
-            for x in reflist:
-                out.append(x[1])
-        with open('names.txt', 'w') as f:
-            f.write(str(out))
+        # out = []
+        # for key in names:
+        #     reflist = names[key]
+        #     for x in reflist:
+        #         out.append(x[1])
+        # with open('names.txt', 'w') as f:
+        #     f.write(str(out))
 
         for key in sorted(names):
             if key is not None and key != b'':

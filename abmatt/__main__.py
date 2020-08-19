@@ -410,7 +410,7 @@ def main():
         print(USAGE)
         sys.exit(2)
     if args:
-        print('Unknown option {}'.format(args))
+        print('Unknown option {}'.format(args[0]))
         print(USAGE)
         sys.exit(2)
     interactive = overwrite = False
