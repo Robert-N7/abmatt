@@ -419,7 +419,7 @@ class Brres(Clipable):
 
     # --------------------------------------------------------------------------
     def check(self):
-        AUTO_FIXER.info('checking file {}'.format(self.name), 3)
+        AUTO_FIXER.info('checking file {}'.format(self.name), 4)
         for mdl in self.models:
             mdl.check()
         tex_names = set(self.get_texture_map().keys())

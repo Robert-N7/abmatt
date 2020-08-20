@@ -1,5 +1,7 @@
-VERSION := $(shell cat version)
-DIR := abmatt-ubu_x64-${VERSION}
+os := $(if $(filter $(OS),Windows_NT),win10,ubu)
+cat := $(if $(filter $(os),win10),type,cat)
+version := $(shell $(cat) version)
+dir := abmatt-${os}_x64-${version}
 
 windows: update_version build_windows clean_windows dist add_windows_files zip
 	echo ...done
@@ -12,48 +14,51 @@ update_version:
 	./update_version.py
 
 build_linux:
-	$(eval DIR=abmatt-ubu_x64-${VERSION})
+	$(eval dir=abmatt-ubu_x64-${version})
 	./build.sh && ./__main__ -b ../test.brres -d test.brres -o
 
 build_windows:
 	@echo off
-	$(eval DIR=abmatt-win10_x64-$(VERSION))
+	$(eval dir=abmatt-win10_x64-$(version))
 	build.bat && __main__ -b ..\test.brres -d test.brres -o
 
 # create distribution folder
 dist:
-	echo Creating distribution in "${DIR}"... && \
- 	mkdir "${DIR}" && \
-  	cd "${DIR}" && mkdir bin && mkdir etc && cd etc && mkdir abmatt && cd "../.."
-	cp ../../LICENSE "${DIR}" && \
-	cp ../../README.md "${DIR}" && \
-	cp ../presets.txt "${DIR}"/etc/abmatt && cp ../config.conf "${DIR}"/etc/abmatt && \
-	cp __main__ "${DIR}"/bin/abmatt
+	echo Creating distribution in "${dir}"... && \
+ 	mkdir "${dir}" && \
+  	cd "${dir}" && mkdir bin && mkdir etc && cd etc && mkdir abmatt && cd "../.."
+	cp ../../LICENSE "${dir}" && \
+	cp ../../README.md "${dir}" && \
+	cp ../presets.txt "${dir}"/etc/abmatt && cp ../config.conf "${dir}"/etc/abmatt && \
+	cp __main__ "${dir}"/bin/abmatt
 
 tar:
-	tar -czvf "${DIR}".tar.gz "${DIR}"
+	tar -czvf "${dir}".tar.gz "${dir}"
 
 zip:
-	7z a -tzip "${DIR}".zip "${DIR}"
+	7z a -tzip "${dir}".zip "${dir}"
 
 add_linux_files:
-	cp install.sh "${DIR}" && cp uninstall.sh "${DIR}" &&\
-	cp install-ubu.txt "${DIR}"/install.txt
+	cp install.sh "${dir}" && cp uninstall.sh "${dir}" &&\
+	cp install-ubu.txt "${dir}"/install.txt
 
 add_windows_files:
-	cp install-win.txt ${DIR}\install.txt && cp make_installer.nsi "${DIR}" &&\
-	cd "${DIR}" && makensis make_installer.nsi && del make_installer.nsi && cd ..
+	cp install-win.txt ${dir}\install.txt && cp make_installer.nsi "${dir}" &&\
+	cd "${dir}" && makensis make_installer.nsi && del make_installer.nsi && \
+	rmdir /S /Q etc && rmdir /S /Q bin && del README.md && del LICENSE && \
+	cd ..
+
 
 
 linux_install:
-	cd "${DIR}" && sudo ./install.sh && cd ..
+	cd "${dir}" && sudo ./install.sh && cd ..
 
 windows_install:
-	cd "${DIR}" && install.exe && cd ..
+	cd "${dir}" && install.exe && cd ..
 
 clean_windows:
-	if exist ${DIR} rmdir /S /Q "${DIR}"
-	if exist ${DIR}.zip del ${DIR}.zip
+	if exist ${dir} rmdir /S /Q "${dir}"
+	if exist ${dir}.zip del ${dir}.zip
 
 clean_linux:
-	rm -rf "${DIR}" "${DIR}".tar.gz
+	rm -rf "${dir}" "${dir}".tar.gz

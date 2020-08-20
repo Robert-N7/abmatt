@@ -55,11 +55,11 @@ def getShadersFromMaterials(materials, for_modification=True):
 
 
 def getParents(group):
-    parents = []
-    for x in group:
-        if x.parent not in parents:
-            parents.append(x.parent)
-    return parents
+    return {x.parent for x in group}
+
+
+def getBrresFromMaterials(mats):
+    return {m.getBrres() for m in mats}
 
 
 class Command:
@@ -513,9 +513,9 @@ class Command:
                 Command.SELECTED = MATCHING.findAll(self.SELECT_ID, getParents(self.MATERIALS))
             elif type == 'brres':
                 if self.cmd in ('add', 'remove'):
-                    Command.SELECTED = getParents(getParents(self.MATERIALS))
+                    Command.SELECTED = getBrresFromMaterials(self.MATERIALS)
                 else:
-                    Command.SELECTED = MATCHING.findAll(self.SELECT_ID, getParents(getParents(self.MATERIALS)))
+                    Command.SELECTED = MATCHING.findAll(self.SELECT_ID, getBrresFromMaterials(self.MATERIALS))
             elif 'srt0' in type:
                 srts = [x.srt0 for x in self.MATERIALS if x.srt0]
                 if 'layer' in type:
@@ -534,6 +534,9 @@ class Command:
                     Command.SELECTED = srts
             elif 'pat0' in type:
                 Command.SELECTED = [x.pat0 for x in self.MATERIALS if x.pat0]
+            elif 'tex0' == type:
+                for x in getBrresFromMaterials(self.MATERIALS):
+                    Command.SELECTED.extend(MATCHING.findAll(self.SELECT_ID, x.textures))
 
     @staticmethod
     def markModified():
@@ -550,7 +553,7 @@ class Command:
             for cmd in commandlist:
                 cmd.runCmd()
         except (ValueError, SaveError, PasteError, MaxFileLimit, NoSuchFile, ParsingException,
-                OSError, UnpackingError) as e:
+                OSError, UnpackingError, NotImplementedError) as e:
             AUTO_FIXER.error(e, 1)
             return False
         return True

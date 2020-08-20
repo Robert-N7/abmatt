@@ -12,6 +12,7 @@ from brres.mdl0 import Mdl0
 from brres.pat0 import Pat0
 from brres.srt0 import Srt0
 from brres.mdl0.shader import Shader, Stage
+from brres.tex0 import ImgConverterI
 
 
 def parse_line(line):
@@ -62,6 +63,7 @@ def set_remove_unused(val):
         Shader.REMOVE_UNUSED_LAYERS = Stage.REMOVE_UNUSED_LAYERS = validBool(val)
     except ValueError:
         pass
+
 
 def load_config(app_dir, loudness=None, autofix_level=None):
     conf = Config(os.path.join(app_dir, 'config.conf'))
@@ -116,5 +118,9 @@ def load_config(app_dir, loudness=None, autofix_level=None):
         pass
     try:
         Shader.MAP_ID_AUTO = validBool(conf['map_id_auto'])
+    except ValueError:
+        pass
+    try:
+        ImgConverterI.set_image_resample(conf['resample_filter'])
     except ValueError:
         pass

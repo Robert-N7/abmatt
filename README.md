@@ -79,13 +79,13 @@ selection = name ['in' container]
 container = ['brres' filename] ['model' name];
 type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id]
     | 'srt0' | 'srt0layer' [':' id] | 'pat0'
-    | 'mdl0' | 'brres';
+    | 'mdl0' [':' id] | 'tex0' [':' id] | 'brres';
 
 setting =  key ':' value; NOTE: No spaces allowed in key:value pairs
 key = material-key | layer-key | shader-key | stage-key
-    | srt0-key | srt0-layer-key | pat0-key; 
+    | srt0-key | srt0-layer-key | pat0-key | tex0-key; 
 value = material-value | layer-value | shader-value | stage-value
-    |  srt0-value | srt0-layer-value | pat0-value; 
+    |  srt0-value | srt0-layer-value | pat0-value | tex0-value; 
 ```
 
 ### Selection Explanation
@@ -203,8 +203,16 @@ key-frame-list = key-frame-index ':' value {',' key-frame ':' value};
 
 ### PAT0 Keys
 ```
-pat0-keys = 'framecount' | 'loop' | 'keyframe'
-pat0-keyframe = key-frame-list
+pat0-keys = 'framecount' | 'loop' | 'keyframe';
+pat0-keyframe = key-frame-list;
+```
+
+### TEX0 Keys
+```
+tex0-keys = 'dimensions' | 'format' | 'mipmamcount' | 'name';
+tex0-dimension = width ',' height;
+tex0-format = 'cmpr' | 'c14x2' | 'c8' | 'c4' | 'rgba32' | 'rgb5a3' | 'rgb565' 
+            | 'ia8' | 'ia4' | 'i8' | 'i4';
 ```
 
 ### Example File Commands

@@ -1,12 +1,12 @@
-!define VERSION "0.6.1"
-Name "ANoob's Brres Material Tool ${VERSION}"
-OutFile "install.exe"
+!define VERSION "0.7.0"
+!define PROGRAM_NAME "ANoob's Brres Material Tool ${VERSION}"
 InstallDir "$PROGRAMFILES64\abmatt"
-ShowInstDetails "nevershow"
-ShowUninstDetails "nevershow"
+Name "${PROGRAM_NAME}"
+OutFile "install.exe"
 # Request admin rights
 RequestExecutionLevel admin
 !include LogicLib.nsh
+
 Function .onInit
 UserInfo::GetAccountType
 pop $0
@@ -16,7 +16,6 @@ ${If} $0 != "admin"
     Quit
 ${EndIf}
 FunctionEnd
-
 
 # INSTALL
 Section "install"
@@ -36,6 +35,16 @@ SectionEnd
 
 # UNINSTALL
 Section "Uninstall"
+SetOutPath "$INSTDIR\.."
 RMDir /r "$INSTDIR\*.*"
 EnVar::DeleteValue "PATH" "$INSTDIR\bin"
 SectionEnd
+
+# Function that calls a messagebox when installation finished correctly
+Function .onInstSuccess
+  MessageBox MB_OK "Success! Start by using 'abmatt' from the command line."
+FunctionEnd
+
+Function un.onUninstSuccess
+  MessageBox MB_OK "Abmatt has been removed."
+FunctionEnd

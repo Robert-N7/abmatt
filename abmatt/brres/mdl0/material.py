@@ -156,6 +156,9 @@ class Material(Clipable):
     def getConstantColor(self, i):
         return self.matGX.cctevRegs[i].getColor()
 
+    def getBrres(self):
+        return self.parent.parent
+
     def getShaderColor(self):
         ret = ""
         for i in range(3):

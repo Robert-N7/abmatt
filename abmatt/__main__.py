@@ -14,7 +14,7 @@ from abmatt.command import Command, ParsingException, NoSuchFile
 from brres.lib.autofix import AUTO_FIXER
 from abmatt.config import load_config
 
-VERSION = '0.6.1'
+VERSION = '0.7.0'
 USAGE = "USAGE: abmatt [-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]"
 
 

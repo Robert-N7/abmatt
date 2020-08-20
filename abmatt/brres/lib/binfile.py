@@ -23,7 +23,7 @@ class PackingError(BaseException):
 class BinFile:
     """ BinFile class: for packing and unpacking binfileary files"""
 
-    def __init__(self, filename, bom='>', mode='r'):
+    def __init__(self, filename, mode='r', bom='>'):
         """
         filename:   name of file to read/write
         bom:    byte order mark (>|<) Big endian or little endian

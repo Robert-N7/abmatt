@@ -36,7 +36,7 @@ class Tex0(SubFile):
         if key == 'dimensions':
             return self.width, self.height
         elif key == 'format':
-            return self.format
+            return self.FORMATS[self.format]
         elif key == 'mipmapcount':
             return self.num_mips
         elif key == 'name':
@@ -60,9 +60,11 @@ class Tex0(SubFile):
         if width != self.width or height != self.height:
             ImgConverter().set_dimensions(self, width, height)
 
-    def set_format(self, format):
-        if format != self.format:
-            ImgConverter().convert(self, format)
+    def set_format(self, fmt):
+        if fmt != self.format:
+            if fmt.upper() not in self.FORMATS.values():
+                raise ValueError('Invalid tex0 format {}'.format(fmt))
+            ImgConverter().convert(self, fmt)
 
     def set_mipmap_count(self, count):
         if count != self.num_mips:
@@ -149,9 +151,17 @@ class NoImgConverterError(Exception):
 
 class ImgConverterI:
     IMG_FORMAT = 'cmpr'
+    IMG_RESAMPLE = Image.BICUBIC
 
     def __init__(self, converter):
         self.converter = converter
+
+    @staticmethod
+    def set_image_resample(sample):
+        if sample:
+            samples = ['nearest', 'lanczos', 'bilinear', 'bicubic', 'box', 'hamming']
+            i = samples.index(sample)
+            ImgConverterI.IMG_RESAMPLE = i
 
     def encode(self, img_file, tex_format, num_mips=-1):
         raise NotImplementedError()
@@ -204,7 +214,7 @@ class ImgConverter:
                                                                mips))
             if result:
                 raise EncodeError()
-            t = Tex0(name, BinFile(self.temp_dest))
+            t = Tex0(name, None, BinFile(self.temp_dest))
             os.remove(self.temp_dest)
             t.name = name
             return t
@@ -214,11 +224,14 @@ class ImgConverter:
                 dest_file = tex0.name + '.png'
             elif os.path.isdir(dest_file):
                 dest_file = os.path.join(dest_file, tex0.name + '.png')
+            elif os.path.splitext(os.path.basename(dest_file))[1].lower() != '.png':
+                dest_file += '.png'
             f = BinFile(self.temp_dest, 'w')
             tex0.pack(f)
             f.commitWrite()
-            result = os.system('{} decode {} -q -d {} -o'.format(self.converter, self.temp_dest, dest_file))
-            os.remove(self.temp_dest)
+            result = os.system('{} decode {} -q -d {} --no-mipmaps -o'.format(self.converter, self.temp_dest, dest_file))
+            if self.temp_dest != dest_file:
+                os.remove(self.temp_dest)
             if result:
                 raise DecodeError()
             return dest_file
@@ -227,7 +240,7 @@ class ImgConverter:
             f = BinFile(self.temp_dest, 'w')
             tex0.pack(f)
             f.commitWrite()
-            result = os.system('{} encode {} -q -o -x {}'.format(self.converter, self.temp_dest, tex_format))
+            result = os.system('{} encode {} -o -q -x {}'.format(self.converter, self.temp_dest, tex_format))
             if result:
                 raise EncodeError()
             t = Tex0(tex0.name, tex0.parent, BinFile(self.temp_dest))
@@ -242,9 +255,10 @@ class ImgConverter:
         def set_dimensions(self, tex0, width, height):
             fname = self.decode(tex0, self.temp_dest)
             im = Image.open(fname)
-            im.resize(width, height)
+            im = im.resize((width, height), self.IMG_RESAMPLE)
             im.save(fname)
-            tex = self.encode(fname, tex0.format)
+            tex = self.encode(fname, tex0.get_str('format'))
+            os.remove(fname)
             tex0.paste(tex)
 
     def __getattr__(self, item):
