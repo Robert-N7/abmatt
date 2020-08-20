@@ -1,3 +1,3 @@
 cd ..
-pyinstaller __main__.py --onefile --paths=venv/Lib/site-packages;venv\Lib\site-packages\numpy\.libs
+pyinstaller __main__.py --onefile --paths=venv/Lib/site-packages
 cd dist

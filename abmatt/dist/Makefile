@@ -1,26 +1,21 @@
 os := $(if $(filter $(OS),Windows_NT),win10,ubu)
 cat := $(if $(filter $(os),win10),type,cat)
-version := $(shell $(cat) version)
-dir := abmatt-${os}_x64-${version}
+dir := $(shell $(cat) dist_dir)
 
-windows: update_version build_windows clean_windows dist add_windows_files zip
+windows: dist add_windows_files zip
 	echo ...done
 
-linux: update_version build_linux clean_linux dist add_linux_files tar
+linux: dist add_linux_files tar
 	echo ...done
 
 # updates the version
 update_version:
 	./update_version.py
+	version := $(shell $(cat) version)
+	bit_width := $(shell $(cat) bit_width)
 
-build_linux:
-	$(eval dir=abmatt-ubu_x64-${version})
-	./build.sh && ./__main__ -b ../test.brres -d test.brres -o
-
-build_windows:
-	@echo off
-	$(eval dir=abmatt-win10_x64-$(version))
-	build.bat && __main__ -b ..\test.brres -d test.brres -o
+build:
+	./build.py && ./__main__ -b ../test.brres -d test.brres -o
 
 # create distribution folder
 dist:
@@ -47,7 +42,6 @@ add_windows_files:
 	cd "${dir}" && makensis make_installer.nsi && del make_installer.nsi && \
 	rmdir /S /Q etc && rmdir /S /Q bin && del README.md && del LICENSE && \
 	cd ..
-
 
 
 linux_install:

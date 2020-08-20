@@ -1,6 +1,7 @@
 #!/usr/bin/python
 """For reading configuration file"""
 import os
+import re
 
 from brres.lib.autofix import AUTO_FIXER
 from abmatt.command import Command
@@ -29,6 +30,7 @@ def parse_line(line):
 class Config:
     def __init__(self, filename):
         self.config = {}
+        self.filename = filename
         if os.path.exists(filename):
             with open(filename, 'r') as f:
                 for cnt, line, in enumerate(f):
@@ -41,7 +43,15 @@ class Config:
 
     def __setitem__(self, key, value):
         self.config[key] = value
-
+        n = None
+        has_subbed = False
+        with open(self.filename) as f:
+            n, has_subbed = re.subn('^(' + key + r'\s*=\s*)[^\n]*', '\g<1>' + value, f.read(), 1, re.MULTILINE)
+        if n:
+            if not has_subbed:
+                n += '\n' + key + ' = ' + value
+            with open(self.filename, 'w') as f:
+                f.write(n)
 
 def set_rename_unknown(val):
     try:

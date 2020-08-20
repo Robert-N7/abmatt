@@ -14,7 +14,7 @@ from brres.mdl0.shader import Shader, Stage
 from brres.pat0 import Pat0MatAnimation
 from brres.srt0 import SRTMatAnim, SRTTexAnim
 from brres.lib.autofix import AUTO_FIXER
-from brres.tex0 import Tex0, ImgConverter
+from brres.tex0 import Tex0, ImgConverter, EncodeError
 
 
 class ParsingException(Exception):
@@ -552,7 +552,7 @@ class Command:
         try:
             for cmd in commandlist:
                 cmd.runCmd()
-        except (ValueError, SaveError, PasteError, MaxFileLimit, NoSuchFile, ParsingException,
+        except (ValueError, SaveError, PasteError, MaxFileLimit, NoSuchFile, FileNotFoundError, ParsingException,
                 OSError, UnpackingError, NotImplementedError) as e:
             AUTO_FIXER.error(e, 1)
             return False
@@ -579,10 +579,13 @@ class Command:
                     x.add_tex0(tex0)
 
     def import_model(self, file):
-        raise NotImplementedError()    # todo
+        raise NotImplementedError('Not implemented')    # todo
 
     def import_texture(self, file, tex_format=None):
-        return ImgConverter().encode(file, tex_format)
+        try:
+            ImgConverter().encode(file, tex_format)
+        except EncodeError as e:
+            print(e)
 
     def runCmd(self):
         if self.hasSelection:

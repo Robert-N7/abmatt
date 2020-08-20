@@ -5,6 +5,9 @@ import os
 import re
 import sys
 
+from config import Config
+
+
 def update_version(version):
     version_files = ['../../setup.py', 'install-ubu.txt', 'install-win.txt', '../__main__.py', 'Makefile',
                      'update_version.py', 'make_installer.nsi']
@@ -19,45 +22,55 @@ def update_version(version):
             with open(x, 'w') as file:
                 file.write(fixed)
                 count += 1
-    print('Updated version {} in {} files'.format(version, count))
-    with open('version', 'w') as f:
-        f.write(version)
+    return count
 
 
-def update_bit_width(str_width, is_64_bit):
-    with open('bit_width', 'w') as f:
-        f.write(str_width)
+def update_bit_width(is_64_bit):
     filename = 'make_installer.nsi'
     new_data = data = None
-    replacement = 'InstallDir "$PROGRAMFILES' + str_width + '\\abmatt"'
+    str_width = '64' if is_64_bit else '32'
     with open(filename, 'r') as f:
         data = f.read()
-        new_data = re.sub(r'InstallDir "\$PROGRAMFILES\d*\\abmatt"', data, replacement)
+        new_data, found = re.subn(r'^(InstallDir "\$PROGRAMFILES)\d*(\\abmatt")', '\g<1>' + str_width + '\g<2>', data, 1, re.MULTILINE)
+        if not found:
+            print('Failed to replace bit width in installer')
     if new_data:
         with open(filename, 'w') as f:
             f.write(new_data)
 
 
-def main(version, bit_width):
-    try:
-        width = int(bit_width)
-        is_64_bit = ['32', '64'].index(width)
-        update_bit_width(bit_width, is_64_bit)
-    except ValueError:
-        print('Bit width {} not an int'.format(bit_width))
-        exit(1)
-    update_version(version)
+def main(args):
+    usage = 'update_version.py [version [bit_width]]'
+    bit_width = version = None
+    c = Config('config.txt')
+    if len(args):
+        version = args.pop(0)
+        if not re.match(r'\d+\.\d+\.\d+', version):
+            print('Invalid version format {}'.format(version))
+            sys.exit(1)
+        c['version'] = version
+    else:
+        version = c['version']
+    if not version:
+        print('No version detected!')
+        print(usage)
+        sys.exit(1)
+    if len(args):
+        bit_width = args.pop(0)
+        is_64_bit = ['x86', 'x64'].index(bit_width)
+        c['bit_width'] = bit_width
+    else:
+        bit_width = c['bit_width']
+        is_64_bit = ['x86', 'x64'].index(bit_width)
+    if not bit_width:
+        print('Bit width not set!')
+        print(usage)
+        sys.exit(1)
+    update_bit_width(is_64_bit)
+    count = update_version(version)
+    print('Updated version {} {} in {} files'.format(version, bit_width, count))
+
+
 
 if __name__ == '__main__':
-    version = None
-    if len(sys.argv) > 1:
-        version = sys.argv[1]
-    else:
-        with open('version') as f:
-            version = f.read()
-    if not version:
-        print('No version detected! Run ./update_version.py x.x.x')
-        sys.exit(1)
-    with open('bit_width') as f:
-        bit_width = f.read()
-    main(version, bit_width)
+    main(sys.argv[1:])
