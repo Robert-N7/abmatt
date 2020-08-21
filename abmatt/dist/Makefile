@@ -25,13 +25,13 @@ dist:
 	cp ../../LICENSE "${dir}" && \
 	cp ../../README.md "${dir}" && \
 	cp ../presets.txt "${dir}"/etc/abmatt && cp ../config.conf "${dir}"/etc/abmatt && \
-	cp -r abmatt/* ${dir}/bin/
+	cp main ${dir}/bin/abmatt
 
 tar:
 	tar -czvf "${dir}".tar.gz "${dir}"
 
 zip:
-	7z a -tzip "${dir}".zip "${dir}"
+	7z a -tzip ${dir}.zip "${dir}"
 
 add_linux_files:
 	cp install.sh "${dir}" && cp uninstall.sh "${dir}" &&\

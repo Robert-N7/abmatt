@@ -3,7 +3,8 @@
 ANoob's Brres Material Editor
 For editing Mario Kart Wii files
 """
-
+import time
+start_time = time.time()
 import getopt
 import os
 import sys
@@ -409,10 +410,7 @@ def main():
         print(e)
         print(USAGE)
         sys.exit(2)
-    if args:
-        print('Unknown option {}'.format(args[0]))
-        print(USAGE)
-        sys.exit(2)
+
     interactive = overwrite = False
     type = ""
     command = destination = brres_file = command_file = model = value = key = ""
@@ -518,3 +516,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    print('Finished in {}'.format(time.time() - start_time))

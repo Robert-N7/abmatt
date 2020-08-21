@@ -7,13 +7,14 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 path="/usr/local"
-etc_path="$path/etc/abmatt"
+bin_path="$path/bin/"
 # Binaries
-echo installing abmatt to "${path}"/bin
-install -p bin/abmatt "${path}"/bin/abmatt
+echo installing abmatt to "${bin_path}"
+install -p bin/abmatt "$bin_path/abmatt"
 
 # Other
+etc_path="$path/etc/abmatt/"
 mkdir -p "${etc_path}"
-install -p etc/abmatt/presets.txt "${etc_path}"/presets.txt
-install -p etc/abmatt/config.conf "${etc_path}"/config.conf
+for file in etc/abmatt/*;do
+  install -p "${file}" "${etc_path}"
 echo '...done'
