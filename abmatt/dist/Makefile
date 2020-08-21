@@ -25,7 +25,7 @@ dist:
 	cp ../../LICENSE "${dir}" && \
 	cp ../../README.md "${dir}" && \
 	cp ../presets.txt "${dir}"/etc/abmatt && cp ../config.conf "${dir}"/etc/abmatt && \
-	cp __main__ "${dir}"/bin/abmatt
+	cp -r abmatt/* ${dir}/bin/
 
 tar:
 	tar -czvf "${dir}".tar.gz "${dir}"

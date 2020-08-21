@@ -33,8 +33,8 @@ setup(name='abmatt',
       author_email='robert7.nelson@gmail.com',
       license='GPLv3',
       packages=setuptools.find_packages(),
-      package_data={'abmatt':['presets.txt']},
+      package_data={'abmatt':['presets.txt', 'config.conf']},
       classifiers=CLASSIFIERS,
       install_requires=REQUIREMENTS,
-      keywords='Mario Kart Wii Brres Material MDL0'
+      keywords='Mario Kart Wii Brres Material Model'
       )

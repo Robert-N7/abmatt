@@ -1,7 +1,5 @@
 """ MDL0 Models """
 # ----------------- Model sub files --------------------------------------------
-import numpy as np
-
 from brres.lib.autofix import AUTO_FIXER, Bug
 from brres.lib.binfile import Folder, PackingError
 from brres.lib.node import Node, Clipable
@@ -169,47 +167,6 @@ class Mdl0(SubFile):
         b = Bone(name, self)
         self.add_to_group(self.bones, b)
         return b
-
-    def add_geometry(self, name, vertices, normals, colors, tex_coord_groups):
-        """
-        Adds the geometry, note that point collection face indices must match in size!
-        :param name: obj name
-        :param vertices: point_collection
-        :param normals: optional point_collection
-        :param colors: optional color_collection
-        :param tex_coord_groups: list of up to 8 tex coord point_collection(s)
-        """
-        vert = Vertex(name, self)
-        vert.encode_data(vertices)
-        self.add_to_group(self.vertices, vert)
-        index_groups = vertices.face_indicies
-        if self.normals:
-            normal = Normal(name, self)
-            normal.encode_data(normals)
-            self.add_to_group(self.normals, normal)
-            np.append(index_groups, normals.face_indicies, axis=1)
-        else:
-            normal = None
-        if colors:
-            color = Color(name, self)
-            color.encode_data(colors)
-            self.add_to_group(self.colors, color)
-            np.append(index_groups, colors.face_indicies, axis=1)
-        else:
-            color = self.get_default_color()
-        uvs = []
-        uv_i = len(self.texCoords)
-        for x in tex_coord_groups:
-            tex = TexCoord('#{}'.format(uv_i), self)
-            tex.index = uv_i
-            self.texCoords.append(tex)
-            uv_i += 1
-            uvs.append(tex)
-            np.append(index_groups, x.face_indicies, axis=1)
-        p = Polygon(name, self)
-        p.encode_data(vert, normal, color, uvs, index_groups)
-        self.add_to_group(self.objects, p)
-        return p
 
     def add_definition(self, material, polygon, bone=None, priority=0):
         if bone is None:

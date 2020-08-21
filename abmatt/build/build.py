@@ -7,10 +7,10 @@ from abmatt.config import Config
 
 def main(args):
     # update version/bit_width
+    c = Config('config.txt')
     os.chdir('../dist')
-    os.system('../dist/update_version.py')
+    os.system('update_version.py')
     # read configuration
-    c = Config('../dist/config.txt')
     bit_width = c['bit_width']
     version = c['version']
     interpreter = c['64-bit'] if bit_width == 'x64' else c['32-bit']
@@ -30,7 +30,6 @@ def make_distribution(dir, platform):
     with open('dist_dir', 'w') as f:
         f.write(dir)
     err = os.system('make ' + platform)
-    os.remove('dist_dir')
     return not err
 
 
@@ -45,12 +44,13 @@ def clean(folder, files):
 def build(interpreter):
     output = None
     os.chdir('..')
-    result = os.system(interpreter + ' -m PyInstaller __main__.py --onefile --paths=../venv/Lib/site-packages')
+    name = 'abmatt'
+    result = os.system(interpreter + ' -m PyInstaller -y -F __main__.py --onedir --name ' + name)
     os.chdir('dist')
     if not result:
-        output = './__main__'
+        output = os.path.join(name, name)
         if not os.path.exists(output):
-            output = '__main__.exe'
+            output += '.exe'
             if not os.path.exists(output):
                 print('Unable to find PyInstaller output file!')
                 sys.exit(1)

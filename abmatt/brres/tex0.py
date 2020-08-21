@@ -1,6 +1,5 @@
 """Tex0 subfile"""
 from math import log
-from PIL import Image
 import os
 
 from brres.lib.binfile import BinFile
@@ -44,21 +43,13 @@ class Tex0(SubFile):
 
     def set_str(self, key, value):
         if key == 'dimensions':
-            vals = parseValStr(value)
-            if len(vals) != 2:
-                raise ValueError('Expected "width,height" not "{}"'.format(value))
-            else:
-                return self.set_dimensions(validInt(vals[0], 1), validInt(vals[1], 1))
+            raise NotImplementedError('Unable to set dimensions.')
         elif key == 'format':
             return self.set_format(value)
         elif key == 'mipmapcount':
             return self.set_mipmap_count(validInt(value, 0, 20))
         elif key == 'name':
             return self.set_name(value)
-
-    def set_dimensions(self, width, height):
-        if width != self.width or height != self.height:
-            ImgConverter().set_dimensions(self, width, height)
 
     def set_format(self, fmt):
         if fmt != self.format:
@@ -84,7 +75,6 @@ class Tex0(SubFile):
     def set_power_of_two(self):
         width = self.width if self.is_power_of_two(self.width) else self.nearest_power_of_two(self.width)
         height = self.height if self.is_power_of_two(self.height) else self.nearest_power_of_two(self.height)
-        self.set_dimensions(width, height)
 
     def paste(self, item):
         self.width = item.width
@@ -98,9 +88,6 @@ class Tex0(SubFile):
         super(Tex0, self).check()
         if not self.is_power_of_two(self.width) or not self.is_power_of_two(self.height):
             b = Bug(2, 2, 'TEX0 {} not a power of 2'.format(self.name), 'Resize Tex0')
-            if self.RESIZE_TO_POW_TWO:
-                self.set_power_of_two()
-                b.resolve()
 
     def unpack(self, binfile):
         self._unpack(binfile)
@@ -151,7 +138,6 @@ class NoImgConverterError(Exception):
 
 class ImgConverterI:
     IMG_FORMAT = 'cmpr'
-    IMG_RESAMPLE = Image.BICUBIC
 
     def __init__(self, converter):
         self.converter = converter
@@ -250,15 +236,6 @@ class ImgConverter:
         def set_mipmap_count(self, tex0, mip_count=-1):
             fname = self.decode(tex0, self.temp_dest)
             tex = self.encode(fname, tex0.format, mip_count)
-            tex0.paste(tex)
-
-        def set_dimensions(self, tex0, width, height):
-            fname = self.decode(tex0, self.temp_dest)
-            im = Image.open(fname)
-            im = im.resize((width, height), self.IMG_RESAMPLE)
-            im.save(fname)
-            tex = self.encode(fname, tex0.get_str('format'))
-            os.remove(fname)
             tex0.paste(tex)
 
     def __getattr__(self, item):

@@ -25,19 +25,18 @@ File README.md
 File LICENSE
 # bin
 SetOutPath "$INSTDIR\bin"
-EnVar::AddValue "PATH" "$INSTDIR\bin"
-File "bin\abmatt.exe"
+EnVar::AddValue "PATH" "$INSTDIR\bin\abmatt.exe"
+File /a /r "bin\"
 # etc
 SetOutPath "$INSTDIR\etc\abmatt"
-File "etc\abmatt\presets.txt"
-File "etc\abmatt\config.conf"
+File /a /r "etc\abmatt\"
 SectionEnd
 
 # UNINSTALL
 Section "Uninstall"
 SetOutPath "$INSTDIR\.."
 RMDir /r "$INSTDIR\*.*"
-EnVar::DeleteValue "PATH" "$INSTDIR\bin"
+EnVar::DeleteValue "PATH" "$INSTDIR\bin\abmatt.exe"
 SectionEnd
 
 # Function that calls a messagebox when installation finished correctly

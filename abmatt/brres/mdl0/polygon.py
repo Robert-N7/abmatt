@@ -45,58 +45,6 @@ class Polygon(Node):
         self.fur_vector_id = -1
         self.fur_coord_id = -1
 
-    def encode_data(self, vertex, normal, color, uvs, face_indices):
-        # set up vertex declaration
-        self.vertex_format = vertex.format
-        self.vertex_divisor = vertex.divisor
-        if len(vertex) > 0xff:
-            self.vertex_index_format = self.INDEX_FORMAT_SHORT
-            fmt_str = 'H'
-        else:
-            fmt_str = 'B'
-        self.vertex_count = len(vertex)
-        self.vertex_group_index = vertex.index
-        if normal:
-            self.normal_type = normal.comp_count
-            self.normal_group_index = normal.index
-            self.normal_format = normal.format
-            if len(normal) > 0xff:
-                self.normal_index_format = self.INDEX_FORMAT_SHORT
-                fmt_str += 'H'
-            else:
-                fmt_str += 'B'
-        else:
-            self.normal_index_format = self.INDEX_FORMAT_NONE
-        if color:
-            if len(color) > 0xff:
-                self.color0_index_format = self.INDEX_FORMAT_SHORT
-                fmt_str += 'H'
-            else:
-                fmt_str += 'B'
-            self.color0_has_alpha = color.has_alpha
-            self.color_group_indices[0] = color.index
-        else:
-            self.color0_index_format = self.INDEX_FORMAT_NONE
-            self.num_colors = 0
-        self.num_tex = len(uvs)
-        for i in range(len(uvs)):
-            uv = uvs[i]
-            self.tex_coord_group_indices[i] = uv.index
-            self.tex_format[i] = uv.format
-            self.tex_divisor[i] = uv.divisor
-            if len(uv) > 0xff:
-                self.tex_index_format[i] = self.INDEX_FORMAT_SHORT
-                fmt_str += 'H'
-            else:
-                self.tex_index_format[i] = self.INDEX_FORMAT_BYTE
-                fmt_str += 'B'
-        face_point_len = len(face_indices[0])
-        self.face_count = face_point_len / 3
-        data = bytearray(pack('>BH', 0x90, face_point_len))
-        for i in range(face_point_len):
-            data.extend(pack(fmt_str, [x[i] for x in face_indices]))
-        self.vt_data = data
-
     def get_vertex_group(self):
         if self.vertex_index_format >= self.INDEX_FORMAT_BYTE:
             return self.parent.vertices[self.vertex_group_index]

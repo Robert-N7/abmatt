@@ -2,7 +2,7 @@ import time
 import os
 import sys
 
-path = '__main__'
+path = 'abmatt/abmatt'
 if not os.path.exists(path):
     path += '.exe'
     if not os.path.exists(path):

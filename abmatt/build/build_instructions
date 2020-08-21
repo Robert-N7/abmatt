@@ -1,3 +1,4 @@
+IMPORTANT: update config.txt before building!
 Building the distribution is done through build.py.
 It uses the 'pyinstaller' package to build the binaries. It creates a single file '__main__' in the 'dist' folder.
 In order to build sucessfully, all required modules must be found. (Hopefully in venv/Lib/site-packages)

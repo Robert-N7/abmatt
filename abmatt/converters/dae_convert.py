@@ -9,6 +9,7 @@ from brres.mdl0.geometry import PointCollection
 from brres.mdl0.layer import Layer
 from brres.mdl0.material import Material
 from brres.tex0 import ImgConverter
+from converters.arg_parse import arg_parse
 
 
 class Converter:
@@ -122,3 +123,10 @@ class DaeConverter(Converter):
 
     def save_model(self, mdl0):
         pass
+
+
+def main(args):
+    file_in, file_out = arg_parse(args)
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

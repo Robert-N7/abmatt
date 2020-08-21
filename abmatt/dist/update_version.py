@@ -7,8 +7,16 @@ import sys
 
 from config import Config
 
+def get_last_update(version_file):
+    if os.path.exists(version_file):
+        with open(version_file) as f:
+            return f.read()
 
 def update_version(version):
+    version_file = 'version'
+    if version == get_last_update(version_file):
+        print('Version already up to date')
+        return 0
     version_files = ['../../setup.py', 'install-ubu.txt', 'install-win.txt', '../__main__.py', 'Makefile',
                      'update_version.py', 'make_installer.nsi']
     # version_files = ['test.txt']
@@ -22,6 +30,8 @@ def update_version(version):
             with open(x, 'w') as file:
                 file.write(fixed)
                 count += 1
+    with open(version_file, 'w') as f:
+        f.write(version)
     return count
 
 
@@ -42,7 +52,7 @@ def update_bit_width(is_64_bit):
 def main(args):
     usage = 'update_version.py [version [bit_width]]'
     bit_width = version = None
-    c = Config('config.txt')
+    c = Config('../build/config.txt')
     if len(args):
         version = args.pop(0)
         if not re.match(r'\d+\.\d+\.\d+', version):

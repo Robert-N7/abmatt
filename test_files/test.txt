@@ -1,0 +1,1 @@
+set tex0:dst_mariokart format:ia8 for * in ../brres_files/desert_course.brres
