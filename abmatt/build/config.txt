@@ -1,0 +1,4 @@
+bit_width = x86
+version = 0.7.0
+64-bit = C:\Users\rober\AppData\Local\Programs\Python\Python38\python.exe
+32-bit = C:\Users\rober\AppData\Local\Programs\Python\Python38-32\python.exe

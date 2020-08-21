@@ -130,7 +130,3 @@ def load_config(app_dir, loudness=None, autofix_level=None):
         Shader.MAP_ID_AUTO = validBool(conf['map_id_auto'])
     except ValueError:
         pass
-    try:
-        ImgConverterI.set_image_resample(conf['resample_filter'])
-    except ValueError:
-        pass

@@ -142,13 +142,6 @@ class ImgConverterI:
     def __init__(self, converter):
         self.converter = converter
 
-    @staticmethod
-    def set_image_resample(sample):
-        if sample:
-            samples = ['nearest', 'lanczos', 'bilinear', 'bicubic', 'box', 'hamming']
-            i = samples.index(sample)
-            ImgConverterI.IMG_RESAMPLE = i
-
     def encode(self, img_file, tex_format, num_mips=-1):
         raise NotImplementedError()
 
