@@ -3,17 +3,22 @@
 ANoob's Brres Material Editor
 For editing Mario Kart Wii files
 """
-import time
-start_time = time.time()
 import getopt
 import os
 import sys
 from cmd import Cmd
 
-from abmatt.brres import Brres
-from abmatt.command import Command, ParsingException, NoSuchFile
+from config import Config
+from brres.lib.matching import validBool, MATCHING
+from brres.mdl0 import Mdl0
+from brres.mdl0.layer import Layer
+from brres.mdl0.shader import Shader, Stage
+from brres.pat0 import Pat0
+from brres.srt0 import Srt0
+from brres.subfile import SubFile
+from brres import Brres
+from command import Command, ParsingException, NoSuchFile
 from brres.lib.autofix import AUTO_FIXER
-from abmatt.config import load_config
 
 VERSION = '0.7.0'
 USAGE = "USAGE: abmatt [-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]"
@@ -365,33 +370,6 @@ class Shell(Cmd, object):
         print('Syntax error, type ? for help')
 
 
-def load_preset_file(dir):
-    if dir is None:
-        return False
-    preset_path = os.path.join(dir, 'presets.txt')
-    if os.path.exists(preset_path):
-        Command.load_commandfile(preset_path)
-        return True
-    return False
-
-
-def load_presets(app_dir):
-    # Load presets in file directory
-    loaded = True
-    if not load_preset_file(app_dir):
-        loaded = False
-    # Load presets in cwd
-    loaded_cwd = False
-    cwd = os.getcwd()
-    if app_dir != cwd:
-        loaded_cwd = load_preset_file(cwd)
-    if loaded or loaded_cwd:
-        AUTO_FIXER.info('Presets loaded...', 5)
-    else:
-        AUTO_FIXER.info('No presets file detected', 3)
-    return loaded
-
-
 def main():
     """ Main """
     global USAGE
@@ -462,8 +440,8 @@ def main():
         app_dir = os.path.join(os.path.join(base_path, 'etc'), 'abmatt')
     elif __file__:
         app_dir = os.path.dirname(__file__)
-    load_config(app_dir, loudness, autofix)
-    load_presets(app_dir)
+    config = load_config(app_dir, loudness, autofix)
+    Command.APP_DIR = app_dir
     cmds = []
     if command:
         cmd = command + ' ' + type
@@ -514,6 +492,74 @@ def main():
         file.close()
 
 
+def set_rename_unknown(val):
+    try:
+        Mdl0.RENAME_UNKNOWN_REFS = Layer.RENAME_UNKNOWN_REFS = Pat0.RENAME_UNKNOWN_REFS = validBool(val)
+    except ValueError:
+        pass
+
+
+def set_remove_unknown(val):
+    try:
+        Mdl0.REMOVE_UNKNOWN_REFS = Layer.REMOVE_UNKNOWN_REFS = Pat0.REMOVE_UNKNOWN_REFS = Srt0.REMOVE_UNKNOWN_REFS = \
+            validBool(val)
+    except ValueError:
+        pass
+
+
+def set_remove_unused(val):
+    try:
+        Shader.REMOVE_UNUSED_LAYERS = Stage.REMOVE_UNUSED_LAYERS = validBool(val)
+    except ValueError:
+        pass
+
+
+def load_config(app_dir, loudness=None, autofix_level=None):
+    conf = Config.get_instance(os.path.join(app_dir, 'config.conf'))
+    conf2 = Config.get_instance()
+    assert conf is conf2
+    if not loudness:
+        loudness = conf['loudness']
+    if loudness:
+        try:
+            AUTO_FIXER.set_loudness(loudness)
+        except ValueError:
+            AUTO_FIXER.warn('Invalid loudness level {}'.format(loudness))
+    Command.set_max_brres_files(conf)
+    # Matching stuff
+    MATCHING.set_case_sensitive(conf['case_sensitive'])
+    MATCHING.set_partial_matching(conf['partial_matching'])
+    MATCHING.set_regex_enable(conf['regex_matching'])
+    # Autofixes
+    try:
+        SubFile.FORCE_VERSION = validBool(conf['force_version'])
+    except ValueError:
+        pass
+    try:
+        Brres.REMOVE_UNUSED_TEXTURES = validBool(conf['remove_unused_textures'])
+    except ValueError:
+        pass
+    try:
+        Layer.MINFILTER_AUTO = validBool(conf['minfilter_auto'])
+    except ValueError:
+        pass
+    set_rename_unknown(conf['rename_unknown_refs'])
+    set_remove_unknown(conf['remove_unknown_refs'])
+    set_remove_unused(conf['remove_unused_layers'])
+    try:
+        Mdl0.DETECT_MODEL_NAME = validBool(conf['detect_model_name'])
+    except ValueError:
+        pass
+    try:
+        Mdl0.DRAW_PASS_AUTO = validBool(conf['draw_pass_auto'])
+    except ValueError:
+        pass
+    try:
+        Shader.MAP_ID_AUTO = validBool(conf['map_id_auto'])
+    except ValueError:
+        pass
+    return conf
+
+
 if __name__ == "__main__":
     main()
-    print('Finished in {}'.format(time.time() - start_time))

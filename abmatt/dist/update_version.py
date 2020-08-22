@@ -7,10 +7,12 @@ import sys
 
 from config import Config
 
+
 def get_last_update(version_file):
     if os.path.exists(version_file):
         with open(version_file) as f:
             return f.read()
+
 
 def update_version(version):
     version_file = 'version'
@@ -41,7 +43,8 @@ def update_bit_width(is_64_bit):
     str_width = '64' if is_64_bit else '32'
     with open(filename, 'r') as f:
         data = f.read()
-        new_data, found = re.subn(r'^(InstallDir "\$PROGRAMFILES)\d*(\\abmatt")', '\g<1>' + str_width + '\g<2>', data, 1, re.MULTILINE)
+        new_data, found = re.subn(r'^(InstallDir "\$PROGRAMFILES)\d*(\\abmatt")', '\g<1>' + str_width + '\g<2>', data,
+                                  1, re.MULTILINE)
         if not found:
             print('Failed to replace bit width in installer')
     if new_data:
@@ -79,7 +82,6 @@ def main(args):
     update_bit_width(is_64_bit)
     count = update_version(version)
     print('Updated version {} {} in {} files'.format(version, bit_width, count))
-
 
 
 if __name__ == '__main__':

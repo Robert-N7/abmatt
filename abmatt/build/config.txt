@@ -1,4 +1,0 @@
-bit_width = x64
-version = 0.7.0
-64-bit = C:\Users\Robert\AppData\Local\Programs\Python\Python37\python.exe
-32-bit = C:\Users\Robert\AppData\Local\Programs\Python\Python37-32\python.exe

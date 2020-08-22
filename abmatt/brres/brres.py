@@ -115,7 +115,7 @@ class Brres(Clipable):
             # if not self.isChanged():
             #     return
         if not overwrite and os.path.exists(filename):
-            AUTO_FIXER.warn('File {} already exists!'.format(filename), 2)
+            AUTO_FIXER.error('File {} already exists!'.format(filename), 1)
             return False
         else:
             f = BinFile(filename, mode="w")
@@ -187,6 +187,9 @@ class Brres(Clipable):
                     return tex
 
     def add_tex0(self, tex0):
+        if tex0.name in self.texture_map:
+            self.remove_tex0(tex0.name)
+            AUTO_FIXER.info('Replaced tex0 {}'.format(tex0.name))
         self.textures.append(tex0)
         self.texture_map[tex0.name] = tex0
 

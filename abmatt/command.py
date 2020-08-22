@@ -5,7 +5,7 @@ import fnmatch
 import os
 
 from brres.lib.binfile import UnpackingError
-from abmatt.brres import Brres
+from brres import Brres
 from brres.mdl0.layer import Layer
 from brres.lib.matching import validInt, MATCHING
 from brres.mdl0.material import Material
@@ -31,9 +31,11 @@ class NoSuchFile(Exception):
     def __init__(self, path):
         super(NoSuchFile, self).__init__('No such file "{}"'.format(path))
 
+
 class MaxFileLimit(Exception):
     def __init__(self):
         super(MaxFileLimit, self).__init__('Max file limit reached')
+
 
 class PasteError(Exception):
     def __init__(self, message=''):
@@ -70,15 +72,27 @@ class Command:
     SELECT_ID_NUMERIC = False  # current id numeric
     DESTINATION = None
     OVERWRITE = False
-    ACTIVE_FILES = []   # currently being used in selection
-    OPEN_FILES = {} # currently open
+    ACTIVE_FILES = []  # currently being used in selection
+    OPEN_FILES = {}  # currently open
     FILES_MARKED = set()  # files marked as modified
     MODELS = []
     MATERIALS = []
     PRESETS = {}
+    PRESETS_LOADED = False
+    APP_DIR = None
     CLIPBOARD = None
     CLIPTYPE = None
     MAX_FILES_OPEN = 6
+
+    @staticmethod
+    def set_max_brres_files(config):
+        max_brres_files = config['max_brres_files']
+        if max_brres_files:
+            try:
+                i = int(max_brres_files)
+                Command.MAX_FILES_OPEN = i
+            except ValueError:
+                pass
 
     TYPE_SETTING_MAP = {
         "material": Material.SETTINGS,
@@ -135,6 +149,9 @@ class Command:
             self.setSelection(x[in_index:])
             x = x[0:in_index]
         if cmd == 'preset':
+            if not self.PRESETS_LOADED:
+                load_presets(self.APP_DIR)
+                Command.PRESETS_LOADED = True
             key = x[0]
             if key not in self.PRESETS:
                 raise ParsingException(self.txt, 'No such preset {}'.format(key))
@@ -143,14 +160,9 @@ class Command:
         elif cmd == 'set':
             if not x:
                 raise ParsingException(self.txt, 'Not enough parameters')
-            if ':' not in x[0]:
-                raise ParsingException(self.txt, 'Set requires key:value pair')
-            key, value = x[0].split(':', 1)
-            self.key = key.lower()
-            if self.key != 'name':
-                self.value = value.lower()
-            else:
-                self.value = value
+            self.set_key_val(x[0])
+        elif cmd == 'add' and len(x):
+            self.set_key_val(x[0])
         elif len(x):
             if cmd != 'info':
                 raise ParsingException(self.txt, "Unknown parameter(s) {}".format(x))
@@ -159,9 +171,18 @@ class Command:
                 if self.key == 'keys':
                     return
         if self.key and self.type and self.key not in self.TYPE_SETTING_MAP[self.type]:
-            raise ParsingException(self.txt, "Unknown Key {} for {}, possible keys:\n\t{}".format(self.key, self.type,
-                                                                                                  self.TYPE_SETTING_MAP[
-                                                                                                      self.type]))
+            raise ParsingException(self.txt, "Unknown Key {} for {}, possible keys:\n\t{}".format(
+                self.key, self.type, self.TYPE_SETTING_MAP[self.type]))
+
+    def set_key_val(self, keyval):
+        if ':' not in keyval:
+            raise ParsingException(self.txt, 'Requires key:value pair')
+        key, value = keyval.split(':', 1)
+        self.key = key.lower()
+        if self.key != 'name':
+            self.value = value.lower()
+        else:
+            self.value = value
 
     def setSave(self, params):
         saveAs = False
@@ -307,14 +328,14 @@ class Command:
     @staticmethod
     def openFiles(filenames):
         opened = Command.OPEN_FILES
-        max = Command.MAX_FILES_OPEN   # max that can remain open
+        max = Command.MAX_FILES_OPEN  # max that can remain open
         if max - len(filenames) < 0:
             raise MaxFileLimit
         to_open = [f for f in filenames if f not in opened]
         total = len(to_open) + len(opened)
         needs_close = total > max
         can_close = []  # modified but can close
-        to_close = []   # going to close if needs closing
+        to_close = []  # going to close if needs closing
         active = []
         # first pass, mark non-modified files for closing, and appending active
         for x in opened:
@@ -327,7 +348,7 @@ class Command:
             else:
                 active.append(opened[x])
         if needs_close:
-            if total > max:     # mark modified files for closing
+            if total > max:  # mark modified files for closing
                 for x in can_close:
                     to_close.append(x)
                     total -= 1
@@ -337,11 +358,11 @@ class Command:
         # open any that aren't opened
         for f in to_open:
             # try:
-                brres = Brres(f)
-                opened[f] = brres
-                active.append(brres)
-            # except UnpackingError as e:
-            #     AUTO_FIXER.error(e)
+            brres = Brres(f)
+            opened[f] = brres
+            active.append(brres)
+        # except UnpackingError as e:
+        #     AUTO_FIXER.error(e)
         Brres.OPEN_FILES = opened.values()
         return active
 
@@ -535,6 +556,7 @@ class Command:
             elif 'pat0' in type:
                 Command.SELECTED = [x.pat0 for x in self.MATERIALS if x.pat0]
             elif 'tex0' == type:
+                Command.SELECTED = []
                 for x in getBrresFromMaterials(self.MATERIALS):
                     Command.SELECTED.extend(MATCHING.findAll(self.SELECT_ID, x.textures))
 
@@ -575,15 +597,16 @@ class Command:
                     x.add_mdl0(mdl)
             else:
                 tex0 = self.import_texture(file, converted_format)
-                for x in self.SELECTED:
-                    x.add_tex0(tex0)
+                if tex0:
+                    for x in self.SELECTED:
+                        x.add_tex0(tex0)
 
     def import_model(self, file):
-        raise NotImplementedError('Not implemented')    # todo
+        raise NotImplementedError('Not implemented')  # todo
 
     def import_texture(self, file, tex_format=None):
         try:
-            ImgConverter().encode(file, tex_format)
+            return ImgConverter().encode(file, tex_format)
         except EncodeError as e:
             print(e)
 
@@ -727,13 +750,23 @@ class Command:
                     x.addLayerByName(type_id)
         elif type == 'brres':
             if self.type == 'tex0':
-                tex = self.import_texture(type_id)
-                for x in self.SELECTED:
-                    x.add_tex0(tex)
+                convert_fmt = None
+                try:
+                    convert_fmt = self.value
+                except AttributeError:
+                    pass
+                files = self.getFiles(type_id)
+                for file in files:
+                    tex = self.import_texture(file, convert_fmt)
+                    if tex:
+                        for x in self.SELECTED:
+                            x.add_tex0(tex)
             elif self.type == 'mdl0':
-                mdl = self.import_model(type_id)
-                for x in self.SELECTED:
-                    x.add_mdl0(mdl)
+                files = self.getFiles(type_id)
+                for file in files:
+                    mdl = self.import_model(file)
+                    for x in self.SELECTED:
+                        x.add_mdl0(mdl)
         else:
             raise ParsingException(self.txt, 'command "Add" not supported for type {}'.format(type))
 
@@ -790,3 +823,30 @@ class Command:
         return "{} {}:{} for {} in file {} model {}".format(self.cmd,
                                                             self.key, self.value, self.name, self.file,
                                                             self.model)
+
+
+def load_preset_file(dir):
+    if dir is None:
+        return False
+    preset_path = os.path.join(dir, 'presets.txt')
+    if os.path.exists(preset_path):
+        Command.load_commandfile(preset_path)
+        return True
+    return False
+
+
+def load_presets(app_dir):
+    # Load presets in file directory
+    loaded = True
+    if not load_preset_file(app_dir):
+        loaded = False
+    # Load presets in cwd
+    loaded_cwd = False
+    cwd = os.getcwd()
+    if app_dir != cwd:
+        loaded_cwd = load_preset_file(cwd)
+    if loaded or loaded_cwd:
+        AUTO_FIXER.info('Presets loaded...', 5)
+    else:
+        AUTO_FIXER.info('No presets file detected', 3)
+    return loaded

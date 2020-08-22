@@ -1,12 +1,12 @@
 """ Matching and miscellaneous functions, and clipable interface """
 
 import re
-from fuzzywuzzy import fuzz
 
 BOOLABLE = ["False", "True"]
 
 
 def fuzzy_match(text, group, acceptable_ratio=84):
+    from fuzzywuzzy import fuzz
     bssf = None
     best_ratio = 0
     lower = text.lower()
@@ -20,6 +20,7 @@ def fuzzy_match(text, group, acceptable_ratio=84):
 
 def fuzzy_strings(text, strings, acceptable_ratio=84):
     """Same as fuzzy_match except expects group of strings"""
+    from fuzzywuzzy import fuzz
     bssf = None
     best_ratio = 0
     lower = text.lower()

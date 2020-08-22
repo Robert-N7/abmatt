@@ -3,9 +3,10 @@ from math import log
 import os
 
 from brres.lib.binfile import BinFile
-from brres.lib.matching import parseValStr, validInt
+from brres.lib.matching import parseValStr, validInt, validFloat, validBool
 from brres.subfile import SubFile
 from brres.lib.autofix import AUTO_FIXER, Bug
+from config import Config
 
 
 class Tex0(SubFile):
@@ -14,7 +15,7 @@ class Tex0(SubFile):
     EXT = 'tex0'
     VERSION_SECTIONCOUNT = {1: 1, 2: 2, 3: 1}
     EXPECTED_VERSION = 3
-    RESIZE_TO_POW_TWO = True
+    RESIZE_TO_POW_TWO = None
     SETTINGS = ('dimensions', 'format', 'mipmapcount', 'name')
     FORMATS = {0: 'I4', 1: 'I8', 2: 'IA4', 3: 'IA8',
                4: 'RGB565', 5: 'RGB5A3', 6: 'RGBA32',
@@ -43,7 +44,10 @@ class Tex0(SubFile):
 
     def set_str(self, key, value):
         if key == 'dimensions':
-            raise NotImplementedError('Unable to set dimensions.')
+            width, height = parseValStr(value)
+            width = validInt(width, 1, 2050)
+            height = validInt(height, 1, 2050)
+            ImgConverter().set_dimensions(self, width, height)
         elif key == 'format':
             return self.set_format(value)
         elif key == 'mipmapcount':
@@ -75,6 +79,7 @@ class Tex0(SubFile):
     def set_power_of_two(self):
         width = self.width if self.is_power_of_two(self.width) else self.nearest_power_of_two(self.width)
         height = self.height if self.is_power_of_two(self.height) else self.nearest_power_of_two(self.height)
+        ImgConverter().set_dimensions(self, width, height)
 
     def paste(self, item):
         self.width = item.width
@@ -84,10 +89,24 @@ class Tex0(SubFile):
         self.num_mips = item.num_mips
         self.data = item.data
 
+    def should_resize_pow_two(self):
+        if self.RESIZE_TO_POW_TWO is None:
+            try:
+                v = Config.get_instance()['resize_pow_two']
+                Tex0.RESIZE_TO_POW_TWO = validBool(v)
+            except ValueError:
+                AUTO_FIXER.warn('Invalid config for resize_pow_two "{}"'.format(v))
+                Tex0.RESIZE_TO_POW_TWO = False
+        return self.RESIZE_TO_POW_TWO
+
     def check(self):
         super(Tex0, self).check()
         if not self.is_power_of_two(self.width) or not self.is_power_of_two(self.height):
-            b = Bug(2, 2, 'TEX0 {} not a power of 2'.format(self.name), 'Resize Tex0')
+            b = Bug(2, 2, 'TEX0 {} {}x{} not a power of 2'.format(self.name, self.width, self.height), None)
+            if self.should_resize_pow_two():
+                self.set_power_of_two()
+                b.fix_des = 'Resize to {}x{}'.format(self.width, self.height)
+                b.resolve()
 
     def unpack(self, binfile):
         self._unpack(binfile)
@@ -112,6 +131,7 @@ class Tex0(SubFile):
 def which(program):
     def is_exe(exe_file):
         return os.path.isfile(exe_file) and os.access(exe_file, os.X_OK)
+
     for path in os.environ["PATH"].split(os.pathsep):
         exe_file = os.path.join(path, program)
         if is_exe(exe_file):
@@ -138,6 +158,7 @@ class NoImgConverterError(Exception):
 
 class ImgConverterI:
     IMG_FORMAT = 'cmpr'
+    RESAMPLE = None
 
     def __init__(self, converter):
         self.converter = converter
@@ -156,6 +177,19 @@ class ImgConverterI:
 
     def set_dimensions(self, tex0, width, height):
         raise NotImplementedError()
+
+    def get_resample(self):
+        if not self.RESAMPLE:
+            sample = Config.get_instance()['img_resample']
+            from PIL import Image
+            filters = {"nearest": Image.NEAREST, "box": Image.BOX, "bilinear": Image.BILINEAR, "hamming": Image.HAMMING,
+                       "bicubic": Image.BICUBIC, "lanczos": Image.LANCZOS}
+            if not sample in filters:
+                AUTO_FIXER.warn('Invalid config value {} for "img_resample", using bicubic'.format(sample))
+                ImgConverterI.RESAMPLE = Image.BICUBIC
+            else:
+                ImgConverterI.RESAMPLE = filters[sample]
+        return self.RESAMPLE
 
     def __bool__(self):
         return self.converter is not None
@@ -190,7 +224,7 @@ class ImgConverter:
                 tex_format = self.IMG_FORMAT
             result = os.system(
                 '{} encode {} -d {} -x {} -q --n-mm={} -o'.format(self.converter, img_file, self.temp_dest, tex_format,
-                                                               mips))
+                                                                  mips))
             if result:
                 raise EncodeError('Failed to encode {}'.format(img_file))
             t = Tex0(name, None, BinFile(self.temp_dest))
@@ -208,7 +242,8 @@ class ImgConverter:
             f = BinFile(self.temp_dest, 'w')
             tex0.pack(f)
             f.commitWrite()
-            result = os.system('{} decode {} -q -d {} --no-mipmaps -o'.format(self.converter, self.temp_dest, dest_file))
+            result = os.system(
+                '{} decode {} -q -d {} --no-mipmaps -o'.format(self.converter, self.temp_dest, dest_file))
             if self.temp_dest != dest_file:
                 os.remove(self.temp_dest)
             if result:
@@ -230,6 +265,16 @@ class ImgConverter:
             fname = self.decode(tex0, self.temp_dest)
             tex = self.encode(fname, tex0.format, mip_count)
             tex0.paste(tex)
+
+        def set_dimensions(self, tex0, width, height):
+            tmp = self.decode(tex0, 'tmp.png')
+            from PIL import Image
+            img = Image.open(tmp)
+            img = img.resize((width, height), self.get_resample())
+            img.save(tmp)
+            tex = self.encode(tmp, tex0.get_str(tex0.format))
+            tex0.paste(tex)
+            return tex0
 
     def __getattr__(self, item):
         if not self.INSTANCE:

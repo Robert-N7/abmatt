@@ -1,6 +1,6 @@
 !define VERSION "0.7.0"
 !define PROGRAM_NAME "ANoob's Brres Material Tool ${VERSION}"
-InstallDir "$PROGRAMFILES32\abmatt"
+InstallDir "$PROGRAMFILES64\abmatt"
 Name "${PROGRAM_NAME}"
 OutFile "install.exe"
 # Request admin rights
@@ -25,7 +25,7 @@ File README.md
 File LICENSE
 # bin
 SetOutPath "$INSTDIR\bin"
-EnVar::AddValue "PATH" "$INSTDIR\bin\abmatt.exe"
+EnVar::AddValue "PATH" "$INSTDIR\bin"
 File /a /r "bin\"
 # etc
 SetOutPath "$INSTDIR\etc\abmatt"

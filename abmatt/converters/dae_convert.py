@@ -1,15 +1,14 @@
-import math
 import os
+import sys
 
 from collada import Collada, DaeBrokenRefError, DaeUnsupportedError
 
 from brres.mdl0 import Mdl0
 from brres.mdl0.color import ColorCollection
 from brres.mdl0.geometry import PointCollection
-from brres.mdl0.layer import Layer
 from brres.mdl0.material import Material
-from brres.tex0 import ImgConverter
 from converters.arg_parse import arg_parse
+from converters.convert_lib import add_geometry
 
 
 class Converter:
@@ -86,7 +85,7 @@ class DaeConverter(Converter):
                 colors = ColorCollection(color_source[4].data, triset.index[:, :, color_source[0]])
             else:
                 colors = None
-            poly = mdl.add_geometry(base_name, vertex_group, normal_group,
+            poly = add_geometry(mdl, base_name, vertex_group, normal_group,
                              colors, tex_coords)
             mdl.add_definition(mdl.getMaterialByName(triset.material), poly, bone)
         # add model to brres
