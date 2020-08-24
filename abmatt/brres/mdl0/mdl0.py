@@ -1,10 +1,12 @@
 """ MDL0 Models """
 # ----------------- Model sub files --------------------------------------------
+import math
+
 from brres.lib.autofix import AUTO_FIXER, Bug
 from brres.lib.binfile import Folder, PackingError
 from brres.lib.node import Node, Clipable
 from brres.mdl0.color import Color, ColorCollection
-from brres.mdl0.drawlist import DrawList, Definition
+from brres.mdl0.definition import DrawList, Definition, NodeTree
 from brres.lib.matching import fuzzy_match, MATCHING
 from brres.mdl0.material import Material
 from brres.mdl0.normal import Normal
@@ -115,8 +117,6 @@ class Mdl0(SubFile):
 
     def __init__(self, name, parent, binfile=None):
         """ initialize model """
-        self.drawXLU = DrawList('DrawXlu', self)
-        self.drawOpa = DrawList('DrawOpa', self)
         self.srt0_collection = None
         self.pat0_collection = None
         self.definitions = []
@@ -138,6 +138,36 @@ class Mdl0(SubFile):
                          self.materials, self.shaders, self.objects,
                          self.textureLinks, self.paletteLinks]
         super(Mdl0, self).__init__(name, parent, binfile)
+
+    def begin(self):
+        self.boneTable = BoneTable()
+        self.boneCount = 0
+        self.faceCount = 0
+        self.vertexCount = 0
+        self.drawOpa = DrawList(Definition.names[0], self)
+        self.drawXLU = DrawList(Definition.names[1], self)
+        self.nodeTree = NodeTree(Definition.names[3], self)
+
+    def rebuild_header(self):
+        """After encoding data, calculates the header data"""
+        self.boneCount = len(self.bones)
+        count = 0
+        minimum = [math.inf] * 3
+        maximum = [-math.inf] * 3
+        for vertex in self.vertices:
+            count += vertex.count
+            vert_min = vertex.minimum
+            vert_max = vertex.maximum
+            for i in range(3):
+                if vert_min[i] < minimum[i]:
+                    minimum[i] = vert_min[i]
+                if vert_max[i] > maximum[i]:
+                    maximum[i] = vert_max[i]
+        self.minimum = minimum
+        self.maximum = maximum
+        self.vertexCount = count
+        self.faceCount = sum(obj.face_count for obj in self.objects)
+
 
     def get_str(self, key):
         if key == 'name':
@@ -163,15 +193,19 @@ class Mdl0(SubFile):
             self.add_texture_link(x.name)
         return material
 
-    def add_bone(self, name):
+    def add_bone(self, name, parent_bone=None):
         b = Bone(name, self)
         self.add_to_group(self.bones, b)
+        b.bone_id = self.boneTable.add_entry(self.boneCount)
+        parent_index = parent_bone.bone_id if parent_bone else 0
+        self.nodeTree.add_entry(self.boneCount, parent_index)
+        self.boneCount += 1
         return b
 
     def add_definition(self, material, polygon, bone=None, priority=0):
         if bone is None:
             bone = self.bones[0]
-        definitions = self.drawOpa if material.xlu else self.drawXLU
+        definitions = self.drawOpa if not material.xlu else self.drawXLU
         definitions.add_entry(material.index, polygon.index, bone.index, priority)
 
     def get_default_color(self):
@@ -233,8 +267,9 @@ class Mdl0(SubFile):
         for x in not_found:
             desc = 'No material matching PAT0 {}'.format(x.name)
             mat = fuzzy_match(x.name, self.materials)
-            b = Bug(1, 1, desc, 'Rename to {}'.format(mat.name))
+            b = Bug(1, 1, desc, None)
             if self.RENAME_UNKNOWN_REFS and mat and not mat.pat0:
+                b.fix_des = 'Rename to {}'.format(mat.name)
                 if mat.set_pat0(x):
                     x.rename(mat.name)
                     b.resolve()
@@ -257,8 +292,10 @@ class Mdl0(SubFile):
     # ------------------ Name --------------------------------------
     def rename(self, name):
         self.parent.updateModelName(self.name, name)
-        self.srt0_collection.rename(name)
-        self.pat0_collection.rename(name)
+        if self.srt0_collection:
+            self.srt0_collection.rename(name)
+        if self.pat0_collection:
+            self.pat0_collection.rename(name)
         self.name = name
 
     # ------------------------------------ Materials ------------------------------
@@ -434,14 +471,12 @@ class Mdl0(SubFile):
     # ---------------START PACKING STUFF -------------------------------------
     def pre_pack(self):
         """Cleans up references in preparation for packing"""
-        definitions = [x for x in self.sections[0] if x]
-        if self.drawOpa and self.drawOpa not in definitions:
-            if self.drawXLU in definitions:
-                definitions.remove(self.drawXLU)
-            definitions.append(self.drawOpa)
-        if self.drawXLU and self.drawXLU not in definitions:
-            definitions.append(self.drawXLU)
-        self.sections[0] = definitions
+        defs = [self.nodeTree, self.drawOpa, self.drawXLU]
+        for x in self.sections[0]:
+            if x not in defs:
+                defs.append(x)
+        defs = [x for x in defs if x]
+        self.sections[0] = defs
         # rebuild texture links
         texture_links = {}
         for x in self.materials:
@@ -485,21 +520,22 @@ class Mdl0(SubFile):
             name = folder.recallEntryI()
             if 'Draw' in name:
                 if 'Xlu' in name:
-                    d = self.drawXLU
+                    self.drawXLU = DrawList(name, self, binfile)
                     found_xlu = True
-                    if not found_opa:
-                        self.definitions.append(self.drawOpa)  # empty but it might change
                 elif 'Opa' in name:
-                    d = self.drawOpa
+                    self.drawOpa = DrawList(name, self, binfile)
                     found_opa = True
                 else:
-                    d = DrawList(name, self)
+                    raise ValueError('Unknown Drawlist {}'.format(name))
+            elif name == 'NodeTree':
+                self.nodeTree = NodeTree(name, self, binfile)
             else:
-                d = Definition(name, self)
-            d.unpack(binfile)
-            self.definitions.append(d)
+                d = Definition(name, self, binfile)
+                self.definitions.append(d)
         if not found_xlu:
-            self.definitions.append(self.drawXLU)  # empty but might change
+            self.drawXLU = DrawList(Definition.names[1], self)
+        if not found_opa:
+            self.drawOpa = DrawList(Definition.names[0], self)
 
     def unpack(self, binfile):
         """ unpacks model data """
@@ -537,9 +573,8 @@ class Mdl0(SubFile):
 
     def pack_definitions(self, binfile, folder):
         for x in self.sections[0]:
-            if x:
-                folder.createEntryRefI()
-                x.pack(binfile)
+            folder.createEntryRefI()
+            x.pack(binfile)
         binfile.align(4)
 
     def pack_materials(self, binfile, folder, texture_link_map):

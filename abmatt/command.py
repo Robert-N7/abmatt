@@ -772,8 +772,8 @@ class Command:
 
     def remove(self, type, type_id):
         """Remove command"""
-        if self.SELECT_ID_NUMERIC and type_id == 0:
-            type_id = 1
+        if self.SELECT_ID_NUMERIC and self.type_id is None:
+            type_id = -1
         if type == 'material':
             if self.type == 'srt0':
                 for x in self.SELECTED:

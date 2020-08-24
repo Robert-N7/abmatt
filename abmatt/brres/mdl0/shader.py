@@ -455,8 +455,8 @@ class Shader(Clipable):
         self.stages = []
         self.swap_table = deepcopy(self.SWAP_TABLE)
         self.material = None  # material to be hooked
-        self.indTexMaps = [-1] * 4
-        self.indTexCoords = [-1] * 4
+        self.indTexMaps = [7] * 4
+        self.indTexCoords = [7] * 4
         super(Shader, self).__init__(name, parent, binfile)
 
     def begin(self):
@@ -832,7 +832,7 @@ class Shader(Clipable):
                         ind_stages.remove(stage_id)
                         tex_usage[x] += 1
                         ind_stage_count += 1
-                    except ValueError:
+                    except IndexError:
                         AUTO_FIXER.warn('Ind coord {} set but unused'.format(x), 3)
         # now check usage count
         removal_index = 0

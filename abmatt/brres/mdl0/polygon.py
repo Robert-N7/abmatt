@@ -16,7 +16,7 @@ class Polygon(Node):
         self.tex_index_format = [0] * 8
         self.tex_format = [0] * 8
         self.tex_divisor = [0] * 8
-        self.tex_e = [0] * 8
+        self.tex_e = [1] * 8
         super(Polygon, self).__init__(name, parent, binfile)
 
     def begin(self):
@@ -40,10 +40,13 @@ class Polygon(Node):
         self.bone_table = None
         self.vertex_group_index = 0
         self.normal_group_index = 0
-        self.color_group_indices = [0, -1] * 2
+        self.color_group_indices = [0, -1]
         self.tex_coord_group_indices = [0] + [-1] * 7
         self.fur_vector_id = -1
         self.fur_coord_id = -1
+        self.vertex_e = 1
+        self.normal_index3 = self.normal_e = 0
+        self.color0_e = self.color1_e = 1
 
     def get_vertex_group(self):
         if self.vertex_index_format >= self.INDEX_FORMAT_BYTE:
@@ -137,7 +140,6 @@ class Polygon(Node):
         vt_ref = binfile.offset - vt_offset + 8
         binfile.writeOffset('I', vt_offset, vt_ref)
         binfile.write('{}B'.format(len(self.vt_data)), *self.vt_data)
-        assert binfile.is_aligned()
         binfile.alignAndEnd()
 
     def unpack(self, binfile):
@@ -170,8 +172,9 @@ class Polygon(Node):
         self.parse_uvat(uvat[1], uvat[3], uvat[5])
         binfile.offset = vt_offset
         self.vt_data = binfile.read('{}B'.format(vt_size), vt_size)
-        # print('\n\n' + self.name)
-        # printCollectionHex(self.vt_data)
+        print('\n\n{}\tfacepoints:{} data length:{} '.format(self.name, self.face_count, len(self.vt_data)))
+        if self.face_count < 30:
+            printCollectionHex(self.vt_data)
         binfile.end()
 
     def parse_cp_vertex_format(self, hi, lo):

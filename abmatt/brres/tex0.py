@@ -218,6 +218,8 @@ class ImgConverter:
         def encode(self, img_file, tex_format=None, num_mips=-1):
             # encode
             dir, fname = os.path.split(img_file)
+            if img_file.startswith('file://'):
+                img_file = img_file.replace('file://', '')
             name = os.path.splitext(fname)[0]
             mips = str(num_mips) if num_mips >= 0 else 'auto'
             if not tex_format:

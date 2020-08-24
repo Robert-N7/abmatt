@@ -1,14 +1,15 @@
 import os
 import sys
 
-from collada import Collada, DaeBrokenRefError, DaeUnsupportedError
+from collada import Collada, DaeBrokenRefError, DaeUnsupportedError, DaeIncompleteError
 
+from brres import Brres
+from brres.lib.binfile import BinFile
 from brres.mdl0 import Mdl0
 from brres.mdl0.color import ColorCollection
-from brres.mdl0.geometry import PointCollection
 from brres.mdl0.material import Material
-from converters.arg_parse import arg_parse
-from converters.convert_lib import add_geometry
+from brres.tex0 import EncodeError
+from converters.convert_lib import add_geometry, PointCollection
 
 
 class Converter:
@@ -28,24 +29,32 @@ class Converter:
 
 
 class DaeConverter(Converter):
+    @staticmethod
+    def try_import_texture(brres, image_path):
+        base_name = os.path.splitext(os.path.basename(image_path))[0]
+        if not brres.hasTexture(base_name):
+            try:
+                brres.import_texture(image_path)
+            except EncodeError:
+                pass
+        return base_name
 
-    def convert_map_to_layer(self, map, material):
+    @staticmethod
+    def convert_map_to_layer(map, material, image_path_map):
         if not map or isinstance(map, tuple):
             return
         sampler = map.sampler
-        image_path = sampler.surface.image.path
-        base_name = os.path.splitext(os.path.basename(image_path))[0]
-        # try to add texture?
-        if not self.brres.hasTexture(base_name):
-            self.brres.import_texture(image_path)
+        base_name = image_path_map[sampler.surface.image.path]
         # create the layer
-        l = material.addLayer(base_name)
-        if sampler.minfilter:
-            pass    # todo update layer minfilter
-        coord = 'texcoord' + map.texcoord[-1]
-        l.setCoordinateStr(coord)
+        if not material.getLayerByName(base_name):
+            l = material.addLayer(base_name)
+            if sampler.minfilter:
+                pass  # todo update layer minfilter
+            coord = 'texcoord' + map.texcoord[-1]
+            l.setCoordinatesStr(coord)
 
-    def encode_material(self, dae_material, mdl):
+    @staticmethod
+    def encode_material(dae_material, mdl, image_path_map):
         m = Material(dae_material.name, mdl)
         mdl.add_material(m)
         effect = dae_material.effect
@@ -54,42 +63,60 @@ class DaeConverter(Converter):
         if effect.transparency < 1:
             m.enable_blend()
         # maps
-        self.convert_map_to_layer(effect.diffuse, m)
-        self.convert_map_to_layer(effect.ambient, m)
-        self.convert_map_to_layer(effect.specular, m)
-        self.convert_map_to_layer(effect.reflective, m)
-        self.convert_map_to_layer(effect.bumpmap, m)
-        self.convert_map_to_layer(effect.transparent, m)
+        DaeConverter.convert_map_to_layer(effect.diffuse, m, image_path_map)
+        DaeConverter.convert_map_to_layer(effect.ambient, m, image_path_map)
+        DaeConverter.convert_map_to_layer(effect.specular, m, image_path_map)
+        DaeConverter.convert_map_to_layer(effect.reflective, m, image_path_map)
+        DaeConverter.convert_map_to_layer(effect.bumpmap, m, image_path_map)
+        DaeConverter.convert_map_to_layer(effect.transparent, m, image_path_map)
 
     def load_model(self, model_name=None):
+        print('Converting {}... '.format(self.mdl_file))
         brres = self.brres
         model_file = self.mdl_file
-        base_name = os.path.splitext(os.path.basename(brres))[0]
-        dae = Collada(model_file, ignore=[DaeUnsupportedError, DaeBrokenRefError])
+        base_name = os.path.splitext(os.path.basename(brres.name))[0]
+        dae = Collada(model_file, ignore=[DaeIncompleteError, DaeUnsupportedError, DaeBrokenRefError])
         mdl_name = base_name.replace('_model', '')
         mdl = Mdl0(mdl_name, brres)
         bone = mdl.add_bone(base_name)
+        # images
+        image_path_map = {}
+        for image in dae.images:
+            image_path_map[image.path] = self.try_import_texture(brres, image.path)
         # materials
         for material in dae.materials:
-            self.encode_material(material, mdl)
-
+            self.encode_material(material, mdl, image_path_map)
+        if not brres.textures:
+            print('ERROR: No textures found!')
         # geometry/vertices/colors
         for geometry in dae.geometries:
             triset = geometry.primitives[0]
             vertex_group = PointCollection(triset.vertex, triset.vertex_index)
-            normal_group = PointCollection(triset.normal, triset.normal_index)
+            normal_group = PointCollection(triset.normal, triset.normal_index) if triset.normal is not None else None
             tex_coords = [PointCollection(triset.texcoordset[i], triset.texcoord_indexset[i]) \
                           for i in range(len(triset.texcoordset))]
             if triset.sources.get('COLOR'):
                 color_source = triset.sources['COLOR'][0]
-                colors = ColorCollection(color_source[4].data, triset.index[:, :, color_source[0]])
+                colors = ColorCollection(self.convert_colors(color_source[4].data), triset.index[:, :, color_source[0]])
             else:
                 colors = None
-            poly = add_geometry(mdl, base_name, vertex_group, normal_group,
-                             colors, tex_coords)
-            mdl.add_definition(mdl.getMaterialByName(triset.material), poly, bone)
+            poly = add_geometry(mdl, geometry.name.rstrip('Mesh'), vertex_group, normal_group,
+                                colors, tex_coords)
+            material = mdl.getMaterialByName(triset.material)
+            if not material:    # broken material
+                material = mdl.add_material(Material(triset.material, mdl))
+                material.auto_detect_layer()
+            mdl.add_definition(material, poly, bone)
+            if colors:
+                material.enable_vertex_color()
+        mdl.rebuild_header()
         # add model to brres
         brres.add_mdl0(mdl)
+        print('\t... Done')
+
+    @staticmethod
+    def convert_colors(color_group):
+        return [[int(y * 255) for y in x] for x in color_group]
 
     @staticmethod
     def construct_indices(triset_group, stride=3):
@@ -120,12 +147,29 @@ class DaeConverter(Converter):
                     ln += 1
         return PointCollection(geo_group, indices, minimum, maximum)
 
-    def save_model(self, mdl0):
-        pass
+    def save_model(self, mdl0=None):
+        raise NotImplementedError()
 
 
 def main(args):
-    file_in, file_out = arg_parse(args)
+    from converters.arg_parse import arg_parse
+    file_in, file_out, overwrite = arg_parse(args)
+    if file_in.ext == '.brres':
+        if not file_out.ext:
+            file_out.ext = '.dae'
+        brres = Brres(file_in.get_path())
+        converter = DaeConverter(brres, file_out.get_path())
+        converter.save_model()
+    elif file_in.ext == '.dae':
+        b_path = file_out.get_path()
+        brres = Brres(b_path, None, os.path.exists(b_path))
+        converter = DaeConverter(brres, file_in.get_path())
+        converter.load_model()
+        brres.save(None, overwrite)
+    else:
+        print('Unknown file {}, is the file extension .dae?'.format(file_in.ext))
+        sys.exit(1)
+
 
 if __name__ == '__main__':
     main(sys.argv[1:])

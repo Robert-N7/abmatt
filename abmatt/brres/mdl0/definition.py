@@ -1,22 +1,15 @@
-"""Model Drawlist class"""
 from brres.lib.binfile import UnpackingError
+from brres.lib.node import Node
 
 
-class Definition():
-    """ Definition, controls drawing commands such as opacity"""
+class Definition(Node):
+    """ Definition, controls drawing commands and Node commands etc"""
     names = ("DrawOpa", "DrawXlu", "MixNode", "NodeTree")
 
-    def __init__(self, name, parent):
-        self.name = name
-        self.parent = parent
-        self.isMixed = False
-        if 'Draw' in self.name:
-            self.cmd = 0x4
-        elif self.name == 'NodeTree':
-            self.cmd = 0x2
-        else:
-            self.isMixed = True
+    def __init__(self, name, parent, binfile=None):
+        self.isMixed = True     # assumes mixed
         self.list = []
+        super().__init__(name, parent, binfile)
 
     def unpack(self, binfile):
         """ unpacks draw list """
@@ -51,8 +44,33 @@ class Definition():
         binfile.write("B", 0x01)  # end list command
 
 
-class DrawList():
+class NodeTree(Node):
+
+    def __init__(self, name, parent, binfile=None):
+        self.nodes = []
+        super().__init__(name, parent, binfile)
+
+    def add_entry(self, bone_index, parent_index):
+        self.nodes.append((bone_index, parent_index))
+
+    def unpack(self, binfile):
+        nodes = self.nodes
+        while True:
+            [byte] = binfile.read('B', 1)
+            if byte == 0x1:
+                break
+            assert byte == 0x2
+            nodes.append(binfile.read('2H', 4))
+
+    def pack(self, binfile):
+        for x in self.nodes:
+            binfile.write('B2H', 0x2, x[0], x[1])
+        binfile.write('B', 0x1)  # end
+
+
+class DrawList(Node):
     """List exclusively with drawing definitions such as opacity"""
+
     class DrawEntry:
         def __init__(self, binfile=None):  # unpacks immediately
             if binfile:
@@ -74,10 +92,9 @@ class DrawList():
         def setPriority(self, val):
             self.priority = val
 
-    def __init__(self, name, parent):
-        self.name = name
-        self.parent = parent
+    def __init__(self, name, parent, binfile=None):
         self.list = []
+        super().__init__(name, parent, binfile)
 
     def __len__(self):
         return len(self.list)
@@ -122,7 +139,7 @@ class DrawList():
             [byte] = binfile.read("B", 1)
             if byte == 0x1:
                 break
-            assert(byte == 0x4)
+            assert (byte == 0x4)
             li.append(self.DrawEntry(binfile))
 
     def pack(self, binfile):

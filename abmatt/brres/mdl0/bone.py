@@ -6,7 +6,7 @@ class Bone(Node):
 
     def begin(self):
         self.index = 0
-        self.bone_id = 0
+        self.bone_id = 0       # id in bone_table
         self.flags = 0
         self.billboard = 0
         self.scale = (1, 1, 1)
@@ -15,6 +15,11 @@ class Bone(Node):
         self.minimum = (0, 0, 0)
         self.maximum = (0, 0, 0)
         self.b_parent = self.child = self.next = self.prev = None
+        self.part2 = 0
+        self.transform_matrix = [1, 0, 0, 0,
+                                 0, 1, 0, 0,
+                                 0, 0, 1, 0]
+        self.inverse_matrix = [x for x in self.transform_matrix]
 
 
     def unpack(self, binfile):
@@ -80,6 +85,13 @@ class BoneTable:
             self.unpack(binfile)
         else:
             self.entries = []
+
+    def __getitem__(self, item):
+        return self.entries[item]
+
+    def add_entry(self, entry):
+        self.entries.append(entry)
+        return len(self.entries) - 1
 
     def unpack(self, binfile):
         """ unpacks bonetable """

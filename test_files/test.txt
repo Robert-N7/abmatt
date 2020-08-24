@@ -1,2 +1,3 @@
-add tex0:../test_files/images/*.png in ../brres_files/desert_course.brres
+#select * in ../test_files/bb_delfino_plaza_no_bone.brres
+info brres for * in ../test_files/beginner_course.brres
 save as ../brres_files/test.brres overwrite

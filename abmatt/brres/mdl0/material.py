@@ -84,6 +84,11 @@ class Material(Clipable):
         self.parent.shaders[self.name] = self.shader
         self.shader.material = self
 
+    def auto_detect_layer(self):
+        if not self.layers:
+            if self.name in self.get_texture_map():
+                self.addLayer(self.name)
+
     def __str__(self):
         return "Mt{} {}: xlu {} layers {} culling {} blend {}".format(self.index, self.name,
                                                                       self.xlu, len(self.layers),
@@ -526,7 +531,7 @@ class Material(Clipable):
     def enable_blend(self):
         self.compareBeforeTexture = True
         self.matGX.blendmode.setEnabled(True)
-        self.setXluStr('True')
+        self.setXluStr('true')
         self.matGX.alphafunction.setXlu(False)
         self.matGX.zmode.setDepthUpdate(False)
         self.setDrawPriorityStr('1')
@@ -548,7 +553,7 @@ class Material(Clipable):
     # ------------------------------------- Check ----------------------------------------
     def check(self, texture_map=None):
         if texture_map is None:
-            texture_map = self.getTextureMap()
+            texture_map = self.get_texture_map()
         for layer in self.layers:
             layer.check(texture_map)
         self.shader.check()
@@ -612,6 +617,9 @@ class Material(Clipable):
         if self.srt0:
             self.srt0.updateLayerNameI(layer.layer_index, name)
         return self.parent.rename_texture_link(layer, name)
+
+    def enable_vertex_color(self):
+        self.lightChannels[0].enabled_vertex_color()
 
     # ---------------------------------PASTE------------------------------------------
     def paste(self, item):
@@ -811,15 +819,21 @@ class LightChannel:
         self.materialColorEnabled = self.materialAlphaEnabled = True
         self.ambientAlphaEnabled = self.ambientColorEnabled = True
         self.rasterAlphaEnabled = self.rasterColorEnabled = True
-        self.materialColor = [255, 255, 255, 255]
+        self.materialColor = [128, 128, 128, 255]
         self.ambientColor = [0, 0, 0, 255]
-        self.colorLightControl = self.LightChannelControl(1793)
-        self.alphaLightControl = self.LightChannelControl(1793)
+        self.colorLightControl = self.LightChannelControl(1792)
+        self.alphaLightControl = self.LightChannelControl(1792)
 
     def __str__(self):
         return 'Flags:{:02X} Mat:{} Amb:{}\n\tColorControl: {}\n\tAlphaControl: {}'.format(self.flagsToInt(),
-                                                                         self.materialColor, self.ambientColor,
-                                                                         self.colorLightControl, self.alphaLightControl)
+                                                                                           self.materialColor,
+                                                                                           self.ambientColor,
+                                                                                           self.colorLightControl,
+                                                                                           self.alphaLightControl)
+
+    def enable_vertex_color(self, enabled=True):
+        self.colorLightControl.enable_vertex_color(enabled)
+        self.alphaLightControl.enable_vertex_color(enabled)
 
     def __getitem__(self, item):
         is_color = True if "color" in item else False
@@ -902,9 +916,15 @@ class LightChannel:
             self.attenuationFunction = flags >> 10 & 1
             self.light4567 = flags >> 11 & 0xf
 
+        def enable_vertex_color(self, enable):
+            self.materialSourceVertex = enable
+
         def __str__(self):
             return 'enabled:{} material:{} ambient:{} diffuse:{} attenuation:{}'.format(self['enable'],
-                    self['material'], self['ambient'], self['diffuse'], self['attenuation'])
+                                                                                        self['material'],
+                                                                                        self['ambient'],
+                                                                                        self['diffuse'],
+                                                                                        self['attenuation'])
 
         def __getitem__(self, item):
             if 'material' in item:
@@ -970,7 +990,7 @@ class LightChannel:
 
     def flagsToInt(self):
         return self.materialColorEnabled | self.materialAlphaEnabled << 1 | self.ambientColorEnabled << 2 \
-        | self.ambientAlphaEnabled << 3 | self.rasterColorEnabled << 4 | self.rasterAlphaEnabled << 5
+               | self.ambientAlphaEnabled << 3 | self.rasterColorEnabled << 4 | self.rasterAlphaEnabled << 5
 
     def pack(self, binfile):
         flags = self.flagsToInt()
