@@ -5,7 +5,7 @@ import math
 from brres.lib.autofix import AUTO_FIXER, Bug
 from brres.lib.binfile import Folder, PackingError
 from brres.lib.node import Node, Clipable
-from brres.mdl0.color import Color, ColorCollection
+from brres.mdl0.color import Color
 from brres.mdl0.definition import DrawList, Definition, NodeTree
 from brres.lib.matching import fuzzy_match, MATCHING
 from brres.mdl0.material import Material
@@ -143,7 +143,7 @@ class Mdl0(SubFile):
         self.boneTable = BoneTable()
         self.boneCount = 0
         self.faceCount = 0
-        self.vertexCount = 0
+        self.facepoint_count = 0
         self.drawOpa = DrawList(Definition.names[0], self)
         self.drawXLU = DrawList(Definition.names[1], self)
         self.nodeTree = NodeTree(Definition.names[3], self)
@@ -151,11 +151,9 @@ class Mdl0(SubFile):
     def rebuild_header(self):
         """After encoding data, calculates the header data"""
         self.boneCount = len(self.bones)
-        count = 0
         minimum = [math.inf] * 3
         maximum = [-math.inf] * 3
         for vertex in self.vertices:
-            count += vertex.count
             vert_min = vertex.minimum
             vert_max = vertex.maximum
             for i in range(3):
@@ -165,7 +163,7 @@ class Mdl0(SubFile):
                     maximum[i] = vert_max[i]
         self.minimum = minimum
         self.maximum = maximum
-        self.vertexCount = count
+        self.facepoint_count = sum(obj.facepoint_count for obj in self.objects)
         self.faceCount = sum(obj.face_count for obj in self.objects)
 
 
@@ -207,17 +205,6 @@ class Mdl0(SubFile):
             bone = self.bones[0]
         definitions = self.drawOpa if not material.xlu else self.drawXLU
         definitions.add_entry(material.index, polygon.index, bone.index, priority)
-
-    def get_default_color(self):
-        default_name = 'default'
-        for x in self.colors:
-            if x.name == default_name:
-                return x
-        color = Color(default_name, self)
-        color.encode_data(ColorCollection([[0x80, 0x80, 0x80, 0xff]], [0]))
-        color.index = len(self.colors)
-        self.colors.append(color)
-        return color
 
     # ---------------------------------- SRT0 ------------------------------------------
     def set_srt0(self, srt0_collection):
@@ -292,11 +279,11 @@ class Mdl0(SubFile):
     # ------------------ Name --------------------------------------
     def rename(self, name):
         self.parent.updateModelName(self.name, name)
-        if self.srt0_collection:
-            self.srt0_collection.rename(name)
-        if self.pat0_collection:
-            self.pat0_collection.rename(name)
-        self.name = name
+        # if self.srt0_collection:
+        #     self.srt0_collection.rename(name)
+        # if self.pat0_collection:
+        #     self.pat0_collection.rename(name)
+        # self.name = name
 
     # ------------------------------------ Materials ------------------------------
     def getMaterialByName(self, name):
@@ -491,6 +478,7 @@ class Mdl0(SubFile):
     def post_unpack(self):
         Bone.post_unpack(self.bones)
 
+
     def unpackSection(self, binfile, section_index):
         """ unpacks section by creating items  of type section_klass
             and adding them to section list index
@@ -541,7 +529,7 @@ class Mdl0(SubFile):
         """ unpacks model data """
         self._unpack(binfile)
         binfile.start()  # Header
-        ln, fh, _, _, self.vertexCount, self.faceCount, _, self.boneCount, _ = binfile.read("Ii7I", 36)
+        ln, fh, _, _, self.facepoint_count, self.faceCount, _, self.boneCount, _ = binfile.read("Ii7I", 36)
         binfile.store()  # bone table offset
         if binfile.offset - binfile.beginOffset < ln:
             self.minimum = binfile.read("3f", 12)
@@ -633,7 +621,7 @@ class Mdl0(SubFile):
         self.pre_pack()
         self._pack(binfile)
         binfile.start()  # header
-        binfile.write("Ii7I", 0x40, binfile.getOuterOffset(), 0, 0, self.vertexCount, self.faceCount,
+        binfile.write("Ii7I", 0x40, binfile.getOuterOffset(), 0, 0, self.facepoint_count, self.faceCount,
                       0, self.boneCount, 0x01000000)
         binfile.mark()  # bone table offset
         if self.version >= 10:

@@ -228,6 +228,7 @@ class ImgConverter:
                 '{} encode {} -d {} -x {} -q --n-mm={} -o'.format(self.converter, img_file, self.temp_dest, tex_format,
                                                                   mips))
             if result:
+                os.remove(self.temp_dest)
                 raise EncodeError('Failed to encode {}'.format(img_file))
             t = Tex0(name, None, BinFile(self.temp_dest))
             os.remove(self.temp_dest)
@@ -258,6 +259,7 @@ class ImgConverter:
             f.commitWrite()
             result = os.system('{} encode {} -o -q -x {}'.format(self.converter, self.temp_dest, tex_format))
             if result:
+                os.remove(self.temp_dest)
                 raise EncodeError('Failed to encode {}'.format(tex0.name))
             t = Tex0(tex0.name, tex0.parent, BinFile(self.temp_dest))
             os.remove(self.temp_dest)

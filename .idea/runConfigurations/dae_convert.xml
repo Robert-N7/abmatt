@@ -12,7 +12,7 @@
     <option name="ADD_CONTENT_ROOTS" value="true" />
     <option name="ADD_SOURCE_ROOTS" value="true" />
     <option name="SCRIPT_NAME" value="$PROJECT_DIR$/abmatt/converters/dae_convert.py" />
-    <option name="PARAMETERS" value="../test_files/beginner_course.dae -o" />
+    <option name="PARAMETERS" value="../test_files/3ds_bll.DAE -o" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="false" />

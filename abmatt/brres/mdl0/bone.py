@@ -7,7 +7,7 @@ class Bone(Node):
     def begin(self):
         self.index = 0
         self.bone_id = 0       # id in bone_table
-        self.flags = 0
+        self.flags = 790
         self.billboard = 0
         self.scale = (1, 1, 1)
         self.rotation = (0, 0, 0)
@@ -16,10 +16,10 @@ class Bone(Node):
         self.maximum = (0, 0, 0)
         self.b_parent = self.child = self.next = self.prev = None
         self.part2 = 0
-        self.transform_matrix = [1, 0, 0, 0,
-                                 0, 1, 0, 0,
-                                 0, 0, 1, 0]
-        self.inverse_matrix = [x for x in self.transform_matrix]
+        self.transform_matrix = [[1, 0, 0, 0],
+                                 [0, 1, 0, 0],
+                                 [0, 0, 1, 0]]
+        self.inverse_matrix = [[y for y in x] for x in self.transform_matrix]
 
 
     def unpack(self, binfile):
@@ -33,8 +33,8 @@ class Bone(Node):
         self.minimum = binfile.read('3f', 12)
         self.maximum = binfile.read('3f', 12)
         self.b_parent, self.child, self.next, self.prev, self.part2 = binfile.read('5i', 20)
-        self.transform_matrix = binfile.read('12f', 48)
-        self.inverse_matrix = binfile.read('12f', 48)
+        self.transform_matrix = binfile.readMatrix(4, 3)
+        self.inverse_matrix = binfile.readMatrix(4, 3)
         binfile.end()
 
     @staticmethod
@@ -73,8 +73,8 @@ class Bone(Node):
         binfile.mark(2)     # mark child and next
         binfile.write('i', self.prev.offset - self.offset) if self.prev else binfile.advance(4)
         binfile.write('i', self.part2)
-        binfile.write('12f', *self.transform_matrix)
-        binfile.write('12f', *self.inverse_matrix)
+        binfile.writeMatrix(self.transform_matrix)
+        binfile.writeMatrix(self.inverse_matrix)
         binfile.end()
 
 

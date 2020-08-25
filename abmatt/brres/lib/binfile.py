@@ -22,6 +22,7 @@ class PackingError(BaseException):
 # -------------------------------------------------------------------------------
 class BinFile:
     """ BinFile class: for packing and unpacking binfileary files"""
+    STRIDE_MAP = {'f':4, 'I':4, 'i':4, 'H':2, 'h':2, 'B':2, 'b':2}
 
     def __init__(self, filename, mode='r', bom='>'):
         """
@@ -309,6 +310,14 @@ class BinFile:
         self.advance(length)
         return read
 
+    def readMatrix(self, width, height, fmt='f'):
+        row_fmt = str(width) + fmt
+        stride = self.STRIDE_MAP[fmt] * width
+        matrix = []
+        for i in range(height):
+            matrix.append(self.read(row_fmt, stride))
+        return matrix
+
     def readOffset(self, fmt, offset):  # len not needed
         return unpack_from(self.bom + fmt, self.file, offset)
 
@@ -340,6 +349,12 @@ class BinFile:
         self.file.extend(pack(self.bom + str(length) + "B", *data))
         self.offset = len(self.file)
         return length
+
+    def writeMatrix(self, matrix, fmt='f'):
+        width = len(matrix[0])
+        fmt = str(width) + fmt
+        for x in matrix:
+            self.write(fmt, *x)
 
     # Names
     def unpack_name(self, advance=True):

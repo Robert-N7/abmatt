@@ -32,7 +32,7 @@ class Polygon(Node):
         self.num_colors = 1
         self.normal_type = 0
         self.num_tex = 1
-        self.vertex_count = 0
+        self.facepoint_count = 0
         self.face_count = 0
         self.flags = 0
         self.index = 0
@@ -110,7 +110,7 @@ class Polygon(Node):
         vt_offset = binfile.offset - 4
         binfile.write('2I', self.get_xf_array_flags(), self.flags)
         binfile.storeNameRef(self.name)
-        binfile.write('3I2h', self.index, self.vertex_count, self.face_count,
+        binfile.write('3I2h', self.index, self.facepoint_count, self.face_count,
                       self.vertex_group_index, self.normal_group_index)
         binfile.write('2h', *self.color_group_indices)
         binfile.write('8h', *self.tex_coord_group_indices)
@@ -154,8 +154,8 @@ class Polygon(Node):
         vt_size, vt_actual, vt_offset = binfile.read('3I', 12)
         vt_offset += offset
         xf_arry_flags, self.flags = binfile.read('2I', 8)
-        assert self.name == binfile.unpack_name()
-        self.index, self.vertex_count, self.face_count, \
+        binfile.advance(4)
+        self.index, self.facepoint_count, self.face_count, \
         self.vertex_group_index, self.normal_group_index = binfile.read('3I2h', 16)
         self.color_group_indices = binfile.read('2h', 4)
         self.tex_coord_group_indices = binfile.read('8h', 16)
@@ -172,9 +172,9 @@ class Polygon(Node):
         self.parse_uvat(uvat[1], uvat[3], uvat[5])
         binfile.offset = vt_offset
         self.vt_data = binfile.read('{}B'.format(vt_size), vt_size)
-        print('\n\n{}\tfacepoints:{} data length:{} '.format(self.name, self.face_count, len(self.vt_data)))
-        if self.face_count < 30:
-            printCollectionHex(self.vt_data)
+        # print('\n\n{}\tfacecount:{} data length:{} '.format(self.name, self.face_count, len(self.vt_data)))
+        # if self.face_count < 30:
+        #     printCollectionHex(self.vt_data)
         binfile.end()
 
     def parse_cp_vertex_format(self, hi, lo):

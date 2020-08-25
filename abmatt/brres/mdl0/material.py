@@ -619,7 +619,7 @@ class Material(Clipable):
         return self.parent.rename_texture_link(layer, name)
 
     def enable_vertex_color(self):
-        self.lightChannels[0].enabled_vertex_color()
+        self.lightChannels[0].enable_vertex_color()
 
     # ---------------------------------PASTE------------------------------------------
     def paste(self, item):

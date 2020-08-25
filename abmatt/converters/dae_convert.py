@@ -1,15 +1,14 @@
 import os
 import sys
+import time
 
 from collada import Collada, DaeBrokenRefError, DaeUnsupportedError, DaeIncompleteError
 
 from brres import Brres
-from brres.lib.binfile import BinFile
 from brres.mdl0 import Mdl0
-from brres.mdl0.color import ColorCollection
 from brres.mdl0.material import Material
 from brres.tex0 import EncodeError
-from converters.convert_lib import add_geometry, PointCollection
+from converters.convert_lib import add_geometry, PointCollection, ColorCollection
 
 
 class Converter:
@@ -71,6 +70,7 @@ class DaeConverter(Converter):
         DaeConverter.convert_map_to_layer(effect.transparent, m, image_path_map)
 
     def load_model(self, model_name=None):
+        start = time.time()
         print('Converting {}... '.format(self.mdl_file))
         brres = self.brres
         model_file = self.mdl_file
@@ -97,7 +97,8 @@ class DaeConverter(Converter):
                           for i in range(len(triset.texcoordset))]
             if triset.sources.get('COLOR'):
                 color_source = triset.sources['COLOR'][0]
-                colors = ColorCollection(self.convert_colors(color_source[4].data), triset.index[:, :, color_source[0]])
+                colors = ColorCollection(color_source[4].data, triset.index[:, :, color_source[0]])
+                colors.normalize()
             else:
                 colors = None
             poly = add_geometry(mdl, geometry.name.rstrip('Mesh'), vertex_group, normal_group,
@@ -112,11 +113,12 @@ class DaeConverter(Converter):
         mdl.rebuild_header()
         # add model to brres
         brres.add_mdl0(mdl)
-        print('\t... Done')
+        print('\t... Finished in {}'.format(time.time() - start))
 
     @staticmethod
     def convert_colors(color_group):
-        return [[int(y * 255) for y in x] for x in color_group]
+        return color_group
+
 
     @staticmethod
     def construct_indices(triset_group, stride=3):
@@ -160,7 +162,7 @@ def main(args):
         brres = Brres(file_in.get_path())
         converter = DaeConverter(brres, file_out.get_path())
         converter.save_model()
-    elif file_in.ext == '.dae':
+    elif file_in.ext.lower() == '.dae':
         b_path = file_out.get_path()
         brres = Brres(b_path, None, os.path.exists(b_path))
         converter = DaeConverter(brres, file_in.get_path())

@@ -20,16 +20,21 @@ from brres.tex0 import Tex0, ImgConverter
 
 
 class Brres(Clipable):
-    FOLDERS = ["3DModels(NW4R)", "Textures(NW4R)", "AnmTexPat(NW4R)", "AnmTexSrt(NW4R)", "AnmChr(NW4R)",
-               "AnmScn(NW4R)", "AnmShp(NW4R)", "AnmClr(NW4R)"]
-    CLASSES = [Mdl0, Tex0, Pat0, Srt0, Chr0, Scn0, Shp0, Clr0]
+    FOLDERS = {"3DModels(NW4R)": Mdl0,
+               "Textures(NW4R)": Tex0,
+               "AnmTexPat(NW4R)": Pat0,
+               "AnmTexSrt(NW4R)": Srt0,
+               "AnmChr(NW4R)": Chr0,
+               "AnmScn(NW4R)": Scn0,
+               "AnmShp(NW4R)": Shp0,
+               "AnmClr(NW4R)": Clr0}
     SETTINGS = ('name')
     MAGIC = "bres"
     ROOTMAGIC = "root"
     OVERWRITE = False
     DESTINATION = None
-    OPEN_FILES = None     # reference to active files
-    REMOVE_UNUSED_TEXTURES=False
+    OPEN_FILES = None  # reference to active files
+    REMOVE_UNUSED_TEXTURES = False
 
     def __init__(self, name, parent=None, readFile=True):
         """
@@ -40,14 +45,13 @@ class Brres(Clipable):
         """
         self.models = []
         self.textures = []
-        self.anmSrt = []
-        self.anmChr = []
-        self.anmPat = []
-        self.anmClr = []
-        self.anmShp = []
-        self.anmScn = []
-        self.folders = [self.models, self.textures, self.anmPat, self.anmSrt, self.anmChr,
-                        self.anmScn, self.anmShp, self.anmClr]
+        self.anmSrt = None
+        self.anmPat = None
+        # self.anmChr = []
+        # self.anmClr = []
+        # self.anmShp = []
+        # self.anmScn = []
+        self.folders = {}
         self.isModified = False
         self.parent = parent
         self.name = name
@@ -68,7 +72,7 @@ class Brres(Clipable):
             raise ValueError('Unknown key "{}"'.format(key))
 
     def import_model(self, file_path):
-        pass    # todo
+        pass  # todo
 
     def add_mdl0(self, mdl0):
         prev = self.getModel(mdl0.name)
@@ -137,17 +141,19 @@ class Brres(Clipable):
         folder_indent = indentation_level + 1
         indentation_level += 2
         folders = self.folders
-        for i in range(len(folders)):
-            folder = folders[i]
-            if folder:
-                print('{}>{}'.format('  ' * folder_indent, self.FOLDERS[i]))
+        for folder_name in folders:
+            folder = folders[folder_name]
+            folder_len = len(folder)
+            if folder_len:
+                print('{}>{}\t{}'.format('  ' * folder_indent, folder_name, folder_len))
                 for x in folder:
                     x.info(key, indentation_level)
 
     def isChanged(self):
         return self.isModified
 
-    def getNumSections(self, folders):
+    @staticmethod
+    def getNumSections(folders):
         """ gets the number of sections, including root"""
         count = 1  # root
         for x in folders[count:]:
@@ -169,10 +175,11 @@ class Brres(Clipable):
             return filename.replace('_model', '')
 
     def updateModelName(self, old_name, new_name):
-        for folder in self.folders[2:]:
-            for x in folder:
-                if old_name == x.name:      # possible bug... model animations with similar names may be renamed
-                    x.name = x.name.replace(old_name, new_name)
+        folders = self.folders
+        for n in folders:
+            for x in folders[n]:
+                if old_name == x.name:  # possible bug... model animations with similar names may be renamed
+                    x.name = new_name
 
     def getModelsByName(self, name):
         return MATCHING.findAll(name, self.models)
@@ -180,6 +187,8 @@ class Brres(Clipable):
     # -------------------------------- Textures -----------------------------
     def findTexture(self, name):
         """Attempts to find the texture by name"""
+        if not self.OPEN_FILES:
+            return None
         for x in self.OPEN_FILES:
             if x is not self:
                 tex = x.getTexture(name)
@@ -227,7 +236,6 @@ class Brres(Clipable):
             self.textures.remove(tex)
         except KeyError:
             AUTO_FIXER.warn('No texture {} in {}'.format(name, self.name))
-
 
     def remove_tex0_i(self, i):
         tex = self.textures.pop(i)
@@ -304,34 +312,21 @@ class Brres(Clipable):
     #   PACKING / UNPACKING
     # -------------------------------------------------------------------------
     def post_unpacking(self):
-        self.folders[2] = self.anmPat = self.generate_pat0_collections()
-        self.folders[3] = self.anmSrt = self.generate_srt_collections()
+        if self.anmPat:
+            self.folders[2] = self.anmPat = self.generate_pat0_collections()
+        if self.anmSrt:
+            self.folders[3] = self.anmSrt = self.generate_srt_collections()
         for x in self.textures:
             self.texture_map[x.name] = x
 
     def pre_packing(self):
         self.check()
         folders = [x for x in self.folders]
-        folders[2] = self.get_anim_for_packing(self.anmPat)
-        folders[3] = self.get_anim_for_packing(self.anmSrt)
+        if self.anmSrt:
+            folders.insert(2, self.get_anim_for_packing(self.anmSrt))
+        if self.anmPat:
+            folders.insert(2, self.get_anim_for_packing(self.anmPat))
         return folders
-
-    def unpackFolder(self, binfile, root, folderIndex):
-        """ Unpacks the folder folderIndex """
-        name = self.FOLDERS[folderIndex]
-        if root.open(name):
-            container = self.folders[folderIndex]
-            subFolder = Folder(binfile, name)
-            # print('Folder {} at {}'.format(name, binfile.offset))
-            subFolder.unpack(binfile)
-            klass = self.CLASSES[folderIndex]
-            while True:
-                nm = subFolder.openI()
-                if not nm:
-                    break
-                obj = klass(nm, self)
-                container.append(obj)
-                obj.unpack(binfile)
 
     def unpack(self, binfile):
         """ Unpacks the brres """
@@ -349,8 +344,16 @@ class Brres(Clipable):
         root = Folder(binfile, root)
         root.unpack(binfile)
         # open all the folders
-        for i in range(len(self.FOLDERS)):
-            self.unpackFolder(binfile, root, i)
+        while len(root):
+            container = []
+            folder_name = root.recallEntryI()
+            klass = self.FOLDERS[folder_name]
+            subFolder = Folder(binfile, folder_name)
+            subFolder.unpack(binfile)
+            while len(subFolder):
+                name = subFolder.recallEntryI()
+                container.append(klass(name, self, binfile))
+            self.folders[folder_name] = container
         binfile.end()
         self.post_unpacking()
 
