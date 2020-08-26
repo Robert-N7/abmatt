@@ -314,7 +314,6 @@ class Command:
                 if len(files) > 1 or Command.ACTIVE_FILES and outside_active:
                     raise SaveError('Multiple files for single destination')
             Command.ACTIVE_FILES = Command.openFiles(files)
-        Command.MODELS = []  # clear models
 
     @staticmethod
     def closeFiles(file_names):
@@ -420,10 +419,13 @@ class Command:
     # ------------------------------------  UPDATING TYPE/SELECTION ------------------------------------------------
     def updateSelection(self):
         """ updates container items """
+        updated_file = False
         if self.file:
             self.updateFile(self.file)
+            updated_file = True
         # Models
-        if self.model or not self.MODELS:
+        if self.model or updated_file:
+            Command.MODELS = []
             for x in self.ACTIVE_FILES:
                 Command.MODELS.extend(x.getModelsByName(self.model))
         # Materials
@@ -531,7 +533,11 @@ class Command:
                     else:
                         Command.SELECTED = [x.getStage(self.SELECT_ID) for x in shaders]
             elif type == 'mdl0':
-                Command.SELECTED = MATCHING.findAll(self.SELECT_ID, getParents(self.MATERIALS))
+                if self.SELECT_ID_NUMERIC:
+                    brres = getBrresFromMaterials(self.MATERIALS)
+                    Command.SELECTED = {x.getModelI(self.SELECT_ID) for x in brres}
+                else:
+                    Command.SELECTED = MATCHING.findAll(self.SELECT_ID, getParents(self.MATERIALS))
             elif type == 'brres':
                 if self.cmd in ('add', 'remove'):
                     Command.SELECTED = getBrresFromMaterials(self.MATERIALS)

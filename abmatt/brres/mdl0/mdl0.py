@@ -278,7 +278,7 @@ class Mdl0(SubFile):
 
     # ------------------ Name --------------------------------------
     def rename(self, name):
-        self.parent.updateModelName(self.name, name)
+        return self.parent.renameModel(self.name, name)
         # if self.srt0_collection:
         #     self.srt0_collection.rename(name)
         # if self.pat0_collection:
@@ -417,9 +417,9 @@ class Mdl0(SubFile):
             if expected_name != self.name:
                 b = Bug(2, 2, 'Model name does not match file', 'Rename to {}'.format(expected_name))
                 if self.DETECT_MODEL_NAME:
-                    self.rename(expected_name)
-                    b.resolve()
-                    self.mark_modified()
+                    if self.rename(expected_name):
+                        b.resolve()
+                        self.mark_modified()
             if expected_name == 'map':
                 names = [x.name for x in self.bones]
                 if 'posLD' not in names or 'posRU' not in names:

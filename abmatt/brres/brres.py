@@ -28,6 +28,8 @@ class Brres(Clipable):
                "AnmScn(NW4R)": Scn0,
                "AnmShp(NW4R)": Shp0,
                "AnmClr(NW4R)": Clr0}
+    ANIM_COLLECTIONS = ("AnmTexPat(NW4R)", "AnmTexSrt(NW4R)")
+    ORDERED = ("3DModels(NW4R)", "Textures(NW4R)")
     SETTINGS = ('name')
     MAGIC = "bres"
     ROOTMAGIC = "root"
@@ -43,14 +45,6 @@ class Brres(Clipable):
             parent - optional for supporting containing files in future
             readfile - optional start reading and unpacking file
         """
-        self.models = []
-        self.textures = []
-        self.anmSrt = None
-        self.anmPat = None
-        # self.anmChr = []
-        # self.anmClr = []
-        # self.anmShp = []
-        # self.anmScn = []
         self.folders = {}
         self.isModified = False
         self.parent = parent
@@ -58,6 +52,13 @@ class Brres(Clipable):
         self.texture_map = {}
         binfile = BinFile(self.name) if readFile else None
         super(Brres, self).__init__(name, parent, binfile)
+
+    def begin(self):
+        folders = self.folders
+        self.models = folders[self.ORDERED[0]] = []
+        self.textures = folders[self.ORDERED[1]] = []
+        self.pat0 = folders[self.ANIM_COLLECTIONS[0]] = []
+        self.srt0 = folders[self.ANIM_COLLECTIONS[1]] = []
 
     def get_str(self, key):
         if key == 'name':
@@ -72,7 +73,9 @@ class Brres(Clipable):
             raise ValueError('Unknown key "{}"'.format(key))
 
     def import_model(self, file_path):
-        pass  # todo
+        from converters.dae_convert import DaeConverter
+        converter = DaeConverter(self, file_path)
+        converter.load_model()
 
     def add_mdl0(self, mdl0):
         prev = self.getModel(mdl0.name)
@@ -152,16 +155,6 @@ class Brres(Clipable):
     def isChanged(self):
         return self.isModified
 
-    @staticmethod
-    def getNumSections(folders):
-        """ gets the number of sections, including root"""
-        count = 1  # root
-        for x in folders[count:]:
-            if x:
-                count += len(x)
-                # print('Length of folder {} is {}'.format(x.name, len(x)))
-        return count
-
     # ------------------------------ Models ---------------------------------
 
     def getModel(self, name):
@@ -169,17 +162,29 @@ class Brres(Clipable):
             if x.name == name:
                 return x
 
-    def getExpectedMdl(self):
-        filename = os.path.splitext(os.path.basename(self.name))[0]
-        if filename in ('course_model', 'map_model', 'vrcorn_model'):
-            return filename.replace('_model', '')
+    def getModelI(self, i=0):
+        try:
+            return self.models[i]
+        except IndexError:
+            pass
 
-    def updateModelName(self, old_name, new_name):
+    def getExpectedMdl(self):
+        filename = self.name
+        for item in ('course', 'map', 'vrcorn'):
+            if item in filename:
+                return item
+
+    def renameModel(self, old_name, new_name):
+        for x in self.models:
+            if x.name == new_name:
+                AUTO_FIXER.warn('Unable to rename {}, the model {} already exists!'.format(old_name, new_name))
+                return None
         folders = self.folders
         for n in folders:
             for x in folders[n]:
                 if old_name == x.name:  # possible bug... model animations with similar names may be renamed
                     x.name = new_name
+            return new_name
 
     def getModelsByName(self, name):
         return MATCHING.findAll(name, self.models)
@@ -246,7 +251,7 @@ class Brres(Clipable):
         ret = set()
         for x in self.models:
             ret |= x.get_used_textures()
-        for x in self.anmPat:
+        for x in self.pat0:
             ret |= x.get_used_textures()
         return ret
 
@@ -272,16 +277,16 @@ class Brres(Clipable):
         return animations
 
     def add_srt_collection(self, collection):
-        self.anmSrt.append(collection)
+        self.srt0.append(collection)
         return collection
 
     def add_pat0_collection(self, collection):
-        self.anmPat.append(collection)
+        self.pat0.append(collection)
         return collection
 
     def generate_srt_collections(self):
         # srt animation processing
-        model_anim_map = self.create_model_animation_map(self.anmSrt)
+        model_anim_map = self.create_model_animation_map(self.srt0)
         # now create SRT Collection
         anim_collections = []
         for key in model_anim_map:
@@ -295,7 +300,7 @@ class Brres(Clipable):
         return anim_collections
 
     def generate_pat0_collections(self):
-        model_anim_map = self.create_model_animation_map(self.anmPat)
+        model_anim_map = self.create_model_animation_map(self.pat0)
         # now create SRT Collection
         anim_collections = []
         for key in model_anim_map:
@@ -312,21 +317,40 @@ class Brres(Clipable):
     #   PACKING / UNPACKING
     # -------------------------------------------------------------------------
     def post_unpacking(self):
-        if self.anmPat:
-            self.folders[2] = self.anmPat = self.generate_pat0_collections()
-        if self.anmSrt:
-            self.folders[3] = self.anmSrt = self.generate_srt_collections()
+        x = self.folders.get("AnmTexPat(NW4R)")
+        self.folders["AnmTexPat(NW4R)"] = self.pat0 = self.generate_pat0_collections() if x else []
+        x = self.folders.get("AnmTexSrt(NW4R)")
+        self.folders["AnmTexSrt(NW4R)"] = self.srt0 = self.generate_srt_collections() if x else []
+        mdl_name = self.ORDERED[0]
+        x = self.folders.get(mdl_name)
+        self.folders[mdl_name] = self.models = x if x else []
+        tex_name = self.ORDERED[1]
+        x = self.folders.get(tex_name)
+        self.folders[tex_name] = self.textures = x if x else []
         for x in self.textures:
             self.texture_map[x.name] = x
 
     def pre_packing(self):
         self.check()
-        folders = [x for x in self.folders]
-        if self.anmSrt:
-            folders.insert(2, self.get_anim_for_packing(self.anmSrt))
-        if self.anmPat:
-            folders.insert(2, self.get_anim_for_packing(self.anmPat))
-        return folders
+        folders = self.folders
+        ret = []
+        ordered = self.ORDERED
+        anim_collect = self.ANIM_COLLECTIONS
+        added = set()
+        for folder in ordered:
+            x = folders.get(folder)
+            if x:
+                ret.append((folder, x))
+                added.add(folder)
+        for folder in anim_collect:
+            x = folders.get(folder)
+            if x:
+                ret.append((folder, self.get_anim_for_packing(x)))
+                added.add(folder)
+        for x in folders:
+            if x not in added:
+                ret.append((x, folders[x]))
+        return ret
 
     def unpack(self, binfile):
         """ Unpacks the brres """
@@ -357,6 +381,16 @@ class Brres(Clipable):
         binfile.end()
         self.post_unpacking()
 
+    @staticmethod
+    def getNumSections(folders):
+        """ gets the number of sections, including root"""
+        count = 1  # root
+        for x in folders[count:]:
+            if x:
+                count += len(x)
+                # print('Length of folder {} is {}'.format(x.name, len(x)))
+        return count
+
     def generateRoot(self, binfile, subfiles):
         """ Generates the root folders
             Does not hook up data pointers except the head group,
@@ -370,10 +404,10 @@ class Brres(Clipable):
         offsets = []  # for tracking offsets from first group to others
         # Create folder for each section the brres has
         for i in range(len(subfiles)):
-            folder = subfiles[i]
+            folder_name, folder = subfiles[i]
             size = len(folder)
             if size:
-                f = Folder(binfile, self.FOLDERS[i])
+                f = Folder(binfile, folder_name)
                 for j in range(size):
                     f.addEntry(folder[j].name)  # might not have name?
                 rootFolder.addEntry(f.name)
@@ -413,7 +447,7 @@ class Brres(Clipable):
         folders = self.packRoot(binfile, rt_folders)
         # now pack the folders
         folder_index = 0
-        for file_group in sub_files:
+        for name, file_group in sub_files:
             if len(file_group):
                 index_group = folders[folder_index]
                 for file in file_group:

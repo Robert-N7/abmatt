@@ -46,60 +46,103 @@ def compare_verts_unordered(original_verts, new_verts):
     return used, unused
 
 
+def vert_equal(vert1, vert2, comp_len):
+    for i in range(comp_len):
+        if vert1[i] != vert2[i]:
+            return False
+    return True
+
+
+def get_two_common_verts(tri1_set, tri2_set):
+    vert = None
+    for x in tri1_set:
+        if x in tri2_set:
+            if vert:
+                return vert, x
+            vert = x
+
+
+def get_connected_tristrip(tri1, tri2, tr1_set, tri2_set, comp_len):
+    common_verts = get_two_common_verts(tr1_set, tri2_set)
+    if common_verts is None:
+        return None
+    t1_index = tri1.index(common_verts[0])
+    t2_index = tri2.index(common_verts[0])
+    if tri1[t1_index - 1] == common_verts[1]:
+        if tri2[t2_index - 1] == common_verts[1]:
+            t2_index = t2_index + 1 if t2_index < 2 else 0
+            return [tri1[t1_index - 2], tri1[t1_index - 1], tri1[t1_index], tri2[t2_index]]
+    else:
+        t2_index2 = t2_index + 1 if t2_index < 2 else 0
+        if tri2[t2_index2] == common_verts[1]:
+            t1_index2 = t1_index + 1 if t1_index < 2 else 0
+            return [tri1[t1_index - 1], tri1[t1_index], tri1[t1_index2], tri2[t2_index - 1]]
+
+
+
+
+def is_connected_edge_1_2(triangle, edge, comp_len):
+    """Determines if triangle is connected to edge,
+    :type triangle: 3 face_point iterable indices (multiple)
+    :type edge: 2 face_point iterable vertex indices (multiple)
+    :return edge open for next tri off of triangle to be attached on Success
+    """
+    start = edge[0]
+    for i in range(-1, 2):
+        if triangle[i] == start and triangle[i + 1] == edge[1]:
+            if i == 0:
+                return triangle[1:]
+            elif i == 1:
+                return triangle[2], triangle[0]
+            elif i == -1:
+                return triangle[:2]
+
+
 def get_triangle_strips(triangle_indices, fmt_str):
     """Generates triangle encoded data using triangle indices
         :returns bytearray of triangle strips and triangle draw commands
     """
     triangle_strips = bytearray()
+    # fixes cull outside imported indices (possibly should do elsewhere?)
+    triangle_indices[:, [2, 1]] = triangle_indices[:, [1, 2]]
     disconnected_triangles = []
-    strip = [tuple(x) for x in triangle_indices[0]]
+    prev = [tuple(x) for x in triangle_indices[0]]
+    prev_set = {x for x in prev}
     tri_count = 1  # number of triangles in the strip
     face_count = len(triangle_indices)  # total number of faces
+    vert_len = len(prev[0])
     face_point_count = 0
-    prev = {x for x in strip}
     for i in range(1, face_count):
-        triangle = triangle_indices[i]
-        # check if triangle is connected
-        current_verts = {tuple(x) for x in triangle}
-        if len(current_verts) < 3:  # Not really a triangle! Line!
-            prev = {}
-            face_count -= 1  # subtract from face count
+        triangle = [tuple(x) for x in triangle_indices[i]]
+        vert_set = {x for x in triangle}
+        if len(vert_set) < 3:  # line!
+            face_count -= 1
             continue
-        connected, disconnected_vert = compare_verts_unordered(prev, current_verts)
-        if connected:
-            if tri_count == 1:  # only 1 tri, so we can swap edge vertices
-                for j in range(3):
-                    if strip[j] not in connected:
-                        if j != 0:  # swap
-                            strip.insert(0, strip.pop(j))
-                        break
-                prev = current_verts
-            elif tri_count == 2:  # 2 triangles, can swap 1 and 2
-                if strip[1] in connected:
-                    if strip[2] not in connected:
-                        strip.insert(1, strip.pop(2))
-                    else:
-                        connected = None
-                if connected:
-                    prev = strip[-2:]
-            else:  # multiple ordered triangles
-                prev = strip[-2:]
-        if not connected:
-            if tri_count > 1:  # more than one tri?
-                face_point_count += encode_triangle_strip(strip, fmt_str, triangle_strips)
-                tri_count = 1
+        # check if triangle is connected
+        if tri_count == 1:      # tri to tri
+            tristrip = get_connected_tristrip(prev, triangle, prev_set, vert_set, vert_len)
+            if tristrip is None:
+                disconnected_triangles.append(triangle)
+                prev = triangle
+                prev_set = vert_set
             else:
-                disconnected_triangles.append(strip)
-            strip = [x for x in current_verts]
-            prev = current_verts
-        else:
-            strip.append(disconnected_vert)
-            tri_count += 1
+                strip_tail = tristrip[-2:]
+        else:       # tri to edge
+            connected = is_connected_edge_1_2(triangle, strip_tail, vert_len)
+            if connected is None:
+                face_point_count += encode_triangle_strip(prev, fmt_str, triangle_strips)
+                tri_count = 1
+                prev = triangle
+                prev_set = vert_set
+            else:
+                tristrip.append(connected[-1])
+                tri_count += 1
+                strip_tail = connected
 
-    if len(strip) > 3:
-        face_point_count += encode_triangle_strip(strip, fmt_str, triangle_strips)
+    if tri_count > 1:
+        face_point_count += encode_triangle_strip(prev, fmt_str, triangle_strips)
     else:
-        disconnected_triangles.append(strip)
+        disconnected_triangles.append(prev)
     # Now add on any disconnected triangles
     face_point_count += encode_triangles(disconnected_triangles, fmt_str, triangle_strips)
     return triangle_strips, face_count, face_point_count
@@ -111,10 +154,10 @@ def encode_polygon_data(polygon, vertex, normal, color, uvs, face_indices):
     polygon.vertex_divisor = vertex.divisor
     if len(vertex) > 0xff:
         polygon.vertex_index_format = polygon.INDEX_FORMAT_SHORT
-        fmt_str = 'H'
+        fmt_str = '>H'
     else:
         polygon.vertex_index_format = polygon.INDEX_FORMAT_BYTE
-        fmt_str = 'B'
+        fmt_str = '>B'
     polygon.facepoint_count = len(vertex)
     polygon.vertex_group_index = vertex.index
     if normal:

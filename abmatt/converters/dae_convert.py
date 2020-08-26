@@ -59,7 +59,7 @@ class DaeConverter(Converter):
         effect = dae_material.effect
         if effect.double_sided:
             m.cullmode = 0
-        if effect.transparency < 1:
+        if effect.transparency > 0:
             m.enable_blend()
         # maps
         DaeConverter.convert_map_to_layer(effect.diffuse, m, image_path_map)
@@ -68,6 +68,7 @@ class DaeConverter(Converter):
         DaeConverter.convert_map_to_layer(effect.reflective, m, image_path_map)
         DaeConverter.convert_map_to_layer(effect.bumpmap, m, image_path_map)
         DaeConverter.convert_map_to_layer(effect.transparent, m, image_path_map)
+        return m
 
     def load_model(self, model_name=None):
         start = time.time()
@@ -84,36 +85,38 @@ class DaeConverter(Converter):
         for image in dae.images:
             image_path_map[image.path] = self.try_import_texture(brres, image.path)
         # materials
-        for material in dae.materials:
-            self.encode_material(material, mdl, image_path_map)
+        # for material in dae.materials:
+        #     self.encode_material(material, mdl, image_path_map)
         if not brres.textures:
             print('ERROR: No textures found!')
         # geometry/vertices/colors
-        for geometry in dae.geometries:
-            triset = geometry.primitives[0]
-            vertex_group = PointCollection(triset.vertex, triset.vertex_index)
-            normal_group = PointCollection(triset.normal, triset.normal_index) if triset.normal is not None else None
-            tex_coords = [PointCollection(triset.texcoordset[i], triset.texcoord_indexset[i]) \
-                          for i in range(len(triset.texcoordset))]
-            if triset.sources.get('COLOR'):
-                color_source = triset.sources['COLOR'][0]
-                colors = ColorCollection(color_source[4].data, triset.index[:, :, color_source[0]])
-                colors.normalize()
-            else:
-                colors = None
-            poly = add_geometry(mdl, geometry.name.rstrip('Mesh'), vertex_group, normal_group,
-                                colors, tex_coords)
-            material = mdl.getMaterialByName(triset.material)
-            if not material:    # broken material
-                material = mdl.add_material(Material(triset.material, mdl))
-                material.auto_detect_layer()
-            mdl.add_definition(material, poly, bone)
-            if colors:
-                material.enable_vertex_color()
+        for controller in dae.scene.objects('controller'):
+            geometry = controller.geometry
+            for triset in geometry.primitives():
+                vertex_group = PointCollection(triset.vertex, triset.vertex_index)
+                normal_group = PointCollection(triset.normal, triset.normal_index) if triset.normal is not None else None
+                tex_coords = [PointCollection(triset.texcoordset[i], triset.texcoord_indexset[i]) \
+                              for i in range(len(triset.texcoordset))]
+                if triset.original.sources.get('COLOR'):
+                    color_source = triset.sources['COLOR'][0]
+                    colors = ColorCollection(color_source[4].data, triset.index[:, :, color_source[0]])
+                    colors.normalize()
+                else:
+                    colors = None
+                poly = add_geometry(mdl, geometry.original.name.rstrip('Mesh'), vertex_group, normal_group,
+                                    colors, tex_coords)
+                material = self.encode_material(triset.material, mdl, image_path_map)
+                # material = mdl.getMaterialByName(triset.material)
+                # if not material:    # broken material
+                #     material = mdl.add_material(Material(triset.material, mdl))
+                #     material.auto_detect_layer()
+                mdl.add_definition(material, poly, bone)
+                if colors is not None:
+                    material.enable_vertex_color()
         mdl.rebuild_header()
         # add model to brres
         brres.add_mdl0(mdl)
-        print('\t... Finished in {}'.format(time.time() - start))
+        print('\t... Finished in {} secs'.format(round(time.time() - start, 2)))
 
     @staticmethod
     def convert_colors(color_group):

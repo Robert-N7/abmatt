@@ -289,7 +289,7 @@ class ZMode(BPCommand):
 
     def __init__(self, enableDepthTest=True, enableDepthUpdate=True):
         super(ZMode, self).__init__(BPCommand.BPMEM_ZMODE,
-                                    enableDepthUpdate << 4 | 0xe | enableDepthTest)
+                                    enableDepthUpdate << 4 | 0x6 | enableDepthTest)
 
     def getDepthTest(self):
         return self.data & 1
@@ -307,7 +307,7 @@ class ZMode(BPCommand):
         return self.data >> 1 & 7
 
     def setDepthFunction(self, ival):
-        ''' never 0, < 1, = 2, <= 3, > 4, != 5, >= 6, always 7 '''
+        """ never 0, < 1, = 2, <= 3, > 4, != 5, >= 6, always 7 """
         self.data = self.data & (ival << 1 | 0xf1)
 
 

@@ -67,18 +67,23 @@ class ShaderList:
         offsets = {}  # for tracking the shaders we've unpacked
         while len(folder.entries):
             name = folder.recallEntryI()
-            d = Shader(name, self)
+            material = None
             for x in materials:
                 if x.name == name:
-                    x.shader = d
-                    d.material = x
+                    material = x
                     break
+            if not material:
+                AUTO_FIXER.info('Removing unlinked shader {}'.format(name))
+                continue
             if binfile.offset not in offsets:
+                d = Shader(name, self, binfile)
                 offsets[binfile.offset] = d
-                d.unpack(binfile)
+
             else:
+                d = Shader(name, self)
                 d.paste(offsets[binfile.offset])
-            list[name] = d
+            list[name] = material.shader = d
+            d.material = material
         return offsets
 
     def pack(self, binfile, folder):
@@ -154,15 +159,15 @@ class Stage(Clipable):
     def __init__(self, name, parent, binfile=None):
         self.map = {
             "enabled": True, "mapid": name, "coordinateid": name,
-            "textureswapselection": 0, "rastercolor": self.RASTER_COLORS[-1],
+            "textureswapselection": 0, "rastercolor": self.RASTER_COLORS[0],
             "rasterswapselection": 0,
             "colorconstantselection": self.COLOR_CONSTANTS[8], "colora": self.COLOR_SELS[-1],
-            "colorb": self.COLOR_SELS[-1], "colorc": self.COLOR_SELS[-1],
+            "colorb": self.COLOR_SELS[8], "colorc": self.COLOR_SELS[10],
             "colord": self.COLOR_SELS[-1], "colorbias": self.BIAS[0],
             "coloroperation": self.OPER[0], "colorclamp": True,
             "colorscale": self.SCALE[0], "colordestination": self.COLOR_DEST[0],
             "alphaconstantselection": self.ALPHA_CONSTANTS[20], "alphaa": self.ALPHA_SELS[-1],
-            "alphab": self.ALPHA_SELS[-1], "alphac": self.ALPHA_SELS[-1],
+            "alphab": self.ALPHA_SELS[4], "alphac": self.ALPHA_SELS[5],
             "alphad": self.ALPHA_SELS[-1], "alphabias": self.BIAS[0],
             "alphaoperation": self.OPER[0], "alphaclamp": True,
             "alphascale": self.SCALE[0], "alphadestination": self.ALPHA_DEST[0],

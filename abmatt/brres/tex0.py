@@ -228,7 +228,6 @@ class ImgConverter:
                 '{} encode {} -d {} -x {} -q --n-mm={} -o'.format(self.converter, img_file, self.temp_dest, tex_format,
                                                                   mips))
             if result:
-                os.remove(self.temp_dest)
                 raise EncodeError('Failed to encode {}'.format(img_file))
             t = Tex0(name, None, BinFile(self.temp_dest))
             os.remove(self.temp_dest)
