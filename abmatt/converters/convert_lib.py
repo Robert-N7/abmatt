@@ -8,144 +8,7 @@ from brres.mdl0.normal import Normal
 from brres.mdl0.polygon import Polygon
 from brres.mdl0.texcoord import TexCoord
 from brres.mdl0.vertex import Vertex
-
-
-def point_eq(x, y, compare_len):
-    for i in range(compare_len):
-        if x[i] != y[i]:
-            return False
-    return True
-
-
-def encode_triangle_strip(triangle_indices, fmt_str, byte_array):
-    byte_array.extend(pack('>BH', 0x98, len(triangle_indices)))
-    for x in triangle_indices:
-        byte_array.extend(pack(fmt_str, *x))
-    return len(triangle_indices)
-
-
-def encode_triangles(triangle_indices, fmt_str, byte_array):
-    face_point_len = len(triangle_indices) * 3
-    byte_array.extend(pack('>BH', 0x90, face_point_len))
-    for x in triangle_indices:
-        for y in x:
-            byte_array.extend(pack(fmt_str, *y))
-    return face_point_len
-
-
-def compare_verts_unordered(original_verts, new_verts):
-    unused = None
-    used = set()
-    for x in new_verts:
-        if x not in original_verts:
-            if unused:
-                return None, unused
-            unused = x
-        else:
-            used.add(x)
-    return used, unused
-
-
-def vert_equal(vert1, vert2, comp_len):
-    for i in range(comp_len):
-        if vert1[i] != vert2[i]:
-            return False
-    return True
-
-
-def get_two_common_verts(tri1_set, tri2_set):
-    vert = None
-    for x in tri1_set:
-        if x in tri2_set:
-            if vert:
-                return vert, x
-            vert = x
-
-
-def get_connected_tristrip(tri1, tri2, tr1_set, tri2_set, comp_len):
-    common_verts = get_two_common_verts(tr1_set, tri2_set)
-    if common_verts is None:
-        return None
-    t1_index = tri1.index(common_verts[0])
-    t2_index = tri2.index(common_verts[0])
-    if tri1[t1_index - 1] == common_verts[1]:
-        if tri2[t2_index - 1] == common_verts[1]:
-            t2_index = t2_index + 1 if t2_index < 2 else 0
-            return [tri1[t1_index - 2], tri1[t1_index - 1], tri1[t1_index], tri2[t2_index]]
-    else:
-        t2_index2 = t2_index + 1 if t2_index < 2 else 0
-        if tri2[t2_index2] == common_verts[1]:
-            t1_index2 = t1_index + 1 if t1_index < 2 else 0
-            return [tri1[t1_index - 1], tri1[t1_index], tri1[t1_index2], tri2[t2_index - 1]]
-
-
-
-
-def is_connected_edge_1_2(triangle, edge, comp_len):
-    """Determines if triangle is connected to edge,
-    :type triangle: 3 face_point iterable indices (multiple)
-    :type edge: 2 face_point iterable vertex indices (multiple)
-    :return edge open for next tri off of triangle to be attached on Success
-    """
-    start = edge[0]
-    for i in range(-1, 2):
-        if triangle[i] == start and triangle[i + 1] == edge[1]:
-            if i == 0:
-                return triangle[1:]
-            elif i == 1:
-                return triangle[2], triangle[0]
-            elif i == -1:
-                return triangle[:2]
-
-
-def get_triangle_strips(triangle_indices, fmt_str):
-    """Generates triangle encoded data using triangle indices
-        :returns bytearray of triangle strips and triangle draw commands
-    """
-    triangle_strips = bytearray()
-    # fixes cull outside imported indices (possibly should do elsewhere?)
-    triangle_indices[:, [2, 1]] = triangle_indices[:, [1, 2]]
-    disconnected_triangles = []
-    prev = [tuple(x) for x in triangle_indices[0]]
-    prev_set = {x for x in prev}
-    tri_count = 1  # number of triangles in the strip
-    face_count = len(triangle_indices)  # total number of faces
-    vert_len = len(prev[0])
-    face_point_count = 0
-    for i in range(1, face_count):
-        triangle = [tuple(x) for x in triangle_indices[i]]
-        vert_set = {x for x in triangle}
-        if len(vert_set) < 3:  # line!
-            face_count -= 1
-            continue
-        # check if triangle is connected
-        if tri_count == 1:      # tri to tri
-            tristrip = get_connected_tristrip(prev, triangle, prev_set, vert_set, vert_len)
-            if tristrip is None:
-                disconnected_triangles.append(triangle)
-                prev = triangle
-                prev_set = vert_set
-            else:
-                strip_tail = tristrip[-2:]
-        else:       # tri to edge
-            connected = is_connected_edge_1_2(triangle, strip_tail, vert_len)
-            if connected is None:
-                face_point_count += encode_triangle_strip(prev, fmt_str, triangle_strips)
-                tri_count = 1
-                prev = triangle
-                prev_set = vert_set
-            else:
-                tristrip.append(connected[-1])
-                tri_count += 1
-                strip_tail = connected
-
-    if tri_count > 1:
-        face_point_count += encode_triangle_strip(prev, fmt_str, triangle_strips)
-    else:
-        disconnected_triangles.append(prev)
-    # Now add on any disconnected triangles
-    face_point_count += encode_triangles(disconnected_triangles, fmt_str, triangle_strips)
-    return triangle_strips, face_count, face_point_count
+from converters.triangle import TriangleSet
 
 
 def encode_polygon_data(polygon, vertex, normal, color, uvs, face_indices):
@@ -196,7 +59,8 @@ def encode_polygon_data(polygon, vertex, normal, color, uvs, face_indices):
         else:
             polygon.tex_index_format[i] = polygon.INDEX_FORMAT_BYTE
             fmt_str += 'B'
-    data, polygon.face_count, polygon.facepoint_count = get_triangle_strips(face_indices, fmt_str)
+    triset = TriangleSet(face_indices)
+    data, polygon.face_count, polygon.facepoint_count = triset.get_tri_strips(fmt_str)
     past_align = len(data) % 32
     if past_align:
         data.extend(b'\0' * (32 - past_align))
@@ -213,6 +77,7 @@ def add_geometry(mdl0, name, vertices, normals, colors, tex_coord_groups):
     :param colors: optional color_collection
     :param tex_coord_groups: list of up to 8 tex coord point_collection(s)
     """
+    print('Adding geometry {}'.format(name))    # Debug
     vert = Vertex(name, mdl0)
     vertices.encode_data(vert)
     mdl0.add_to_group(mdl0.vertices, vert)
@@ -384,7 +249,8 @@ class PointCollection:
 
 
 class ColorCollection:
-    def __init__(self, rgba_colors, face_indices, encode_format=5):
+
+    def __init__(self, rgba_colors, face_indices, encode_format=2):
         """
         :param rgba_colors: [[r,g,b,a], ...]
         :param face_indices: ndarray, list of indexes for each triangle [[tri_index0, tri_index1, tri_index2], ...]
