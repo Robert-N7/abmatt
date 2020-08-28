@@ -3,39 +3,6 @@ import math
 from brres.lib.node import Node
 
 
-# Checks if a matrix is a valid rotation matrix.
-def isRotationMatrix(R):
-    from numpy import np
-    Rt = np.transpose(R)
-    shouldBeIdentity = np.dot(Rt, R)
-    I = np.identity(3, dtype=R.dtype)
-    n = np.linalg.norm(I - shouldBeIdentity)
-    return n < 1e-6
-
-
-# Calculates rotation matrix to euler angles
-# The result is the same as MATLAB except the order
-# of the euler angles ( x and z are swapped ).
-def rotationMatrixToEulerAngles(R):
-    from numpy import np
-    assert (isRotationMatrix(R))
-
-    sy = math.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])
-
-    singular = sy < 1e-6
-
-    if not singular:
-        x = math.atan2(R[2, 1], R[2, 2])
-        y = math.atan2(-R[2, 0], sy)
-        z = math.atan2(R[1, 0], R[0, 0])
-    else:
-        x = math.atan2(-R[1, 2], R[1, 1])
-        y = math.atan2(-R[2, 0], sy)
-        z = 0
-
-    return np.array([x, y, z])
-
-
 class Bone(Node):
     """ Bone class """
     identity_matrix = [[1, 0, 0, 0],
@@ -56,27 +23,6 @@ class Bone(Node):
         self.part2 = 0
         self.transform_matrix = self.identity_matrix
         self.inverse_matrix = self.identity_matrix
-
-    @staticmethod
-    def vector_magnitude(vector):
-        from math import sqrt
-        return sqrt(sum(x ** 2 for x in vector))
-
-    def set_matrix(self, matrix):
-        """Untested set translation/scale/rotation with matrix"""
-        from numpy import np
-        self.transform_matrix = matrix = matrix[:4] # don't include fourth row
-        self.inverse_matrix = np.linalg.inv()
-        self.translation = matrix[:][3]
-        matrix[:][3] = 0
-        self.scale = (self.vector_magnitude(matrix[:][0]),
-                      self.vector_magnitude(matrix[:][1]),
-                      self.vector_magnitude(matrix[:][2]))
-        for i in range(3):
-            scale_factor = self.scale[i]
-            for j in range(3):
-                matrix[j][i] = matrix[j][i] / scale_factor
-        self.rotation = rotationMatrixToEulerAngles(matrix)
 
     def unpack(self, binfile):
         self.offset = binfile.start()

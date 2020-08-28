@@ -9,27 +9,19 @@ from brres import Brres
 from brres.mdl0 import Mdl0
 from brres.mdl0.material import Material
 from brres.tex0 import EncodeError
-from converters.convert_lib import add_geometry, PointCollection, ColorCollection
+from converters.convert_lib import add_geometry, PointCollection, ColorCollection, set_bone_matrix
 
 
-class Converter:
-    def __init__(self, brres, mdl_file):
+class DaeConverter():
+    IDENTITY_MATRIX = np.identity(4)
+    NoNormals = 0x1
+    NoColors = 0x2
+
+    def __init__(self, brres, mdl_file, flags=0):
         self.brres = brres
         self.mdl_file = mdl_file
+        self.flags = flags
 
-    @staticmethod
-    def set_image_format(frmt):
-        Converter.IMG_DEFAULT_FORMAT = frmt
-
-    def load_model(self, model_name):
-        raise NotImplementedError()
-
-    def save_model(self, mdl0):
-        raise NotImplementedError()
-
-
-class DaeConverter(Converter):
-    IDENTITY_MATRIX = np.identity(4)
 
     @staticmethod
     def try_import_texture(brres, image_path):
@@ -76,19 +68,32 @@ class DaeConverter(Converter):
     def encode_geometry(self, geometry, bone):
         mdl = self.mdl
         name = geometry.original.name.rstrip('Mesh')
-        if not np.allclose(geometry.matrix, self.IDENTITY_MATRIX):
-            bone = mdl.add_bone(name, bone)
+        # if not np.allclose(geometry.matrix, self.IDENTITY_MATRIX):
+        #     bone = mdl.add_bone(name, bone)
+        #     set_bone_matrix(bone, geometry.matrix)
 
         for triset in geometry.primitives():
+            triset.index[:,[0, 1]] = triset.index[:,[1, 0]]
             vertex_group = PointCollection(triset.vertex, triset.vertex_index)
-            normal_group = PointCollection(triset.normal, triset.normal_index) if triset.normal is not None else None
-            tex_coords = [PointCollection(triset.texcoordset[i], triset.texcoord_indexset[i]) \
-                          for i in range(len(triset.texcoordset))]
-            colors = triset.original.sources.get('COLOR')
-            if colors:
-                color_source = colors[0]
-                colors = ColorCollection(color_source[4].data, triset.index[:, :, color_source[0]])
-                colors.normalize()
+            if self.flags & self.NoNormals or triset.normal is None:
+                normal_group = None
+            else:
+                normal_group = PointCollection(triset.normal, triset.normal_index)
+            tex_coords = []
+            for i in range(len(triset.texcoordset)):
+                # convert xy to st
+                tex_set = triset.texcoordset[i]
+                tex_set[:, 1] *= -1
+                tex_coords.append(PointCollection(tex_set, triset.texcoord_indexset[i]))
+            if self.flags & self.NoColors:
+                colors = None
+            else:
+                colors = triset.original.sources.get('COLOR')
+                if colors:
+                    color_source = colors[0]
+                    face_indices = triset.index[:, :, color_source[0]]
+                    colors = ColorCollection(color_source[4].data[:np.max(face_indices) + 1], face_indices)
+                    colors.normalize()
             poly = add_geometry(mdl, name, vertex_group, normal_group,
                                 colors, tex_coords)
             material = self.encode_material(triset.material, mdl, self.image_path_map)
@@ -97,7 +102,7 @@ class DaeConverter(Converter):
                 material.enable_vertex_color()
             break
 
-    def load_model(self, model_name=None):
+    def load_model(self, model_name=None, flags=0):
         start = time.time()
         print('Converting {}... '.format(self.mdl_file))
         brres = self.brres
@@ -116,6 +121,8 @@ class DaeConverter(Converter):
         # geometry
         for geometry in dae.scene.objects('geometry'):
             self.encode_geometry(geometry, bone)
+        for controller in dae.scene.objects('controller'):
+            self.encode_geometry(controller.geometry, bone)
         mdl.rebuild_header()
         # add model to brres
         brres.add_mdl0(mdl)

@@ -77,7 +77,7 @@ def add_geometry(mdl0, name, vertices, normals, colors, tex_coord_groups):
     :param colors: optional color_collection
     :param tex_coord_groups: list of up to 8 tex coord point_collection(s)
     """
-    print('Adding geometry {}'.format(name))    # Debug
+    # print('Adding geometry {}'.format(name))    # Debug
     vert = Vertex(name, mdl0)
     vertices.encode_data(vert)
     mdl0.add_to_group(mdl0.vertices, vert)
@@ -250,7 +250,7 @@ class PointCollection:
 
 class ColorCollection:
 
-    def __init__(self, rgba_colors, face_indices, encode_format=2):
+    def __init__(self, rgba_colors, face_indices, encode_format=None):
         """
         :param rgba_colors: [[r,g,b,a], ...]
         :param face_indices: ndarray, list of indexes for each triangle [[tri_index0, tri_index1, tri_index2], ...]
@@ -260,9 +260,14 @@ class ColorCollection:
         self.face_indices = face_indices
         self.encode_format = encode_format
 
+    def get_encode_format(self):
+        if (self.rgba_colors[:, 3] == 255).all():
+            return 1
+        return 5
+
     def encode_data(self, color):
-        form = self.encode_format
         rgba_colors = self.rgba_colors = self.consolidate()
+        form = self.encode_format if self.encode_format is not None else self.get_encode_format()
         color.format = form
         if form < 3:
             color.stride = form + 2
@@ -323,3 +328,58 @@ class ColorCollection:
     def normalize(self):
         """Normalizes data between 0-1 to 0-255"""
         self.rgba_colors = np.around(self.rgba_colors * 255).astype(np.uint8)
+        for x in self.rgba_colors:
+            y = x
+
+
+def vector_magnitude(vector):
+    return math.sqrt(sum(x ** 2 for x in vector))
+
+
+def set_bone_matrix(bone, matrix):
+    """Untested set translation/scale/rotation with matrix"""
+    bone.transform_matrix = matrix[:3]  # don't include fourth row
+    bone.inverse_matrix = np.linalg.inv(matrix)[:3]
+    bone.translation = matrix[:][3][:3]
+    bone.scale = (vector_magnitude(matrix[:][0]),
+                  vector_magnitude(matrix[:][1]),
+                  vector_magnitude(matrix[:][2]))
+    matrix = np.delete(matrix, 3, 0)
+    matrix = np.delete(matrix, 3, 1)
+    for i in range(3):
+        scale_factor = bone.scale[i]
+        if scale_factor != 1:
+            for j in range(3):
+                matrix[j][i] = matrix[j][i] / scale_factor
+    bone.rotation = rotationMatrixToEulerAngles(matrix)
+
+
+# Checks if a matrix is a valid rotation matrix.
+def isRotationMatrix(R):
+    Rt = np.transpose(R)
+    shouldBeIdentity = np.dot(Rt, R)
+    I = np.identity(3, dtype=R.dtype)
+    n = np.linalg.norm(I - shouldBeIdentity)
+    return n < 1e-6
+
+
+# Calculates rotation matrix to euler angles
+# The result is the same as MATLAB except the order
+# of the euler angles ( x and z are swapped ).
+def rotationMatrixToEulerAngles(R):
+    assert (isRotationMatrix(R))
+
+    sy = math.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])
+
+    singular = sy < 1e-6
+
+    if not singular:
+        x = math.atan2(R[2, 1], R[2, 2])
+        y = math.atan2(-R[2, 0], sy)
+        z = math.atan2(R[1, 0], R[0, 0])
+    else:
+        x = math.atan2(-R[1, 2], R[1, 1])
+        y = math.atan2(-R[2, 0], sy)
+        z = 0
+
+    return np.array([x, y, z])

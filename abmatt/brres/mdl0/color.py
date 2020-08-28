@@ -1,5 +1,6 @@
 from struct import pack
 
+from brres.lib.binfile import printCollectionHex
 from brres.lib.node import Node
 
 
@@ -22,6 +23,7 @@ class Color(Node):
         binfile.recall()
         self.data = binfile.readRemaining()
         print('Color {} count {}'.format(self.name, self.count))
+        printCollectionHex(self.data)
         binfile.end()
 
     def pack(self, binfile):
@@ -32,6 +34,7 @@ class Color(Node):
         binfile.storeNameRef(self.name)
         binfile.write('3I2BH', self.index, self.has_alpha, self.format, self.stride, self.flags, self.count)
         binfile.align()
+        binfile.createRef()
         binfile.writeRemaining(self.data)
         binfile.alignAndEnd()
 

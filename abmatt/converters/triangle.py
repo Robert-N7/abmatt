@@ -33,32 +33,41 @@ class TriangleSet:
             tris.append(Triangle(verts))
         self.triangles = tris
 
+    def get_next(self, queue):
+        try:
+            start = queue.pop(0)
+        except IndexError:
+            return None
+        if start.is_used:
+            return self.get_next(queue)
+        return start
+
     def get_tri_strips(self, fmt_str):
         queue = sorted(self.triangles, key=lambda tri: tri.get_connection_count())
         disconnected = []
         tristrips = bytearray()
         face_point_count = 0
-        found_connections = False
         # find the tri to start at
-        while len(queue):
-            start = queue.pop(0)
+        while True:
+            try:
+                start = queue.pop(0)
+            except IndexError:
+                start = None
+                break
             if start.connection_count > 0:
-                found_connections = True
+                break
             disconnected.append(start)
         # now try to generate strip
-        while found_connections:
+        while start is not None:
             strip = start.create_strip()
             if strip:
                 face_point_count += encode_triangle_strip(strip, fmt_str, tristrips)
                 TriangleSet.triangles_in_strips_count += len(strip) - 2
             else:
                 disconnected.append(start)
-            try:
-                start = queue.pop(0)
-            except IndexError:
-                break
+            start = self.get_next(queue)
         face_point_count += encode_triangles(disconnected, fmt_str, tristrips)
-        print('Total tristrip triangles {}'.format(self.triangles_in_strips_count))
+        # print('Total tristrip triangles {}'.format(self.triangles_in_strips_count))
         return tristrips, len(self.triangles), face_point_count
 
 
@@ -81,6 +90,9 @@ class Triangle:
 
         def disconnect(self, tri):
             self.tris.remove(tri)
+
+        def reconnect(self, tri):
+            self.tris.append(tri)
 
         def get_adjacent(self, current):
             for x in self.tris:
@@ -132,6 +144,11 @@ class Triangle:
         for x in self.edges:
             x.disconnect(self)
 
+    def reconnect(self):
+        self.is_used = False
+        for x in self.edges:
+            x.reconnect(self)
+
     @staticmethod
     def nextI(currentI):
         return currentI + 1 if currentI < 2 else 0
@@ -160,26 +177,29 @@ class Triangle:
                 adjacent.disconnect()
                 right_vert = adjacent.get_opposite_vert(edge)
                 vert_strip = deque((vertices[i - 1], vertices[i], vertices[self.nextI(i)], right_vert))
-                adjacent.extend_right(vert_strip, (vert_strip[2], vert_strip[3]))
-                return self.extend_left(vert_strip, (vert_strip[0], vert_strip[1]))
+                return adjacent.extend_right(vert_strip, (vert_strip[2], vert_strip[3]))
+                # return self.extend_left(vert_strip, (vert_strip[0], vert_strip[1]))
                 # return vert_strip
 
-    def extend_right(self, strip, last_edge):
-        last_edge = self.edge_map[last_edge]
-        if not last_edge:
+    def extend_right(self, strip, last_verts):
+        edge = self.edge_map[last_verts]
+        if not edge.tri_count():
             return strip
-        adj = last_edge.get_adjacent(self)
+        adj = edge.get_adjacent(self)
         adj.disconnect()
-        right_edge = adj.get_next_edge(last_edge)
-        strip.append(right_edge[1])
-        return adj.extend_right(strip, right_edge)
+        vert = adj.get_opposite_vert(edge)
+        strip.append(vert)
+        return adj.extend_right(strip, (last_verts[1], vert))
 
-    def extend_left(self, strip, last_edge):
-        last_edge = self.edge_map[last_edge]
-        if not last_edge:
+    def extend_left(self, strip, last_verts, cull_wrong=False):
+        edge = self.edge_map[last_verts]
+        if not edge.tri_count():
+            if cull_wrong:
+                self.reconnect()
+                strip.popleft()
             return strip
-        adj = last_edge.get_adjacent(self)
+        adj = edge.get_adjacent(self)
         adj.disconnect()
-        left_edge = adj.get_next_edge(last_edge)
-        strip.appendleft(left_edge[1])
-        return adj.extend_left(strip, left_edge)
+        vert = adj.get_opposite_vert(edge)
+        strip.appendleft(vert)
+        return adj.extend_left(strip, (vert, last_verts[0]), not cull_wrong)
