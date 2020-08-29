@@ -1,6 +1,8 @@
 import os
 import sys
 
+from brres import Brres
+
 
 class Path:
     def __init__(self, path):
@@ -42,3 +44,22 @@ def arg_parse(args):
         dest_file = in_file.filename + '.brres' if in_file.ext != '.brres' else in_file.filename
         destination = os.path.join(in_file.dir, dest_file)
     return in_file, Path(destination), overwrite
+
+
+def cmdline_convert(args, ext, converter_klass):
+    file_in, file_out, overwrite = arg_parse(args)
+    if file_in.ext == '.brres':
+        if not file_out.ext:
+            file_out.ext = ext
+        brres = Brres(file_in.get_path())
+        converter = converter_klass(brres, file_out.get_path())
+        converter.save_model()
+    elif file_in.ext.lower() == ext:
+        b_path = file_out.get_path()
+        brres = Brres(b_path, None, os.path.exists(b_path))
+        converter = converter_klass(brres, file_in.get_path())
+        converter.load_model()
+        brres.save(None, overwrite)
+    else:
+        print('Unknown file {}, is the file extension {}?'.format(ext, file_in.ext))
+        sys.exit(1)

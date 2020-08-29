@@ -3,6 +3,7 @@
 #   Robert Nelson
 #  Structure for working with materials
 # ---------------------------------------------------------------------
+import re
 from copy import deepcopy
 
 from brres.lib.matching import validBool, indexListItem, validInt, validFloat, splitKeyVal, MATCHING
@@ -69,6 +70,19 @@ class Material(Clipable):
         self.pat0 = None  # to be hooked up
         self.matGX = MatGX()
         super(Material, self).__init__(name, parent, binfile)
+
+    @staticmethod
+    def get_unique_material(name, mdl):
+        is_digit = False
+        while True:
+            mat = mdl.getMaterialByName(name)
+            if not mat:
+                return Material(name, mdl)
+            if not is_digit and not name[-1].isdigit():
+                name = name + '1'
+                is_digit = True
+            else:
+                name = re.sub('\d+$', lambda x : str(int(x.group(0)) + 1), name)
 
     def begin(self):
         self.shaderStages = 0
@@ -821,8 +835,8 @@ class LightChannel:
         self.rasterAlphaEnabled = self.rasterColorEnabled = True
         self.materialColor = [128, 128, 128, 255]
         self.ambientColor = [0, 0, 0, 255]
-        self.colorLightControl = self.LightChannelControl(1792)
-        self.alphaLightControl = self.LightChannelControl(1792)
+        self.colorLightControl = self.LightChannelControl(0x700)
+        self.alphaLightControl = self.LightChannelControl(0x700)
 
     def __str__(self):
         return 'Flags:{:02X} Mat:{} Amb:{}\n\tColorControl: {}\n\tAlphaControl: {}'.format(self.flagsToInt(),

@@ -1,4 +1,5 @@
 import math
+import os
 from struct import pack
 
 import numpy as np
@@ -8,7 +9,34 @@ from brres.mdl0.normal import Normal
 from brres.mdl0.polygon import Polygon
 from brres.mdl0.texcoord import TexCoord
 from brres.mdl0.vertex import Vertex
+from brres.tex0 import EncodeError
 from converters.triangle import TriangleSet
+
+
+class Converter:
+    NoNormals = 0x1
+    NoColors = 0x2
+
+    @staticmethod
+    def try_import_texture(brres, image_path):
+        base_name = os.path.splitext(os.path.basename(image_path))[0]
+        if not brres.hasTexture(base_name):
+            try:
+                brres.import_texture(image_path)
+            except EncodeError:
+                pass
+        return base_name
+
+    def __init__(self, brres, mdl_file, flags=0):
+        self.brres = brres
+        self.mdl_file = mdl_file
+        self.flags = flags
+
+    def load_model(self, model_name):
+        raise NotImplementedError()
+
+    def save_model(self, mdl0):
+        raise NotImplementedError()
 
 
 def encode_polygon_data(polygon, vertex, normal, color, uvs, face_indices):
@@ -100,6 +128,8 @@ def add_geometry(mdl0, name, vertices, normals, colors, tex_coord_groups):
     uv_i = len(mdl0.texCoords)
     for x in tex_coord_groups:
         tex = TexCoord('#{}'.format(uv_i), mdl0)
+        # convert xy to st
+        x.points[:, 1] *= -1
         x.encode_data(tex)
         tex.index = uv_i
         mdl0.texCoords.append(tex)
@@ -107,7 +137,9 @@ def add_geometry(mdl0, name, vertices, normals, colors, tex_coord_groups):
         uvs.append(tex)
         index_groups.append(x.face_indices)
     p = Polygon(name, mdl0)
-    encode_polygon_data(p, vert, normal, color, uvs, np.stack(index_groups, axis=-1))
+    indices = np.stack(index_groups, axis=-1)
+    indices[:, [0, 1]] = indices[:, [1, 0]]
+    encode_polygon_data(p, vert, normal, color, uvs, indices)
     mdl0.add_to_group(mdl0.objects, p)
     return p
 

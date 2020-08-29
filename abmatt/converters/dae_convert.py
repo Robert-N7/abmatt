@@ -9,29 +9,12 @@ from brres import Brres
 from brres.mdl0 import Mdl0
 from brres.mdl0.material import Material
 from brres.tex0 import EncodeError
-from converters.convert_lib import add_geometry, PointCollection, ColorCollection, set_bone_matrix
+from converters.convert_lib import add_geometry, PointCollection, ColorCollection, set_bone_matrix, Converter
+from converters.arg_parse import arg_parse, cmdline_convert
 
 
-class DaeConverter():
+class DaeConverter(Converter):
     IDENTITY_MATRIX = np.identity(4)
-    NoNormals = 0x1
-    NoColors = 0x2
-
-    def __init__(self, brres, mdl_file, flags=0):
-        self.brres = brres
-        self.mdl_file = mdl_file
-        self.flags = flags
-
-
-    @staticmethod
-    def try_import_texture(brres, image_path):
-        base_name = os.path.splitext(os.path.basename(image_path))[0]
-        if not brres.hasTexture(base_name):
-            try:
-                brres.import_texture(image_path)
-            except EncodeError:
-                pass
-        return base_name
 
     @staticmethod
     def convert_map_to_layer(map, material, image_path_map):
@@ -49,7 +32,7 @@ class DaeConverter():
 
     @staticmethod
     def encode_material(dae_material, mdl, image_path_map):
-        m = Material(dae_material.name, mdl)
+        m = Material.get_unique_material(dae_material.name, mdl)
         mdl.add_material(m)
         effect = dae_material.effect
         if effect.double_sided:
@@ -68,12 +51,14 @@ class DaeConverter():
     def encode_geometry(self, geometry, bone):
         mdl = self.mdl
         name = geometry.original.name.rstrip('Mesh')
+        if not name:
+            name = geometry.original.id
         # if not np.allclose(geometry.matrix, self.IDENTITY_MATRIX):
         #     bone = mdl.add_bone(name, bone)
         #     set_bone_matrix(bone, geometry.matrix)
 
         for triset in geometry.primitives():
-            triset.index[:,[0, 1]] = triset.index[:,[1, 0]]
+            # triset.index[:,[0, 1]] = triset.index[:,[1, 0]]
             vertex_group = PointCollection(triset.vertex, triset.vertex_index)
             if self.flags & self.NoNormals or triset.normal is None:
                 normal_group = None
@@ -81,9 +66,7 @@ class DaeConverter():
                 normal_group = PointCollection(triset.normal, triset.normal_index)
             tex_coords = []
             for i in range(len(triset.texcoordset)):
-                # convert xy to st
                 tex_set = triset.texcoordset[i]
-                tex_set[:, 1] *= -1
                 tex_coords.append(PointCollection(tex_set, triset.texcoord_indexset[i]))
             if self.flags & self.NoColors:
                 colors = None
@@ -98,19 +81,23 @@ class DaeConverter():
                                 colors, tex_coords)
             material = self.encode_material(triset.material, mdl, self.image_path_map)
             mdl.add_definition(material, poly, bone)
-            if colors is not None:
+            if colors:
                 material.enable_vertex_color()
             break
 
-    def load_model(self, model_name=None, flags=0):
-        start = time.time()
-        print('Converting {}... '.format(self.mdl_file))
+    def load_model(self, model_name=None):
         brres = self.brres
         model_file = self.mdl_file
-        base_name = os.path.splitext(os.path.basename(brres.name))[0]
+        cwd = os.getcwd()
+        dir, name = os.path.split(brres.name)
+        base_name = os.path.splitext(name)[0]
+        os.chdir(dir)   # change to the collada dir to help find relative paths
+        print('Converting {}... '.format(self.mdl_file))
+        start = time.time()
         dae = Collada(model_file, ignore=[DaeIncompleteError, DaeUnsupportedError, DaeBrokenRefError])
-        mdl_name = base_name.replace('_model', '')
-        self.mdl = mdl = Mdl0(mdl_name, brres)
+        if not model_name:
+            model_name = base_name.replace('_model', '')
+        self.mdl = mdl = Mdl0(model_name, brres)
         bone = mdl.add_bone(base_name)
         # images
         self.image_path_map = image_path_map = {}
@@ -126,6 +113,7 @@ class DaeConverter():
         mdl.rebuild_header()
         # add model to brres
         brres.add_mdl0(mdl)
+        os.chdir(cwd)
         print('\t... Finished in {} secs'.format(round(time.time() - start, 2)))
 
     @staticmethod
@@ -166,25 +154,5 @@ class DaeConverter():
         raise NotImplementedError()
 
 
-def main(args):
-    from converters.arg_parse import arg_parse
-    file_in, file_out, overwrite = arg_parse(args)
-    if file_in.ext == '.brres':
-        if not file_out.ext:
-            file_out.ext = '.dae'
-        brres = Brres(file_in.get_path())
-        converter = DaeConverter(brres, file_out.get_path())
-        converter.save_model()
-    elif file_in.ext.lower() == '.dae':
-        b_path = file_out.get_path()
-        brres = Brres(b_path, None, os.path.exists(b_path))
-        converter = DaeConverter(brres, file_in.get_path())
-        converter.load_model()
-        brres.save(None, overwrite)
-    else:
-        print('Unknown file {}, is the file extension .dae?'.format(file_in.ext))
-        sys.exit(1)
-
-
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    cmdline_convert(sys.argv[1:], '.dae', DaeConverter)

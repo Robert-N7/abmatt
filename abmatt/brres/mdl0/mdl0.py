@@ -195,7 +195,11 @@ class Mdl0(SubFile):
         b = Bone(name, self)
         self.add_to_group(self.bones, b)
         b.bone_id = self.boneTable.add_entry(self.boneCount)
-        parent_index = parent_bone.bone_id if parent_bone else 0
+        if parent_bone:
+            parent_index = parent_bone.bone_id
+
+        else:
+            parent_index = 0
         self.nodeTree.add_entry(self.boneCount, parent_index)
         self.boneCount += 1
         return b
