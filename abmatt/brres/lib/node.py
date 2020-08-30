@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 
 from brres.lib.autofix import AUTO_FIXER
 from brres.lib.binfile import BinFile
@@ -16,6 +17,16 @@ class Node:
 
     def begin(self):
         pass
+
+    def __deepcopy__(self, memodict={}):
+        parent = self.parent
+        self.parent = None
+        x = deepcopy(self)
+        self.parent = parent
+        return x
+
+    def link_parent(self, parent):
+        self.parent = parent
 
     def unpack(self, binfile):
         raise NotImplementedError()

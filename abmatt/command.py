@@ -3,6 +3,7 @@
 # ---------------------------------------------------------------------------
 import fnmatch
 import os
+from copy import deepcopy
 
 from brres.lib.binfile import UnpackingError
 from brres import Brres
@@ -65,7 +66,7 @@ def getBrresFromMaterials(mats):
 
 
 class Command:
-    COMMANDS = ["preset", "set", "add", "remove", "info", "select", "save", "copy", "paste"]
+    COMMANDS = ["preset", "set", "add", "remove", "info", "select", "save", "copy", "paste", "convert"]
     SELECTED = []  # selection list
     SELECT_TYPE = None  # current selection list type
     SELECT_ID = None  # current selection id
@@ -124,6 +125,9 @@ class Command:
                 self.overwrite = False
                 self.destination = self.file = None
                 return
+        if cmd == 'convert':
+            self.set_convert(x)
+            return
         if self.setType(x[0]):
             x.pop(0)
         if cmd == 'select':
@@ -173,6 +177,32 @@ class Command:
         if self.key and self.type and self.key not in self.TYPE_SETTING_MAP[self.type]:
             raise ParsingException(self.txt, "Unknown Key {} for {}, possible keys:\n\t{}".format(
                 self.key, self.type, self.TYPE_SETTING_MAP[self.type]))
+
+    def set_convert(self, params):
+        flags = 0
+        self.name = self.destination = None
+        while len(params):
+            param = params.pop(0)
+            if param == 'to':
+                try:
+                    self.destination = params.pop(0)
+                except IndexError:
+                    raise ParsingException('Expected destination after "to"')
+            elif param in ('-n', '--no-normals'):
+                flags |= 1
+            elif param in ('-c', '--no-colors'):
+                flags |= 2
+            elif not self.name:
+                self.name = param
+            else:
+                raise ParsingException('Unknown parameter {}'.format(param))
+        if not self.name:
+            raise ParsingException('Convert requires target!')
+        dir, filename = os.path.split(self.name)
+        base_name, self.ext = os.path.splitext(filename)
+        if self.ext not in ('.dae', '.obj'):
+            raise ParsingException('Unsupported conversion format {}'.format(self.ext))
+        self.flags = flags
 
     def set_key_val(self, keyval):
         if ':' not in keyval:
@@ -579,7 +609,7 @@ class Command:
     def run_commands(commandlist):
         try:
             for cmd in commandlist:
-                cmd.runCmd()
+                cmd.run_cmd()
         except (ValueError, SaveError, PasteError, MaxFileLimit, NoSuchFile, FileNotFoundError, ParsingException,
                 OSError, UnpackingError, NotImplementedError) as e:
             AUTO_FIXER.error(e, 1)
@@ -616,7 +646,7 @@ class Command:
         except EncodeError as e:
             print(e)
 
-    def runCmd(self):
+    def run_cmd(self):
         if self.hasSelection:
             if not self.updateSelection():
                 return False
@@ -631,6 +661,8 @@ class Command:
             self.updateSelection()
         if self.cmd == 'preset':
             return self.runPreset(self.key)
+        elif self.cmd == 'convert':
+            return self.run_convert()
         if not self.ACTIVE_FILES:
             raise ParsingException(self.txt, 'No file detected!')
         if self.cmd == 'save':
@@ -663,6 +695,39 @@ class Command:
         elif self.cmd == 'paste':
             self.run_paste(self.SELECT_TYPE)
         return True
+
+
+    def run_convert(self):
+        if self.ext == 'dae':
+            from converters.dae_convert import DaeConverter
+            klass = DaeConverter
+        elif self.ext == 'obj':
+            from converters.obj_convert import ObjConverter
+            klass = ObjConverter
+        else:
+            raise ParsingException('Unknown conversion format {}'.format(self.ext))
+        active_files = self.ACTIVE_FILES
+        multiple_files = False
+        if not self.destination:
+            if len(active_files) > 1:
+                multiple_files = True
+            if active_files:
+                brres = self.ACTIVE_FILES[0]
+            else:
+                dir, filename = os.path.split(self.name)
+                base_name = os.path.splitext(filename)[0]
+                brres_name = os.path.join(dir, base_name + '.brres')
+                brres = Brres(brres_name)
+        else:
+            brres = Brres(self.destination)
+        converter = klass(brres, self.name, self.flags)
+        mdl = converter.load_model()
+        if multiple_files:
+            for i in range(1, len(active_files)):
+                active_files[i].add_mdl0(deepcopy(mdl))
+                active_files[i].paste_tex0s(brres)
+
+
 
     # -------------------------------------------- COPY/PASTE -----------------------------------------------
     #   Items implementing clipboard must support the methods:
@@ -721,7 +786,7 @@ class Command:
         """Runs preset"""
         cmds = self.PRESETS[key]
         for x in cmds:
-            x.runCmd()
+            x.run_cmd()
 
     def add(self, type, type_id):
         """Add command"""

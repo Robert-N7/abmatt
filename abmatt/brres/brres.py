@@ -47,8 +47,6 @@ class Brres(Clipable):
         """
         self.folders = {}
         self.isModified = False
-        self.parent = parent
-        self.name = name
         self.texture_map = {}
         binfile = BinFile(self.name) if readFile else None
         super(Brres, self).__init__(name, parent, binfile)
@@ -83,7 +81,7 @@ class Brres(Clipable):
             self.models.remove(prev)
             mdl0.paste(prev)
         self.models.append(mdl0)
-        mdl0.parent = self
+        mdl0.link_parent(self)
         return mdl0
 
     def remove_mdl0(self, name):
@@ -206,6 +204,11 @@ class Brres(Clipable):
             AUTO_FIXER.info('Replaced tex0 {}'.format(tex0.name))
         self.textures.append(tex0)
         self.texture_map[tex0.name] = tex0
+
+    def paste_tex0s(self, brres):
+        tex_map = brres.texture_map
+        for x in tex_map:
+            self.add_tex0(tex_map[x])
 
     def import_texture(self, image_path):
         tex0 = ImgConverter().encode(image_path)

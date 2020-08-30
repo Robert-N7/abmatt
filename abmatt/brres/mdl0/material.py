@@ -71,6 +71,20 @@ class Material(Clipable):
         self.matGX = MatGX()
         super(Material, self).__init__(name, parent, binfile)
 
+    def __deepcopy__(self, memodict={}):
+        # don't copy references copied elsewhere
+        srt0 = self.srt0
+        self.srt0 = None
+        pat0 = self.pat0
+        self.pat0 = None
+        shader = self.shader
+        self.shader = None
+        copy = super().__deepcopy__(memodict)
+        self.srt0 = srt0
+        self.pat0 = pat0
+        self.shader = shader
+        return copy
+
     @staticmethod
     def get_unique_material(name, mdl):
         is_digit = False

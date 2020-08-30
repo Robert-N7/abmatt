@@ -1,6 +1,7 @@
 """ MDL0 Models """
 # ----------------- Model sub files --------------------------------------------
 import math
+from copy import deepcopy
 
 from brres.lib.autofix import AUTO_FIXER, Bug
 from brres.lib.binfile import Folder, PackingError
@@ -383,6 +384,40 @@ class Mdl0(SubFile):
 
     def paste(self, item):
         self.paste_group(self.materials, item.materials)
+
+    def __deepcopy__(self, memodict={}):
+        sections = self.sections
+        self.sections = None
+        copy = super().__deepcopy__(memodict)
+        self.sections = sections
+        # relink things
+        copy.sections = [copy.definitions, copy.bones, copy.vertices, copy.normals,
+                         copy.colors, copy.texCoords, copy.furVectors, copy.furLayers,
+                         copy.materials, copy.shaders, copy.objects,
+                         copy.textureLinks, copy.paletteLinks]
+        for x in copy.sections:
+            for y in x:
+                y.link_parent(copy)
+        shaders = copy.shaders
+        srt0_group = self.srt0_collection
+        pat0_group = self.pat0_collection
+        for x in copy.materials:
+            shader = shaders[x.name]
+            x.shader = shader
+            shader.material = x
+            srt0 = srt0_group[x.name]
+            if srt0:
+                x.srt0 = srt0
+            pat0 = pat0_group[x.name]
+            if pat0:
+                x.pat0 = pat0
+        return copy
+
+    def link_parent(self, parent):
+        super().link_parent(parent)
+        brres_textures = self.getTextureMap()
+        for x in self.pat0_collection:
+            x.brres_textures = brres_textures
 
     def rename_material(self, material, new_name):
         # first check if name is available

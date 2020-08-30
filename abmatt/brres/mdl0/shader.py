@@ -464,6 +464,13 @@ class Shader(Clipable):
         self.indTexCoords = [7] * 4
         super(Shader, self).__init__(name, parent, binfile)
 
+    def __deepcopy__(self, memodict={}):
+        mat = self.material
+        self.material = None
+        copy = super().__deepcopy__(memodict)
+        self.material = mat
+        return copy
+
     def begin(self):
         self.stages.append(Stage(0, self))
 

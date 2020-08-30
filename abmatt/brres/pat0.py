@@ -4,19 +4,18 @@ from copy import deepcopy
 from brres.subfile import SubFile, set_anim_str, get_anim_str
 from brres.lib.binfile import Folder
 from brres.lib.matching import validBool, validInt, validFloat, splitKeyVal, fuzzy_strings
-from brres.lib.node import Clipable
+from brres.lib.node import Clipable, Node
 from brres.lib.autofix import AUTO_FIXER, Bug
 
 
-class Pat0Collection:
+class Pat0Collection(Node):
     """A collection of pat0 mat animations for a model"""
 
     def __init__(self, name, parent, pats=None):
         self.collection = []
-        self.name = name  # takes on model name
-        self.parent = parent
         for x in pats:
             self.collection.extend(x.mat_anims)
+        super().__init__(name, parent)
 
     def __getitem__(self, material_name):
         """Gets animation in collection matching material name"""
@@ -87,6 +86,14 @@ class Pat0MatAnimation(Clipable):
         self.loop = loop
         self.brres_textures = parent.get_texture_map() if parent else None
         super(Pat0MatAnimation, self).__init__(name, parent, binfile)
+
+
+    def __deepcopy__(self, memodict={}):
+        tex = self.brres_textures
+        self.brres_textures = None
+        copy = super().__deepcopy__(memodict)
+        self.brres_textures = tex
+        return copy
 
     def paste(self, item):
         self.enabled = item.enabled

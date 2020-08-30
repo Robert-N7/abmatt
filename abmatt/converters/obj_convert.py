@@ -57,6 +57,7 @@ class ObjConverter(Converter):
         brres.add_mdl0(mdl)
         os.chdir(cwd)
         print('\t... Finished in {} secs'.format(round(time.time() - start, 2)))
+        return mdl
 
     def save_model(self, mdl0):
         raise NotImplementedError()

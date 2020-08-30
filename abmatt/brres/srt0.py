@@ -4,22 +4,21 @@ from copy import deepcopy, copy
 
 from brres.lib.binfile import Folder
 from brres.lib.matching import validInt, validBool, validFloat, splitKeyVal, MATCHING
-from brres.lib.node import Clipable
+from brres.lib.node import Clipable, Node
 from brres.subfile import SubFile, set_anim_str, get_anim_str
 from brres.lib.autofix import Bug
 
 
 # ---------------------------------------------------------
-class SRTCollection:
+class SRTCollection(Node):
     """A collection of srt mat animations for a model"""
 
     def __init__(self, name, parent, srts=None):
         self.collection = []
-        self.name = name  # takes on model name
-        self.parent = parent
         if srts:
             for x in srts:
                 self.collection.extend(x.matAnimations)
+        super().__init__(name, parent)
 
     def __getitem__(self, material_name):
         """Gets animation in collection matching material name"""
@@ -520,7 +519,7 @@ class SRTMatAnim(Clipable):
     REMOVE_UNKNOWN_REFS = True
 
     def __init__(self, name, frame_count=1, looping=True, parent=None, binfile=None):
-        self.parent = parent  # to be filled
+        self.parent = parent
         self.framecount = frame_count
         self.tex_animations = []
         self.texEnabled = [False] * 8

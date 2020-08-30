@@ -115,6 +115,7 @@ class DaeConverter(Converter):
         brres.add_mdl0(mdl)
         os.chdir(cwd)
         print('\t... Finished in {} secs'.format(round(time.time() - start, 2)))
+        return mdl
 
     @staticmethod
     def convert_colors(color_group):
