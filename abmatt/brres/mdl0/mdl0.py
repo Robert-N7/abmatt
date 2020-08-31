@@ -405,19 +405,22 @@ class Mdl0(SubFile):
             shader = shaders[x.name]
             x.shader = shader
             shader.material = x
-            srt0 = srt0_group[x.name]
-            if srt0:
-                x.srt0 = srt0
-            pat0 = pat0_group[x.name]
-            if pat0:
-                x.pat0 = pat0
+            if srt0_group:
+                srt0 = srt0_group[x.name]
+                if srt0:
+                    x.srt0 = srt0
+            if pat0_group:
+                pat0 = pat0_group[x.name]
+                if pat0:
+                    x.pat0 = pat0
         return copy
 
     def link_parent(self, parent):
         super().link_parent(parent)
         brres_textures = self.getTextureMap()
-        for x in self.pat0_collection:
-            x.brres_textures = brres_textures
+        if self.pat0_collection:
+            for x in self.pat0_collection:
+                x.brres_textures = brres_textures
 
     def rename_material(self, material, new_name):
         # first check if name is available

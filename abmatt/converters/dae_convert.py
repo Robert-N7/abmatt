@@ -4,18 +4,17 @@ import time
 
 import numpy as np
 from collada import Collada, DaeBrokenRefError, DaeUnsupportedError, DaeIncompleteError
+from collada.scene import ControllerNode, GeometryNode
 
 from brres import Brres
 from brres.mdl0 import Mdl0
 from brres.mdl0.material import Material
 from brres.tex0 import EncodeError
-from converters.convert_lib import add_geometry, PointCollection, ColorCollection, set_bone_matrix, Converter
+from converters.convert_lib import add_geometry, PointCollection, ColorCollection, Converter
 from converters.arg_parse import arg_parse, cmdline_convert
 
 
 class DaeConverter(Converter):
-    IDENTITY_MATRIX = np.identity(4)
-
     @staticmethod
     def convert_map_to_layer(map, material, image_path_map):
         if not map or isinstance(map, tuple):
@@ -50,14 +49,14 @@ class DaeConverter(Converter):
 
     def encode_geometry(self, geometry, bone):
         mdl = self.mdl
-        name = geometry.original.name.rstrip('Mesh')
+        name = geometry.id
         if not name:
             name = geometry.original.id
         # if not np.allclose(geometry.matrix, self.IDENTITY_MATRIX):
         #     bone = mdl.add_bone(name, bone)
         #     set_bone_matrix(bone, geometry.matrix)
 
-        for triset in geometry.primitives():
+        for triset in geometry.primitives:
             # triset.index[:,[0, 1]] = triset.index[:,[1, 0]]
             vertex_group = PointCollection(triset.vertex, triset.vertex_index)
             if self.flags & self.NoNormals or triset.normal is None:
@@ -71,7 +70,7 @@ class DaeConverter(Converter):
             if self.flags & self.NoColors:
                 colors = None
             else:
-                colors = triset.original.sources.get('COLOR')
+                colors = triset.sources.get('COLOR')
                 if colors:
                     color_source = colors[0]
                     face_indices = triset.index[:, :, color_source[0]]
@@ -79,11 +78,26 @@ class DaeConverter(Converter):
                     colors.normalize()
             poly = add_geometry(mdl, name, vertex_group, normal_group,
                                 colors, tex_coords)
-            material = self.encode_material(triset.material, mdl, self.image_path_map)
+            name = triset.material
+            mat = self.materials.get(name)
+            if not mat:
+                material = Material.get_unique_material(name, mdl)
+                mdl.add_material(material)
+                if name in self.image_path_map:
+                    material.addLayer(name)
+            else:
+                material = self.encode_material(mat, mdl, self.image_path_map)
             mdl.add_definition(material, poly, bone)
             if colors:
                 material.enable_vertex_color()
             break
+
+    @staticmethod
+    def get_geometry_by_id(geometries, id):
+        geo = geometries[id]
+        for x in geometries:
+            if x.id == id:
+                return x
 
     def load_model(self, model_name=None):
         brres = self.brres
@@ -98,18 +112,50 @@ class DaeConverter(Converter):
         if not model_name:
             model_name = base_name.replace('_model', '')
         self.mdl = mdl = Mdl0(model_name, brres)
-        bone = mdl.add_bone(base_name)
+        bone = parent_bone = None
         # images
         self.image_path_map = image_path_map = {}
         for image in dae.images:
             image_path_map[image.path] = self.try_import_texture(brres, image.path)
         if not brres.textures:
             print('ERROR: No textures found!')
+        self.materials = dae.materials
         # geometry
-        for geometry in dae.scene.objects('geometry'):
-            self.encode_geometry(geometry, bone)
-        for controller in dae.scene.objects('controller'):
-            self.encode_geometry(controller.geometry, bone)
+        # for node in dae.scene.nodes:
+        nodes = dae.scene.nodes
+        geometries = dae.geometries
+        for node in nodes:
+            if len(node.children) < 2:
+                geo = geometries.get(node.id)
+                if geo and not bone:
+                    parent_bone = bone = mdl.add_bone(node.id, parent_bone)
+            else:
+                if not bone:
+                    parent_bone = bone = mdl.add_bone(node.id, parent_bone)
+                child = node.children[0]
+                t = type(child)
+                if t == ControllerNode:
+                    geo = child.controller.geometry
+                elif t == GeometryNode:
+                    geo = child.geometry
+                else:
+                    geo = None
+                if not self.is_identity_matrix(node.matrix):
+                    bone = mdl.add_bone(node.id, parent_bone)
+                    self.set_bone_matrix(bone, node.matrix)
+            if geo:
+                self.encode_geometry(geo, bone)
+            else:
+                bone = mdl.add_bone(node.id, parent_bone)
+                if not self.is_identity_matrix(node.matrix):
+                    self.set_bone_matrix(bone, node.matrix)
+                if not parent_bone:
+                    parent_bone = bone
+
+        # for geometry in dae.scene.objects('geometry'):
+        #     self.encode_geometry(geometry, bone)
+        # for controller in dae.scene.objects('controller'):
+        #     self.encode_geometry(controller.geometry, bone)
         mdl.rebuild_header()
         # add model to brres
         brres.add_mdl0(mdl)

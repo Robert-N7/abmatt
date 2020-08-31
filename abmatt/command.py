@@ -18,6 +18,12 @@ from brres.lib.autofix import AUTO_FIXER
 from brres.tex0 import Tex0, ImgConverter, EncodeError
 
 
+def convert_file_ext(path, new_ext):
+    dir, name = os.path.split(path)
+    base_name = os.path.splitext(name)[0]
+    return os.path.join(dir, base_name + new_ext)
+
+
 class ParsingException(Exception):
     def __init__(self, txt, message=''):
         super(ParsingException, self).__init__("Failed to parse: '" + txt + "' " + message)
@@ -199,7 +205,8 @@ class Command:
         if not self.name:
             raise ParsingException('Convert requires target!')
         dir, filename = os.path.split(self.name)
-        base_name, self.ext = os.path.splitext(filename)
+        base_name, ext = os.path.splitext(filename)
+        self.ext = ext.lower()
         if self.ext not in ('.dae', '.obj'):
             raise ParsingException('Unsupported conversion format {}'.format(self.ext))
         self.flags = flags
@@ -344,6 +351,9 @@ class Command:
                 if len(files) > 1 or Command.ACTIVE_FILES and outside_active:
                     raise SaveError('Multiple files for single destination')
             Command.ACTIVE_FILES = Command.openFiles(files)
+        Command.MODELS = []
+        Command.MATERIALS = []
+        return Command.ACTIVE_FILES
 
     @staticmethod
     def closeFiles(file_names):
@@ -354,6 +364,33 @@ class Command:
             file.close()
             marked.remove(file)
 
+
+    @staticmethod
+    def auto_close(amount, exclude=[]):
+        can_close = []  # modified but can close
+        to_close = []  # going to close if needs closing
+        excluded = []
+        opened = Command.OPEN_FILES
+        # first pass, mark non-modified files for closing, and appending active
+        for x in opened:
+            if x not in exclude:
+                if not opened[x].isModified:
+                    to_close.append(x)
+                    amount -= 1
+                else:
+                    can_close.append(x)
+            else:
+                excluded.append(opened[x])
+        if amount:
+            for x in can_close:
+                to_close.append(x)
+                amount -= 1
+                if not amount:
+                    break
+        Command.closeFiles(to_close)
+        return excluded
+
+
     @staticmethod
     def openFiles(filenames):
         opened = Command.OPEN_FILES
@@ -362,28 +399,12 @@ class Command:
             raise MaxFileLimit
         to_open = [f for f in filenames if f not in opened]
         total = len(to_open) + len(opened)
-        needs_close = total > max
-        can_close = []  # modified but can close
-        to_close = []  # going to close if needs closing
-        active = []
-        # first pass, mark non-modified files for closing, and appending active
-        for x in opened:
-            if x not in filenames:
-                if not opened[x].isModified:
-                    to_close.append(x)
-                    total -= 1
-                else:
-                    can_close.append(x)
-            else:
-                active.append(opened[x])
-        if needs_close:
-            if total > max:  # mark modified files for closing
-                for x in can_close:
-                    to_close.append(x)
-                    total -= 1
-                    if total <= max:
-                        break
-            Command.closeFiles(to_close)
+        if total > max:
+            active = Command.auto_close(total - max, to_open)
+            for x in active:
+                to_open.remove(x.name)
+        else:
+            active = []
         # open any that aren't opened
         for f in to_open:
             # try:
@@ -394,6 +415,22 @@ class Command:
         #     AUTO_FIXER.error(e)
         Brres.OPEN_FILES = opened.values()
         return active
+
+    @staticmethod
+    def create_or_open(filename):
+        amount = len(Command.OPEN_FILES) - Command.MAX_FILES_OPEN
+        if amount > 0:
+            Command.auto_close(amount, [filename])
+        if os.path.exists(filename):
+            files = Command.updateFile(filename)
+            b = files[0] if len(files) else None
+        else:
+            b = Brres(filename, readFile=False)
+            Command.OPEN_FILES[filename] = b
+            Command.ACTIVE_FILES = [b]
+            Command.MODELS = []
+            Command.MODELS = []
+        return b
 
     @staticmethod
     def load_commandfile(filename):
@@ -449,17 +486,16 @@ class Command:
     # ------------------------------------  UPDATING TYPE/SELECTION ------------------------------------------------
     def updateSelection(self):
         """ updates container items """
-        updated_file = False
         if self.file:
             self.updateFile(self.file)
-            updated_file = True
         # Models
-        if self.model or updated_file:
+        if self.model or not self.MODELS:
             Command.MODELS = []
             for x in self.ACTIVE_FILES:
                 Command.MODELS.extend(x.getModelsByName(self.model))
+            if self.MATERIALS:
+                Command.MATERIALS = []
         # Materials
-        Command.MATERIALS = []  # reset materials
         for x in self.MODELS:
             Command.MATERIALS.extend(x.getMaterialsByName(self.name))
         Command.SELECT_TYPE = None  # reset selection
@@ -607,13 +643,13 @@ class Command:
     # ---------------------------------------------- RUN CMD ---------------------------------------------------
     @staticmethod
     def run_commands(commandlist):
-        try:
-            for cmd in commandlist:
-                cmd.run_cmd()
-        except (ValueError, SaveError, PasteError, MaxFileLimit, NoSuchFile, FileNotFoundError, ParsingException,
-                OSError, UnpackingError, NotImplementedError) as e:
-            AUTO_FIXER.error(e, 1)
-            return False
+        # try:
+        for cmd in commandlist:
+            cmd.run_cmd()
+        # except (ValueError, SaveError, PasteError, MaxFileLimit, NoSuchFile, FileNotFoundError, ParsingException,
+        #         OSError, UnpackingError, NotImplementedError) as e:
+        #     AUTO_FIXER.error(e, 1)
+        #     return False
         return True
 
     def run_import(self, files, converted_format=None):
@@ -696,38 +732,33 @@ class Command:
             self.run_paste(self.SELECT_TYPE)
         return True
 
-
     def run_convert(self):
-        if self.ext == 'dae':
+        if self.ext == '.dae':
             from converters.dae_convert import DaeConverter
             klass = DaeConverter
-        elif self.ext == 'obj':
+        elif self.ext == '.obj':
             from converters.obj_convert import ObjConverter
             klass = ObjConverter
         else:
             raise ParsingException('Unknown conversion format {}'.format(self.ext))
         active_files = self.ACTIVE_FILES
-        multiple_files = False
+        files = self.getFiles(self.name)
+        if not files:
+            return False
+        multiple_files = False if len(files) < 2 else True
         if not self.destination:
-            if len(active_files) > 1:
-                multiple_files = True
-            if active_files:
+            if active_files and not multiple_files:
                 brres = self.ACTIVE_FILES[0]
             else:
-                dir, filename = os.path.split(self.name)
-                base_name = os.path.splitext(filename)[0]
-                brres_name = os.path.join(dir, base_name + '.brres')
-                brres = Brres(brres_name)
+                brres = None
         else:
-            brres = Brres(self.destination)
-        converter = klass(brres, self.name, self.flags)
-        mdl = converter.load_model()
-        if multiple_files:
-            for i in range(1, len(active_files)):
-                active_files[i].add_mdl0(deepcopy(mdl))
-                active_files[i].paste_tex0s(brres)
-
-
+            brres = self.create_or_open(self.destination)
+        for file in files:
+            if not brres:
+                converter = klass(self.create_or_open(convert_file_ext(file, '.brres')), file, self.flags)
+            else:
+               converter = klass(brres, file, self.flags)
+            mdl = converter.load_model()
 
     # -------------------------------------------- COPY/PASTE -----------------------------------------------
     #   Items implementing clipboard must support the methods:

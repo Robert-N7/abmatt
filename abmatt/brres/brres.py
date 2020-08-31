@@ -48,7 +48,7 @@ class Brres(Clipable):
         self.folders = {}
         self.isModified = False
         self.texture_map = {}
-        binfile = BinFile(self.name) if readFile else None
+        binfile = BinFile(name) if readFile else None
         super(Brres, self).__init__(name, parent, binfile)
 
     def begin(self):
@@ -57,6 +57,7 @@ class Brres(Clipable):
         self.textures = folders[self.ORDERED[1]] = []
         self.pat0 = folders[self.ANIM_COLLECTIONS[0]] = []
         self.srt0 = folders[self.ANIM_COLLECTIONS[1]] = []
+        self.isModified = True
 
     def get_str(self, key):
         if key == 'name':

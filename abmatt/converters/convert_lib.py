@@ -16,15 +16,39 @@ from converters.triangle import TriangleSet
 class Converter:
     NoNormals = 0x1
     NoColors = 0x2
+    IDENTITY_MATRIX = np.identity(4)
+
+    @staticmethod
+    def set_bone_matrix(bone, matrix):
+        """Untested set translation/scale/rotation with matrix"""
+        bone.transform_matrix = matrix[:3]  # don't include fourth row
+        bone.inverse_matrix = np.linalg.inv(matrix)[:3]
+        bone.translation = matrix[:][3][:3]
+        bone.scale = (vector_magnitude(matrix[:][0]),
+                      vector_magnitude(matrix[:][1]),
+                      vector_magnitude(matrix[:][2]))
+        matrix = np.delete(matrix, 3, 0)
+        matrix = np.delete(matrix, 3, 1)
+        for i in range(3):
+            scale_factor = bone.scale[i]
+            if scale_factor != 1:
+                for j in range(3):
+                    matrix[j][i] = matrix[j][i] / scale_factor
+        bone.rotation = rotationMatrixToEulerAngles(matrix)
+
+    @staticmethod
+    def is_identity_matrix(matrix):
+        return np.allclose(matrix, Converter.IDENTITY_MATRIX)
 
     @staticmethod
     def try_import_texture(brres, image_path):
         base_name = os.path.splitext(os.path.basename(image_path))[0]
         if not brres.hasTexture(base_name):
-            try:
-                brres.import_texture(image_path)
-            except EncodeError:
-                pass
+            if os.path.exists(image_path):
+                try:
+                    brres.import_texture(image_path)
+                except EncodeError:
+                    pass
         return base_name
 
     def __init__(self, brres, mdl_file, flags=0):
@@ -366,24 +390,6 @@ class ColorCollection:
 
 def vector_magnitude(vector):
     return math.sqrt(sum(x ** 2 for x in vector))
-
-
-def set_bone_matrix(bone, matrix):
-    """Untested set translation/scale/rotation with matrix"""
-    bone.transform_matrix = matrix[:3]  # don't include fourth row
-    bone.inverse_matrix = np.linalg.inv(matrix)[:3]
-    bone.translation = matrix[:][3][:3]
-    bone.scale = (vector_magnitude(matrix[:][0]),
-                  vector_magnitude(matrix[:][1]),
-                  vector_magnitude(matrix[:][2]))
-    matrix = np.delete(matrix, 3, 0)
-    matrix = np.delete(matrix, 3, 1)
-    for i in range(3):
-        scale_factor = bone.scale[i]
-        if scale_factor != 1:
-            for j in range(3):
-                matrix[j][i] = matrix[j][i] / scale_factor
-    bone.rotation = rotationMatrixToEulerAngles(matrix)
 
 
 # Checks if a matrix is a valid rotation matrix.

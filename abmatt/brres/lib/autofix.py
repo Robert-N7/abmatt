@@ -126,7 +126,7 @@ class AutoFix:
             if not 0 <= level < 6:
                 raise ValueError('Loudness level out of range (0-6)')
             return int(level)
-        except:
+        except ValueError:
             level_str = level_str.upper()
             if level_str == 'ALL':
                 return 4

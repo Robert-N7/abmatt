@@ -302,7 +302,7 @@ class Stage(Clipable):
                     f = validFloat(value, 0.5, 4)
                     pos = indexListItem(self.SCALEN, f)
                     value = self.SCALE[pos]
-                except:
+                except ValueError:
                     indexListItem(self.SCALE, value)
             elif "color" in key:
                 if len(key) < 7:  # abcd
