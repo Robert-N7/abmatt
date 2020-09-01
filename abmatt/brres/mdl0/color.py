@@ -22,8 +22,8 @@ class Color(Node):
         self.index, self.has_alpha, self.format, self.stride, self.flags, self.count = binfile.read('3I2BH', 16)
         binfile.recall()
         self.data = binfile.readRemaining()
-        print('Color {} count {}'.format(self.name, self.count))
-        printCollectionHex(self.data)
+        # print('Color {} count {}'.format(self.name, self.count))
+        # printCollectionHex(self.data)
         binfile.end()
 
     def pack(self, binfile):

@@ -22,7 +22,9 @@ setup(name='abmatt',
       version='0.7.0',
       entry_points={
           'console_scripts': [
-              'abmatt = abmatt.__main__:main'
+              'abmatt = abmatt.__main__:main',
+              'convert-dae = abmatt.converters.convert_dae:main'
+              'convert-obj = abmatt.converters.convert_obj:main'
           ]
       },
       description='Brres file material editor',

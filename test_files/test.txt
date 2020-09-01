@@ -1,5 +1,6 @@
 #select * in ../test_files/bb_delfino_plaza_no_bone.brres
-convert ../test_files/brawl_beginner_course.dae
+convert ../test_files/3ds_bll_map.DAE
+# select * in ../brres_files/cow.brres
 # set mdl0 name:course
 # select * in ../test_files/bll.brres
 save as ../brres_files/test.brres overwrite

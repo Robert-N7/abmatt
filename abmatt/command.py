@@ -734,10 +734,10 @@ class Command:
 
     def run_convert(self):
         if self.ext == '.dae':
-            from converters.dae_convert import DaeConverter
+            from converters.convert_dae import DaeConverter
             klass = DaeConverter
         elif self.ext == '.obj':
-            from converters.obj_convert import ObjConverter
+            from converters.convert_obj import ObjConverter
             klass = ObjConverter
         else:
             raise ParsingException('Unknown conversion format {}'.format(self.ext))

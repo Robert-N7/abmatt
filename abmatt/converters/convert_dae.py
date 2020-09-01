@@ -4,7 +4,7 @@ import time
 
 import numpy as np
 from collada import Collada, DaeBrokenRefError, DaeUnsupportedError, DaeIncompleteError
-from collada.scene import ControllerNode, GeometryNode
+from collada.scene import ControllerNode, GeometryNode, Node, ExtraNode
 
 from brres import Brres
 from brres.mdl0 import Mdl0
@@ -51,15 +51,25 @@ class DaeConverter(Converter):
         mdl = self.mdl
         name = geometry.id
         if not name:
-            name = geometry.original.id
+            name = geometry.name
         # if not np.allclose(geometry.matrix, self.IDENTITY_MATRIX):
         #     bone = mdl.add_bone(name, bone)
         #     set_bone_matrix(bone, geometry.matrix)
 
         for triset in geometry.primitives:
+            # material
+            name = triset.material
+            mat = self.materials.get(name)
+            if not mat:
+                material = Material.get_unique_material(name, mdl)
+                mdl.add_material(material)
+                if name in self.image_path_map:
+                    material.addLayer(name)
+            else:
+                material = self.encode_material(mat, mdl, self.image_path_map)
             # triset.index[:,[0, 1]] = triset.index[:,[1, 0]]
             vertex_group = PointCollection(triset.vertex, triset.vertex_index)
-            if self.flags & self.NoNormals or triset.normal is None:
+            if self.flags & self.NoNormals or triset.normal is None or material.is_cull_none() or self.is_map:
                 normal_group = None
             else:
                 normal_group = PointCollection(triset.normal, triset.normal_index)
@@ -78,15 +88,6 @@ class DaeConverter(Converter):
                     colors.normalize()
             poly = add_geometry(mdl, name, vertex_group, normal_group,
                                 colors, tex_coords)
-            name = triset.material
-            mat = self.materials.get(name)
-            if not mat:
-                material = Material.get_unique_material(name, mdl)
-                mdl.add_material(material)
-                if name in self.image_path_map:
-                    material.addLayer(name)
-            else:
-                material = self.encode_material(mat, mdl, self.image_path_map)
             mdl.add_definition(material, poly, bone)
             if colors:
                 material.enable_vertex_color()
@@ -99,66 +100,78 @@ class DaeConverter(Converter):
             if x.id == id:
                 return x
 
+    @staticmethod
+    def node_has_children(children):
+        for x in children:
+            if type(x) == Node:
+                return True
+        return False
+
+    def parse_nodes(self, nodes, parent_bone, mdl):
+        for node in nodes:
+            t = type(node)
+            if t == ExtraNode:
+                continue
+            if t == Node:
+                has_identity_matrix = self.is_identity_matrix(node.matrix)
+                has_child_bones = self.node_has_children(node.children)
+                has_children = len(node.children) > 0
+            else:
+                has_identity_matrix = True
+                has_children = has_child_bones = False
+            if not has_identity_matrix or not parent_bone or has_child_bones:
+                bone = mdl.add_bone(node.id, parent_bone)
+                if not has_identity_matrix:
+                    self.set_bone_matrix(bone, node.matrix)
+                if not parent_bone:
+                    parent_bone = bone
+            else:
+                bone = parent_bone
+
+            geo = None
+            if t == ControllerNode:
+                geo = node.controller.geometry
+            elif t == GeometryNode:
+                geo = node.geometry
+            else:
+                geo = self.geometries.get(node.id)
+            if geo:
+                if not bone:
+                    bone = mdl.add_bone()
+                self.encode_geometry(geo, bone)
+            if has_children:
+                self.parse_nodes(node.children, bone, mdl)
+
     def load_model(self, model_name=None):
         brres = self.brres
         model_file = self.mdl_file
         cwd = os.getcwd()
         dir, name = os.path.split(brres.name)
         base_name = os.path.splitext(name)[0]
-        os.chdir(dir)   # change to the collada dir to help find relative paths
+        self.is_map = True if 'map' in name else False
+        os.chdir(dir)  # change to the collada dir to help find relative paths
         print('Converting {}... '.format(self.mdl_file))
         start = time.time()
         dae = Collada(model_file, ignore=[DaeIncompleteError, DaeUnsupportedError, DaeBrokenRefError])
         if not model_name:
             model_name = base_name.replace('_model', '')
         self.mdl = mdl = Mdl0(model_name, brres)
-        bone = parent_bone = None
         # images
         self.image_path_map = image_path_map = {}
         for image in dae.images:
             image_path_map[image.path] = self.try_import_texture(brres, image.path)
-        if not brres.textures:
+        if not brres.textures and len(dae.images):
             print('ERROR: No textures found!')
         self.materials = dae.materials
+        self.geometries = dae.geometries
         # geometry
-        # for node in dae.scene.nodes:
-        nodes = dae.scene.nodes
-        geometries = dae.geometries
-        for node in nodes:
-            if len(node.children) < 2:
-                geo = geometries.get(node.id)
-                if geo and not bone:
-                    parent_bone = bone = mdl.add_bone(node.id, parent_bone)
-            else:
-                if not bone:
-                    parent_bone = bone = mdl.add_bone(node.id, parent_bone)
-                child = node.children[0]
-                t = type(child)
-                if t == ControllerNode:
-                    geo = child.controller.geometry
-                elif t == GeometryNode:
-                    geo = child.geometry
-                else:
-                    geo = None
-                if not self.is_identity_matrix(node.matrix):
-                    bone = mdl.add_bone(node.id, parent_bone)
-                    self.set_bone_matrix(bone, node.matrix)
-            if geo:
-                self.encode_geometry(geo, bone)
-            else:
-                bone = mdl.add_bone(node.id, parent_bone)
-                if not self.is_identity_matrix(node.matrix):
-                    self.set_bone_matrix(bone, node.matrix)
-                if not parent_bone:
-                    parent_bone = bone
-
-        # for geometry in dae.scene.objects('geometry'):
-        #     self.encode_geometry(geometry, bone)
-        # for controller in dae.scene.objects('controller'):
-        #     self.encode_geometry(controller.geometry, bone)
+        scene = dae.scene
+        self.parse_nodes(scene.nodes, None, mdl)
         mdl.rebuild_header()
         # add model to brres
         brres.add_mdl0(mdl)
+        if self.is_map:
+            mdl.add_map_bones()
         os.chdir(cwd)
         print('\t... Finished in {} secs'.format(round(time.time() - start, 2)))
         return mdl
@@ -166,7 +179,6 @@ class DaeConverter(Converter):
     @staticmethod
     def convert_colors(color_group):
         return color_group
-
 
     @staticmethod
     def construct_indices(triset_group, stride=3):
@@ -201,5 +213,9 @@ class DaeConverter(Converter):
         raise NotImplementedError()
 
 
-if __name__ == '__main__':
+def main():
     cmdline_convert(sys.argv[1:], '.dae', DaeConverter)
+
+
+if __name__ == '__main__':
+    main()

@@ -288,9 +288,9 @@ class Brres(Clipable):
         self.pat0.append(collection)
         return collection
 
-    def generate_srt_collections(self):
+    def generate_srt_collections(self, srt0_anims):
         # srt animation processing
-        model_anim_map = self.create_model_animation_map(self.srt0)
+        model_anim_map = self.create_model_animation_map(srt0_anims)
         # now create SRT Collection
         anim_collections = []
         for key in model_anim_map:
@@ -303,8 +303,8 @@ class Brres(Clipable):
                 mdl.set_srt0(collection)
         return anim_collections
 
-    def generate_pat0_collections(self):
-        model_anim_map = self.create_model_animation_map(self.pat0)
+    def generate_pat0_collections(self, pat0_anims):
+        model_anim_map = self.create_model_animation_map(pat0_anims)
         # now create SRT Collection
         anim_collections = []
         for key in model_anim_map:
@@ -321,10 +321,6 @@ class Brres(Clipable):
     #   PACKING / UNPACKING
     # -------------------------------------------------------------------------
     def post_unpacking(self):
-        x = self.folders.get("AnmTexPat(NW4R)")
-        self.folders["AnmTexPat(NW4R)"] = self.pat0 = self.generate_pat0_collections() if x else []
-        x = self.folders.get("AnmTexSrt(NW4R)")
-        self.folders["AnmTexSrt(NW4R)"] = self.srt0 = self.generate_srt_collections() if x else []
         mdl_name = self.ORDERED[0]
         x = self.folders.get(mdl_name)
         self.folders[mdl_name] = self.models = x if x else []
@@ -333,6 +329,10 @@ class Brres(Clipable):
         self.folders[tex_name] = self.textures = x if x else []
         for x in self.textures:
             self.texture_map[x.name] = x
+        x = self.folders.get("AnmTexPat(NW4R)")
+        self.folders["AnmTexPat(NW4R)"] = self.pat0 = self.generate_pat0_collections(x) if x else []
+        x = self.folders.get("AnmTexSrt(NW4R)")
+        self.folders["AnmTexSrt(NW4R)"] = self.srt0 = self.generate_srt_collections(x) if x else []
 
     def pre_packing(self):
         self.check()

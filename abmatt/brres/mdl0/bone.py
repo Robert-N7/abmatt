@@ -24,6 +24,34 @@ class Bone(Node):
         self.transform_matrix = self.identity_matrix
         self.inverse_matrix = self.identity_matrix
 
+    def set_translation(self, trans):
+        self.translation = trans
+        for i in range(3):
+            self.transform_matrix[i][2] = trans[i]
+
+    def link_child(self, child):
+        if self.child:
+            bone = self.child
+            while True:
+                if bone.next:
+                    bone = bone.next
+                else:
+                    bone.next = child
+                    child.prev = bone
+                    break
+        else:
+            self.child = child
+        child.b_parent = self
+
+    def get_last_child(self):
+        if self.child:
+            bone = self.child
+            while True:
+                if bone.next:
+                    bone = bone.next
+                else:
+                    return bone
+
     def unpack(self, binfile):
         self.offset = binfile.start()
         binfile.readLen()

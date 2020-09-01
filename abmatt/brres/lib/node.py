@@ -25,6 +25,9 @@ class Node:
         self.parent = parent
         return x
 
+    def __str__(self):
+        return self.name
+
     def link_parent(self, parent):
         self.parent = parent
 

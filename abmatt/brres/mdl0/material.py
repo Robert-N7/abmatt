@@ -125,6 +125,9 @@ class Material(Clipable):
     # ==========================================================================
     # Getters
     # ==========================================================================
+    def is_cull_none(self):
+        return self.cullmode == 0
+
     def getKey(self, key):
         for i in range(len(self.SETTINGS)):
             if self.SETTINGS[i] == key:

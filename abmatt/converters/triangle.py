@@ -153,18 +153,6 @@ class Triangle:
     def nextI(currentI):
         return currentI + 1 if currentI < 2 else 0
 
-    # def get_opposite_vert(self, edge):
-    #     i = self.edges.index(edge)
-    #     return self.vertices[i - 1]
-
-    # def get_adjacent_opposite_vert(self):  # gets any adjacent tri
-    #     edges = self.edges
-    #     for i in range(3):
-    #         edge = edges[i]
-    #         if edge:
-    #             edges[i] = None  # used this connection, drop it
-    #             return edge.get_adjacent()
-
     def create_strip(self):
         # self.disconnect()  # disconnect
         edges = self.edges

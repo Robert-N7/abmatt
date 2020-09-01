@@ -19,6 +19,14 @@ class Polygon(Node):
         self.tex_e = [1] * 8
         super(Polygon, self).__init__(name, parent, binfile)
 
+    @staticmethod
+    def get_fmt_str(index_format):
+        if index_format == Polygon.INDEX_FORMAT_BYTE:
+            return 'B'
+        elif index_format == Polygon.INDEX_FORMAT_SHORT:
+            return 'H'
+        return ''
+
     def begin(self):
         self.vertex_index_format = self.INDEX_FORMAT_BYTE
         self.normal_index_format = self.INDEX_FORMAT_BYTE
@@ -60,7 +68,7 @@ class Polygon(Node):
         if self.tex_index_format[tex_i] >= self.INDEX_FORMAT_BYTE:
             return self.parent.texCoords[self.tex_coord_group_indices[tex_i]]
 
-    def get_color_group(self, i):
+    def get_color_group(self, i=0):
         if i == 0:
             if self.color0_index_format >= self.INDEX_FORMAT_BYTE:
                 return self.parent.colors[self.color_group_indices[0]]
@@ -166,7 +174,7 @@ class Polygon(Node):
         binfile.recall()  # bt
         [bt_length] = binfile.read('I', 4)
         self.bone_table = binfile.read('{}H'.format(bt_length), bt_length * 2) if bt_length > 0 else None
-        binfile.offset = vt_dec_offset + 32  # ignores most of the beginning since we arleady have it
+        binfile.offset = vt_dec_offset + 32  # ignores most of the beginning since we already have it
         uvat = binfile.read('HIHIHI', 18)
         # self.uvat = uvat
         self.parse_uvat(uvat[1], uvat[3], uvat[5])

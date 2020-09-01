@@ -34,6 +34,7 @@ class ObjConverter(Converter):
         cwd = os.getcwd()
         dir, name = os.path.split(brres.name)
         base_name = os.path.splitext(name)[0]
+        self.is_map = True if 'map' in name else False
         os.chdir(dir)  # change to the collada dir to help find relative paths
         print('Converting {}... '.format(model_file))
         start = time.time()
@@ -48,13 +49,15 @@ class ObjConverter(Converter):
 
         # add geometries
         for geometry in obj.geometries:
-            normals = None if self.NoNormals & self.flags else geometry.normals
+            normals = None if self.NoNormals & self.flags or self.is_map else geometry.normals
             geo = add_geometry(mdl, geometry.name, geometry.vertices, normals, None, [geometry.texcoords])
             mat = obj.materials[geometry.material]
             material = self.encode_material(mat, mdl)
             mdl.add_definition(material, geo, bone)
         mdl.rebuild_header()
         brres.add_mdl0(mdl)
+        if self.is_map:
+            mdl.add_map_bones()
         os.chdir(cwd)
         print('\t... Finished in {} secs'.format(round(time.time() - start, 2)))
         return mdl
@@ -63,5 +66,9 @@ class ObjConverter(Converter):
         raise NotImplementedError()
 
 
-if __name__ == '__main__':
+def main():
     cmdline_convert(sys.argv[1:], '.obj', ObjConverter)
+
+
+if __name__ == '__main__':
+    main()

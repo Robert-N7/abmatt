@@ -1,6 +1,6 @@
 import math
 import os
-from struct import pack
+from struct import pack, unpack, unpack_from
 
 import numpy as np
 
@@ -23,10 +23,10 @@ class Converter:
         """Untested set translation/scale/rotation with matrix"""
         bone.transform_matrix = matrix[:3]  # don't include fourth row
         bone.inverse_matrix = np.linalg.inv(matrix)[:3]
-        bone.translation = matrix[:][3][:3]
-        bone.scale = (vector_magnitude(matrix[:][0]),
-                      vector_magnitude(matrix[:][1]),
-                      vector_magnitude(matrix[:][2]))
+        bone.translation = matrix[:, 3][:3]
+        bone.scale = (vector_magnitude(matrix[:, 0]),
+                      vector_magnitude(matrix[:, 1]),
+                      vector_magnitude(matrix[:, 2]))
         matrix = np.delete(matrix, 3, 0)
         matrix = np.delete(matrix, 3, 1)
         for i in range(3):
@@ -48,7 +48,7 @@ class Converter:
                 try:
                     brres.import_texture(image_path)
                 except EncodeError:
-                    pass
+                    print('WARN: Failed to encode image {}'.format(image_path))
         return base_name
 
     def __init__(self, brres, mdl_file, flags=0):
@@ -87,6 +87,7 @@ def encode_polygon_data(polygon, vertex, normal, color, uvs, face_indices):
             fmt_str += 'B'
     else:
         polygon.normal_index_format = polygon.INDEX_FORMAT_NONE
+        polygon.normal_group_index = -1
     if color:
         if len(color) > 0xff:
             polygon.color0_index_format = polygon.INDEX_FORMAT_SHORT
@@ -117,6 +118,113 @@ def encode_polygon_data(polygon, vertex, normal, color, uvs, face_indices):
     if past_align:
         data.extend(b'\0' * (32 - past_align))
     polygon.vt_data = data
+
+
+def decode_tri_strip(decoder, decoder_byte_len, data, start_offset, num_facepoints, face_point_indices):
+    face_points = []
+    for i in range(num_facepoints):
+        face_points.append(unpack_from(decoder, data, start_offset))
+        start_offset += decoder_byte_len
+        if i >= 2:
+            face_point_indices.append(face_points[i - 2:i + 1])
+    return start_offset
+
+
+def decode_tris(decoder, decoder_byte_len, data, start_offset, num_facepoints, face_point_indices):
+    assert num_facepoints % 3 == 0
+    for i in range(num_facepoints / 3):
+        tri = []
+        for j in range(3):
+            tri.append(unpack_from(decoder, data, start_offset))
+            start_offset += decoder_byte_len
+        face_point_indices.append(tri)
+    return start_offset
+
+
+def decode_geometry_group(geometry):
+    arr = np.array(geometry.data, np.float)
+    if geometry.divisor:
+        arr = arr / (2 ** geometry.divisor)
+    return arr
+
+
+def decode_polygon(polygon):
+    """ Decodes an mdl0 polygon
+        :returns dictionary with keys:
+        triangles, vertices, normals, colors, texcoords
+        values are ndarrays
+    """
+    # build the fmt_str decoder
+    fmt_str = '>'
+    vertices = polygon.get_vertex_group()
+    vertex_index = geometry_index = 0
+    fmt_str += polygon.get_fmt_str(polygon.vertex_index_format)
+    normals = polygon.get_normal_group()
+    if normals:
+        fmt_str += polygon.get_fmt_str(polygon.normal_index_format)
+        geometry_index += 1
+        normal_index = geometry_index
+    else:
+        normal_index = -1
+    colors = polygon.get_color_group()
+    if colors:
+        fmt_str += polygon.get_fmt_str(polygon.color0_index_format)
+        geometry_index += 1
+        color_index = geometry_index
+    else:
+        color_index = -1
+    texcoords = []
+    texcoord_index = -1
+    geometry_index += 1
+    for i in range(polygon.num_tex):
+        texcoords.append(polygon.get_tex_group(i))
+        fmt_str += polygon.get_fmt_str(polygon.tex_index_format[i])
+        if i == 0:
+            texcoord_index = geometry_index
+    fp_data_length = 0
+    for x in fmt_str:
+        if x == 'H':
+            fp_data_length += 2
+        elif x == 'B':
+            fp_data_length += 1
+        else:
+            raise ValueError('Unknown decoder format {}'.format(x))
+    # now decode the indices
+    face_point_indices = []
+    data = polygon.vt_data
+    i = 0
+    while i < len(data):
+        cmd, num_facepoints = unpack_from('>BH', data, i)
+        i += 3
+        if cmd == 0x98:
+            i = decode_tri_strip(fmt_str, fp_data_length, data, i, num_facepoints, face_point_indices)
+        elif cmd == 0x90:
+            i = decode_tris(fmt_str, fp_data_length, data, i, num_facepoints, face_point_indices)
+    face_point_indices = np.array(face_point_indices, np.int)
+    face_point_indices[:, [0, 1]] = face_point_indices[:, [1, 0]]
+    # create the point collections
+    geometry = {}
+    geometry['triangles'] = face_point_indices
+    geometry['vertices'] = decode_geometry_group(vertices)
+    geometry['vertex_index'] = vertex_index
+    geometry['normal_index'] = normal_index
+    if normal_index < 0:
+        geometry['normals'] = None
+    else:
+        geometry['normals'] = decode_geometry_group(normals)
+    geometry['color_index'] = color_index
+    if color_index < 0:
+        geometry['colors'] = None
+    else:
+        geometry['colors'] = ColorCollection.decode_data(colors)
+    geo_texcoords = geometry['texcoords'] = []
+    texcoord_index = geometry['texcoord_index'] = []
+    for tex in texcoords:
+        x = decode_geometry_group(tex)
+        geo_texcoords.append(x * -1)
+        texcoord_index.append(texcoord_index)
+        texcoord_index += 1
+    return geometry
 
 
 def add_geometry(mdl0, name, vertices, normals, colors, tex_coord_groups):
@@ -347,9 +455,37 @@ class ColorCollection:
         return color.data
 
     @staticmethod
+    def decode_data(color):
+        form = color.format
+        num_colors = len(color)
+        data = color.data
+        if form == 0:
+            data = ColorCollection.decode_rgb565(data, num_colors)
+        elif form == 1:
+            data = ColorCollection.decode_rgb8(data, num_colors)
+        elif form == 2 or form == 5:
+            data = ColorCollection.decode_rgba8(data, num_colors)
+        elif form == 3:
+            data = ColorCollection.decode_rgba4(data, num_colors)
+        elif form == 4:
+            data = ColorCollection.decode_rgba6(data, num_colors)
+        else:
+            raise ValueError('Color {} format {} out of range'.format(color.name, form))
+        return np.array(data, np.uint8)
+
+
+    @staticmethod
     def encode_rgb565(colors):
         data = [(x[0] & 0xf8) << 8 | (x[1] & 0xfc) << 3 | x[2] >> 3 for x in colors]
         return pack('>{}H'.format(len(colors)), *data)
+
+    @staticmethod
+    def decode_rgb565(color_data, num_colors):
+        data = unpack('>{}H'.format(num_colors), color_data)
+        colors = []
+        for color in data:
+            colors.append(((color >> 8) & 0xf8, (color >> 3) & 0xfc, (color & 0x1f) << 3, 0xff))
+        return colors
 
     @staticmethod
     def encode_rgb8(colors):
@@ -359,6 +495,17 @@ class ColorCollection:
         return data
 
     @staticmethod
+    def decode_rgb8(data, num_colors):
+        colors = []
+        offset = 0
+        for i in range(num_colors):
+            c = list(unpack_from('>3B', data, offset))
+            c.append(0xff)
+            colors.append(c)
+            offset += 3
+        return colors
+
+    @staticmethod
     def encode_rgba8(colors):
         data = bytearray()
         for x in colors:
@@ -366,9 +513,27 @@ class ColorCollection:
         return data
 
     @staticmethod
+    def decode_rgba8(data, num_colors):
+        colors = []
+        offset = 0
+        for i in range(num_colors):
+            colors.append(unpack_from('>4B', data, offset))
+            offset += 4
+        return colors
+
+    @staticmethod
     def encode_rgba4(colors):
         data = [(x[0] & 0xf0 | x[1] & 0xf) << 8 | x[2] & 0xf0 | x[3] & 0xf for x in colors]
         return pack('>{}H'.format(len(colors)), *data)
+
+    @staticmethod
+    def decode_rgba4(data, num_colors):
+        colors = []
+        c_data = unpack('>{}H'.format(num_colors), data)
+        for color in c_data:
+            colors.append((color >> 8 & 0xf0, color >> 4 & 0xf0,
+                           color & 0xf0, color << 4 & 0xf0))
+        return colors
 
     @staticmethod
     def encode_rgba6(colors):
@@ -377,6 +542,17 @@ class ColorCollection:
         for x in tmp:
             data.extend(pack('>3B', x >> 16, x >> 8 & 0xff, x & 0xff))
         return data
+
+    @staticmethod
+    def decode_rgba6(data, num_colors):
+        colors = []
+        offset = 0
+        for i in range(num_colors):
+            d = unpack_from('>3B', data, offset)
+            colors.append((d[0] & 0xfc, (d[0] & 0x3) << 6 | (d[1] & 0xf0) >> 2,
+                           d[1] << 4 & 0xf0 | d[2] >> 4 & 0xc, d[2] << 2 & 0xfc))
+            offset += 3
+        return colors
 
     def consolidate(self):
         return consolidate_data(self.rgba_colors, self.face_indices)
@@ -420,4 +596,4 @@ def rotationMatrixToEulerAngles(R):
         y = math.atan2(-R[2, 0], sy)
         z = 0
 
-    return np.array([x, y, z])
+    return np.array([x, y, z]) * 180 / math.pi

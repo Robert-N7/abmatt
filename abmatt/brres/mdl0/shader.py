@@ -611,7 +611,8 @@ class Shader(Clipable):
         return s
 
     def onUpdateActiveStages(self, num_stages):
-        self.material.shaderStages = num_stages
+        if self.material:
+            self.material.shaderStages = num_stages
 
     def onUpdateIndirectStages(self, num_stages):
         self.material.indirectStages = num_stages

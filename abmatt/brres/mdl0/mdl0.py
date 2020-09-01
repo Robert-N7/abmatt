@@ -99,7 +99,7 @@ class Mdl0(SubFile):
 
     MAGIC = "MDL0"
     EXT = 'mdl0'
-    VERSION_SECTIONCOUNT = {8: 11, 11: 14}
+    VERSION_SECTIONCOUNT = {8: 11, 9:11, 10:14, 11:14}
     EXPECTED_VERSION = 11
     SECTION_NAMES = ("Definitions", "Bones", "Vertices", "Normals", "Colors",
                      "UVs", "FurVectors", "FurLayers",
@@ -164,6 +164,9 @@ class Mdl0(SubFile):
                     maximum[i] = vert_max[i]
         self.minimum = minimum
         self.maximum = maximum
+        bone = self.bones[0]
+        bone.minimum = [x for x in minimum]
+        bone.maximum = [x for x in maximum]
         self.facepoint_count = sum(obj.facepoint_count for obj in self.objects)
         self.faceCount = sum(obj.face_count for obj in self.objects)
 
@@ -198,7 +201,7 @@ class Mdl0(SubFile):
         b.bone_id = self.boneTable.add_entry(self.boneCount)
         if parent_bone:
             parent_index = parent_bone.bone_id
-
+            parent_bone.link_child(b)
         else:
             parent_index = 0
         self.nodeTree.add_entry(self.boneCount, parent_index)
@@ -465,7 +468,10 @@ class Mdl0(SubFile):
             if expected_name == 'map':
                 names = [x.name for x in self.bones]
                 if 'posLD' not in names or 'posRU' not in names:
-                    AUTO_FIXER.warn('Missing map model bones')
+                    b = Bug(2, 2, 'Missing map model bones', 'Added map bones')
+                    self.add_map_bones()
+                    b.resolve()
+                    self.mark_modified()
         self.checkDrawXLU()
         for x in self.texCoords:
             x.check()
@@ -489,6 +495,23 @@ class Mdl0(SubFile):
                         self.setMaterialDrawOpa(x.name)
                     b.resolve()
         return count
+
+    def add_map_bones(self):
+        current_names = [bone.name for bone in self.bones]
+        parent = self.bones[0]
+        minimum = self.minimum
+        maximum = self.maximum
+        if not 'posLD' in current_names:
+            b = self.add_bone('posLD', parent)
+            left = round(minimum[0] - 8000)
+            down = round(maximum[2] + 8000)
+            b.set_translation((left, 0, down))
+        if not 'posRU' in current_names:
+            b = self.add_bone('posRU', parent)
+            right = round(maximum[0] + 8000)
+            up = round(minimum[2] - 8000)
+            b.set_translation((right, 0, up))
+
 
     def get_used_textures(self):
         textures = set()
