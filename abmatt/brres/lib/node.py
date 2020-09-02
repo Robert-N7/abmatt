@@ -5,6 +5,18 @@ from brres.lib.autofix import AUTO_FIXER
 from brres.lib.binfile import BinFile
 
 
+def get_item_by_index(group, index):
+    try:
+        item = group[index]
+        if item.index == index:
+            return item
+    except IndexError:
+        pass
+    for x in group:
+        if x.index == index:
+            return x
+
+
 class Node:
     """A node with name and parent"""
     def __init__(self, name, parent, binfile=None):

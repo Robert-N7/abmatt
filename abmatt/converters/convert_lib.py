@@ -203,27 +203,25 @@ def decode_polygon(polygon):
     face_point_indices = np.array(face_point_indices, np.int)
     face_point_indices[:, [0, 1]] = face_point_indices[:, [1, 0]]
     # create the point collections
-    geometry = {}
-    geometry['triangles'] = face_point_indices
-    geometry['vertices'] = decode_geometry_group(vertices)
-    geometry['vertex_index'] = vertex_index
-    geometry['normal_index'] = normal_index
-    if normal_index < 0:
-        geometry['normals'] = None
+    if normals:
+        g_normals = PointCollection(decode_geometry_group(normals), face_point_indices[:,:,normal_index])
     else:
-        geometry['normals'] = decode_geometry_group(normals)
-    geometry['color_index'] = color_index
-    if color_index < 0:
-        geometry['colors'] = None
+        g_normals = None
+    if colors:
+        g_colors = ColorCollection(ColorCollection.decode_data(colors), face_point_indices[:,:,color_index])
     else:
-        geometry['colors'] = ColorCollection.decode_data(colors)
-    geo_texcoords = geometry['texcoords'] = []
-    texcoord_index = geometry['texcoord_index'] = []
+        g_colors = None
+    geo_texcoords = []
     for tex in texcoords:
         x = decode_geometry_group(tex)
-        geo_texcoords.append(x * -1)
-        texcoord_index.append(texcoord_index)
+        geo_texcoords.append(PointCollection(x * -1, face_point_indices[:,:,texcoord_index],
+                                             tex.minimum, tex.maximum))
         texcoord_index += 1
+
+    geometry = {'name': polygon.name, 'triangles': face_point_indices,
+                'vertices': PointCollection(decode_geometry_group(vertices), face_point_indices[:, :, vertex_index],
+                                            vertices.minimum, vertices.maximum), 'normals': g_normals,
+                'colors': g_colors, 'texcoords': geo_texcoords, 'material': polygon.get_material()}
     return geometry
 
 

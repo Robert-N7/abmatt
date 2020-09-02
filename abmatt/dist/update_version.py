@@ -20,9 +20,9 @@ def update_version(version):
         print('Version already up to date')
         return 0
     version_files = ['../../setup.py', 'install-ubu.txt', 'install-win.txt', '../__main__.py', 'Makefile',
-                     'update_version.py', 'make_installer.nsi']
+                     'update_version.py', 'make_installer.nsi', '../converters/obj.py']
     # version_files = ['test.txt']
-    rex = re.compile("(version\s*(\:|\=)?\s*(\"|\')?)\d+\.\d+\.\d+", re.IGNORECASE)
+    rex = re.compile("(v(ersion)?\s*(\:|\=)?\s*(\"|\')?)\d+\.\d+\.\d+", re.IGNORECASE)
     replacement = '\g<1>' + version
     count = 0
     for x in version_files:

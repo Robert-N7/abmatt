@@ -1,4 +1,5 @@
 import math
+import os
 import re
 
 import numpy as np
@@ -35,11 +36,31 @@ class ObjMaterial:
             maps.remove(None)
         return maps
 
+    def get_save_str(self):
+        s = 'newmtl ' + self.name + '\n\tNs ' + str(self.specular_highlight) + \
+            '\n\tNi ' + str(self.optical_density) + '\n\td ' + str(self.dissolve) + \
+            '\n\tTr ' + str(1 - self.dissolve) + '\n\tillum ' + str(self.illumination) +\
+            '\n\tKa ' + ' '.join([str(x) for x in self.ambient_color]) + \
+            '\n\tKd ' + ' '.join([str(x) for x in self.diffuse_color]) + \
+            '\n\tKs ' + ' '.join([str(x for x in self.specular_color)])
+        if self.ambient_map:
+            s += '\n\tmap_Ka ' + self.ambient_map
+        if self.diffuse_map:
+            s += '\n\tmap_Kd ' + self.diffuse_map
+        if self.specular_map:
+            s += '\n\tmap_Ks ' + self.specular_map
+        if self.specular_highlight_map:
+            s += '\n\tmap_Ns ' + self.specular_highlight_map
+        if self.alpha_map:
+            s += '\n\tmap_d ' + self.alpha_map
+        return s + '\n'
+
 
 class ObjGeometry():
     def __init__(self, name):
         self.name = name
         self.triangles = []
+        self.texcoords = self.normals = self.vertices = None
         self.material = None
         self.smooth = False
 
@@ -69,18 +90,41 @@ class Obj():
     class ObjParseException(BaseException):
         pass
 
-    def __init__(self, filename):
+    def __init__(self, filename, read_file=True):
         self.geometries = []
         self.vertices = []
         self.normals = []
         self.texcoords = []
         self.materials = {}
         self.images = set()
-        self.mtllib = None
         self.filename = filename
-        self.parse_file(filename)
-        for geo in self.geometries:
-            geo.normalize(self.vertices, self.normals, self.texcoords)
+        if read_file:
+            self.mtllib = None
+            self.parse_file(filename)
+            for geo in self.geometries:
+                geo.normalize(self.vertices, self.normals, self.texcoords)
+        else:
+            dir, name = os.path.split(filename)
+            base_name = os.path.splitext(name)[0]
+            self.mtllib = os.path.join(dir, base_name + '.mtl')
+
+    def save(self):
+        self.save_mtllib()
+        self.save_obj()
+
+    def save_mtllib(self):
+        s = '# Wavefront MTL exported with abmatt v0.7.0'
+        for x in self.materials:
+            s += '\n' + x.get_save_str()
+        with open(self.mtllib, 'w') as f:
+            f.write(s)
+
+    def save_obj(self):
+        s = '# Wavefront OBJ exported with abmatt v0.7.0'
+        adjusted_index = 1
+        for x in self.geometries:
+            s += '\n' + x.get_save_str(adjusted_index)
+            adjusted_index += len(x.vertices)       # incorrect todo
 
     def parse_words(self, words, geometry):
         start = words.pop(0)

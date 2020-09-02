@@ -3,7 +3,7 @@ from struct import pack
 
 from brres.lib.autofix import AUTO_FIXER
 from brres.lib.binfile import printCollectionHex
-from brres.lib.node import Node
+from brres.lib.node import Node, get_item_by_index
 
 
 class Polygon(Node):
@@ -75,6 +75,10 @@ class Polygon(Node):
         elif i == 1:
             if self.color1_index_format >= self.INDEX_FORMAT_BYTE:
                 return self.parent.colors[self.color_group_indices[1]]
+
+    def get_material(self):
+        definition = self.parent.get_definition_by_object_id(self.index)
+        return get_item_by_index(self.parent.materials, definition.matIndex)
 
     def check(self):
         vertices = self.get_vertex_group()

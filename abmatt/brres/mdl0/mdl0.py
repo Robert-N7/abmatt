@@ -303,7 +303,7 @@ class Mdl0(SubFile):
 
     def getMaterialByID(self, id):
         for x in self.materials:
-            if x.name == id:
+            if x.index == id:
                 return x
 
     def getMaterialsByName(self, name):
@@ -330,10 +330,19 @@ class Mdl0(SubFile):
         return self.drawXLU.setPriority(material_id, priority) or self.drawOpa.setPriority(material_id, priority)
 
     def getDrawPriority(self, material_id):
-        definition = self.drawXLU.getByMaterialID(material_id)
+        return self.get_definition_by_material_id(material_id).getPriority()
+
+    def get_definition_by_material_id(self, material_id):
+        definition = self.drawOpa.getByMaterialID(material_id)
         if not definition:
-            definition = self.drawOpa.getByMaterialID(material_id)
-        return definition.getPriority()
+            definition = self.drawXLU.getByMaterialID(material_id)
+        return definition
+
+    def get_definition_by_object_id(self, object_id):
+        definition = self.drawOpa.getByObjectID(object_id)
+        if not definition:
+            definition = self.drawXLU.getByObjectID(object_id)
+        return definition
 
     # ------------------------------- Shaders -------------------------------------------
     def getShaders(self, material_list, for_modification=True):

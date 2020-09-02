@@ -125,6 +125,11 @@ class DrawList(Node):
             if x.matIndex == id:
                 return x
 
+    def getByObjectID(self, id):
+        for x in self.list:
+            if x.objIndex == id:
+                return x
+
     def setPriority(self, id, priority):
         definition = self.getByMaterialID(id)
         if not definition:
