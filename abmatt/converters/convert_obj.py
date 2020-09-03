@@ -2,6 +2,8 @@ import os
 import sys
 import time
 
+import numpy as np
+
 from brres import Brres
 from brres.mdl0 import Mdl0
 from brres.mdl0.material import Material
@@ -67,15 +69,15 @@ class ObjConverter(Converter):
     def decode_geometry(geometry, material_name):
         geo = ObjGeometry(geometry['name'])
         geo.material = material_name
-        geo.triangles = geometry['triangles']
         geo.vertices = geometry['vertices']
         geo.normals = geometry['normals']
         texcoords = geometry['texcoords']
-        if len(texcoords) > 1:
-            print('WARN: Loss of UV data for {}.'.format(geo.name))
+        # if len(texcoords) > 1:
+        #     print('WARN: Loss of UV data for {}.'.format(geo.name))
         geo.texcoords = texcoords[0]
-        if geometry['colors']:
-            print('WARN: Loss of color data for {}'.format(geo.name))
+        geo.triangles = np.stack((geo.vertices.face_indices, geo.texcoords.face_indices, geo.normals.face_indices), -1)
+        # if geometry['colors']:
+        #     print('WARN: Loss of color data for {}'.format(geo.name))
         return geo
 
     def decode_material(self, material):
@@ -97,13 +99,15 @@ class ObjConverter(Converter):
         return mat
 
     def save_model(self, mdl0=None):
+        print('INFO: Converting {} to obj...'.format(self.brres.name))
         dir, name = os.path.split(self.mdl_file)
-        self.image_dir = os.path.join(dir, name + '_maps')
+        base_name, ext = os.path.splitext(name)
+        self.image_dir = os.path.join(dir, base_name + '_maps')
         self.tex0_map = {}
         self.brres_textures = self.brres.get_texture_map()
         if not mdl0:
             mdl0 = self.brres.models[0]
-        polygons = mdl0.polygons
+        polygons = mdl0.objects
         obj = Obj(self.mdl_file, False)
         obj_geometries = obj.geometries
         obj_materials = obj.materials
@@ -115,13 +119,15 @@ class ObjConverter(Converter):
             obj_geometries.append(self.decode_geometry(geometry, material.name))
         tex0_map = self.tex0_map
         if len(tex0_map):
-            os.mkdir(self.image_dir)
+            if not os.path.exists(self.image_dir):
+                os.mkdir(self.image_dir)
             for tex in tex0_map:
                 tex0 = tex0_map[tex]
                 destination = os.path.join(self.image_dir, tex + '.png')
                 obj_images.add(destination)
                 ImgConverter().decode(tex0, destination)
-
+        obj.save()
+        print('INFO: Wrote file {}.'.format(obj.filename))
 
 def main():
     cmdline_convert(sys.argv[1:], '.obj', ObjConverter)

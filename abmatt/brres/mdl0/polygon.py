@@ -151,12 +151,13 @@ class Polygon(Node):
         # vertex data
         vt_ref = binfile.offset - vt_offset + 8
         binfile.writeOffset('I', vt_offset, vt_ref)
-        binfile.write('{}B'.format(len(self.vt_data)), *self.vt_data)
+        binfile.writeRemaining(self.vt_data)
         binfile.alignAndEnd()
 
     def unpack(self, binfile):
         binfile.start()
-        length, mdl0_offset, self.bone, cp_vert_lo, cp_vert_hi, xf_vert = binfile.read('I2i3I', 24)
+        binfile.readLen()
+        mdl0_offset, self.bone, cp_vert_lo, cp_vert_hi, xf_vert = binfile.read('2i3I', 20)
         self.parse_cp_vertex_format(cp_vert_hi, cp_vert_lo)
         self.parse_xf_vertex_specs(xf_vert)
         offset = binfile.offset
@@ -183,7 +184,7 @@ class Polygon(Node):
         # self.uvat = uvat
         self.parse_uvat(uvat[1], uvat[3], uvat[5])
         binfile.offset = vt_offset
-        self.vt_data = binfile.read('{}B'.format(vt_size), vt_size)
+        self.vt_data = binfile.readRemaining()
         # print('\n\n{}\tfacecount:{} data length:{} '.format(self.name, self.face_count, len(self.vt_data)))
         # if self.face_count < 30:
         #     printCollectionHex(self.vt_data)

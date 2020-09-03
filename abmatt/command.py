@@ -202,13 +202,37 @@ class Command:
                 self.name = param
             else:
                 raise ParsingException('Unknown parameter {}'.format(param))
-        if not self.name:
-            raise ParsingException('Convert requires target!')
-        dir, filename = os.path.split(self.name)
-        base_name, ext = os.path.splitext(filename)
-        self.ext = ext.lower()
-        if self.ext not in ('.dae', '.obj'):
-            raise ParsingException('Unsupported conversion format {}'.format(self.ext))
+        # if not self.name:
+        #     raise ParsingException('Convert requires target!')
+        self.ext = None
+        supported_formats = ('.dae', '.obj')
+        self.is_import = False
+        if self.name:
+            dir, filename = os.path.split(self.name)
+            base_name, ext = os.path.splitext(filename)
+            ext = ext.lower()
+            if ext in supported_formats:
+                self.is_import = True
+                self.ext = ext
+        if self.destination and self.is_import:
+            dir, filename = os.path.split(self.destination)
+            split = os.path.splitext(filename)
+            try:
+                ext = split[1]
+            except IndexError:
+                ext = None
+            if ext is None or ext.lower() != '.brres':
+                if ext:
+                    AUTO_FIXER.warn('Unsupported target extension {}, using .brres'.format(ext))
+                self.destination += '.brres'
+        if not self.is_import:
+            if not self.destination:
+                raise ParsingException('Convert requires target!')
+            dir, filename = os.path.split(self.destination)
+            base_name, ext = os.path.splitext(filename)
+            self.ext = ext.lower()
+            if self.ext not in supported_formats:
+                raise ParsingException('Unsupported export format {}'.format(self.ext))
         self.flags = flags
 
     def set_key_val(self, keyval):
@@ -742,23 +766,34 @@ class Command:
         else:
             raise ParsingException('Unknown conversion format {}'.format(self.ext))
         active_files = self.ACTIVE_FILES
-        files = self.getFiles(self.name)
+        if not self.name:
+            files = [x.name for x in self.ACTIVE_FILES]
+        else:
+            files = self.getFiles(self.name)
         if not files:
             return False
         multiple_files = False if len(files) < 2 else True
-        if not self.destination:
-            if active_files and not multiple_files:
-                brres = self.ACTIVE_FILES[0]
+        if self.is_import:
+            if not self.destination:
+                if active_files and not multiple_files:
+                    brres = self.ACTIVE_FILES[0]
+                else:
+                    brres = None
             else:
-                brres = None
-        else:
-            brres = self.create_or_open(self.destination)
-        for file in files:
-            if not brres:
-                converter = klass(self.create_or_open(convert_file_ext(file, '.brres')), file, self.flags)
-            else:
-               converter = klass(brres, file, self.flags)
-            mdl = converter.load_model()
+                brres = self.create_or_open(self.destination)
+            for file in files:
+                if not brres:
+                    converter = klass(self.create_or_open(convert_file_ext(file, '.brres')), file, self.flags)
+                else:
+                   converter = klass(brres, file, self.flags)
+                mdl = converter.load_model()
+        else:   # export
+            dest_auto = True if multiple_files or self.destination.lower() == '*' + self.ext else False
+            for file in files:
+                destination = self.destination if not dest_auto else convert_file_ext(file, self.ext)
+                brres = self.create_or_open(file)
+                converter = klass(brres, destination, self.flags)
+                converter.save_model()
 
     # -------------------------------------------- COPY/PASTE -----------------------------------------------
     #   Items implementing clipboard must support the methods:

@@ -1,5 +1,5 @@
-#select * in ../test_files/bb_delfino_plaza_no_bone.brres
-convert ../test_files/3ds_bll_map.DAE
+# select * in ../test_files/bll.brres
+convert ../test_files/bll.brres to ../test_files/bll.obj
 # select * in ../brres_files/cow.brres
 # set mdl0 name:course
 # select * in ../test_files/bll.brres

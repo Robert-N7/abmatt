@@ -325,8 +325,10 @@ class BinFile:
         """ Reads and returns remaining data as bytes """
         if not filelen:
             filelen = self.lenMap[self.beginOffset]
-        remainder = filelen - (self.offset - self.beginOffset)
-        return self.read("{}B".format(remainder), remainder)
+        end = self.beginOffset + filelen
+        slice = self.file[self.offset:end]
+        self.offset = end
+        return slice
 
     # Writing/packing
     def writeMagic(self, magic):
@@ -346,7 +348,7 @@ class BinFile:
     def writeRemaining(self, data):
         """ writes the remaining bytes at current offset """
         length = len(data)
-        self.file.extend(pack(self.bom + str(length) + "B", *data))
+        self.file.extend(data)
         self.offset = len(self.file)
         return length
 

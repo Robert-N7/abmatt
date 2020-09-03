@@ -132,7 +132,7 @@ def decode_tri_strip(decoder, decoder_byte_len, data, start_offset, num_facepoin
 
 def decode_tris(decoder, decoder_byte_len, data, start_offset, num_facepoints, face_point_indices):
     assert num_facepoints % 3 == 0
-    for i in range(num_facepoints / 3):
+    for i in range(int(num_facepoints / 3)):
         tri = []
         for j in range(3):
             tri.append(unpack_from(decoder, data, start_offset))
@@ -187,19 +187,23 @@ def decode_polygon(polygon):
             fp_data_length += 2
         elif x == 'B':
             fp_data_length += 1
-        else:
+        elif x != '>':
             raise ValueError('Unknown decoder format {}'.format(x))
     # now decode the indices
     face_point_indices = []
     data = polygon.vt_data
-    i = 0
-    while i < len(data):
+    total_face_points = i = 0
+    face_point_count = polygon.facepoint_count
+    while total_face_points < face_point_count:
         cmd, num_facepoints = unpack_from('>BH', data, i)
         i += 3
+        total_face_points += num_facepoints
         if cmd == 0x98:
             i = decode_tri_strip(fmt_str, fp_data_length, data, i, num_facepoints, face_point_indices)
         elif cmd == 0x90:
             i = decode_tris(fmt_str, fp_data_length, data, i, num_facepoints, face_point_indices)
+        else:
+            raise ValueError('Unknown draw cmd {}'.format(cmd))
     face_point_indices = np.array(face_point_indices, np.int)
     face_point_indices[:, [0, 1]] = face_point_indices[:, [1, 0]]
     # create the point collections
@@ -214,7 +218,8 @@ def decode_polygon(polygon):
     geo_texcoords = []
     for tex in texcoords:
         x = decode_geometry_group(tex)
-        geo_texcoords.append(PointCollection(x * -1, face_point_indices[:,:,texcoord_index],
+        x[:, 1] *= -1       # flip y
+        geo_texcoords.append(PointCollection(x, face_point_indices[:,:,texcoord_index],
                                              tex.minimum, tex.maximum))
         texcoord_index += 1
 
@@ -350,6 +355,12 @@ class PointCollection:
                         maximum[i] = x[i]
         self.minimum = minimum
         self.maximum = maximum
+
+    def __iter__(self):
+        return iter(self.points)
+
+    def __next__(self):
+        return next(self.points)
 
     def __len__(self):
         return len(self.points)

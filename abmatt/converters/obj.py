@@ -42,7 +42,7 @@ class ObjMaterial:
             '\n\tTr ' + str(1 - self.dissolve) + '\n\tillum ' + str(self.illumination) +\
             '\n\tKa ' + ' '.join([str(x) for x in self.ambient_color]) + \
             '\n\tKd ' + ' '.join([str(x) for x in self.diffuse_color]) + \
-            '\n\tKs ' + ' '.join([str(x for x in self.specular_color)])
+            '\n\tKs ' + ' '.join([str(x) for x in self.specular_color])
         if self.ambient_map:
             s += '\n\tmap_Ka ' + self.ambient_map
         if self.diffuse_map:
@@ -114,17 +114,51 @@ class Obj():
 
     def save_mtllib(self):
         s = '# Wavefront MTL exported with abmatt v0.7.0'
-        for x in self.materials:
-            s += '\n' + x.get_save_str()
+        materials = self.materials
+        for x in materials:
+            s += '\n' + materials[x].get_save_str()
         with open(self.mtllib, 'w') as f:
             f.write(s)
 
     def save_obj(self):
-        s = '# Wavefront OBJ exported with abmatt v0.7.0'
-        adjusted_index = 1
-        for x in self.geometries:
-            s += '\n' + x.get_save_str(adjusted_index)
-            adjusted_index += len(x.vertices)       # incorrect todo
+        s = '# Wavefront OBJ exported with abmatt v0.7.0\n\nmtllib ' + self.mtllib + '\n\n'
+        vertex_index = 1
+        normal_index = 1
+        texcoord_index = 1
+        for geometry in self.geometries:
+            s += '#\n# object ' + geometry.name + '\n#\n\n'
+            vertex_count = len(geometry.vertices)
+            for vert in geometry.vertices:
+                s += 'v ' + ' '.join(str(x) for x in vert) + '\n'
+            s += '# {} vertices\n\n'.format(vertex_count)
+            normal_count = len(geometry.normals)
+            if normal_count:
+                for normal in geometry.normals:
+                    s += 'vn ' + ' '.join(str(x) for x in normal) + '\n'
+                s += '# {} normals\n\n'.format(normal_count)
+            texcoord_count = len(geometry.texcoords)
+            for texcoord in geometry.texcoords:
+                s += 'vt ' + ' '.join(str(x) for x in texcoord) + '\n'
+            s += '# {} texture coordinates\n\n'.format(texcoord_count)
+            # now adjust the tri indices
+            tris = np.copy(geometry.triangles)
+            tris[:, :, 0] = tris[:, :, 0] + vertex_index
+            tris[:, :, 1] = tris[:, :, 1] + texcoord_index
+            if normal_count:
+                tris[:, :, 2] = tris[:, :, 2] + normal_index
+            # start the group of indices
+            s += 'o {}\ng {}\n'.format(geometry.name, geometry.name)
+            s += 'usemtl {}\n'.format(geometry.material)
+            s += 's off\n' if not geometry.smooth else 's\n'
+            for tri in tris:
+                s += 'f ' + ' '.join(['/'.join([str(x) for x in fp]) for fp in tri]) + '\n'
+            s += '# {} triangles\n\n'.format(len(tris))
+            # now increase the indices
+            vertex_index += vertex_count
+            normal_index += normal_count
+            texcoord_index += texcoord_count
+        with open(self.filename, 'w') as f:
+            f.write(s)
 
     def parse_words(self, words, geometry):
         start = words.pop(0)
