@@ -36,7 +36,7 @@ class Geometry(Node):
         data = []
         for i in range(self.count):
             data.append(binfile.read(fmt, stride))
-        binfile.end()
+        binfile.alignAndEnd()
         self.data = data
         return data
 

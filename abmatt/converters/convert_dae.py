@@ -3,14 +3,15 @@ import sys
 import time
 
 import numpy as np
-from collada import Collada, DaeBrokenRefError, DaeUnsupportedError, DaeIncompleteError
+from collada import Collada, DaeBrokenRefError, DaeUnsupportedError, DaeIncompleteError, material, source, scene, \
+    geometry
 from collada.scene import ControllerNode, GeometryNode, Node, ExtraNode
 
 from brres import Brres
 from brres.mdl0 import Mdl0
 from brres.mdl0.material import Material
-from brres.tex0 import EncodeError
-from converters.convert_lib import add_geometry, PointCollection, ColorCollection, Converter
+from brres.tex0 import EncodeError, ImgConverter
+from converters.convert_lib import add_geometry, PointCollection, ColorCollection, Converter, decode_polygon
 from converters.arg_parse import arg_parse, cmdline_convert
 
 
@@ -84,7 +85,8 @@ class DaeConverter(Converter):
                 if colors:
                     color_source = colors[0]
                     face_indices = triset.index[:, :, color_source[0]]
-                    colors = ColorCollection(color_source[4].data[:np.max(face_indices) + 1], face_indices)
+                    colors = ColorCollection(color_source[4].data[:np.max(face_indices) + 1], face_indices,
+                                             normalize=True)
                     colors.normalize()
             poly = add_geometry(mdl, name, vertex_group, normal_group,
                                 colors, tex_coords)
@@ -209,8 +211,138 @@ class DaeConverter(Converter):
                     ln += 1
         return PointCollection(geo_group, indices, minimum, maximum)
 
+    def decode_material(self, brres_mat, mesh):
+        name = brres_mat.name
+        ambient = diffuse = specular = bumpmap = None
+        map_index = 0
+        effect_params = []
+        for layer in brres_mat.layers:
+            layer_name = layer.name
+            if layer_name not in self.tex0_map:
+                tex = self.texture_library.get(layer_name)
+                path = os.path.join(self.image_dir, layer_name + '.png')
+                self.tex0_map[layer_name] = (tex, path)
+            else:
+                path = self.tex0_map[layer_name][1]
+            cimage = material.CImage(layer_name, path, mesh)
+            mesh.images.append(cimage)
+            surface = material.Surface(layer_name, cimage, 'A8R8G8B8')
+            sampler2d = material.Sampler2D(layer_name, surface, layer.getMinfilter(), layer.getMagfilter())
+            effect_params.append(surface)
+            effect_params.append(sampler2d)
+            map = material.Map(sampler2d, 'CHANNEL' + layer.getCoordinates()[-1])
+            if map_index == 0:
+                diffuse = map
+            elif map_index == 1:
+                ambient = map
+            elif map_index == 2:
+                specular = map
+            elif map_index == 3:
+                bumpmap = map
+            map_index += 1
+        double_sided = True if not brres_mat.cullmode else False
+        transparency = 0.5 if brres_mat.xlu else float(0)
+        effect = material.Effect(name + '_effect', effect_params, 'phong',
+                                 double_sided=double_sided, transparency=transparency,
+                                 diffuse=diffuse, ambient=ambient, specular=specular, bumpmap=bumpmap)
+        mesh.effects.append(effect)
+        mat = material.Material(name, name, effect)
+        return mat
+
+
+    def decode_geometry(self, polygon, mesh):
+        decoded_geom = decode_polygon(polygon)
+        name = polygon.name
+        mat = decoded_geom['material']
+        collada_material = self.decode_material(mat, mesh)
+        mesh.materials.append(collada_material)
+        verts = decoded_geom['vertices']
+        normals = decoded_geom['normals']
+        colors = decoded_geom['colors']
+        texcoords = decoded_geom['texcoords']
+        srcs = []
+        src_index = 0
+        input_list = source.InputList()
+        vert_name = name + '_vertices'
+        vert_src = source.FloatSource(vert_name, verts.points, ('X', 'Y', 'Z'))
+        srcs.append(vert_src)
+        input_list.addInput(src_index, 'VERTEX', '#' + vert_name)
+        src_index += 1
+        if normals:
+            normal_name = name + '_normals'
+            normal_src = source.FloatSource(normal_name, normals.points, ('X', 'Y', 'Z'))
+            srcs.append(normal_src)
+            input_list.addInput(src_index, 'NORMAL', '#' + normal_name)
+            src_index += 1
+        if colors:
+            color_name = name + '_colors'
+            color_src = source.FloatSource(color_name, colors.denormalize(), ('R', 'G', 'B', 'A'))
+            srcs.append(color_src)
+            input_list.addInput(src_index, 'COLOR', '#' + color_name, '0')
+            src_index += 1
+        for i in range(len(texcoords)):
+            x = texcoords[i]
+            tex_name = name + '_UV' + str(i)
+            tex_src = source.FloatSource(tex_name, x.points, ('S', 'T'))
+            srcs.append(tex_src)
+            input_list.addInput(src_index, 'TEXCOORD', '#' + tex_name, str(i))
+            src_index += 1
+        geo = geometry.Geometry(mesh, polygon.name, polygon.name, srcs)
+        triset = geo.createTriangleSet(decoded_geom['triangles'], input_list, mat.name)
+        geo.primitives.append(triset)
+        mesh.geometries.append(geo)
+        matnode = scene.MaterialNode(mat.name, collada_material, inputs=[])
+        geomnode = scene.GeometryNode(geo, [matnode])
+        bone = polygon.get_bone()
+        if bone not in self.used_bones:
+            matrix = np.array(bone.get_transform_matrix(), np.float).flatten()
+            self.used_bones.add(bone)
+            transforms = [scene.MatrixTransform(matrix)]
+        else:
+            transforms = []
+        node = scene.Node(name, children=[geomnode], transforms=transforms)
+        return node
+
     def save_model(self, mdl0=None):
-        raise NotImplementedError()
+        print('INFO: Exporting to {}...'.format(self.mdl_file))
+        start = time.time()
+        if not mdl0:
+            mdl0 = self.brres.models[0]
+        cwd = os.getcwd()
+        dir, name = os.path.split(self.mdl_file)
+        os.chdir(dir)
+        base_name, ext = os.path.splitext(name)
+        self.image_dir = base_name + '_maps'
+        self.texture_library = self.brres.get_texture_map()
+        self.tex0_map = {}
+        mesh = Collada()
+        polygons = mdl0.objects
+        nodes = []
+        self.used_bones = set()
+        # todo, fix up bones
+        bones = mdl0.bones
+        matrix = np.array(bones[0].get_transform_matrix(), np.float).flatten()
+        start_node = Node(bones[0].name, transforms=[scene.MatrixTransform(matrix)])
+        nodes.append(start_node)
+        self.used_bones.add(bones[0])
+        self.identity_matrix = np.eye(4).flatten()
+        for polygon in polygons:
+            nodes.append(self.decode_geometry(polygon, mesh))
+        my_scene = scene.Scene(mdl0.name, nodes)
+        mesh.scenes.append(my_scene)
+        mesh.scene = my_scene
+        # images
+        if len(self.tex0_map):
+            if not os.path.exists(self.image_dir):
+                os.mkdir(self.image_dir)
+            os.chdir(self.image_dir)
+            converter = ImgConverter()
+            for image_name in self.tex0_map:
+                tex, path = self.tex0_map[image_name]
+                converter.decode(tex, image_name + '.png')
+        os.chdir(cwd)
+        mesh.write(self.mdl_file)
+        print('\t...finished in {} seconds.'.format(round(time.time() - start, 2)))
 
 
 def main():

@@ -33,6 +33,8 @@ class Polygon(Node):
         self.color0_index_format = self.INDEX_FORMAT_BYTE
         self.color1_index_format = self.INDEX_FORMAT_NONE
         self.vertex_format = 0
+        self.has_pos_matrix = False
+        self.has_tex_matrix = [False] * 8
         self.vertex_divisor = 0
         self.normal_format = 0
         self.color0_has_alpha = 0
@@ -79,6 +81,10 @@ class Polygon(Node):
     def get_material(self):
         definition = self.parent.get_definition_by_object_id(self.index)
         return get_item_by_index(self.parent.materials, definition.matIndex)
+
+    def get_bone(self):
+        definition = self.parent.get_definition_by_object_id(self.index)
+        return get_item_by_index(self.parent.bones, definition.boneIndex)
 
     def check(self):
         vertices = self.get_vertex_group()
@@ -191,7 +197,12 @@ class Polygon(Node):
         binfile.end()
 
     def parse_cp_vertex_format(self, hi, lo):
-        lo >>= 9
+        self.has_pos_matrix = bool(lo & 0x1)
+        lo >>= 1
+        self.has_tex_matrix = has_tex_matrix = []
+        for i in range(8):
+            has_tex_matrix.append(bool(lo & 1))
+            lo >>= 1
         self.vertex_index_format = lo & 0x3
         self.normal_index_format = lo >> 2 & 0x3
         self.color0_index_format = lo >> 4 & 0x3
@@ -201,7 +212,10 @@ class Polygon(Node):
             hi >>= 2
 
     def get_cp_vertex_format(self):
-        lo = (self.vertex_index_format | self.normal_index_format << 2
+        lo = self.has_pos_matrix
+        for i in range(8):
+            lo |= self.has_tex_matrix[i] << i + 1
+        lo |= (self.vertex_index_format | self.normal_index_format << 2
               | self.color0_index_format << 4 | self.color1_index_format << 6) << 9
         shifter = hi = 0
         for x in self.tex_index_format:
@@ -297,4 +311,8 @@ class Polygon(Node):
             if x:
                 flag |= bit
             bit <<= 1
-        return flag << 9
+        flag <<= 9
+        flag |= self.has_pos_matrix
+        for i in range(8):
+            flag |= self.has_tex_matrix[i] << i + 1
+        return flag

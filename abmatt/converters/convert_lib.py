@@ -122,11 +122,16 @@ def encode_polygon_data(polygon, vertex, normal, color, uvs, face_indices):
 
 def decode_tri_strip(decoder, decoder_byte_len, data, start_offset, num_facepoints, face_point_indices):
     face_points = []
+    flip = False
     for i in range(num_facepoints):
         face_points.append(unpack_from(decoder, data, start_offset))
         start_offset += decoder_byte_len
         if i >= 2:
-            face_point_indices.append(face_points[i - 2:i + 1])
+            if flip:
+                face_point_indices.append((face_points[i - 1], face_points[i - 2], face_points[i]))
+            else:
+                face_point_indices.append(face_points[i - 2:i + 1])
+        flip = not flip
     return start_offset
 
 
@@ -423,13 +428,15 @@ class PointCollection:
 
 class ColorCollection:
 
-    def __init__(self, rgba_colors, face_indices, encode_format=None):
+    def __init__(self, rgba_colors, face_indices, encode_format=None, normalize=False):
         """
-        :param rgba_colors: [[r,g,b,a], ...]
+        :param rgba_colors: [[r,g,b,a], ...] between 0-1, normalizes to 0-255
         :param face_indices: ndarray, list of indexes for each triangle [[tri_index0, tri_index1, tri_index2], ...]
         :param encode_format: (0=rgb565|1=rgb8|2=rgb32|3=rgba4|4=rgba6|5=rgba8)
         """
         self.rgba_colors = rgba_colors
+        if normalize:
+            self.normalize()
         self.face_indices = face_indices
         self.encode_format = encode_format
 
@@ -474,6 +481,8 @@ class ColorCollection:
             data = ColorCollection.decode_rgb8(data, num_colors)
         elif form == 2 or form == 5:
             data = ColorCollection.decode_rgba8(data, num_colors)
+            if form == 2:
+                data[:][3] = 0xff
         elif form == 3:
             data = ColorCollection.decode_rgba4(data, num_colors)
         elif form == 4:
@@ -569,8 +578,10 @@ class ColorCollection:
     def normalize(self):
         """Normalizes data between 0-1 to 0-255"""
         self.rgba_colors = np.around(self.rgba_colors * 255).astype(np.uint8)
-        for x in self.rgba_colors:
-            y = x
+
+    def denormalize(self):
+        """Opposite of normalize. returns ndarray converted from 0-255 to 0-1"""
+        return self.rgba_colors.astype(np.float) / 255
 
 
 def vector_magnitude(vector):

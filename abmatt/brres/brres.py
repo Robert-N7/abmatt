@@ -364,7 +364,9 @@ class Brres(Clipable):
             raise UnpackingError(self, '"{}" not a brres file'.format(self.name))
         bom = binfile.read("H", 2)
         binfile.bom = "<" if bom == 0xfffe else ">"
-        pad, length, rootoffset, numSections = binfile.read("hI2h", 10)
+        binfile.advance(2)
+        binfile.readLen()
+        rootoffset, numSections = binfile.read("2h", 4)
         binfile.offset = rootoffset
         root = binfile.readMagic()
         assert (root == self.ROOTMAGIC)

@@ -105,8 +105,10 @@ class BinFile:
                 self.writeOffset("I", offset, self.offset - self.beginOffset)
             self.offset = len(self.file)
         else:  # read mode
-            if self.c_length and self.c_length < self.offset - self.beginOffset:
-                raise UnpackingError(self, 'offset is outside current section')
+            if self.c_length:
+                current_read_len = self.offset - self.beginOffset
+                if self.c_length < current_read_len:
+                    raise UnpackingError(self, 'offset is outside current section')
         self.stack.pop()
         self.beginOffset = self.stack[-1]
         if self.beginOffset in self.lenMap:
@@ -306,6 +308,9 @@ class BinFile:
         return magic[0].decode()
 
     def read(self, fmt, length):
+        # for x in range(self.offset, self.offset + length):
+        #     if x == 9331:
+        #         raise ValueError('Reached Mismatched offset {}'.format(x))
         read = unpack_from(self.bom + fmt, self.file, self.offset)
         self.advance(length)
         return read
@@ -394,13 +399,13 @@ class BinFile:
         """packs in the names"""
         names = self.nameRefMap
         # Debugging
-        # out = []
-        # for key in names:
-        #     reflist = names[key]
-        #     for x in reflist:
-        #         out.append(x[1])
-        # with open('names.txt', 'w') as f:
-        #     f.write(str(out))
+        out = []
+        for key in names:
+            reflist = names[key]
+            for x in reflist:
+                out.append(x[1])
+        with open('names.txt', 'w') as f:
+            f.write(str(out))
 
         for key in sorted(names):
             if key is not None and key != b'':

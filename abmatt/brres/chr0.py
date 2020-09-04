@@ -48,7 +48,7 @@ class Chr0(SubFile):
         binfile.recall()  # section 0
         f = Folder(binfile)
         f.unpack(binfile)
-        self.data = binfile.readRemaining(self.byte_len)
+        self.data = binfile.readRemaining()
         # printCollectionHex(self.data)
         while len(f):
             name = f.recallEntryI()

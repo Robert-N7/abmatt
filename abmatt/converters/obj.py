@@ -106,18 +106,19 @@ class Obj():
         else:
             dir, name = os.path.split(filename)
             base_name = os.path.splitext(name)[0]
-            self.mtllib = os.path.join(dir, base_name + '.mtl')
+            self.mtllib = base_name + '.mtl'
 
     def save(self):
-        self.save_mtllib()
+        folder, name = os.path.split(self.filename)
+        self.save_mtllib(folder)
         self.save_obj()
 
-    def save_mtllib(self):
+    def save_mtllib(self, folder):
         s = '# Wavefront MTL exported with abmatt v0.7.0'
         materials = self.materials
         for x in materials:
             s += '\n' + materials[x].get_save_str()
-        with open(self.mtllib, 'w') as f:
+        with open(os.path.join(folder, self.mtllib), 'w') as f:
             f.write(s)
 
     def save_obj(self):
@@ -131,11 +132,13 @@ class Obj():
             for vert in geometry.vertices:
                 s += 'v ' + ' '.join(str(x) for x in vert) + '\n'
             s += '# {} vertices\n\n'.format(vertex_count)
-            normal_count = len(geometry.normals)
-            if normal_count:
+            if geometry.normals:
+                normal_count = len(geometry.normals)
                 for normal in geometry.normals:
                     s += 'vn ' + ' '.join(str(x) for x in normal) + '\n'
                 s += '# {} normals\n\n'.format(normal_count)
+            else:
+                normal_count = 0
             texcoord_count = len(geometry.texcoords)
             for texcoord in geometry.texcoords:
                 s += 'vt ' + ' '.join(str(x) for x in texcoord) + '\n'

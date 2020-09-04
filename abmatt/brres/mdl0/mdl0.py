@@ -602,16 +602,18 @@ class Mdl0(SubFile):
     def unpack(self, binfile):
         """ unpacks model data """
         self._unpack(binfile)
-        binfile.start()  # Header
-        ln, fh, _, _, self.facepoint_count, self.faceCount, _, self.boneCount, _ = binfile.read("Ii7I", 36)
+        offset = binfile.start()  # Header
+        ln = binfile.readLen()
+        fh, self.scaling_rule, self.texture_matrix_mode, self.facepoint_count, \
+            self.faceCount, _, self.boneCount, _ = binfile.read("i7I", 32)
         binfile.store()  # bone table offset
-        if binfile.offset - binfile.beginOffset < ln:
+        if binfile.offset - offset < ln:
             self.minimum = binfile.read("3f", 12)
             self.maximum = binfile.read("3f", 12)
-        binfile.recall()
+        binfile.end()  # end header
+        binfile.recallOffset(offset)
         self.boneTable = BoneTable()
         self.boneTable.unpack(binfile)
-        binfile.end()  # end header
         # unpack sections
         i = 0
         while i < 14:
@@ -695,8 +697,8 @@ class Mdl0(SubFile):
         self.pre_pack()
         self._pack(binfile)
         binfile.start()  # header
-        binfile.write("Ii7I", 0x40, binfile.getOuterOffset(), 0, 0, self.facepoint_count, self.faceCount,
-                      0, self.boneCount, 0x01000000)
+        binfile.write("Ii7I", 0x40, binfile.getOuterOffset(), self.scaling_rule, self.texture_matrix_mode,
+                      self.facepoint_count, self.faceCount, 0, self.boneCount, 0x01000000)
         binfile.mark()  # bone table offset
         if self.version >= 10:
             binfile.write("6f", self.minimum[0], self.minimum[1], self.minimum[2],

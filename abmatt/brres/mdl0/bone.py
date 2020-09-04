@@ -1,13 +1,14 @@
 import math
 
+from brres.lib.binfile import UnpackingError
 from brres.lib.node import Node
 
 
 class Bone(Node):
     """ Bone class """
-    identity_matrix = [[1, 0, 0, 0],
-                       [0, 1, 0, 0],
-                       [0, 0, 1, 0]]
+    identity_matrix = ((1, 0, 0, 0),
+                       (0, 1, 0, 0),
+                       (0, 0, 1, 0))
 
     def begin(self):
         self.index = 0
@@ -24,10 +25,16 @@ class Bone(Node):
         self.transform_matrix = self.identity_matrix
         self.inverse_matrix = self.identity_matrix
 
+    def get_transform_matrix(self):
+        matrix = [[y for y in x] for x in self.transform_matrix]
+        matrix.append([0,0,0,1])
+        return matrix
+
     def set_translation(self, trans):
         self.translation = trans
         for i in range(3):
             self.transform_matrix[i][2] = trans[i]
+            self.inverse_matrix[i][2] = trans[i] * -1
 
     def link_child(self, child):
         if self.child:
@@ -67,20 +74,21 @@ class Bone(Node):
         self.inverse_matrix = binfile.readMatrix(4, 3)
         binfile.end()
 
-    @staticmethod
-    def find_bone_at(offset, bones):
+    def find_bone_at(self, offset, bones):
         if offset:
+            offset += self.offset
             for x in bones:
                 if x.offset == offset:
                     return x
+            raise ValueError('Failed to find bone link to {}'.format(offset))
 
     @staticmethod
     def post_unpack(bones):
         for b in bones:
-            b.b_parent = Bone.find_bone_at(b.b_parent, bones)
-            b.child = Bone.find_bone_at(b.child, bones)
-            b.next = Bone.find_bone_at(b.next, bones)
-            b.prev = Bone.find_bone_at(b.prev, bones)
+            b.b_parent = b.find_bone_at(b.b_parent, bones)
+            b.child = b.find_bone_at(b.child, bones)
+            b.next = b.find_bone_at(b.next, bones)
+            b.prev = b.find_bone_at(b.prev, bones)
 
 
     def pack(self, binfile):

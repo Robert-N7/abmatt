@@ -1,4 +1,4 @@
-from brres.lib.binfile import UnpackingError
+from brres.lib.binfile import UnpackingError, printCollectionHex
 from brres.lib.node import Node
 
 

@@ -795,8 +795,8 @@ class Material(Clipable):
         """ Unpacks material """
         offset = binfile.start()
         # print('Material {} offset {}'.format(self.name, offset))
-        l, mdOff = binfile.read("Ii", 8)
-        binfile.advance(4)
+        binfile.readLen()
+        binfile.advance(8)
         self.index, xluFlags, ntexgens, nlights, \
         self.shaderStages, self.indirectStages, \
         self.cullmode, self.compareBeforeTexture, \

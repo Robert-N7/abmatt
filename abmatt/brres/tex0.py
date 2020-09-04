@@ -112,7 +112,7 @@ class Tex0(SubFile):
         self._unpack(binfile)
         _, self.width, self.height, self.format, self.num_images, _, self.num_mips, _ = binfile.read('I2H3IfI', 0x1c)
         binfile.recall()
-        self.data = binfile.readRemaining(self.byte_len)
+        self.data = binfile.readRemaining()
         binfile.end()
 
     def pack(self, binfile):

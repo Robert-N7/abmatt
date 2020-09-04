@@ -59,7 +59,7 @@ class SubFile(Clipable):
 
     def _unpackData(self, binfile):
         """ should be overriden if modifying or has changeable offsets, unpacks the data after header """
-        self.data = binfile.readRemaining(self.byte_len)
+        self.data = binfile.readRemaining()
         offsets = []
         for i in range(self._getNumSections()):
             offsets.append(binfile.recall())
@@ -95,7 +95,8 @@ class SubFile(Clipable):
         magic = binfile.readMagic()
         if magic != self.MAGIC:
             raise UnpackingError(binfile, 'Magic {} does not match expected {}'.format(magic, self.MAGIC))
-        self.byte_len, self.version, outerOffset = binfile.read("2Ii", 12)
+        binfile.readLen()
+        self.version, outerOffset = binfile.read("Ii", 8)
         try:
             self.numSections = self._getNumSections()
         except ValueError:
