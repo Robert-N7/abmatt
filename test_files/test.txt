@@ -1,8 +1,9 @@
-select * in ../test_files/cow_no_anim.brres
+# select * in ../test_files/cow.brres
 # select * in ../brres_files/test.brres
 # convert ../test_files/delfino_plaza_3ds.DAE
-# convert ../test_files/test.dae
-# convert ../brres_files/beginner_course.brres to ../test_files/test.dae
+# convert ../test_files/bb_bll.dae to ../test_files/test.brres
+convert ../test_files/3ds_bll.brres to ../test_files/abmatt_bll.dae
+# convert ../test_files/abmatt_bll.dae to ../test_files/test.brres
 # set mdl0 name:course
 # select * in ../test_files/bll.brres
-save as ../test_files/test.brres overwrite
+# save as ../test_files/test.brres overwrite

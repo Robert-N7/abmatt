@@ -36,6 +36,16 @@ class Bone(Node):
             self.transform_matrix[i][2] = trans[i]
             self.inverse_matrix[i][2] = trans[i] * -1
 
+    def get_children(self):
+        if not self.child:
+            return None
+        children = []
+        bone = self.child
+        while bone:
+            children.append(bone)
+            bone = bone.next
+        return children
+
     def link_child(self, child):
         if self.child:
             bone = self.child

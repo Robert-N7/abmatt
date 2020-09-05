@@ -1,11 +1,12 @@
 import os
 import sys
 import time
+from xml.etree import ElementTree
 
 import numpy as np
-from collada import Collada, DaeBrokenRefError, DaeUnsupportedError, DaeIncompleteError, material, source, scene, \
-    geometry
+import collada
 from collada.scene import ControllerNode, GeometryNode, Node, ExtraNode
+from collada import source
 
 from brres import Brres
 from brres.mdl0 import Mdl0
@@ -151,10 +152,11 @@ class DaeConverter(Converter):
         dir, name = os.path.split(brres.name)
         base_name = os.path.splitext(name)[0]
         self.is_map = True if 'map' in name else False
-        os.chdir(dir)  # change to the collada dir to help find relative paths
+        if dir:
+            os.chdir(dir)  # change to the collada dir to help find relative paths
         print('Converting {}... '.format(self.mdl_file))
         start = time.time()
-        dae = Collada(model_file, ignore=[DaeIncompleteError, DaeUnsupportedError, DaeBrokenRefError])
+        dae = collada.Collada(model_file, ignore=[collada.DaeIncompleteError, collada.DaeUnsupportedError, collada.DaeBrokenRefError])
         if not model_name:
             model_name = base_name.replace('_model', '')
         self.mdl = mdl = Mdl0(model_name, brres)
@@ -213,24 +215,26 @@ class DaeConverter(Converter):
 
     def decode_material(self, brres_mat, mesh):
         name = brres_mat.name
-        ambient = diffuse = specular = bumpmap = None
+        ambient = diffuse = specular = (0.6, 0.6, 0.6, 1.0)
+        bumpmap = None
         map_index = 0
         effect_params = []
         for layer in brres_mat.layers:
             layer_name = layer.name
+            found_tex = True
             if layer_name not in self.tex0_map:
                 tex = self.texture_library.get(layer_name)
-                path = os.path.join(self.image_dir, layer_name + '.png')
+                path = os.path.join(self.image_dir, layer_name + '.png') if tex else '\n\t'
                 self.tex0_map[layer_name] = (tex, path)
             else:
                 path = self.tex0_map[layer_name][1]
-            cimage = material.CImage(layer_name, path, mesh)
+            cimage = collada.material.CImage(layer_name, path, mesh)
             mesh.images.append(cimage)
-            surface = material.Surface(layer_name, cimage, 'A8R8G8B8')
-            sampler2d = material.Sampler2D(layer_name, surface, layer.getMinfilter(), layer.getMagfilter())
+            surface = collada.material.Surface(layer_name, cimage, 'A8R8G8B8')
+            sampler2d = collada.material.Sampler2D(layer_name, surface, layer.getMinfilter(), layer.getMagfilter())
             effect_params.append(surface)
             effect_params.append(sampler2d)
-            map = material.Map(sampler2d, 'CHANNEL' + layer.getCoordinates()[-1])
+            map = collada.material.Map(sampler2d, 'CHANNEL' + layer.getCoordinates()[-1])
             if map_index == 0:
                 diffuse = map
             elif map_index == 1:
@@ -242,13 +246,12 @@ class DaeConverter(Converter):
             map_index += 1
         double_sided = True if not brres_mat.cullmode else False
         transparency = 0.5 if brres_mat.xlu else float(0)
-        effect = material.Effect(name + '_effect', effect_params, 'phong',
+        effect = collada.material.Effect(name + '-effect', effect_params, 'phong',
                                  double_sided=double_sided, transparency=transparency,
                                  diffuse=diffuse, ambient=ambient, specular=specular, bumpmap=bumpmap)
         mesh.effects.append(effect)
-        mat = material.Material(name, name, effect)
+        mat = collada.material.Material(name + '-mat', name, effect)
         return mat
-
 
     def decode_geometry(self, polygon, mesh):
         decoded_geom = decode_polygon(polygon)
@@ -270,37 +273,63 @@ class DaeConverter(Converter):
         src_index += 1
         if normals:
             normal_name = name + '_normals'
-            normal_src = source.FloatSource(normal_name, normals.points, ('X', 'Y', 'Z'))
+            normal_src = collada.source.FloatSource(normal_name, normals.points, ('X', 'Y', 'Z'))
             srcs.append(normal_src)
             input_list.addInput(src_index, 'NORMAL', '#' + normal_name)
             src_index += 1
         if colors:
             color_name = name + '_colors'
-            color_src = source.FloatSource(color_name, colors.denormalize(), ('R', 'G', 'B', 'A'))
+            color_src = collada.source.FloatSource(color_name, colors.denormalize(), ('R', 'G', 'B', 'A'))
             srcs.append(color_src)
             input_list.addInput(src_index, 'COLOR', '#' + color_name, '0')
             src_index += 1
         for i in range(len(texcoords)):
             x = texcoords[i]
             tex_name = name + '_UV' + str(i)
-            tex_src = source.FloatSource(tex_name, x.points, ('S', 'T'))
+            tex_src = collada.source.FloatSource(tex_name, x.points, ('S', 'T'))
             srcs.append(tex_src)
             input_list.addInput(src_index, 'TEXCOORD', '#' + tex_name, str(i))
             src_index += 1
-        geo = geometry.Geometry(mesh, polygon.name, polygon.name, srcs)
+        poly_name = polygon.name + '-lib'
+        geo = collada.geometry.Geometry(mesh, poly_name, poly_name, srcs)
         triset = geo.createTriangleSet(decoded_geom['triangles'], input_list, mat.name)
         geo.primitives.append(triset)
         mesh.geometries.append(geo)
-        matnode = scene.MaterialNode(mat.name, collada_material, inputs=[])
-        geomnode = scene.GeometryNode(geo, [matnode])
-        bone = polygon.get_bone()
-        if bone not in self.used_bones:
-            matrix = np.array(bone.get_transform_matrix(), np.float).flatten()
-            self.used_bones.add(bone)
-            transforms = [scene.MatrixTransform(matrix)]
-        else:
-            transforms = []
-        node = scene.Node(name, children=[geomnode], transforms=transforms)
+        matnode = collada.scene.MaterialNode(mat.name, collada_material, inputs=[])
+        geomnode = collada.scene.GeometryNode(geo, [matnode])
+        # set up controller
+        # ctrl_name = name + '-Controller'
+        # joint_src = ctrl_name + '-Joints'
+        # vertex_inf_counts = np.full(vert_len, 1, int)
+        # x = np.zeros(vert_len, dtype=int)
+        # y = np.arange(1, vert_len + 1, dtype=int)
+        # vertex_weight_index = np.stack([x, y], 1).flatten()
+        # # weird workarounds to prevent missed imports in pycollada
+        # xmlnode = ElementTree.Element(collada.tag('controller'))
+        # xmlnode.set('id', ctrl_name)
+        # control = collada.controller.Skin(ctrl_name, self.identity_matrix, joint_src, ctrl_name + '-Matrices', ctrl_name + '-Weights',
+        #                           joint_src, vertex_inf_counts, vertex_weight_index, [0, 1], geo, xmlnode)
+        # xmlnode = ElementTree.Element(collada.tag('instance_controller'))
+        # bindnode = ElementTree.Element(collada.tag('bind_material'))
+        # technode = ElementTree.Element(collada.tag('technique_common'))
+        # bindnode.append(technode)
+        # technode.append(collada_material.xmlnode)
+        # control_node = collada.scene.ControllerNode(control, [collada_material], xmlnode)
+        # control_node.xmlnode.append(bindnode)
+        # mesh.controllers.append(control)
+        node = collada.scene.Node(name, children=[geomnode])
+        return node
+
+    def decode_bone(self, bone):
+        children = bone.get_children()
+        decoded_children = []
+        if children:
+            for child in children:
+                decoded_children.append(self.decode_bone(child))
+        matrix = np.array(bone.get_transform_matrix(), np.float)
+        scene_matrix = collada.scene.MatrixTransform(matrix.flatten())
+        node = Node(bone.name, transforms=[scene_matrix], children=decoded_children)
+        self.bone_transform_matrix[bone.index] = matrix if not self.is_identity_matrix(matrix) else None
         return node
 
     def save_model(self, mdl0=None):
@@ -310,25 +339,22 @@ class DaeConverter(Converter):
             mdl0 = self.brres.models[0]
         cwd = os.getcwd()
         dir, name = os.path.split(self.mdl_file)
-        os.chdir(dir)
+        if dir:
+            os.chdir(dir)
         base_name, ext = os.path.splitext(name)
         self.image_dir = base_name + '_maps'
         self.texture_library = self.brres.get_texture_map()
         self.tex0_map = {}
-        mesh = Collada()
+        mesh = collada.Collada()
         polygons = mdl0.objects
-        nodes = []
-        self.used_bones = set()
+        self.bone_transform_matrix = {}
         # todo, fix up bones
-        bones = mdl0.bones
-        matrix = np.array(bones[0].get_transform_matrix(), np.float).flatten()
-        start_node = Node(bones[0].name, transforms=[scene.MatrixTransform(matrix)])
-        nodes.append(start_node)
-        self.used_bones.add(bones[0])
+        nodes = []
+        nodes.append(self.decode_bone(mdl0.bones[0]))
         self.identity_matrix = np.eye(4).flatten()
         for polygon in polygons:
             nodes.append(self.decode_geometry(polygon, mesh))
-        my_scene = scene.Scene(mdl0.name, nodes)
+        my_scene = collada.scene.Scene(mdl0.name, nodes)
         mesh.scenes.append(my_scene)
         mesh.scene = my_scene
         # images
@@ -339,6 +365,9 @@ class DaeConverter(Converter):
             converter = ImgConverter()
             for image_name in self.tex0_map:
                 tex, path = self.tex0_map[image_name]
+                if not tex:
+                    print('WARN: Missing texture {}'.format(image_name))
+                    continue
                 converter.decode(tex, image_name + '.png')
         os.chdir(cwd)
         mesh.write(self.mdl_file)

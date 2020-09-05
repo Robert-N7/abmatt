@@ -161,31 +161,47 @@ def decode_polygon(polygon):
     """
     # build the fmt_str decoder
     fmt_str = '>'
+    geometry_index = 0
+    if polygon.has_pos_matrix:
+        fmt_str += 'B'
+        pos_matrix_index = geometry_index
+        print('WARN: {} vertex weighting not supported'.format(polygon.name))
+        geometry_index += 1
+    else:
+        pos_matrix_index = -1
+    tex_matrix_index = -1
+    for x in polygon.has_tex_matrix:
+        if x:
+            fmt_str += 'B'
+            if tex_matrix_index < 0:
+                tex_matrix_index = geometry_index
+            geometry_index += 1
+    vertex_index = geometry_index
+    geometry_index += 1
     vertices = polygon.get_vertex_group()
-    vertex_index = geometry_index = 0
     fmt_str += polygon.get_fmt_str(polygon.vertex_index_format)
     normals = polygon.get_normal_group()
     if normals:
         fmt_str += polygon.get_fmt_str(polygon.normal_index_format)
-        geometry_index += 1
         normal_index = geometry_index
+        geometry_index += 1
     else:
         normal_index = -1
     colors = polygon.get_color_group()
     if colors:
         fmt_str += polygon.get_fmt_str(polygon.color0_index_format)
-        geometry_index += 1
         color_index = geometry_index
+        geometry_index += 1
     else:
         color_index = -1
     texcoords = []
     texcoord_index = -1
-    geometry_index += 1
     for i in range(polygon.num_tex):
         texcoords.append(polygon.get_tex_group(i))
         fmt_str += polygon.get_fmt_str(polygon.tex_index_format[i])
         if i == 0:
             texcoord_index = geometry_index
+            geometry_index += 1
     fp_data_length = 0
     for x in fmt_str:
         if x == 'H':
@@ -207,11 +223,16 @@ def decode_polygon(polygon):
             i = decode_tri_strip(fmt_str, fp_data_length, data, i, num_facepoints, face_point_indices)
         elif cmd == 0x90:
             i = decode_tris(fmt_str, fp_data_length, data, i, num_facepoints, face_point_indices)
+        elif cmd in (0x20, 0x28, 0x30):     # load matrix
+            matrix_indices = unpack_from('>H', data, i)
+            i += 2
         else:
-            raise ValueError('Unknown draw cmd {}'.format(cmd))
+            raise ValueError('Unsupported draw cmd {}'.format(cmd))
     face_point_indices = np.array(face_point_indices, np.int)
     face_point_indices[:, [0, 1]] = face_point_indices[:, [1, 0]]
     # create the point collections
+    g_verts = PointCollection(decode_geometry_group(vertices), face_point_indices[:, :, vertex_index],
+                              vertices.minimum, vertices.maximum)
     if normals:
         g_normals = PointCollection(decode_geometry_group(normals), face_point_indices[:,:,normal_index])
     else:
@@ -227,10 +248,9 @@ def decode_polygon(polygon):
         geo_texcoords.append(PointCollection(x, face_point_indices[:,:,texcoord_index],
                                              tex.minimum, tex.maximum))
         texcoord_index += 1
-
+    face_point_indices = np.copy(face_point_indices[:, :, vertex_index:])
     geometry = {'name': polygon.name, 'triangles': face_point_indices,
-                'vertices': PointCollection(decode_geometry_group(vertices), face_point_indices[:, :, vertex_index],
-                                            vertices.minimum, vertices.maximum), 'normals': g_normals,
+                'vertices': g_verts, 'normals': g_normals,
                 'colors': g_colors, 'texcoords': geo_texcoords, 'material': polygon.get_material()}
     return geometry
 
