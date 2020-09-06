@@ -230,11 +230,15 @@ class DaeConverter(Converter):
                 path = self.tex0_map[layer_name][1]
             cimage = collada.material.CImage(layer_name, path, mesh)
             mesh.images.append(cimage)
-            surface = collada.material.Surface(layer_name, cimage, 'A8R8G8B8')
-            sampler2d = collada.material.Sampler2D(layer_name, surface, layer.getMinfilter(), layer.getMagfilter())
-            effect_params.append(surface)
+            surface = collada.material.Surface(layer_name + '-surface', cimage, 'A8R8G8B8')
+            sampler2d = collada.material.Sampler2D(layer_name, surface,
+                                                   layer.getMinfilter().upper(), layer.getMagfilter().upper())
+            sampler2d.xmlnode.attrib['path'] = path
+            # effect_params.append(surface)
             effect_params.append(sampler2d)
-            map = collada.material.Map(sampler2d, 'CHANNEL' + layer.getCoordinates()[-1])
+            texcoord = layer.getCoordinates()[-1]
+            channel = texcoord if texcoord.isdigit() else '0'
+            map = collada.material.Map(sampler2d, 'CHANNEL' + channel)
             if map_index == 0:
                 diffuse = map
             elif map_index == 1:
@@ -371,6 +375,14 @@ class DaeConverter(Converter):
                 converter.decode(tex, image_name + '.png')
         os.chdir(cwd)
         mesh.write(self.mdl_file)
+        # little annoying fix to put in xml tag
+        data = None
+        with open(self.mdl_file, 'r') as f:
+            data = f.read()
+        if data:
+            data = '<?xml version="1.0" encoding="utf-8"?>\n' + data
+            with open(self.mdl_file, 'w') as f:
+                f.write(data)
         print('\t...finished in {} seconds.'.format(round(time.time() - start, 2)))
 
 
