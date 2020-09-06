@@ -1,0 +1,5 @@
+  <asset>
+    <created>2020-09-04T20:58:59.880090</created>
+    <modified>2020-09-04T20:58:59.880090</modified>
+    <up_axis>Y_UP</up_axis>
+  </asset>

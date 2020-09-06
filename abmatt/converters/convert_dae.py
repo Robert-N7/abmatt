@@ -16,6 +16,9 @@ from converters.convert_lib import add_geometry, PointCollection, ColorCollectio
 from converters.arg_parse import arg_parse, cmdline_convert
 
 
+class DaeReader():
+    pass
+
 class DaeConverter(Converter):
     @staticmethod
     def convert_map_to_layer(map, material, image_path_map):
