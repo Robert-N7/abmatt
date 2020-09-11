@@ -1,7 +1,7 @@
 # select * in ../test_files/cow.brres
 # select * in ../brres_files/test.brres
 # convert ../test_files/delfino_plaza_3ds.DAE
-convert ../test_files/3ds_bll.dae to ../test_files/test.brres
+convert ../test_files/cow.brres to ../test_files/test.dae
 # convert ../test_files/*.brres to ../test_files/*.dae
 # convert ../test_files/abmatt_bll.dae to ../test_files/test.brres
 # set mdl0 name:course

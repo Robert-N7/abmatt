@@ -214,6 +214,7 @@ def decode_polygon(polygon):
     face_point_indices = []
     data = polygon.vt_data
     total_face_points = i = 0
+    matrix_indices = []
     face_point_count = polygon.facepoint_count
     while total_face_points < face_point_count:
         cmd, num_facepoints = unpack_from('>BH', data, i)
@@ -223,8 +224,9 @@ def decode_polygon(polygon):
             i = decode_tri_strip(fmt_str, fp_data_length, data, i, num_facepoints, face_point_indices)
         elif cmd == 0x90:
             i = decode_tris(fmt_str, fp_data_length, data, i, num_facepoints, face_point_indices)
-        elif cmd in (0x20, 0x28, 0x30):     # load matrix
-            matrix_indices = unpack_from('>H', data, i)
+        elif cmd in (0x20, 0x28, 0x30):  # load matrix
+            matrix_index = unpack_from('>2B', data, i)
+            matrix_indices.append(matrix_index)
             i += 2
         else:
             raise ValueError('Unsupported draw cmd {}'.format(cmd))
@@ -234,18 +236,18 @@ def decode_polygon(polygon):
     g_verts = PointCollection(decode_geometry_group(vertices), face_point_indices[:, :, vertex_index],
                               vertices.minimum, vertices.maximum)
     if normals:
-        g_normals = PointCollection(decode_geometry_group(normals), face_point_indices[:,:,normal_index])
+        g_normals = PointCollection(decode_geometry_group(normals), face_point_indices[:, :, normal_index])
     else:
         g_normals = None
     if colors:
-        g_colors = ColorCollection(ColorCollection.decode_data(colors), face_point_indices[:,:,color_index])
+        g_colors = ColorCollection(ColorCollection.decode_data(colors), face_point_indices[:, :, color_index])
     else:
         g_colors = None
     geo_texcoords = []
     for tex in texcoords:
         x = decode_geometry_group(tex)
-        x[:, 1] *= -1       # flip y
-        geo_texcoords.append(PointCollection(x, face_point_indices[:,:,texcoord_index],
+        x[:, 1] *= -1  # flip y
+        geo_texcoords.append(PointCollection(x, face_point_indices[:, :, texcoord_index],
                                              tex.minimum, tex.maximum))
         texcoord_index += 1
     face_point_indices = np.copy(face_point_indices[:, :, vertex_index:])
@@ -390,6 +392,9 @@ class PointCollection:
     def __len__(self):
         return len(self.points)
 
+    def get_stride(self):
+        return len(self.points[0])
+
     @staticmethod
     def get_format_divisor(minimum, maximum):
         point_max = max(maximum)
@@ -511,7 +516,6 @@ class ColorCollection:
             raise ValueError('Color {} format {} out of range'.format(color.name, form))
         return np.array(data, np.uint8)
 
-
     @staticmethod
     def encode_rgb565(colors):
         data = [(x[0] & 0xf8) << 8 | (x[1] & 0xfc) << 3 | x[2] >> 3 for x in colors]
@@ -602,6 +606,45 @@ class ColorCollection:
     def denormalize(self):
         """Opposite of normalize. returns ndarray converted from 0-255 to 0-1"""
         return self.rgba_colors.astype(np.float) / 255
+
+
+class Geometry:
+    def __init__(self, name, material, triangles, vertices, texcoords, normals=None, colors=None):
+        self.name = name
+        self.triangles = triangles
+        self.vertices = vertices
+        self.texcoords = texcoords
+        self.normals = normals
+        self.colors = colors
+        self.material = material
+
+
+class Material:
+    def __init__(self, name, diffuse_map=None, ambient_map=None, specular_map=None, transparency=0):
+        self.name = name
+        self.ambient_map = ambient_map
+        self.diffuse_map = diffuse_map
+        self.specular_map = specular_map
+        self.transparency = transparency
+
+    def get_maps(self):
+        maps = set()
+        maps.add(self.ambient_map)
+        maps.add(self.diffuse_map)
+        maps.add(self.specular_map)
+        if None in maps:
+            maps.remove(None)
+        return maps
+
+
+class Controller:
+    def __init__(self, name, bind_shape_matrix, bones, weights, vertex_weight_counts, vertex_weight_indices):
+        self.name = name
+        self.bind_shape_matrix = bind_shape_matrix
+        self.bones = bones
+        self.weights = weights
+        self.vertex_weight_counts = vertex_weight_counts
+        self.vertex_weight_indices = vertex_weight_indices
 
 
 def vector_magnitude(vector):
