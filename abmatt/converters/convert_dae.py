@@ -14,10 +14,51 @@ from brres.mdl0.material import Material
 from brres.tex0 import EncodeError, ImgConverter
 from converters.convert_lib import add_geometry, PointCollection, ColorCollection, Converter, decode_polygon
 from converters.arg_parse import arg_parse, cmdline_convert
+from converters.dae import Dae
 
 
-class DaeReader():
-    pass
+class DaeConverter2(Converter):
+
+    def load_model(self, model_name):
+        brres = self.brres
+        model_file = self.mdl_file
+        cwd = os.getcwd()
+        dir, name = os.path.split(brres.name)
+        base_name = os.path.splitext(name)[0]
+        self.is_map = True if 'map' in name else False
+        if dir:
+            os.chdir(dir)  # change to the collada dir to help find relative paths
+        print('Converting {}... '.format(self.mdl_file))
+        start = time.time()
+        dae = Dae(model_file)
+        if not model_name:
+            model_name = base_name.replace('_model', '')
+        self.mdl = mdl = Mdl0(model_name, brres)
+        # images
+        self.image_path_map = image_path_map = {}
+        for image in dae.images:
+            image_path_map[image.path] = self.try_import_texture(brres, image.path)
+        if not brres.textures and len(dae.images):
+            print('ERROR: No textures found!')
+        for node in dae.scene.children:
+
+        self.materials = dae.materials
+        self.geometries = dae.geometries
+        # geometry
+        scene = dae.scene
+        self.parse_nodes(scene.nodes, None, mdl)
+        mdl.rebuild_header()
+        # add model to brres
+        brres.add_mdl0(mdl)
+        if self.is_map:
+            mdl.add_map_bones()
+        os.chdir(cwd)
+        print('\t... Finished in {} secs'.format(round(time.time() - start, 2)))
+        return mdl
+
+    def save_model(self, mdl0):
+        pass
+
 
 class DaeConverter(Converter):
     @staticmethod
@@ -159,7 +200,8 @@ class DaeConverter(Converter):
             os.chdir(dir)  # change to the collada dir to help find relative paths
         print('Converting {}... '.format(self.mdl_file))
         start = time.time()
-        dae = collada.Collada(model_file, ignore=[collada.DaeIncompleteError, collada.DaeUnsupportedError, collada.DaeBrokenRefError])
+        dae = collada.Collada(model_file, ignore=[collada.DaeIncompleteError, collada.DaeUnsupportedError,
+                                                  collada.DaeBrokenRefError])
         if not model_name:
             model_name = base_name.replace('_model', '')
         self.mdl = mdl = Mdl0(model_name, brres)
@@ -254,8 +296,8 @@ class DaeConverter(Converter):
         double_sided = True if not brres_mat.cullmode else False
         transparency = 0.5 if brres_mat.xlu else float(0)
         effect = collada.material.Effect(name + '-effect', effect_params, 'phong',
-                                 double_sided=double_sided, transparency=transparency,
-                                 diffuse=diffuse, ambient=ambient, specular=specular, bumpmap=bumpmap)
+                                         double_sided=double_sided, transparency=transparency,
+                                         diffuse=diffuse, ambient=ambient, specular=specular, bumpmap=bumpmap)
         mesh.effects.append(effect)
         mat = collada.material.Material(name + '-mat', name, effect)
         return mat

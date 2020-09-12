@@ -638,13 +638,15 @@ class Material:
 
 
 class Controller:
-    def __init__(self, name, bind_shape_matrix, bones, weights, vertex_weight_counts, vertex_weight_indices):
+    def __init__(self, name, bind_shape_matrix, bones, weights, vertex_weight_counts, vertex_weight_indices,
+                 geometry):
         self.name = name
         self.bind_shape_matrix = bind_shape_matrix
         self.bones = bones
         self.weights = weights
         self.vertex_weight_counts = vertex_weight_counts
         self.vertex_weight_indices = vertex_weight_indices
+        self.geometry = geometry
 
 
 def vector_magnitude(vector):

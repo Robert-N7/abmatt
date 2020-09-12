@@ -141,11 +141,13 @@ def ignore_white_space(file, offset):
 
 
 class XMLNode:
-    def __init__(self, tag, text=None, id=None, name=None, parent=None):
+    def __init__(self, tag, text=None, id=None, name=None, parent=None, xml=None):
         self.children = []
         self.attributes = {}
         if id:
             self.attributes['id'] = id
+            if xml:
+                xml.elements_by_id[id] = self
         if name:
             self.attributes['name'] = name
         self.text = text

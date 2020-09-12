@@ -7,6 +7,13 @@ from converters.xml import XML, XMLNode
 from datetime import datetime
 
 
+class ColladaNode:
+    def __init__(self, name):
+        self.name = name
+        self.extra = self.matrix = self.geometry = self.controller = None
+        self.nodes = []
+
+
 class ColladaMap:
     def __init__(self, path, name=None, coordinate_id=0):
         self.texture = texture = XMLNode('texture')
@@ -17,12 +24,13 @@ class ColladaMap:
         texture.attributes['texcoord'] = 'CHANNEL' + str(coordinate_id)
         self.image = image = XMLNode('image', id=tex_id)
         image.attributes['name'] = name
-        init_from = XMLNode('init_from', path)
-        image.add_child(init_from)
+        init_from = XMLNode('init_from', path, parent=image)
 
 
-class Collada:
+class Dae:
     def __init__(self, filename=None):
+        self.material_library = {}
+        self.image_library = {}
         self.xml = XML(filename) if filename else self.__initialize_xml()
         self.__initialize_libraries()
 
@@ -33,6 +41,13 @@ class Collada:
         root.children = non_empty_libraries
         self.xml.write(filename)
         root.children = temp
+
+    def get_decoded_material(self, material_name):
+        if material_name not in self.material_library:
+            mat = self.decode_material(self.get_element_by_id(material_name))
+            self.material_library[material_name] = mat
+            return mat
+        return self.material_library[material_name]
 
     def get_element_by_id(self, id):
         return self.xml.get_element_by_id(id)
@@ -45,13 +60,51 @@ class Collada:
         data_type = ele['param'].attributes['type']
         return data_type, self.get_referenced_element(ele, 'source')
 
+    def decode_node(self, xml_node):
+        node = ColladaNode(xml_node.get_id())
+        for child in xml_node.children:
+            if child.tag == 'instance_controller':
+                node.controller = self.decode_controller(self.get_referenced_element(child, 'url'))
+            elif child.tag == 'instance_geometry':
+                node.geometry = self.decode_geometry(self.get_referenced_element(child, 'url'))
+            elif child.tag == 'matrix':
+                node.matrix = np.array([float(x) for x in child.text.split()]).reshape((4, 4))
+            elif child.tag == 'extra':
+                node.extra = child
+            elif child.tag == 'node':
+                node.nodes.append(self.decode_node(child))
+        return node
+
+    def add_node(self, node, parent=None):
+        if parent is None:
+            parent = self.scene
+        xml_node = XMLNode('node', id=node.name, name=node.name, parent=parent, xml=self.xml)
+        xml_node.attributes['sid'] = node.name
+        if node.matrix:
+            matrix_xml = XMLNode('matrix', ' '.join(node.matrix.flatten()), parent=xml_node)
+            matrix_xml.attributes['sid'] = 'matrix'
+        if node.extra:
+            xml_node.add_child(node.extra)
+        if node.controller:
+            controller_node = XMLNode('instance_controller', parent=xml_node)
+            controller_node.attributes['url'] = '#' + self.add_skin_controller(node.controller).get_id()
+            self.__bind_material(controller_node, node.controller.geometry.material)
+        elif node.geometry:
+            geometry_node = XMLNode('instance_geometry', parent=xml_node)
+            geometry_node.attributes['url'] = '#' + self.add_geometry(node.geometry).get_id()
+            self.__bind_material(geometry_node, node.geometry.material)
+        for n in node.nodes:
+            self.add_node(n, xml_node)
+        return xml_node
+
     def decode_controller(self, xml_controller):
         name = xml_controller.get_id()
         skin = xml_controller['skin']
+        geometry = self.decode_geometry(self.get_referenced_element(skin, 'source'))
         bind_shape_matrix = [float(x) for x in skin['bind_shape_matrix'].text.split()]
         joints = skin['joints']
         vertex_weights = skin['vertex_weights']
-        vertex_weight_count = [float(x) for x  in vertex_weights['vcount'].text.split()]
+        vertex_weight_count = [float(x) for x in vertex_weights['vcount'].text.split()]
         vertex_weight_indices = np.array([int(x) for x in vertex_weights['v'].text.split()], int)
         vertex_weight_indices = vertex_weight_indices.reshape((-1, 2))
         input_count = 0
@@ -60,7 +113,7 @@ class Collada:
             semantic = input.attributes['semantic']
             if semantic == 'JOINT':
                 if offset != 0:
-                     vertex_weight_indices[:, [0, 1]] = vertex_weight_indices[:, [1, 0]]
+                    vertex_weight_indices[:, [0, 1]] = vertex_weight_indices[:, [1, 0]]
                 joints = self.get_referenced_element(input, 'source')
                 data_type, joint_name_element = self.trace_technique_common(joints)
                 joint_names = joint_name_element.text.split()
@@ -72,34 +125,37 @@ class Collada:
                 raise ValueError('Unknown Semantic {} in controller {}'.format(semantic, name))
             input_count += 1
         assert input_count == 2
-        return Controller(name, bind_shape_matrix, joint_names, weights, vertex_weight_count, vertex_weight_indices)
+        return Controller(name, bind_shape_matrix, joint_names, weights, vertex_weight_count, vertex_weight_indices,
+                          geometry)
 
     def add_skin_controller(self, controller):
         controller_id = controller.name + '-controller'
-        xml_controller = XMLNode('controller', id=controller_id, parent=self.controllers)
+        xml_controller = XMLNode('controller', id=controller_id, parent=self.controllers, xml=self.xml)
         xml_skin = XMLNode('skin', parent=xml_controller)
-        xml_skin.attributes['source'] = '#' + controller.name + '-lib'
+        xml_skin.attributes['source'] = '#' + self.add_geometry(controller.geometry).get_id()
         bind_shape_matrix = XMLNode('bind_shape_matrix', ' '.join(controller.bind_shape_matrix.flatten()),
                                     parent=xml_skin)
         joint_source_id = controller_id + '-joints'
-        joint_source = XMLNode('source', id=joint_source_id, parent=xml_skin)
+        joint_source = XMLNode('source', id=joint_source_id, parent=xml_skin, xml=self.xml)
         name_array_id = joint_source_id + '-array'
         name_array = XMLNode('Name_array', ' '.join(controller.bones), id=name_array_id,
-                             parent=joint_source)
+                             parent=joint_source, xml=self.xml)
         bone_len = len(controller.bones)
         name_array.attributes['count'] = str(bone_len)
         self.__create_technique_common(name_array_id, bone_len, 'float4x4', joint_source)
         matrices_source_id = controller_id + '-matrices'
-        matrices_source = XMLNode('source', id=matrices_source_id, parent=xml_skin)
+        matrices_source = XMLNode('source', id=matrices_source_id, parent=xml_skin, xml=self.xml)
         matrices_array_id = matrices_source_id + '-array'
         inv_bind_matrix = np.linalg.inv(controller.bind_shape_matrix).flatten()
-        float_array = XMLNode('float_array', ' '.join(inv_bind_matrix), id=matrices_array_id, parent=matrices_source)
+        float_array = XMLNode('float_array', ' '.join(inv_bind_matrix), id=matrices_array_id,
+                              parent=matrices_source, xml=self.xml)
         float_array.attributes['count'] = 16 * bone_len
         self.__create_technique_common(matrices_array_id, bone_len, 'float4x4', matrices_source, 16)
         weight_source_id = controller_id + '-weights'
-        weight_source = XMLNode('source', ' '.join(controller.weights.flatten()), id=weight_source_id, parent=xml_skin)
+        weight_source = XMLNode('source', ' '.join(controller.weights.flatten()), id=weight_source_id,
+                                parent=xml_skin, xml=self.xml)
         float_array_id = weight_source_id + '-array'
-        float_array = XMLNode('float_array', id=float_array_id, parent=weight_source)
+        float_array = XMLNode('float_array', id=float_array_id, parent=weight_source, xml=self.xml)
         weight_count = len(controller.weights)
         float_array.attributes['count'] = str(weight_count)  # todo, vertex count or total weight?
         self.__create_technique_common(float_array_id, weight_count, 'float', weight_source)
@@ -118,6 +174,7 @@ class Collada:
         mesh = xml_geometry.children[0]
         tri_node = mesh.children[0]
         material_name = tri_node.attributes['material']
+        material = self.get_decoded_material(material_name)
         inputs = tri_node.get_elements_by_tag('input')
         stride = len(inputs)
         indices = [int(x) for x in tri_node['p']]
@@ -134,7 +191,7 @@ class Collada:
                 normals = decoded_data
             elif decode_type == 'COLOR':
                 colors = decoded_data
-        geometry = Geometry(xml_geometry.attributes['name'], material_name, triangles=triangles, vertices=vertices,
+        geometry = Geometry(xml_geometry.attributes['name'], material, triangles=triangles, vertices=vertices,
                             normals=normals, texcoords=texcoords, colors=colors)
         return geometry
 
@@ -148,14 +205,13 @@ class Collada:
         normals = geometry.normals
         colors = geometry.colors
         texcoords = geometry.texcoords
-        geo_xml = XMLNode('geometry', id=name + '-lib', name=name)
-        mesh = XMLNode('mesh')
+        geo_xml = XMLNode('geometry', id=name + '-lib', name=name, parent=self.geometries, xml=self.xml)
+        mesh = XMLNode('mesh', parent=geo_xml)
         offset = 0
-        triangles = XMLNode('triangles')
+        triangles = XMLNode('triangles', parent=mesh)
         triangles.attributes['material'] = material_name
         tris = [vertices.face_indices]
         triangles.attributes['count'] = len(tris[0])
-        geo_xml.add_child(mesh)
         source_name = name + '-POSITION'
         mesh.add_child(self.__create_source(source_name, vertices.points, ('X', 'Y', 'Z')))
         triangles.add_child(self.__create_input_node('VERTEX', source_name, offset))
@@ -182,14 +238,10 @@ class Collada:
             tris.append(texcoord.face_indices)
             offset += 1
         data = np.stack(tris, -1).flatten()
-        tri_data = XMLNode('p', ' '.join(data))
-        triangles.add_child(tri_data)
-        vert_node = XMLNode('vertices', id=name + '-VERTEX')
+        tri_data = XMLNode('p', ' '.join(data), parent=triangles)
+        vert_node = XMLNode('vertices', id=name + '-VERTEX', parent=mesh, xml=self.xml)
         input_node = self.__create_input_node('POSITION', name + '-POSITION')
         vert_node.add_child(input_node)
-        mesh.add_child(vert_node)
-        mesh.add_child(triangles)
-        self.geometries.append(geo_xml)
         return geo_xml
 
     def __try_get_texture(self, xml_node):
@@ -207,45 +259,45 @@ class Collada:
         material = Material(material_xml.attributes['id'], diffuse, ambient, specular, transparency)
         return material
 
+    def get_images(self):
+        images = {}
+        for x in self.images:
+            name = x.get_name()
+            if not name:
+                name = x.get_id()
+            init = x['init_from']
+            path = init.text
+            if not path:
+                path = init.children[0].text
+            images[name] = path
+        return images
+
+    def add_image(self, name, path):
+        image = XMLNode('image', id=name + '-image', name=name, parent=self.images, xml=self.xml)
+        init_from = XMLNode('init_from', path, parent=image)
+        return image
+
     def add_material(self, material):
-        diffuse_map = (0.6, 0.6, 0.6, 1.0) if not material.diffuse_map else ColladaMap(material.diffuse_map)
-        ambient_map = (0.6, 0.6, 0.6, 1.0) if not material.ambient_map else ColladaMap(material.ambient_map)
-        specular_map = (0.6, 0.6, 0.6, 1.0) if not material.specular_map else ColladaMap(material.specular_map)
+        diffuse_map = (0.6, 0.6, 0.6, 1.0) if not material.diffuse_map else material.diffuse_map
+        ambient_map = (0.6, 0.6, 0.6, 1.0) if not material.ambient_map else material.ambient_map
+        specular_map = (0.6, 0.6, 0.6, 1.0) if not material.specular_map else material.specular_map
         transparency = material.transparency
         name = material.name
-        material = XMLNode('material')
-        material.attributes['id'] = material.attributes['name'] = name
-        self.materials.add_child(material)
+        material = XMLNode('material', parent=self.materials, id=name, name=name, xml=self.xml)
         effect_id = name + '-fx'
         instance_effect = XMLNode('instance_effect')
         material.add_child(instance_effect)
         instance_effect.attributes['url'] = '#' + effect_id
-        effect = XMLNode('effect')
-        effect.attributes['id'] = effect_id
-        effect.attributes['name'] = name
-        profile_common = XMLNode('profile_COMMON')
-        effect.add_child(profile_common)
-        technique = XMLNode('technique')
+        effect = XMLNode('effect', id=effect_id, name=name, parent=self.effects, xml=self.xml)
+        profile_common = XMLNode('profile_COMMON', parent=effect)
+        technique = XMLNode('technique', parent=profile_common)
         technique.attributes['sid'] = 'standard'
-        profile_common.add_child(technique)
-        shader = XMLNode('phong')
-        technique.add_child(shader)
+        shader = XMLNode('phong', parent=technique)
         shader.add_child(self.__get_default_shader_color('emission'))
-        if type(ambient_map) == ColladaMap:
-            shader.add_child(ambient_map.texture)
-            self.images.add_child(ambient_map.image)
-        else:
-            shader.add_child(self.__get_default_shader_color('ambient', ambient_map))
-        if type(diffuse_map) == ColladaMap:
-            shader.add_child(diffuse_map.texture)
-            self.images.add_child(diffuse_map.image)
-        else:
-            shader.add_child(self.__get_default_shader_color('diffuse', diffuse_map))
-        if type(specular_map) == ColladaMap:
-            shader.add_child(specular_map.texture)
-            self.images.add_child(specular_map.image)
-        else:
-            shader.add_child(self.__get_default_shader_color('specular', specular_map))
+        i = 0
+        i += self.__add_shader_map(shader, diffuse_map, 'diffuse', i)
+        i += self.__add_shader_map(shader, ambient_map, 'ambient', i)
+        self.__add_shader_map(shader, specular_map, 'specular', i)
         shader.add_child(self.__get_default_shader_float('shininess', 1.071773))
         shader.add_child(self.__get_default_shader_color('reflective'))
         shader.add_child(self.__get_default_shader_float('reflectivity', 1.0))
@@ -268,10 +320,11 @@ class Collada:
                 node = XMLNode('library_' + library)
                 root_children.append(node)
                 self.__setattr__(library, node)
+        self.scene = self.scenes[0]
 
     @staticmethod
-    def __initialize_assets():
-        asset = XMLNode('asset')
+    def __initialize_assets(root):
+        asset = XMLNode('asset', parent=root)
         contributor = XMLNode('contributor')
         authoring_tool = XMLNode('authoring_tool', 'abmatt COLLADA exporter')
         contributor.add_child(authoring_tool)
@@ -283,7 +336,6 @@ class Collada:
         asset.add_child(created)
         asset.add_child(modified)
         asset.children.append(contributor)
-        return asset
 
     @staticmethod
     def __initialize_xml():
@@ -291,7 +343,7 @@ class Collada:
         root = XMLNode('COLLADA')
         root.attributes['xmlns'] = 'http://www.collada.org/2005/11/COLLADASchema'
         root.attributes['version'] = '1.4.1'
-        root.children.append(Collada.__initialize_assets())
+        Dae.__initialize_assets(root)
         xml.root = root
         return xml
 
@@ -307,9 +359,8 @@ class Collada:
     @staticmethod
     def __get_default_shader_float(name, fl=0.0):
         node = XMLNode(name)
-        fl = XMLNode('float', str(fl))
+        fl = XMLNode('float', str(fl), parent=node)
         fl.attributes['sid'] = name
-        node.add_child(fl)
         return node
 
     @staticmethod
@@ -375,3 +426,23 @@ class Collada:
         param.attributes['type'] = type
         return technique_common
 
+    @staticmethod
+    def __bind_material(node, material_name):
+        bind_mat = XMLNode('bind_material', parent=node)
+        tech_common = XMLNode('technique_common', parent=bind_mat)
+        instance_mat = XMLNode('instance_material', parent=tech_common)
+        instance_mat.attributes['symbol'] = material_name
+        instance_mat.attributes['target'] = '#' + material_name
+        return bind_mat
+
+    @staticmethod
+    def __add_shader_map(shader, map, map_type, texcoord):
+        if type(map) == tuple:
+            shader.add_child(Dae.__get_default_shader_color(map_type, map))
+            return False
+        else:
+            map_node = XMLNode(map_type, parent=shader)
+            tex_node = XMLNode('texture', parent=map_node)
+            tex_node.attributes['texture'] = map + '-image'
+            tex_node.attributes['texcoord'] = 'CHANNEL' + str(texcoord)
+            return True
