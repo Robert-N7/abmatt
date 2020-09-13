@@ -54,7 +54,7 @@ class ObjConverter(Converter):
         for geometry in obj.geometries:
             normals = None if self.NoNormals & self.flags or self.is_map else geometry.normals
             geo = add_geometry(mdl, geometry.name, geometry.vertices, normals, None, [geometry.texcoords])
-            mat = obj.materials[geometry.material]
+            mat = obj.materials[geometry.material_name]
             material = self.encode_material(mat, mdl)
             mdl.add_definition(material, geo, bone)
         mdl.rebuild_header()
@@ -113,14 +113,16 @@ class ObjConverter(Converter):
             mdl0 = self.brres.models[0]
         polygons = mdl0.objects
         obj = Obj(self.mdl_file, False)
-        obj_geometries = obj.geometries
         obj_materials = obj.materials
+        for mat in mdl0.materials:
+            obj_mat = self.decode_material(mat)
+            obj_materials[obj_mat.name] = obj_mat
+        obj_geometries = obj.geometries
         obj_images = obj.images
         for x in polygons:
             geometry = decode_polygon(x)
-            material = geometry['material']
-            obj_materials[material.name] = self.decode_material(material)
-            obj_geometries.append(self.decode_geometry(geometry, material.name))
+            material = geometry.material_name
+            obj_geometries.append(self.decode_geometry(geometry, material))
         tex0_map = self.tex0_map
         if len(tex0_map):
             image_dir = os.path.join(dir, self.image_dir)

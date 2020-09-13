@@ -72,7 +72,7 @@ class XML:
                     attrib_value = xml[start_offset:offset]
                     node.attributes[attrib_name] = attrib_value
                     if attrib_name == 'id':
-                        self.elements_by_id[attrib_name] = node
+                        self.elements_by_id[attrib_value] = node
                     offset += 1
                     break
                 offset += 1
@@ -161,6 +161,12 @@ class XMLNode:
             tag += ' ' + str(self.attributes)
         return tag
 
+    def __iter__(self):
+        return iter(self.children)
+
+    def __next__(self):
+        return next(self.children)
+
     def get_id(self):
         return self.attributes.get('id')
 
@@ -206,7 +212,7 @@ class XMLNode:
         if self.children:
             my_str += indent + '<' + self.tag + attrib + '>\n'
             for x in self.children:
-                my_str = x.get_xml(my_str, indent + '\t')
+                my_str = x.get_xml(my_str, indent + '  ')
             my_str += indent + '</' + self.tag + '>\n'
             return my_str
         if not self.text:

@@ -758,8 +758,8 @@ class Command:
 
     def run_convert(self):
         if self.ext == '.dae':
-            from converters.convert_dae import DaeConverter
-            klass = DaeConverter
+            from converters.convert_dae import DaeConverter2
+            klass = DaeConverter2
         elif self.ext == '.obj':
             from converters.convert_obj import ObjConverter
             klass = ObjConverter

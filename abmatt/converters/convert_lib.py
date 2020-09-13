@@ -9,6 +9,7 @@ from brres.mdl0.normal import Normal
 from brres.mdl0.polygon import Polygon
 from brres.mdl0.texcoord import TexCoord
 from brres.mdl0.vertex import Vertex
+from brres.mdl0 import material
 from brres.tex0 import EncodeError
 from converters.triangle import TriangleSet
 
@@ -17,6 +18,9 @@ class Converter:
     NoNormals = 0x1
     NoColors = 0x2
     IDENTITY_MATRIX = np.identity(4)
+
+    class ConvertError(Exception):
+        pass
 
     @staticmethod
     def set_bone_matrix(bone, matrix):
@@ -41,15 +45,16 @@ class Converter:
         return np.allclose(matrix, Converter.IDENTITY_MATRIX)
 
     @staticmethod
-    def try_import_texture(brres, image_path):
-        base_name = os.path.splitext(os.path.basename(image_path))[0]
-        if not brres.hasTexture(base_name):
+    def try_import_texture(brres, image_path, layer_name=None):
+        if not layer_name:
+            layer_name = os.path.splitext(os.path.basename(image_path))[0]
+        if not brres.hasTexture(layer_name):
             if os.path.exists(image_path):
                 try:
-                    brres.import_texture(image_path)
+                    brres.import_texture(image_path, layer_name)
                 except EncodeError:
                     print('WARN: Failed to encode image {}'.format(image_path))
-        return base_name
+        return layer_name
 
     def __init__(self, brres, mdl_file, flags=0):
         self.brres = brres
@@ -155,9 +160,7 @@ def decode_geometry_group(geometry):
 
 def decode_polygon(polygon):
     """ Decodes an mdl0 polygon
-        :returns dictionary with keys:
-        triangles, vertices, normals, colors, texcoords
-        values are ndarrays
+        :returns geometry
     """
     # build the fmt_str decoder
     fmt_str = '>'
@@ -165,7 +168,7 @@ def decode_polygon(polygon):
     if polygon.has_pos_matrix:
         fmt_str += 'B'
         pos_matrix_index = geometry_index
-        print('WARN: {} vertex weighting not supported'.format(polygon.name))
+        raise Converter.ConvertError('{} vertex weighting not supported'.format(polygon.name))
         geometry_index += 1
     else:
         pos_matrix_index = -1
@@ -251,9 +254,8 @@ def decode_polygon(polygon):
                                              tex.minimum, tex.maximum))
         texcoord_index += 1
     face_point_indices = np.copy(face_point_indices[:, :, vertex_index:])
-    geometry = {'name': polygon.name, 'triangles': face_point_indices,
-                'vertices': g_verts, 'normals': g_normals,
-                'colors': g_colors, 'texcoords': geo_texcoords, 'material': polygon.get_material()}
+    geometry = Geometry(polygon.name, polygon.get_material().name, face_point_indices, g_verts,
+                        geo_texcoords, g_normals, g_colors)
     return geometry
 
 
@@ -609,14 +611,24 @@ class ColorCollection:
 
 
 class Geometry:
-    def __init__(self, name, material, triangles, vertices, texcoords, normals=None, colors=None):
+    def __init__(self, name, material_name, triangles, vertices, texcoords, normals=None, colors=None):
         self.name = name
         self.triangles = triangles
         self.vertices = vertices
         self.texcoords = texcoords
         self.normals = normals
         self.colors = colors
-        self.material = material
+        self.material_name = material_name
+
+    def encode(self, mdl, bone=None):
+        if not bone:
+            bone = mdl.bones[0]
+        polygon = add_geometry(mdl, self.name, self.vertices, self.normals, self.colors, self.texcoords)
+        material = mdl.getMaterialByName(self.material_name)
+        mdl.add_definition(material, polygon, bone)
+        if self.colors:
+            material.enable_vertex_color()
+        return polygon
 
 
 class Material:
@@ -636,6 +648,23 @@ class Material:
             maps.remove(None)
         return maps
 
+    @staticmethod
+    def encode_map(map, material):
+        if map:
+            layer_name = os.path.splitext(os.path.basename(map))[0]
+            material.addLayer(layer_name)
+
+    def encode(self, mdl):
+        m = material.Material.get_unique_material(self.name, mdl)
+        mdl.add_material(m)
+        if self.transparency > 0:
+            m.enable_blend()
+        # maps
+        self.encode_map(self.diffuse_map, m)
+        self.encode_map(self.ambient_map, m)
+        self.encode_map(self.specular_map, m)
+        return m
+
 
 class Controller:
     def __init__(self, name, bind_shape_matrix, bones, weights, vertex_weight_counts, vertex_weight_indices,
@@ -647,6 +676,18 @@ class Controller:
         self.vertex_weight_counts = vertex_weight_counts
         self.vertex_weight_indices = vertex_weight_indices
         self.geometry = geometry
+
+    def has_multiple_weights(self):
+        return not np.min(self.vertex_weight_counts) == np.max(self.vertex_weight_counts) ==  1.0
+
+
+def get_default_controller(geometry, bone_names):
+    vert_len = len(geometry.vertices)
+    bind_matrix = np.eye(4)
+    weights = np.full(vert_len + 1, 1.0, dtype=float)
+    weight_indices = np.stack((np.zeros(vert_len, dtype=int), np.arange(1, vert_len + 1, dtype=int)), -1)
+    return Controller(geometry.name, bind_matrix, bone_names, weights,
+                      np.full(vert_len, 1, dtype=int), weight_indices, geometry)
 
 
 def vector_magnitude(vector):
@@ -682,3 +723,8 @@ def rotationMatrixToEulerAngles(R):
         z = 0
 
     return np.array([x, y, z]) * 180 / math.pi
+
+
+def scaleMatrix(matrix, scale):
+    for i in range(len(scale)):
+        matrix[i][i] *= scale[i]

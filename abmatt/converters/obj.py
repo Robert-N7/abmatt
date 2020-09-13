@@ -151,7 +151,7 @@ class Obj():
                 tris[:, :, 2] = tris[:, :, 2] + normal_index
             # start the group of indices
             s += 'o {}\ng {}\n'.format(geometry.name, geometry.name)
-            s += 'usemtl {}\n'.format(geometry.material)
+            s += 'usemtl {}\n'.format(geometry.material_name)
             s += 's off\n' if not geometry.smooth else 's\n'
             for tri in tris:
                 s += 'f ' + ' '.join(['/'.join([str(x) for x in fp]) for fp in tri]) + '\n'
@@ -180,7 +180,7 @@ class Obj():
         elif start == 'o' or start == 'g':
             return words[0]
         elif start == 'usemtl':
-            geometry.material = words[0]
+            geometry.material_name = words[0]
         elif start == 's':
             geometry.smooth = True
         elif start == 'mtllib':

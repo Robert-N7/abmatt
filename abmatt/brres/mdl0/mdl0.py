@@ -145,6 +145,8 @@ class Mdl0(SubFile):
         self.boneCount = 0
         self.faceCount = 0
         self.facepoint_count = 0
+        self.scaling_rule = 0
+        self.texture_matrix_mode = 0
         self.drawOpa = DrawList(Definition.names[0], self)
         self.drawXLU = DrawList(Definition.names[1], self)
         self.nodeTree = NodeTree(Definition.names[3], self)
@@ -416,7 +418,7 @@ class Mdl0(SubFile):
         for x in copy.materials:
             shader = shaders[x.name]
             x.shader = shader
-            shader.material = x
+            shader.material_name = x
             if srt0_group:
                 srt0 = srt0_group[x.name]
                 if srt0:

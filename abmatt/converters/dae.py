@@ -1,38 +1,28 @@
-import os
 
 import numpy as np
 
-from converters.convert_lib import Geometry, PointCollection, ColorCollection, Material, Controller
+from converters.convert_lib import Geometry, PointCollection, ColorCollection, Material, Controller, scaleMatrix
 from converters.xml import XML, XMLNode
 from datetime import datetime
 
 
 class ColladaNode:
-    def __init__(self, name):
+    def __init__(self, name, attributes=None):
         self.name = name
+        self.attributes = attributes
         self.extra = self.matrix = self.geometry = self.controller = None
         self.nodes = []
 
-
-class ColladaMap:
-    def __init__(self, path, name=None, coordinate_id=0):
-        self.texture = texture = XMLNode('texture')
-        if not name:
-            name = os.path.splitext(os.path.basename(path))[0]
-        tex_id = name + '-image'
-        texture.attributes['texture'] = tex_id
-        texture.attributes['texcoord'] = 'CHANNEL' + str(coordinate_id)
-        self.image = image = XMLNode('image', id=tex_id)
-        image.attributes['name'] = name
-        init_from = XMLNode('init_from', path, parent=image)
+    def get_matrix(self):
+        if not self.matrix:
+            self.matrix = np.identity(4)
+        return self.matrix
 
 
 class Dae:
-    def __init__(self, filename=None):
-        self.material_library = {}
-        self.image_library = {}
+    def __init__(self, filename=None, initial_scene_name=None):
         self.xml = XML(filename) if filename else self.__initialize_xml()
-        self.__initialize_libraries()
+        self.__initialize_libraries(initial_scene_name)
 
     def write(self, filename):
         root = self.xml.root
@@ -42,18 +32,36 @@ class Dae:
         self.xml.write(filename)
         root.children = temp
 
-    def get_decoded_material(self, material_name):
-        if material_name not in self.material_library:
-            mat = self.decode_material(self.get_element_by_id(material_name))
-            self.material_library[material_name] = mat
-            return mat
-        return self.material_library[material_name]
+    def get_scene(self):
+        return [self.decode_node(x) for x in self.scene.children]
+
+    def get_materials(self):
+        return [self.decode_material(x) for x in self.materials]
+
+    def get_images(self):
+        images = {}
+        for x in self.images:
+            name = x.get_name()
+            if not name:
+                name = x.get_id()
+            init = x['init_from']
+            path = init.text
+            if not path:
+                path = init.children[0].text
+            images[name] = path
+        return images
 
     def get_element_by_id(self, id):
         return self.xml.get_element_by_id(id)
 
+    @staticmethod
+    def search_library_by_id(library, id):
+        for x in library:
+            if x.get_id() == id:
+                return x
+
     def get_referenced_element(self, element, attribute_source):
-        return self.get_element_by_id(element.attributes[attribute_source])
+        return self.get_element_by_id(element.attributes[attribute_source].lstrip('#'))
 
     def trace_technique_common(self, element):
         ele = element['technique_common']['accessor']
@@ -61,7 +69,7 @@ class Dae:
         return data_type, self.get_referenced_element(ele, 'source')
 
     def decode_node(self, xml_node):
-        node = ColladaNode(xml_node.get_id())
+        node = ColladaNode(xml_node.get_id(), xml_node.attributes)
         for child in xml_node.children:
             if child.tag == 'instance_controller':
                 node.controller = self.decode_controller(self.get_referenced_element(child, 'url'))
@@ -73,26 +81,40 @@ class Dae:
                 node.extra = child
             elif child.tag == 'node':
                 node.nodes.append(self.decode_node(child))
+            elif child.tag == 'scale':
+                matrix = node.get_matrix()
+                scaleMatrix(matrix, [float(x) for x in child.text.split()])
+            elif child.tag == 'rotation':
+                print('WARN: rotation transformation not supported for {}'.format(node.name))
+            elif child.tag == 'transformation':
+                matrix = node.get_matrix()
+                transform = [float(x) for x in child.text.split()]
+                for i in range(len(transform)):
+                    matrix[3, i] += transform[i]
         return node
 
     def add_node(self, node, parent=None):
         if parent is None:
             parent = self.scene
         xml_node = XMLNode('node', id=node.name, name=node.name, parent=parent, xml=self.xml)
+        if node.attributes:
+            att = node.attributes
+            for key in att:
+                xml_node.attributes[key] = att[key]
         xml_node.attributes['sid'] = node.name
-        if node.matrix:
-            matrix_xml = XMLNode('matrix', ' '.join(node.matrix.flatten()), parent=xml_node)
+        if node.matrix is not None:
+            matrix_xml = XMLNode('matrix', ' '.join([str(x) for x in node.matrix.flatten()]), parent=xml_node)
             matrix_xml.attributes['sid'] = 'matrix'
-        if node.extra:
+        if node.extra is not None:
             xml_node.add_child(node.extra)
-        if node.controller:
+        if node.controller is not None:
             controller_node = XMLNode('instance_controller', parent=xml_node)
             controller_node.attributes['url'] = '#' + self.add_skin_controller(node.controller).get_id()
-            self.__bind_material(controller_node, node.controller.geometry.material)
-        elif node.geometry:
+            self.__bind_material(controller_node, node.controller.geometry.material_name)
+        elif node.geometry is not None:
             geometry_node = XMLNode('instance_geometry', parent=xml_node)
             geometry_node.attributes['url'] = '#' + self.add_geometry(node.geometry).get_id()
-            self.__bind_material(geometry_node, node.geometry.material)
+            self.__bind_material(geometry_node, node.geometry.material_name)
         for n in node.nodes:
             self.add_node(n, xml_node)
         return xml_node
@@ -100,15 +122,18 @@ class Dae:
     def decode_controller(self, xml_controller):
         name = xml_controller.get_id()
         skin = xml_controller['skin']
-        geometry = self.decode_geometry(self.get_referenced_element(skin, 'source'))
-        bind_shape_matrix = [float(x) for x in skin['bind_shape_matrix'].text.split()]
+        ref = self.get_referenced_element(skin, 'source')
+        if ref.tag != 'geometry':   # fix for badly formed xml
+            ref = self.search_library_by_id(self.geometries, skin.attributes['source'].lstrip('#'))
+        geometry = self.decode_geometry(ref)
+        bind_shape_matrix = np.array([float(x) for x in skin['bind_shape_matrix'].text.split()], dtype=float).reshape((4, 4))
         joints = skin['joints']
         vertex_weights = skin['vertex_weights']
         vertex_weight_count = [float(x) for x in vertex_weights['vcount'].text.split()]
         vertex_weight_indices = np.array([int(x) for x in vertex_weights['v'].text.split()], int)
         vertex_weight_indices = vertex_weight_indices.reshape((-1, 2))
         input_count = 0
-        for input in vertex_weights.get_elements_by_name('input'):
+        for input in vertex_weights.get_elements_by_tag('input'):
             offset = int(input.attributes['offset'])
             semantic = input.attributes['semantic']
             if semantic == 'JOINT':
@@ -133,7 +158,8 @@ class Dae:
         xml_controller = XMLNode('controller', id=controller_id, parent=self.controllers, xml=self.xml)
         xml_skin = XMLNode('skin', parent=xml_controller)
         xml_skin.attributes['source'] = '#' + self.add_geometry(controller.geometry).get_id()
-        bind_shape_matrix = XMLNode('bind_shape_matrix', ' '.join(controller.bind_shape_matrix.flatten()),
+        bind_shape_matrix = XMLNode('bind_shape_matrix', ' '.join([str(x) for \
+                                                                   x in controller.bind_shape_matrix.flatten()]),
                                     parent=xml_skin)
         joint_source_id = controller_id + '-joints'
         joint_source = XMLNode('source', id=joint_source_id, parent=xml_skin, xml=self.xml)
@@ -142,20 +168,21 @@ class Dae:
                              parent=joint_source, xml=self.xml)
         bone_len = len(controller.bones)
         name_array.attributes['count'] = str(bone_len)
-        self.__create_technique_common(name_array_id, bone_len, 'float4x4', joint_source)
+        self.__create_technique_common(name_array_id, bone_len, 'name', joint_source)
         matrices_source_id = controller_id + '-matrices'
         matrices_source = XMLNode('source', id=matrices_source_id, parent=xml_skin, xml=self.xml)
         matrices_array_id = matrices_source_id + '-array'
         inv_bind_matrix = np.linalg.inv(controller.bind_shape_matrix).flatten()
-        float_array = XMLNode('float_array', ' '.join(inv_bind_matrix), id=matrices_array_id,
+        float_array = XMLNode('float_array', ' '.join([str(x) for x in inv_bind_matrix]), id=matrices_array_id,
                               parent=matrices_source, xml=self.xml)
         float_array.attributes['count'] = 16 * bone_len
         self.__create_technique_common(matrices_array_id, bone_len, 'float4x4', matrices_source, 16)
         weight_source_id = controller_id + '-weights'
-        weight_source = XMLNode('source', ' '.join(controller.weights.flatten()), id=weight_source_id,
+        weight_source = XMLNode('source', ' '.join([str(x) for x in controller.weights.flatten()]), id=weight_source_id,
                                 parent=xml_skin, xml=self.xml)
         float_array_id = weight_source_id + '-array'
-        float_array = XMLNode('float_array', id=float_array_id, parent=weight_source, xml=self.xml)
+        float_array = XMLNode('float_array', ' '.join([str(x) for x in controller.weights.flatten()]),
+                              id=float_array_id, parent=weight_source, xml=self.xml)
         weight_count = len(controller.weights)
         float_array.attributes['count'] = str(weight_count)  # todo, vertex count or total weight?
         self.__create_technique_common(float_array_id, weight_count, 'float', weight_source)
@@ -163,21 +190,21 @@ class Dae:
         self.__create_input_node('JOINT', joint_source_id, parent=joints)
         self.__create_input_node('INV_BIND_MATRIX', matrices_source_id, parent=joints)
         vertex_weights = XMLNode('vertex_weights', parent=xml_skin)
-        vertex_weights.attributes['count'] = str(weight_count)  # todo check this
+        vertex_weights.attributes['count'] = str(weight_count)
         self.__create_input_node('JOINT', joint_source_id, 0, vertex_weights)
         self.__create_input_node('WEIGHT', weight_source_id, 1, vertex_weights)
-        vcount = XMLNode('vcount', ' '.join(controller.vertex_weight_counts), parent=vertex_weights)
-        vw_data = XMLNode('v', ' '.join(controller.vertex_weight_indices.flatten()), parent=vertex_weights)
+        vcount = XMLNode('vcount', ' '.join([str(x) for x in controller.vertex_weight_counts]), parent=vertex_weights)
+        vw_data = XMLNode('v', ' '.join([str(x) for x in controller.vertex_weight_indices.flatten()]),
+                          parent=vertex_weights)
         return xml_controller
 
     def decode_geometry(self, xml_geometry):
-        mesh = xml_geometry.children[0]
-        tri_node = mesh.children[0]
+        mesh = xml_geometry['mesh']
+        tri_node = mesh['triangles']
         material_name = tri_node.attributes['material']
-        material = self.get_decoded_material(material_name)
         inputs = tri_node.get_elements_by_tag('input')
         stride = len(inputs)
-        indices = [int(x) for x in tri_node['p']]
+        indices = [int(x) for x in tri_node['p'].text.split()]
         triangles = np.array(indices, np.int16).reshape((-1, 3, stride))
         vertices = normals = colors = None
         texcoords = []
@@ -187,11 +214,11 @@ class Dae:
                 texcoords.append(decoded_data)
             elif decode_type == 'VERTEX':
                 vertices = decoded_data
-            elif decode_type == ' NORMAL':
+            elif decode_type == 'NORMAL':
                 normals = decoded_data
             elif decode_type == 'COLOR':
                 colors = decoded_data
-        geometry = Geometry(xml_geometry.attributes['name'], material, triangles=triangles, vertices=vertices,
+        geometry = Geometry(xml_geometry.attributes['name'], material_name, triangles=triangles, vertices=vertices,
                             normals=normals, texcoords=texcoords, colors=colors)
         return geometry
 
@@ -200,7 +227,7 @@ class Dae:
         geometry: convert_lib geometry
         """
         name = geometry.name
-        material_name = geometry.material.name
+        material_name = geometry.material_name
         vertices = geometry.vertices
         normals = geometry.normals
         colors = geometry.colors
@@ -208,9 +235,9 @@ class Dae:
         geo_xml = XMLNode('geometry', id=name + '-lib', name=name, parent=self.geometries, xml=self.xml)
         mesh = XMLNode('mesh', parent=geo_xml)
         offset = 0
-        triangles = XMLNode('triangles', parent=mesh)
-        triangles.attributes['material'] = material_name
         tris = [vertices.face_indices]
+        triangles = XMLNode('triangles')
+        triangles.attributes['material'] = material_name
         triangles.attributes['count'] = len(tris[0])
         source_name = name + '-POSITION'
         mesh.add_child(self.__create_source(source_name, vertices.points, ('X', 'Y', 'Z')))
@@ -224,7 +251,7 @@ class Dae:
             offset += 1
         if colors:
             source_name = name + '-COLOR'
-            mesh.add_child(self.__create_source(source_name, colors.rgba_colors, ('R', 'G', 'B', 'A')))
+            mesh.add_child(self.__create_source(source_name, colors.denormalize(), ('R', 'G', 'B', 'A')))
             triangles.add_child(self.__create_input_node('COLOR', source_name, offset))
             tris.append(colors.face_indices)
             offset += 1
@@ -238,39 +265,48 @@ class Dae:
             tris.append(texcoord.face_indices)
             offset += 1
         data = np.stack(tris, -1).flatten()
-        tri_data = XMLNode('p', ' '.join(data), parent=triangles)
+        tri_data = XMLNode('p', ' '.join([str(x) for x in data]), parent=triangles)
         vert_node = XMLNode('vertices', id=name + '-VERTEX', parent=mesh, xml=self.xml)
         input_node = self.__create_input_node('POSITION', name + '-POSITION')
         vert_node.add_child(input_node)
+        mesh.add_child(triangles)
         return geo_xml
 
-    def __try_get_texture(self, xml_node):
-        texture = xml_node['texture']
+    @staticmethod
+    def get_element_by_sid(sid, containing_element):
+        for x in containing_element:
+            if x.attributes['sid'] == sid:
+                return x
+
+    def __try_get_texture(self, map_xml_node, profile_common):
+        if map_xml_node is None:
+            return map_xml_node
+        texture = map_xml_node['texture']
         if texture:
-            return self.get_element_by_id(texture.attributes['texture'])['init_from']
+            id = texture.attributes['texture']
+            image = self.get_element_by_id(id)
+            if not image:
+                sampler = self.get_element_by_sid(id, profile_common)
+                image = self.get_referenced_element(sampler['sampler2D']['instance_image'], 'url')
+            init_from = image['init_from']
+            image_path = init_from.text
+            if not image_path:
+                image_path = init_from.children[0].text
+            return image_path
 
     def decode_material(self, material_xml):
         effect = self.get_referenced_element(material_xml['instance_effect'], 'url')
-        shader = effect['profile_COMMON']['technique'].children[0]
-        diffuse = self.__try_get_texture(shader['diffuse'])
-        ambient = self.__try_get_texture(shader['ambient'])
-        specular = self.__try_get_texture(shader['specular'])
-        transparency = float(shader['transparency']['float'])
+        profile_common = effect['profile_COMMON']
+        shader = profile_common['technique'].children[0]
+        diffuse = self.__try_get_texture(shader['diffuse'], profile_common)
+        ambient = self.__try_get_texture(shader['ambient'], profile_common)
+        specular = self.__try_get_texture(shader['specular'], profile_common)
+        transparency = 0
+        transparency_node = shader['transparency']
+        if transparency_node:
+            transparency = float(transparency_node['float'].text)
         material = Material(material_xml.attributes['id'], diffuse, ambient, specular, transparency)
         return material
-
-    def get_images(self):
-        images = {}
-        for x in self.images:
-            name = x.get_name()
-            if not name:
-                name = x.get_id()
-            init = x['init_from']
-            path = init.text
-            if not path:
-                path = init.children[0].text
-            images[name] = path
-        return images
 
     def add_image(self, name, path):
         image = XMLNode('image', id=name + '-image', name=name, parent=self.images, xml=self.xml)
@@ -307,20 +343,27 @@ class Dae:
         shader.add_child(self.__get_default_shader_float('transparency', transparency))
         return material
 
-    def __initialize_libraries(self):
-        libraries = ('visual_scenes', 'controllers', 'images', 'effects',
-                     'materials', 'geometries')
-        root_children = self.xml.root.children
+    def __initialize_libraries(self, initial_name):
+        libraries = ('images', 'materials', 'effects',
+                     'geometries', 'controllers', 'visual_scenes')
+        root = self.xml.root
+        root_children = root.children
         for library in root_children:
             tag = library.tag
             if 'library' in tag:
                 self.__setattr__(tag.lstrip('library_'), library)
         for library in libraries:
-            if not self.__getattribute__(library):
+            if not hasattr(self, library):
                 node = XMLNode('library_' + library)
                 root_children.append(node)
                 self.__setattr__(library, node)
-        self.scene = self.scenes[0]
+        if initial_name:
+            self.scene = XMLNode('visual_scene', id=initial_name, name=initial_name, parent=self.visual_scenes)
+            scene = XMLNode('scene', parent=root)
+            instance_scene = XMLNode('instance_visual_scene', parent=scene)
+            instance_scene.attributes['url'] = '#' + initial_name
+        else:
+            self.scene = self.get_referenced_element(self.xml.root['scene']['instance_visual_scene'], 'url')
 
     @staticmethod
     def __initialize_assets(root):
@@ -350,7 +393,7 @@ class Dae:
     @staticmethod
     def __get_default_shader_color(name, iterable=(0.0, 0.0, 0.0, 1.0)):
         shader_color = XMLNode(name)
-        text = ' '.join(iterable)
+        text = ' '.join([str(x) for x in iterable])
         color = XMLNode('color', text)
         color.attributes['sid'] = name
         shader_color.add_child(color)
@@ -365,47 +408,45 @@ class Dae:
 
     @staticmethod
     def __create_source(name, data_collection, params):
-        technique_common = XMLNode('technique_common')
-        accessor = XMLNode('accessor')
+        source = XMLNode('source', id=name)
+        text = '\n'
+        for x in data_collection:
+            text += ' '.join([str(y) for y in x.flatten()]) + ' '
+        text += '\n'
+        source_array = XMLNode('float_array', text, id=name + '-array', parent=source)
+        technique_common = XMLNode('technique_common', parent=source)
+        accessor = XMLNode('accessor', parent=technique_common)
         accessor.attributes['source'] = '#' + name + '-array'
         point_len = len(data_collection)
         accessor.attributes['count'] = point_len
         stride = len(data_collection[0])
         accessor.attributes['stride'] = stride
         for letter in params:
-            param = XMLNode('param', name=letter)
+            param = XMLNode('param', name=letter, parent=accessor)
             param.attributes['type'] = 'float'
-            accessor.add_child(param)
-        source = XMLNode('source', id=name)
-        text = '\n'
-        for x in data_collection:
-            text += ' '.join(x) + '\n'
-        source_array = XMLNode('float_array', text, id=name + '-array')
         source_array.attributes['count'] = stride * point_len
-        source.add_child(source_array)
-        source.add_child(technique_common)
         return source
 
     @staticmethod
     def __create_input_node(semantic, source, offset=None, parent=None):
         node = XMLNode('input', parent=parent)
         node.attributes['semantic'] = semantic
-        if offset:
+        if offset is not None:
             node.attributes['offset'] = str(offset)
-        node.attributes['source'] = source
+        node.attributes['source'] = '#' + source
         return node
 
     def __decode_input(self, input, triangles):
         decoded_type = input.attributes['semantic']
         source = self.get_referenced_element(input, 'source')
         while source.tag != 'source':
-            source = self.get_referenced_element(input, 'source')
+            source = self.get_referenced_element(source['input'], 'source')
         accessor = source['technique_common']['accessor']
         stride = accessor.attributes['stride']
         float_array = self.get_referenced_element(accessor, 'source')
         points = np.array([float(x) for x in float_array.text.split()])
         if stride:
-            points.reshape((-1, int(stride)))
+            points = points.reshape((-1, int(stride)))
         offset = int(input.attributes['offset'])
         if decoded_type == 'COLOR':
             return decoded_type, ColorCollection(points, triangles[:, :, offset], normalize=True)

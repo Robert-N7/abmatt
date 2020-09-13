@@ -72,8 +72,8 @@ class Brres(Clipable):
             raise ValueError('Unknown key "{}"'.format(key))
 
     def import_model(self, file_path):
-        from converters.dae_convert import DaeConverter
-        converter = DaeConverter(self, file_path)
+        from converters.convert_dae import DaeConverter2
+        converter = DaeConverter2(self, file_path)
         converter.load_model()
 
     def add_mdl0(self, mdl0):
@@ -195,7 +195,7 @@ class Brres(Clipable):
             return None
         for x in self.OPEN_FILES:
             if x is not self:
-                tex = x.getTexture(name)
+                tex = x.getTexture(name, False)
                 if tex is not None:
                     return tex
 
@@ -211,9 +211,11 @@ class Brres(Clipable):
         for x in tex_map:
             self.add_tex0(tex_map[x])
 
-    def import_texture(self, image_path):
+    def import_texture(self, image_path, name=None):
         tex0 = ImgConverter().encode(image_path)
         if tex0:
+            if name:
+                tex0.name = name
             self.add_tex0(tex0)
         return tex0
 
@@ -225,9 +227,9 @@ class Brres(Clipable):
     def get_texture_map(self):
         return self.texture_map
 
-    def getTexture(self, name):
+    def getTexture(self, name, search_other_files=True):
         tex = self.get_texture_map().get(name)
-        if tex is None:
+        if tex is None and search_other_files:
             tex = self.findTexture(name)
             if tex:
                 self.add_tex0(tex)
