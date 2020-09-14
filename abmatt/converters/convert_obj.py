@@ -67,11 +67,11 @@ class ObjConverter(Converter):
 
     @staticmethod
     def decode_geometry(geometry, material_name):
-        geo = ObjGeometry(geometry['name'])
-        geo.material = material_name
-        geo.vertices = geometry['vertices']
-        geo.normals = geometry['normals']
-        texcoords = geometry['texcoords']
+        geo = ObjGeometry(geometry.name)
+        geo.material_name = material_name
+        geo.vertices = geometry.vertices
+        geo.normals = geometry.normals
+        texcoords = geometry.texcoords
         # if len(texcoords) > 1:
         #     print('WARN: Loss of UV data for {}.'.format(geo.name))
         geo.texcoords = texcoords[0]

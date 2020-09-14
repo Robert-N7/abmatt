@@ -77,6 +77,7 @@ class Brres(Clipable):
         converter.load_model()
 
     def add_mdl0(self, mdl0):
+        self.mark_modified()
         prev = self.getModel(mdl0.name)
         if prev:
             self.models.remove(prev)

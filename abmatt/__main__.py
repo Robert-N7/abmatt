@@ -122,11 +122,10 @@ class Shell(Cmd, object):
         return files
 
     @staticmethod
-    def construct_file_path(sel_words):
-        start_file = False
+    def construct_file_path(sel_words, start_file=False):
         path = None
         for x in sel_words:
-            if x == 'in':
+            if x in ('in', 'to'):
                 start_file = True
             elif x == 'model':
                 start_file = False
@@ -364,6 +363,14 @@ class Shell(Cmd, object):
     def help_clear(self):
         print('Clears the interactive shell command queue.')
 
+    def do_convert(self, line):
+        self.run('convert', line)
+
+    def complete_convert(self, text, line, begid, endid):
+        words = self.get_words(text, line)
+        possible = self.find_files(self.construct_file_path(words), text)
+        return possible
+
     def default(self, line):
         if line == 'x' or line == 'q':
             return self.do_quit(line)
@@ -378,16 +385,15 @@ def main():
     if not argv:
         print(USAGE)
         sys.exit(0)
-    try:
-        opts, args = getopt.getopt(argv, "a:hd:oc:t:k:v:n:b:m:f:iul:",
-                                   ["help", "destination=", "overwrite",
-                                    "command=", "type=", "key=", "value=",
-                                    "name=", "brres=", "model=", "file=", "interactive",
-                                    "auto-fix=", "loudness="])
-    except getopt.GetoptError as e:
-        print(e)
-        print(USAGE)
-        sys.exit(2)
+    cmd_string = ''
+    found_args = False
+    for i in range(len(argv)):
+        if argv[i][0] == '-':
+            if i > 0:
+                cmd_string = ' '.join(argv[0:i])
+                argv = argv[i:]
+            found_args = True
+            break
 
     interactive = overwrite = False
     type = ""
@@ -395,41 +401,57 @@ def main():
     autofix = loudness = None
     name = None
     do_help = False
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            do_help = True
-        elif opt in ('-b', '--brres'):
-            brres_file = arg
-        elif opt in ("-f", "--file"):
-            command_file = arg
-        elif opt in ("-d", "--destination"):
-            destination = arg
-        elif opt in ("-o", "--overwrite"):
-            overwrite = True
-        elif opt in ("-k", "--key"):
-            key = arg
-        elif opt in ("-v", "--value"):
-            value = arg
-        elif opt in ("-t", "--type"):
-            type = arg
-        elif opt in ("-n", "--name"):
-            name = arg
-        elif opt in ("-m", "--model"):
-            model = arg
-        elif opt in ("-c", "--command"):
-            command = arg
-        elif opt in ("-i", "--interactive"):
-            interactive = True
-        elif opt in ("-a", "--auto-fix"):
-            autofix = arg
-        elif opt in ("-l", "--loudness"):
-            loudness = arg
-        else:
-            print("Unknown option '{}'".format(opt))
+    if not found_args:
+        cmd_string = ' '.join(argv)
+    else:
+        try:
+            opts, args = getopt.getopt(argv, "hd:oc:t:k:v:n:b:m:f:iul:",
+                                       ["help", "destination=", "overwrite",
+                                        "command=", "type=", "key=", "value=",
+                                        "name=", "brres=", "model=", "file=", "interactive",
+                                         "loudness="])
+        except getopt.GetoptError as e:
+            print(e)
             print(USAGE)
             sys.exit(2)
 
+        for opt, arg in opts:
+            if opt in ("-h", "--help"):
+                do_help = True
+            elif opt in ('-b', '--brres'):
+                brres_file = arg
+            elif opt in ("-f", "--file"):
+                command_file = arg
+            elif opt in ("-d", "--destination"):
+                destination = arg
+            elif opt in ("-o", "--overwrite"):
+                overwrite = True
+            elif opt in ("-k", "--key"):
+                key = arg
+            elif opt in ("-v", "--value"):
+                value = arg
+            elif opt in ("-t", "--type"):
+                type = arg
+            elif opt in ("-n", "--name"):
+                name = arg
+            elif opt in ("-m", "--model"):
+                model = arg
+            elif opt in ("-c", "--command"):
+                command = arg
+            elif opt in ("-i", "--interactive"):
+                interactive = True
+            elif opt in ("-a", "--auto-fix"):
+                autofix = arg
+            elif opt in ("-l", "--loudness"):
+                loudness = arg
+            else:
+                print("Unknown option '{}'".format(opt))
+                print(USAGE)
+                sys.exit(2)
+
     if do_help:
+        if not command and cmd_string:
+            command = cmd_string.split()[0]
         hlp(command)
         sys.exit()
 
@@ -443,6 +465,8 @@ def main():
     config = load_config(app_dir, loudness, autofix)
     Command.APP_DIR = app_dir
     cmds = []
+    if cmd_string:
+        cmds.append(Command(cmd_string))
     if command:
         cmd = command + ' ' + type
         if key:
@@ -468,10 +492,10 @@ def main():
         except NoSuchFile as e:
             AUTO_FIXER.error(e)
             sys.exit(2)
-    elif command and (command != 'info' or key != 'keys' and type != 'keys'):
-        print('File is required to run commands')
-        print(USAGE)
-        sys.exit(2)
+    # elif command and (command != 'info' or key != 'keys' and type != 'keys'):
+    #     print('File is required to run commands')
+    #     print(USAGE)
+    #     sys.exit(2)
 
     if command_file:
         try:

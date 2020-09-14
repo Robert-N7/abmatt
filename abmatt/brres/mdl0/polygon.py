@@ -25,6 +25,8 @@ class Polygon(Node):
             return 'B'
         elif index_format == Polygon.INDEX_FORMAT_SHORT:
             return 'H'
+        elif index_format == Polygon.INDEX_FORMAT_DIRECT:
+            raise NotImplementedError('Index format direct is not supported')
         return ''
 
     def begin(self):

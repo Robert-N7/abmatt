@@ -106,23 +106,29 @@ def encode_polygon_data(polygon, vertex, normal, color, uvs, face_indices):
         polygon.color0_index_format = polygon.INDEX_FORMAT_NONE
         polygon.num_colors = 0
     polygon.num_tex = len(uvs)
-    for i in range(len(uvs)):
-        uv = uvs[i]
-        polygon.tex_coord_group_indices[i] = uv.index
-        polygon.tex_format[i] = uv.format
-        polygon.tex_divisor[i] = uv.divisor
-        if len(uv) > 0xff:
-            polygon.tex_index_format[i] = polygon.INDEX_FORMAT_SHORT
-            fmt_str += 'H'
-        else:
-            polygon.tex_index_format[i] = polygon.INDEX_FORMAT_BYTE
-            fmt_str += 'B'
+    if polygon.num_tex:
+        for i in range(len(uvs)):
+            uv = uvs[i]
+            polygon.tex_coord_group_indices[i] = uv.index
+            polygon.tex_format[i] = uv.format
+            polygon.tex_divisor[i] = uv.divisor
+            if len(uv) > 0xff:
+                polygon.tex_index_format[i] = polygon.INDEX_FORMAT_SHORT
+                fmt_str += 'H'
+            else:
+                polygon.tex_index_format[i] = polygon.INDEX_FORMAT_BYTE
+                fmt_str += 'B'
+    else:
+        polygon.tex_coord_group_indices[0] = -1
     triset = TriangleSet(face_indices)
+    if not triset:
+        return None
     data, polygon.face_count, polygon.facepoint_count = triset.get_tri_strips(fmt_str)
     past_align = len(data) % 32
     if past_align:
         data.extend(b'\0' * (32 - past_align))
     polygon.vt_data = data
+    return polygon
 
 
 def decode_tri_strip(decoder, decoder_byte_len, data, start_offset, num_facepoints, face_point_indices):
@@ -179,6 +185,7 @@ def decode_polygon(polygon):
             if tex_matrix_index < 0:
                 tex_matrix_index = geometry_index
             geometry_index += 1
+            raise Converter.ConvertError('{} texcoord matrix not supported'.format(polygon.name))
     vertex_index = geometry_index
     geometry_index += 1
     vertices = polygon.get_vertex_group()
@@ -303,9 +310,17 @@ def add_geometry(mdl0, name, vertices, normals, colors, tex_coord_groups):
     p = Polygon(name, mdl0)
     indices = np.stack(index_groups, axis=-1)
     indices[:, [0, 1]] = indices[:, [1, 0]]
-    encode_polygon_data(p, vert, normal, color, uvs, indices)
-    mdl0.add_to_group(mdl0.objects, p)
-    return p
+    if encode_polygon_data(p, vert, normal, color, uvs, indices):
+        mdl0.add_to_group(mdl0.objects, p)
+        return p
+    # cleanup
+    mdl0.vertices.pop(-1)
+    if normals:
+        mdl0.normals.pop(-1)
+    if colors:
+        mdl0.colors.pop(-1)
+    for x in tex_coord_groups:
+        mdl0.texCoords.pop(-1)
 
 
 def consolidate_point_collections(point_collections):
@@ -620,14 +635,27 @@ class Geometry:
         self.colors = colors
         self.material_name = material_name
 
+    def swap_y_z_axis(self):
+        # self.triangles[:, [1, 2]] = self.triangles[:, [2, 1]]
+        collections = [self.vertices, self.normals]
+        points = self.vertices.points
+        points[:, [1, 2]] = points[:, [2, 1]]
+        points[:, 2] *= -1
+        points = self.normals.points
+        points[:, [1, 2]] = points[:, [2, 1]]
+
+
     def encode(self, mdl, bone=None):
-        if not bone:
-            bone = mdl.bones[0]
         polygon = add_geometry(mdl, self.name, self.vertices, self.normals, self.colors, self.texcoords)
-        material = mdl.getMaterialByName(self.material_name)
-        mdl.add_definition(material, polygon, bone)
-        if self.colors:
-            material.enable_vertex_color()
+        if polygon:
+            if not bone:
+                if not mdl.bones:
+                    mdl.add_bone(mdl.name)
+                bone = mdl.bones[0]
+            material = mdl.getMaterialByName(self.material_name)
+            mdl.add_definition(material, polygon, bone)
+            if self.colors:
+                material.enable_vertex_color()
         return polygon
 
 
@@ -684,8 +712,9 @@ class Controller:
 def get_default_controller(geometry, bone_names):
     vert_len = len(geometry.vertices)
     bind_matrix = np.eye(4)
-    weights = np.full(vert_len + 1, 1.0, dtype=float)
-    weight_indices = np.stack((np.zeros(vert_len, dtype=int), np.arange(1, vert_len + 1, dtype=int)), -1)
+    weights = np.array([1])
+    weight_indices = np.full((vert_len, 2), 0, np.uint)
+    # weight_indices = np.stack((np.zeros(vert_len, dtype=int), np.arange(1, vert_len + 1, dtype=int)), -1)
     return Controller(geometry.name, bind_matrix, bone_names, weights,
                       np.full(vert_len, 1, dtype=int), weight_indices, geometry)
 

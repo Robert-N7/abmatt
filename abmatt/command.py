@@ -453,7 +453,6 @@ class Command:
             Command.OPEN_FILES[filename] = b
             Command.ACTIVE_FILES = [b]
             Command.MODELS = []
-            Command.MODELS = []
         return b
 
     @staticmethod

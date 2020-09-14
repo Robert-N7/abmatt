@@ -33,6 +33,9 @@ class TriangleSet:
             tris.append(Triangle(verts))
         self.triangles = tris
 
+    def __bool__(self):
+        return bool(self.triangles)
+
     def get_next(self, queue):
         try:
             start = queue.pop(0)

@@ -61,7 +61,7 @@ class ObjGeometry():
         self.name = name
         self.triangles = []
         self.texcoords = self.normals = self.vertices = None
-        self.material = None
+        self.material_name = None
         self.smooth = False
 
     @staticmethod

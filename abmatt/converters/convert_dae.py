@@ -2,15 +2,12 @@ import os
 import sys
 import time
 
-import collada
 import numpy as np
-from collada import source
-from collada.scene import ControllerNode, GeometryNode, Node, ExtraNode
 
 from brres.mdl0 import Mdl0
 from brres.tex0 import ImgConverter
 from converters.arg_parse import cmdline_convert
-from converters.convert_lib import add_geometry, PointCollection, ColorCollection, Converter, decode_polygon, \
+from converters.convert_lib import Converter, decode_polygon, \
     get_default_controller, Material
 from converters.dae import Dae, ColladaNode
 
@@ -29,7 +26,7 @@ class DaeConverter2(Converter):
             os.chdir(dir)  # change to the collada dir to help find relative paths
         print('INFO: Converting {}... '.format(self.mdl_file))
         start = time.time()
-        dae = Dae(model_file)
+        self.dae = dae = Dae(model_file)
         if not model_name:
             model_name = base_name.replace('_model', '')
         self.mdl = mdl = Mdl0(model_name, brres)
@@ -59,16 +56,16 @@ class DaeConverter2(Converter):
         self.texture_library = self.brres.get_texture_map()
         self.tex0_map = {}
         mesh = Dae(initial_scene_name=base_name)
-        # materials
-        for material in mdl0.materials:
-            mesh.add_material(self.__decode_material(material))
+        decoded_mats = [self.__decode_material(x) for x in mdl0.materials]
+        # images
+        self.__create_image_library(mesh)
         # polygons
         polygons = mdl0.objects
         mesh.add_node(self.__decode_bone(mdl0.bones[0]))
         for polygon in polygons:
             mesh.add_node(self.__decode_geometry(polygon))
-        # images
-        self.__create_image_library(mesh)
+        for mat in decoded_mats:
+            mesh.add_material(mat)
         os.chdir(cwd)
         mesh.write(self.mdl_file)
         print('\t...finished in {} seconds.'.format(round(time.time() - start, 2)))
@@ -89,8 +86,9 @@ class DaeConverter2(Converter):
     def __decode_geometry(polygon):
         name = polygon.name
         node = ColladaNode(name)
-        node.geometry = decode_polygon(polygon)
-        node.controller = get_default_controller(node.geometry, [polygon.get_bone().name])
+        geo = decode_polygon(polygon)
+        node.geometries.append(geo)
+        node.controller = get_default_controller(geo, [polygon.get_bone().name])
         return node
 
     def __decode_material(self, material):
@@ -128,6 +126,8 @@ class DaeConverter2(Converter):
         if controller.has_multiple_weights():
             raise self.ConvertError('ERROR: Multiple bone bindings not supported!')
         bone = self.bones[bones[0]]
+        if not self.dae.y_up:
+            controller.geometry.swap_y_z_axis()
         controller.geometry.encode(self.mdl, bone)
 
     def __add_bone(self, node, parent_bone=None):
@@ -141,8 +141,11 @@ class DaeConverter2(Converter):
         for node in nodes:
             if node.controller:
                 self.__parse_controller(node.controller)
-            elif node.geometry:
-                node.geometry.encode(self.mdl)
+            elif node.geometries:
+                for x in node.geometries:
+                    if not self.dae.y_up:
+                        x.swap_y_z_axis()
+                    x.encode(self.mdl)
             elif node.attributes.get('type') == 'JOINT':
                 self.__add_bone(node)
             self.__parse_nodes(node.nodes)

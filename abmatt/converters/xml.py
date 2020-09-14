@@ -181,7 +181,7 @@ class XMLNode:
     def get_referenced_id(self, attribute):
         attribute = self.attributes[attribute]
         if attribute:
-            return attribute.lstrip('#')
+            return attribute[1:]
 
     def get_elements_by_tag(self, tag):
         ret = []
