@@ -26,7 +26,7 @@ def main(argv):
     else:
         test_count = int(argv.pop(0))
     path = get_path('main')
-    params = ' -b ../../brres_files/beginner_course.brres -d ../../brres_files/test.brres'
+    params = ' -b ../../brres_files/beginner_course.brres -d ../../brres_files/test.brres -o'
     if not path:
         print('Failed to find abmatt!')
         sys.exit(1)

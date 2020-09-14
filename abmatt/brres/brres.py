@@ -90,6 +90,10 @@ class Brres(Clipable):
         for x in self.models:
             if x.name == name:
                 self.models.remove(x)
+                if x.srt0_collection:
+                    self.srt0.remove(x.srt0_collection)
+                if x.pat0_collection:
+                    self.pat0.remove(x.pat0_collection)
                 break
 
     def remove_mdl0_i(self, i):
@@ -308,7 +312,7 @@ class Brres(Clipable):
 
     def generate_pat0_collections(self, pat0_anims):
         model_anim_map = self.create_model_animation_map(pat0_anims)
-        # now create SRT Collection
+        # now create PAT0 Collection
         anim_collections = []
         for key in model_anim_map:
             collection = Pat0Collection(key, self, model_anim_map[key])

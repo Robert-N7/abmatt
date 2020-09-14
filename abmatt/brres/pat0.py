@@ -13,8 +13,9 @@ class Pat0Collection(Node):
 
     def __init__(self, name, parent, pats=None):
         self.collection = []
-        for x in pats:
-            self.collection.extend(x.mat_anims)
+        if pats:
+            for x in pats:
+                self.collection.extend(x.mat_anims)
         super().__init__(name, parent)
 
     def __getitem__(self, material_name):
@@ -367,7 +368,7 @@ class Pat0(SubFile):
         folder.unpack(binfile)
         while len(folder):
             name = folder.recallEntryI()
-            anim = Pat0MatAnimation(name, self.parent.get_texture_map(), self.framecount, self.loop).unpack(binfile)
+            anim = Pat0MatAnimation(name, self.parent, self.framecount, self.loop).unpack(binfile)
             self.mat_anims.append(anim)
         binfile.recall()  # section 1
         textures = []

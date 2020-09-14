@@ -4,6 +4,7 @@ from struct import pack, unpack, unpack_from
 
 import numpy as np
 
+from brres.lib.autofix import AUTO_FIXER
 from brres.mdl0.color import Color
 from brres.mdl0.normal import Normal
 from brres.mdl0.polygon import Polygon
@@ -21,6 +22,14 @@ class Converter:
 
     class ConvertError(Exception):
         pass
+
+    @staticmethod
+    def get_mdl0_name(brres_name, model_name):
+        common_models = ('course', 'map', 'vrcorn')
+        for x in common_models:
+            if x in brres_name or x in model_name:
+                return x
+        return model_name
 
     @staticmethod
     def set_bone_matrix(bone, matrix):
@@ -53,7 +62,7 @@ class Converter:
                 try:
                     brres.import_texture(image_path, layer_name)
                 except EncodeError:
-                    print('WARN: Failed to encode image {}'.format(image_path))
+                    AUTO_FIXER.warn('WARN: Failed to encode image {}'.format(image_path))
         return layer_name
 
     def __init__(self, brres, mdl_file, flags=0):

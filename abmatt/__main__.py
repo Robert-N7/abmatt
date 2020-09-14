@@ -21,23 +21,25 @@ from command import Command, ParsingException, NoSuchFile
 from brres.lib.autofix import AUTO_FIXER
 
 VERSION = '0.7.0'
-USAGE = "USAGE: abmatt [-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]"
+USAGE = "USAGE: abmatt [command_line][-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]"
 
 
 def hlp(cmd=None):
-    cmd_help = {'set': Shell.help_set, 'info': Shell.help_info, 'add': Shell.help_add, 'remove': Shell.help_remove,
-                'select': Shell.help_select, 'preset': Shell.help_preset, 'save': Shell.help_save,
-                'copy': Shell.help_copy, 'paste': Shell.help_paste}
-    help_fptr = cmd_help.get(cmd)
-    if help_fptr:
-        help_fptr(None)
-        return
     """ displays help message """
+    if cmd:
+        cmd_help = {'set': Shell.help_set, 'info': Shell.help_info, 'add': Shell.help_add, 'remove': Shell.help_remove,
+                    'select': Shell.help_select, 'preset': Shell.help_preset, 'save': Shell.help_save,
+                    'copy': Shell.help_copy, 'paste': Shell.help_paste, 'convert':Shell.help_convert}
+        help_fptr = cmd_help.get(cmd)
+        if help_fptr:
+            help_fptr(None)
+            return
+        print('Unknown command {}'.format(cmd))
     helpstr = '''
 ====================================================================================
 ANOOB'S BRRES MATERIAL TOOL
 Version {}
-commands = set | info | add | remove | select | preset | save | copy | paste
+commands = set | info | add | remove | select | preset | save | copy | paste | convert
 type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id]
     | 'srt0' | 'srt0layer' [':' id] | 'pat0'
     | 'mdl0' | 'brres';
@@ -370,6 +372,9 @@ class Shell(Cmd, object):
         words = self.get_words(text, line)
         possible = self.find_files(self.construct_file_path(words), text)
         return possible
+
+    def help_convert(self):
+        print('Converts dae or obj model to/from brres.\nUsage: convert <filename> [to <destination>]')
 
     def default(self, line):
         if line == 'x' or line == 'q':

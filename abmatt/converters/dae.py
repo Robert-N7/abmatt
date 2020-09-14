@@ -2,6 +2,7 @@ from datetime import datetime
 
 import numpy as np
 
+from brres.lib.autofix import AUTO_FIXER
 from converters.convert_lib import Geometry, PointCollection, ColorCollection, Material, Controller, scaleMatrix
 from converters.xml import XML, XMLNode
 
@@ -92,7 +93,7 @@ class Dae:
                 matrix = node.get_matrix()
                 scaleMatrix(matrix, [float(x) for x in child.text.split()])
             elif child.tag == 'rotation':
-                print('WARN: rotation transformation not supported for {}'.format(node.name))
+                AUTO_FIXER.warn('WARN: rotation transformation not supported for {}'.format(node.name))
             elif child.tag == 'transformation':
                 matrix = node.get_matrix()
                 transform = [float(x) for x in child.text.split()]
@@ -402,10 +403,11 @@ class Dae:
                 root_children.append(node)
                 self.__setattr__(library, node)
         if initial_name:
-            self.scene = XMLNode('visual_scene', id=initial_name, name=initial_name, parent=self.visual_scenes)
+            scene_id = initial_name + '-scene'
+            self.scene = XMLNode('visual_scene', id=scene_id, name=initial_name, parent=self.visual_scenes)
             scene = XMLNode('scene', parent=root)
             instance_scene = XMLNode('instance_visual_scene', parent=scene)
-            instance_scene.attributes['url'] = '#' + initial_name
+            instance_scene.attributes['url'] = '#' + scene_id
         else:
             self.scene = self.get_referenced_element(self.xml.root['scene']['instance_visual_scene'], 'url')
 

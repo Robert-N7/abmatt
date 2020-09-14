@@ -76,9 +76,9 @@ class ShaderList:
                 AUTO_FIXER.info('Removing unlinked shader {}'.format(name))
                 continue
             if binfile.offset not in offsets:
+                offset_ref = binfile.offset
                 d = Shader(name, self, binfile)
-                offsets[binfile.offset] = d
-
+                offsets[offset_ref] = d
             else:
                 d = Shader(name, self)
                 d.paste(offsets[binfile.offset])

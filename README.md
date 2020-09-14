@@ -1,5 +1,5 @@
 # ANoobs Brres Material Tool (ABMatt)
-This command line tool is for editing materials in _Brres_ files in _Mario Kart Wii_. 
+This command line tool is for converting and editing *Brres* files in *Mario Kart Wii*. 
 
 ## Installation
 Download compiled [releases](https://github.com/Robert-N7/abmatt/releases) for Linux and Windows, and follow the install.txt instructions.
@@ -10,11 +10,20 @@ cd abmatt
 python setup.py install
 ```
 
+## Dependencies
+ABMatt uses [Wiimm's Image Tool](https://szs.wiimm.de/download.html) which must be installed on your system path.
+
+
 ## Modes
-ABMatt can be used 
-* for quick command line edits, 
-* running commands from file, and/or 
-* running commands in interactive *shell* mode.
+ABMatt can be used in three ways.
+* Run command from command line. 
+* Run a series of commands from file. 
+* Run commands in interactive *shell* mode.
+
+## Converting Capabilities
+ABMatt supports converting to and from:
+* Wavefront OBJ
+* Collada DAE
 
 ## Editing Capabilities
 ABMatt supports editing the following types:
@@ -24,11 +33,12 @@ ABMatt supports editing the following types:
 * stages
 * pat0
 * srt0
-
+* tex0
 
 ## Command Line Usage
+ABMatt supports a command line (see [FileFormat](##FileFormat)) followed by options.
 ```
-abmatt [-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]
+abmatt [command_line][-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]
 ```
 | Flag |Expanded| Description |
 |---|---|---|
@@ -56,6 +66,17 @@ This next command would enable xlu for all materials starting with the prefix xl
 abmatt -b course_model.brres -o -n xlu.* -k xlu -v true
 ```
 
+### Examples
+Example file commands:
+```
+convert course_model.obj                    # Converts obj to brres 
+set xlu:true for xlu.* in model course      # Sets all materials in course starting with xlu to transparent
+set scale:(1,1) for *                       # Sets the scale for all layers to 1,1
+info layer:ef_arrowGradS                    # Prints information about the layer 'ef_arrowGradS'
+add tex0:ef_arrowGradS.png ia8              # Adds the image 'ef_arrowGradS.png' as a tex0 in ia8 format
+```
+
+
 ## File Format
 ABMatt supports reading in commands from files or in interactive mode which have a specified extended BNF format.
 Parameters are delimited by spaces except where a ':' or ',' is specified. Case is insensitive for commands, keys, and values.
@@ -64,16 +85,17 @@ line = begin_preset | command;
 begin_preset = '[' <preset_name> ']' EOL; 
 
 command =  cmd-prefix ['for' selection] EOL;
-cmd-prefix = set | info | add | remove | select | preset | save | copy | paste;
+cmd-prefix = set | info | add | remove | select | preset | save | copy | paste | convert;
 set   = 'set' type setting;
 info  = 'info' type [key | 'keys'];
 add   = 'add' type;
 remove = 'remove' type;
-select = 'select' selection;    Note: does not support 'for' selection clause
+select = 'select' selection;
 preset = 'preset' preset_name;
 save = 'save' [filename] ['as' destination] ['overwrite']
 copy = 'copy' type;
 paste = 'paste' type;
+convert = 'convert' filename ['to' destination]
 
 selection = name ['in' container]
 container = ['brres' filename] ['model' name];
@@ -215,25 +237,17 @@ tex0-format = 'cmpr' | 'c14x2' | 'c8' | 'c4' | 'rgba32' | 'rgb5a3' | 'rgb565'
             | 'ia8' | 'ia4' | 'i8' | 'i4';
 ```
 
-### Example File Commands
-Example file commands:
-```
-set xlu:true for xlu.* in model course      # Sets all materials in course starting with xlu to transparent
-set scale:(1,1) for *                 # Sets the scale for all layers to 1,1
-info layer:ef_arrowGradS        # Prints information about the layer 'ef_arrowGradS'
-```
-
 ### Presets
 Presets are a way of grouping commands together. They can be defined in `presets.txt` or in command files.
 Presets begin with `[<preset_name>]` and include all commands until another preset is encountered or end of file. 
-An empty preset `[]` can be used to stop preset parsing. An example preset is given named 'my_preset'.
+An empty preset `[]` can be used to stop preset parsing.
 ```
 [my_preset]
 set material xlu:True
 set layer scale:(1,1)
 set layer mapmode:linear_mipmap_linear
 ```
-Calling the preset:
+To call the preset:
 `preset my_preset for my_material_name`
 
 ### Copy/Paste

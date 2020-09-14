@@ -277,9 +277,9 @@ class Mdl0(SubFile):
                     b.resolve()
 
     def add_pat0(self, material):
-        anim = Pat0MatAnimation(material.name, self.parent.get_texture_map())
         if not self.pat0_collection:
             self.pat0_collection = self.parent.add_pat0_collection(Pat0Collection(self.name, self.parent))
+        anim = Pat0MatAnimation(material.name, self.parent)
         self.pat0_collection.add(anim)
         return anim
 

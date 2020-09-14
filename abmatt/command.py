@@ -687,9 +687,7 @@ class Command:
                 if not is_tex0:
                     raise ParsingException(self.txt, 'ext {} not supported.'.format(ext))
             if is_mdl:
-                mdl = self.import_model(file)
-                for x in self.SELECTED:
-                    x.add_mdl0(mdl)
+                self.import_model(file)
             else:
                 tex0 = self.import_texture(file, converted_format)
                 if tex0:
@@ -697,7 +695,16 @@ class Command:
                         x.add_tex0(tex0)
 
     def import_model(self, file):
-        raise NotImplementedError('Not implemented')  # todo
+        try:
+            self.ext = os.path.splitext(os.path.basename(file))[1].lower()
+        except IndexError:
+            raise ParsingException('Unknown model format {}'.format(file))
+        self.name = file
+        self.is_import = True
+        self.flags = 0
+        self.destination = None
+        self.run_convert()
+
 
     def import_texture(self, file, tex_format=None):
         try:
@@ -766,7 +773,7 @@ class Command:
             raise ParsingException('Unknown conversion format {}'.format(self.ext))
         active_files = self.ACTIVE_FILES
         if not self.name:
-            files = [x.name for x in self.ACTIVE_FILES]
+            files = [x.name for x in active_files]
         else:
             files = self.getFiles(self.name)
         if not files:
@@ -775,7 +782,7 @@ class Command:
         if self.is_import:
             if not self.destination:
                 if active_files and not multiple_files:
-                    brres = self.ACTIVE_FILES[0]
+                    brres = active_files[0]
                 else:
                     brres = None
             else:
@@ -898,11 +905,7 @@ class Command:
                         for x in self.SELECTED:
                             x.add_tex0(tex)
             elif self.type == 'mdl0':
-                files = self.getFiles(type_id)
-                for file in files:
-                    mdl = self.import_model(file)
-                    for x in self.SELECTED:
-                        x.add_mdl0(mdl)
+                self.import_model(type_id)
         else:
             raise ParsingException(self.txt, 'command "Add" not supported for type {}'.format(type))
 

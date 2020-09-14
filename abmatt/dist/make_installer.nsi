@@ -41,9 +41,11 @@ SectionEnd
 
 # Function that calls a messagebox when installation finished correctly
 Function .onInstSuccess
-  MessageBox MB_OK "Success! Start by using 'abmatt' from the command line."
+  # MessageBox MB_OK "Success! Start by using 'abmatt' from the command line."
+  Quit
 FunctionEnd
 
 Function un.onUninstSuccess
   MessageBox MB_OK "Abmatt has been removed."
+  Quit
 FunctionEnd

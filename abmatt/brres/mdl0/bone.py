@@ -22,8 +22,8 @@ class Bone(Node):
         self.maximum = (0, 0, 0)
         self.b_parent = self.child = self.next = self.prev = None
         self.part2 = 0
-        self.transform_matrix = self.identity_matrix
-        self.inverse_matrix = self.identity_matrix
+        self.transform_matrix = [[y for y in x] for x in self.identity_matrix]
+        self.inverse_matrix = [[y for y in x] for x in self.identity_matrix]
 
     def get_transform_matrix(self):
         matrix = [[y for y in x] for x in self.transform_matrix]

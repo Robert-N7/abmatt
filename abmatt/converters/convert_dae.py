@@ -4,6 +4,7 @@ import time
 
 import numpy as np
 
+from brres.lib.autofix import AUTO_FIXER
 from brres.mdl0 import Mdl0
 from brres.tex0 import ImgConverter
 from converters.arg_parse import cmdline_convert
@@ -19,16 +20,17 @@ class DaeConverter2(Converter):
         model_file = self.mdl_file
         cwd = os.getcwd()
         self.bones = {}
-        dir, name = os.path.split(brres.name)
-        base_name = os.path.splitext(name)[0]
-        self.is_map = True if 'map' in name else False
+        brres_dir, brres_name = os.path.split(brres.name)
+        base_name = os.path.splitext(brres_name)[0]
+        self.is_map = True if 'map' in base_name else False
+        dir, name = os.path.split(model_file)
         if dir:
             os.chdir(dir)  # change to the collada dir to help find relative paths
-        print('INFO: Converting {}... '.format(self.mdl_file))
+        AUTO_FIXER.info('Converting {}... '.format(self.mdl_file))
         start = time.time()
-        self.dae = dae = Dae(model_file)
+        self.dae = dae = Dae(name)
         if not model_name:
-            model_name = base_name.replace('_model', '')
+            model_name = self.get_mdl0_name(base_name, name)
         self.mdl = mdl = Mdl0(model_name, brres)
         self.__parse_images(dae.get_images(), brres)
         self.__parse_materials(dae.get_materials())
@@ -39,11 +41,11 @@ class DaeConverter2(Converter):
         if self.is_map:
             mdl.add_map_bones()
         os.chdir(cwd)
-        print('\t... finished in {} secs'.format(round(time.time() - start, 2)))
+        AUTO_FIXER.info('\t... finished in {} secs'.format(round(time.time() - start, 2)))
         return mdl
 
     def save_model(self, mdl0=None):
-        print('INFO: Exporting to {}...'.format(self.mdl_file))
+        AUTO_FIXER.info('Exporting to {}...'.format(self.mdl_file))
         start = time.time()
         if not mdl0:
             mdl0 = self.brres.models[0]
@@ -68,7 +70,7 @@ class DaeConverter2(Converter):
             mesh.add_material(mat)
         os.chdir(cwd)
         mesh.write(self.mdl_file)
-        print('\t...finished in {} seconds.'.format(round(time.time() - start, 2)))
+        AUTO_FIXER.info('\t...finished in {} seconds.'.format(round(time.time() - start, 2)))
 
     def __decode_bone(self, mdl0_bone, collada_parent=None):
         name = mdl0_bone.name
@@ -117,7 +119,7 @@ class DaeConverter2(Converter):
                 tex, path = self.tex0_map[image_name]
                 mesh.add_image(image_name, path)
                 if not tex:
-                    print('WARN: Missing texture {}'.format(image_name))
+                    AUTO_FIXER.warn('Missing texture {}'.format(image_name))
                     continue
                 converter.decode(tex, image_name + '.png')
 
@@ -161,7 +163,8 @@ class DaeConverter2(Converter):
             path = images[image]
             image_path_map[path] = self.try_import_texture(brres, path)
         if not brres.textures and len(images):
-            print('ERROR: No textures found!')
+            AUTO_FIXER.error('No textures found!')
+
 
 def main():
     cmdline_convert(sys.argv[1:], '.dae', DaeConverter2)

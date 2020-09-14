@@ -5,6 +5,7 @@ import time
 import numpy as np
 
 from brres import Brres
+from brres.lib.autofix import AUTO_FIXER
 from brres.mdl0 import Mdl0
 from brres.mdl0.material import Material
 from brres.tex0 import ImgConverter
@@ -35,17 +36,18 @@ class ObjConverter(Converter):
         model_file = self.mdl_file
         brres = self.brres
         cwd = os.getcwd()
-        dir, name = os.path.split(brres.name)
+        brres_dir, name = os.path.split(brres.name)
         base_name = os.path.splitext(name)[0]
-        self.is_map = True if 'map' in name else False
-        os.chdir(dir)  # change to the collada dir to help find relative paths
-        print('Converting {}... '.format(model_file))
-        start = time.time()
+        self.is_map = True if 'map' in base_name else False
+        dir, name = os.path.split(model_file)
         if not model_name:
-            model_name = base_name.replace('_model', '')
+            model_name = self.get_mdl0_name(base_name, name)
+        os.chdir(dir)  # change to the collada dir to help find relative paths
+        AUTO_FIXER.info('Converting {}... '.format(model_file))
+        start = time.time()
         self.mdl = mdl = Mdl0(model_name, brres)
         bone = mdl.add_bone(base_name)
-        obj = Obj(model_file)
+        obj = Obj(name)
         # add images
         for image in obj.images:
             self.try_import_texture(brres, image)
@@ -62,7 +64,7 @@ class ObjConverter(Converter):
         if self.is_map:
             mdl.add_map_bones()
         os.chdir(cwd)
-        print('\t... Finished in {} secs'.format(round(time.time() - start, 2)))
+        AUTO_FIXER.info('\t... Finished in {} secs'.format(round(time.time() - start, 2)))
         return mdl
 
     @staticmethod
@@ -102,7 +104,7 @@ class ObjConverter(Converter):
         return mat
 
     def save_model(self, mdl0=None):
-        print('INFO: Exporting to {}...'.format(self.mdl_file))
+        AUTO_FIXER.info('INFO: Exporting to {}...'.format(self.mdl_file))
         start = time.time()
         dir, name = os.path.split(self.mdl_file)
         base_name, ext = os.path.splitext(name)
@@ -137,7 +139,7 @@ class ObjConverter(Converter):
                 ImgConverter().decode(tex0, destination)
             os.chdir(tmp)
         obj.save()
-        print('\t...finished in {} seconds.'.format(round(time.time() - start, 2)))
+        AUTO_FIXER.info('\t...finished in {} seconds.'.format(round(time.time() - start, 2)))
 
 
 def main():
