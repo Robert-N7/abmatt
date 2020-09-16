@@ -12,7 +12,7 @@
     <option name="ADD_CONTENT_ROOTS" value="true" />
     <option name="ADD_SOURCE_ROOTS" value="true" />
     <option name="SCRIPT_NAME" value="$PROJECT_DIR$/abmatt/__main__.py" />
-    <option name="PARAMETERS" value="add mdl0:../test_files/beginner_course.dae in ../brres_files/beginner_course.brres -d ../brres_files/test.brres -o" />
+    <option name="PARAMETERS" value="convert C:\Users\rober\Desktop\bll\test.d\course_model.dae to C:\Users\rober\Desktop\bll\test.d\course_model.brres -o" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="true" />
     <option name="MODULE_MODE" value="false" />

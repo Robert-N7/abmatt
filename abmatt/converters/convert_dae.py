@@ -4,13 +4,13 @@ import time
 
 import numpy as np
 
-from brres.lib.autofix import AUTO_FIXER
-from brres.mdl0 import Mdl0
-from brres.tex0 import ImgConverter
-from converters.arg_parse import cmdline_convert
-from converters.convert_lib import Converter, decode_polygon, \
+from abmatt.brres.lib.autofix import AUTO_FIXER
+from abmatt.brres.mdl0 import Mdl0
+from abmatt.brres.tex0 import ImgConverter
+from abmatt.converters.arg_parse import cmdline_convert
+from abmatt.converters.convert_lib import Converter, decode_polygon, \
     get_default_controller, Material
-from converters.dae import Dae, ColladaNode
+from abmatt.converters.dae import Dae, ColladaNode
 
 
 class DaeConverter2(Converter):
@@ -84,11 +84,14 @@ class DaeConverter2(Converter):
             self.__decode_bone(mdl0_bone.next, collada_parent)
         return node
 
-    @staticmethod
-    def __decode_geometry(polygon):
+    def __decode_geometry(self, polygon):
         name = polygon.name
         node = ColladaNode(name)
         geo = decode_polygon(polygon)
+        if geo.colors and self.flags & self.NoColors:
+            geo.colors = None
+        if geo.normals and self.flags & self.NoNormals:
+            geo.normals = None
         node.geometries.append(geo)
         node.controller = get_default_controller(geo, [polygon.get_bone().name])
         return node
@@ -128,9 +131,16 @@ class DaeConverter2(Converter):
         if controller.has_multiple_weights():
             raise self.ConvertError('ERROR: Multiple bone bindings not supported!')
         bone = self.bones[bones[0]]
+        self.__encode_geometry(controller.geometry, bone)
+
+    def __encode_geometry(self, geometry, bone=None):
         if not self.dae.y_up:
-            controller.geometry.swap_y_z_axis()
-        controller.geometry.encode(self.mdl, bone)
+            geometry.swap_y_z_axis()
+        if self.flags & self.NoColors:
+            geometry.colors = None
+        if self.flags & self.NoNormals:
+            geometry.normals = None
+        geometry.encode(self.mdl, bone)
 
     def __add_bone(self, node, parent_bone=None):
         name = node.attributes['id']
@@ -145,9 +155,7 @@ class DaeConverter2(Converter):
                 self.__parse_controller(node.controller)
             elif node.geometries:
                 for x in node.geometries:
-                    if not self.dae.y_up:
-                        x.swap_y_z_axis()
-                    x.encode(self.mdl)
+                    self.__encode_geometry(x)
             elif node.attributes.get('type') == 'JOINT':
                 self.__add_bone(node)
             self.__parse_nodes(node.nodes)

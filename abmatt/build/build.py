@@ -103,10 +103,12 @@ def build(name, build_type, interpreter, platform):
     for x in os.listdir():
         if x.endswith('.pyc'):
             os.remove(x)
-    if build_type == 'auto':
-        output_type = '--onedir' if platform == 'windows' else 'onefile'
+    if 'dir' in build_type:
+        output_type = '--onedir'
+    elif 'file' in build_type:
+        output_type = '--onefile'
     else:
-        output_type = '--' + build_type
+        output_type = '--onedir' if platform == 'windows' else 'onefile'
     is_dir = True if 'onedir' in output_type else False
     params = '-y __main__.py -p ../../venv/Lib/site-packages --name ' + name + ' ' + output_type
     result = os.system(interpreter + ' -m PyInstaller ' + params)

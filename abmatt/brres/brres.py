@@ -5,18 +5,18 @@
 import os
 import string
 
-from brres.lib.autofix import AUTO_FIXER, Bug
-from brres.lib.binfile import BinFile, Folder, UnpackingError
-from brres.chr0 import Chr0
-from brres.clr0 import Clr0
-from brres.lib.matching import MATCHING
-from brres.lib.node import Clipable
-from brres.mdl0 import Mdl0
-from brres.pat0 import Pat0, Pat0Collection
-from brres.scn0 import Scn0
-from brres.shp0 import Shp0
-from brres.srt0 import Srt0, SRTCollection
-from brres.tex0 import Tex0, ImgConverter
+from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
+from abmatt.brres.lib.binfile import BinFile, Folder, UnpackingError
+from abmatt.brres.chr0 import Chr0
+from abmatt.brres.clr0 import Clr0
+from abmatt.brres.lib.matching import MATCHING
+from abmatt.brres.lib.node import Clipable
+from abmatt.brres.mdl0 import Mdl0
+from abmatt.brres.pat0 import Pat0, Pat0Collection
+from abmatt.brres.scn0 import Scn0
+from abmatt.brres.shp0 import Shp0
+from abmatt.brres.srt0 import Srt0, SRTCollection
+from abmatt.brres.tex0 import Tex0, ImgConverter
 
 
 class Brres(Clipable):
@@ -80,7 +80,7 @@ class Brres(Clipable):
         self.mark_modified()
         prev = self.getModel(mdl0.name)
         if prev:
-            self.models.remove(prev)
+            self.remove_mdl0(mdl0.name)
             mdl0.paste(prev)
         self.models.append(mdl0)
         mdl0.link_parent(self)

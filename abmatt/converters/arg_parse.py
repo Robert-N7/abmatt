@@ -1,7 +1,7 @@
 import os
 import sys
 
-from brres import Brres
+from abmatt.brres import Brres
 
 
 class Path:

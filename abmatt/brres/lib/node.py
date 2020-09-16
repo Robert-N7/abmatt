@@ -1,8 +1,4 @@
-import os
 from copy import deepcopy
-
-from brres.lib.autofix import AUTO_FIXER
-from brres.lib.binfile import BinFile
 
 
 def get_item_by_index(group, index):

@@ -3,11 +3,11 @@
 # ------------------------------------------------------------------------
 from copy import deepcopy, copy
 
-from brres.lib.binfile import Folder
-from brres.lib.matching import *
-from brres.mdl0.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
-from brres.lib.autofix import AUTO_FIXER, Bug
-from brres.lib.node import Clipable
+from abmatt.brres.lib.binfile import Folder
+from abmatt.brres.lib.matching import *
+from abmatt.brres.mdl0.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
+from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
+from abmatt.brres.lib.node import Clipable
 
 
 class ShaderList:

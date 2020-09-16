@@ -1,8 +1,8 @@
 """CLR0 BRRES SUBFILE"""
 from copy import deepcopy
 
-from brres.subfile import SubFile, get_anim_str, set_anim_str
-from brres.lib.binfile import Folder
+from abmatt.brres.subfile import SubFile, get_anim_str, set_anim_str
+from abmatt.brres.lib.binfile import Folder
 
 
 class Clr0Animation:
@@ -94,8 +94,8 @@ class Clr0(SubFile):
     SETTINGS = ('framecount', 'loop')
 
     def __init__(self, name, parent, binfile=None):
-        super(Clr0, self).__init__(name, parent, binfile)
         self.animations = []
+        super(Clr0, self).__init__(name, parent, binfile)
 
     def begin(self, initial_values=None):
         self.loop = True

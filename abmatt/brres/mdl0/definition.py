@@ -1,5 +1,5 @@
-from brres.lib.binfile import UnpackingError, printCollectionHex
-from brres.lib.node import Node
+from abmatt.brres.lib.binfile import UnpackingError, printCollectionHex
+from abmatt.brres.lib.node import Node
 
 
 class Definition(Node):

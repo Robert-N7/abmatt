@@ -3,19 +3,17 @@
 # ---------------------------------------------------------------------------
 import fnmatch
 import os
-from copy import deepcopy
 
-from brres.lib.binfile import UnpackingError
-from brres import Brres
-from brres.mdl0.layer import Layer
-from brres.lib.matching import validInt, MATCHING
-from brres.mdl0.material import Material
-from brres.mdl0 import Mdl0
-from brres.mdl0.shader import Shader, Stage
-from brres.pat0 import Pat0MatAnimation
-from brres.srt0 import SRTMatAnim, SRTTexAnim
-from brres.lib.autofix import AUTO_FIXER
-from brres.tex0 import Tex0, ImgConverter, EncodeError
+from abmatt.brres import Brres
+from abmatt.brres.lib.autofix import AUTO_FIXER
+from abmatt.brres.lib.matching import validInt, MATCHING
+from abmatt.brres.mdl0 import Mdl0
+from abmatt.brres.mdl0.layer import Layer
+from abmatt.brres.mdl0.material import Material
+from abmatt.brres.mdl0.shader import Shader, Stage
+from abmatt.brres.pat0 import Pat0MatAnimation
+from abmatt.brres.srt0 import SRTMatAnim, SRTTexAnim
+from abmatt.brres.tex0 import Tex0, ImgConverter, EncodeError
 
 
 def convert_file_ext(path, new_ext):
@@ -194,9 +192,9 @@ class Command:
                     self.destination = params.pop(0)
                 except IndexError:
                     raise ParsingException('Expected destination after "to"')
-            elif param in ('-n', '--no-normals'):
+            elif param == 'no-normals':
                 flags |= 1
-            elif param in ('-c', '--no-colors'):
+            elif param == 'no-colors':
                 flags |= 2
             elif not self.name:
                 self.name = param
@@ -764,10 +762,10 @@ class Command:
 
     def run_convert(self):
         if self.ext == '.dae':
-            from converters.convert_dae import DaeConverter2
+            from abmatt.converters.convert_dae import DaeConverter2
             klass = DaeConverter2
         elif self.ext == '.obj':
-            from converters.convert_obj import ObjConverter
+            from abmatt.converters.convert_obj import ObjConverter
             klass = ObjConverter
         else:
             raise ParsingException('Unknown conversion format {}'.format(self.ext))

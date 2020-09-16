@@ -3,8 +3,6 @@
 from struct import *
 import sys
 
-from brres.lib.autofix import AUTO_FIXER
-
 # which version?
 IS_PY3 = sys.version[0] == '3'
 
@@ -62,8 +60,8 @@ class BinFile:
             self.packNames()
         # write
         # print('Length of file is {}'.format(len(self.file)))
-        f = open(self.filename, "wb")
-        f.write(self.file)
+        with open(self.filename, "wb") as f:
+            f.write(self.file)
         return True
 
     def is_aligned(self, alignment=0x20):

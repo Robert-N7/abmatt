@@ -4,14 +4,13 @@ import time
 
 import numpy as np
 
-from brres import Brres
-from brres.lib.autofix import AUTO_FIXER
-from brres.mdl0 import Mdl0
-from brres.mdl0.material import Material
-from brres.tex0 import ImgConverter
-from converters.arg_parse import cmdline_convert
-from converters.convert_lib import Converter, add_geometry, decode_polygon
-from converters.obj import Obj, ObjGeometry, ObjMaterial
+from abmatt.brres.lib.autofix import AUTO_FIXER
+from abmatt.brres.mdl0 import Mdl0
+from abmatt.brres.mdl0.material import Material
+from abmatt.brres.tex0 import ImgConverter
+from abmatt.converters.arg_parse import cmdline_convert
+from abmatt.converters.convert_lib import Converter, add_geometry, decode_polygon
+from abmatt.converters.obj import Obj, ObjGeometry, ObjMaterial
 
 
 class ObjConverter(Converter):
@@ -104,7 +103,7 @@ class ObjConverter(Converter):
         return mat
 
     def save_model(self, mdl0=None):
-        AUTO_FIXER.info('INFO: Exporting to {}...'.format(self.mdl_file))
+        AUTO_FIXER.info('Exporting to {}...'.format(self.mdl_file))
         start = time.time()
         dir, name = os.path.split(self.mdl_file)
         base_name, ext = os.path.splitext(name)

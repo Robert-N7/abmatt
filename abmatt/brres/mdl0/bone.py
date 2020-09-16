@@ -1,7 +1,4 @@
-import math
-
-from brres.lib.binfile import UnpackingError
-from brres.lib.node import Node
+from abmatt.brres.lib.node import Node
 
 
 class Bone(Node):

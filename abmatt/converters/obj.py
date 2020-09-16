@@ -4,7 +4,7 @@ import re
 
 import numpy as np
 
-from converters.convert_lib import PointCollection
+from abmatt.converters.convert_lib import PointCollection
 
 
 class ObjMaterial:

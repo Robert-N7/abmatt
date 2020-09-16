@@ -1,1 +1,1 @@
-from brres.mdl0.mdl0 import Mdl0
+from abmatt.brres.mdl0.mdl0 import Mdl0

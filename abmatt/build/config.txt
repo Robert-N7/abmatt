@@ -1,0 +1,6 @@
+bit_width = x64     # x64 | x86
+version = 0.7.0
+build_name = main
+build_type = auto   # dir | file | auto
+64-bit = C:\Users\rober\AppData\Local\Programs\Python\Python38\python.exe
+32-bit = C:\Users\rober\AppData\Local\Programs\Python\Python38-32\python.exe

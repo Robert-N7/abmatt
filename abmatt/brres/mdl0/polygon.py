@@ -1,9 +1,7 @@
 """Objects (Polygons)"""
-from struct import pack
 
-from brres.lib.autofix import AUTO_FIXER
-from brres.lib.binfile import printCollectionHex
-from brres.lib.node import Node, get_item_by_index
+from abmatt.brres.lib.autofix import AUTO_FIXER
+from abmatt.brres.lib.node import Node, get_item_by_index
 
 
 class Polygon(Node):
