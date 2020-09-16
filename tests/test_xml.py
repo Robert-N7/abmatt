@@ -1,12 +1,12 @@
 import unittest
 
-from converters.xml import read_xml
+from converters.xml import XML
 
 
 class MyTestCase(unittest.TestCase):
 
     def test_something(self):
-        root = read_xml('../test_files/3ds_bll.DAE')
+        root = XML('../test_files/3ds_bll.DAE').root
         self.assertEqual(root.tag, 'COLLADA')
         self.assertTrue(root.children)
 

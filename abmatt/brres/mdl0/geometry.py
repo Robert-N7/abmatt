@@ -1,8 +1,5 @@
-from struct import unpack
-
-from brres.lib.autofix import AUTO_FIXER
-from brres.lib.binfile import printCollectionHex
-from brres.lib.node import Node
+from abmatt.brres.lib.autofix import AUTO_FIXER
+from abmatt.brres.lib.node import Node
 
 
 class Geometry(Node):

@@ -6,12 +6,12 @@
 import re
 from copy import deepcopy
 
-from brres.lib.matching import validBool, indexListItem, validInt, validFloat, splitKeyVal, MATCHING
-from brres.lib.node import Clipable
-from brres.mdl0.layer import Layer
-from brres.mdl0.shader import Shader
-from brres.mdl0.wiigraphics.matgx import MatGX
-from brres.lib.autofix import AUTO_FIXER
+from abmatt.brres.lib.matching import validBool, indexListItem, validInt, validFloat, splitKeyVal, MATCHING
+from abmatt.brres.lib.node import Clipable
+from abmatt.brres.mdl0.layer import Layer
+from abmatt.brres.mdl0.shader import Shader
+from abmatt.brres.mdl0.wiigraphics.matgx import MatGX
+from abmatt.brres.lib.autofix import AUTO_FIXER
 
 
 def parse_color(color_str):
@@ -852,8 +852,8 @@ class LightChannel:
         self.rasterAlphaEnabled = self.rasterColorEnabled = True
         self.materialColor = [128, 128, 128, 255]
         self.ambientColor = [0, 0, 0, 255]
-        self.colorLightControl = self.LightChannelControl(0x700)
-        self.alphaLightControl = self.LightChannelControl(0x700)
+        self.colorLightControl = self.LightChannelControl(0x701)
+        self.alphaLightControl = self.LightChannelControl(0x701)
 
     def __str__(self):
         return 'Flags:{:02X} Mat:{} Amb:{}\n\tColorControl: {}\n\tAlphaControl: {}'.format(self.flagsToInt(),

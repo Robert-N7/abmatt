@@ -1,8 +1,8 @@
 """SCN0 Subfile"""
 from copy import deepcopy
 
-from brres.subfile import SubFile, set_anim_str, get_anim_str
-from brres.lib.binfile import Folder
+from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
+from abmatt.brres.lib.binfile import Folder
 
 
 def unpack_header(binfile):

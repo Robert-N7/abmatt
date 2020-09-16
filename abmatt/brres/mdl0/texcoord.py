@@ -1,5 +1,4 @@
-from brres.lib.binfile import printCollectionHex
-from brres.mdl0.geometry import Geometry
+from abmatt.brres.mdl0.geometry import Geometry
 
 
 class TexCoord(Geometry):

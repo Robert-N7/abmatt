@@ -1,11 +1,11 @@
 """PAT0 Animations"""
 from copy import deepcopy
 
-from brres.subfile import SubFile, set_anim_str, get_anim_str
-from brres.lib.binfile import Folder
-from brres.lib.matching import validBool, validInt, validFloat, splitKeyVal, fuzzy_strings
-from brres.lib.node import Clipable, Node
-from brres.lib.autofix import AUTO_FIXER, Bug
+from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
+from abmatt.brres.lib.binfile import Folder
+from abmatt.brres.lib.matching import validBool, validInt, validFloat, splitKeyVal, fuzzy_strings
+from abmatt.brres.lib.node import Clipable, Node
+from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
 
 
 class Pat0Collection(Node):

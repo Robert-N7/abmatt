@@ -1,11 +1,11 @@
 """ Layer class """
 from copy import copy, deepcopy
 
-from brres.lib.matching import parseValStr, indexListItem, validBool, fuzzy_strings
-from brres.lib.node import Clipable
+from abmatt.brres.lib.matching import parseValStr, indexListItem, validBool, fuzzy_strings
+from abmatt.brres.lib.node import Clipable
 
-from brres.mdl0.wiigraphics.xf import XFTexMatrix, XFDualTex
-from brres.lib.autofix import Bug
+from abmatt.brres.mdl0.wiigraphics.xf import XFTexMatrix, XFDualTex
+from abmatt.brres.lib.autofix import Bug
 
 
 class Layer(Clipable):

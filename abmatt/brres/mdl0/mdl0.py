@@ -1,24 +1,23 @@
 """ MDL0 Models """
 # ----------------- Model sub files --------------------------------------------
 import math
-from copy import deepcopy
 
-from brres.lib.autofix import AUTO_FIXER, Bug
-from brres.lib.binfile import Folder, PackingError
-from brres.lib.node import Node, Clipable
-from brres.mdl0.color import Color
-from brres.mdl0.definition import DrawList, Definition, NodeTree
-from brres.lib.matching import fuzzy_match, MATCHING
-from brres.mdl0.material import Material
-from brres.mdl0.normal import Normal
-from brres.mdl0.texcoord import TexCoord
-from brres.mdl0.vertex import Vertex
-from brres.pat0 import Pat0MatAnimation, Pat0Collection
-from brres.mdl0.polygon import Polygon
-from brres.mdl0.shader import Shader, ShaderList
-from brres.srt0 import SRTMatAnim, SRTCollection
-from brres.subfile import SubFile
-from brres.mdl0.bone import Bone, BoneTable
+from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
+from abmatt.brres.lib.binfile import Folder, PackingError
+from abmatt.brres.lib.matching import fuzzy_match, MATCHING
+from abmatt.brres.lib.node import Node
+from abmatt.brres.mdl0.bone import Bone, BoneTable
+from abmatt.brres.mdl0.color import Color
+from abmatt.brres.mdl0.definition import DrawList, Definition, NodeTree
+from abmatt.brres.mdl0.material import Material
+from abmatt.brres.mdl0.normal import Normal
+from abmatt.brres.mdl0.polygon import Polygon
+from abmatt.brres.mdl0.shader import Shader, ShaderList
+from abmatt.brres.mdl0.texcoord import TexCoord
+from abmatt.brres.mdl0.vertex import Vertex
+from abmatt.brres.pat0 import Pat0MatAnimation, Pat0Collection
+from abmatt.brres.srt0 import SRTMatAnim, SRTCollection
+from abmatt.brres.subfile import SubFile
 
 
 class ModelGeneric(Node):

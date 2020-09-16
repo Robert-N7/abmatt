@@ -2,11 +2,11 @@
 from math import log
 import os
 
-from brres.lib.binfile import BinFile
-from brres.lib.matching import parseValStr, validInt, validFloat, validBool
-from brres.subfile import SubFile
-from brres.lib.autofix import AUTO_FIXER, Bug
-from config import Config
+from abmatt.brres.lib.binfile import BinFile
+from abmatt.brres.lib.matching import parseValStr, validInt, validFloat, validBool
+from abmatt.brres.subfile import SubFile
+from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
+from abmatt.config import Config
 
 
 class Tex0(SubFile):

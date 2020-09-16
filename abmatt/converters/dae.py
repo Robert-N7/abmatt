@@ -2,9 +2,9 @@ from datetime import datetime
 
 import numpy as np
 
-from brres.lib.autofix import AUTO_FIXER
-from converters.convert_lib import Geometry, PointCollection, ColorCollection, Material, Controller, scaleMatrix
-from converters.xml import XML, XMLNode
+from abmatt.brres.lib.autofix import AUTO_FIXER
+from abmatt.converters.convert_lib import Geometry, PointCollection, ColorCollection, Material, Controller, scaleMatrix
+from abmatt.converters.xml import XML, XMLNode
 
 
 class ColladaNode:

@@ -1,7 +1,4 @@
-from struct import pack
-
-from brres.lib.binfile import printCollectionHex
-from brres.lib.node import Node
+from abmatt.brres.lib.node import Node
 
 
 class Color(Node):

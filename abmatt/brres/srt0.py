@@ -2,11 +2,11 @@
 """ Srt0 Brres subfile """
 from copy import deepcopy, copy
 
-from brres.lib.binfile import Folder
-from brres.lib.matching import validInt, validBool, validFloat, splitKeyVal, MATCHING
-from brres.lib.node import Clipable, Node
-from brres.subfile import SubFile, set_anim_str, get_anim_str
-from brres.lib.autofix import Bug
+from abmatt.brres.lib.binfile import Folder
+from abmatt.brres.lib.matching import validInt, validBool, validFloat, splitKeyVal, MATCHING
+from abmatt.brres.lib.node import Clipable, Node
+from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
+from abmatt.brres.lib.autofix import Bug
 
 
 # ---------------------------------------------------------

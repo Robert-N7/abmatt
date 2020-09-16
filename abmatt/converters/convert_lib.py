@@ -4,15 +4,15 @@ from struct import pack, unpack, unpack_from
 
 import numpy as np
 
-from brres.lib.autofix import AUTO_FIXER
-from brres.mdl0.color import Color
-from brres.mdl0.normal import Normal
-from brres.mdl0.polygon import Polygon
-from brres.mdl0.texcoord import TexCoord
-from brres.mdl0.vertex import Vertex
-from brres.mdl0 import material
-from brres.tex0 import EncodeError
-from converters.triangle import TriangleSet
+from abmatt.brres.lib.autofix import AUTO_FIXER
+from abmatt.brres.mdl0.color import Color
+from abmatt.brres.mdl0.normal import Normal
+from abmatt.brres.mdl0.polygon import Polygon
+from abmatt.brres.mdl0.texcoord import TexCoord
+from abmatt.brres.mdl0.vertex import Vertex
+from abmatt.brres.mdl0 import material
+from abmatt.brres.tex0 import EncodeError
+from abmatt.converters.triangle import TriangleSet
 
 
 class Converter:
@@ -355,13 +355,17 @@ def consolidate_point_collections(point_collections):
 
 
 def consolidate_data(points, face_indices):
+    # First pass to detect missing points
+    indices_set = {x for x in face_indices.flatten()}
     point_index_map = {}  # maps points to index
     index_remapper = {}  # map original indexes to new
     new_index = 0
     new_points = []
     point_len = len(points)
-    # First consolidate and map point indices
+    # Next consolidate and map point indices
     for original_index in range(point_len):
+        if original_index not in indices_set:   # the point isn't used!
+            continue
         x = points[original_index]
         y = tuple(x)
         point_index = point_index_map.get(y)
@@ -375,7 +379,7 @@ def consolidate_data(points, face_indices):
     if len(new_points) >= point_len:  # No gain
         return points
     points = np.array(new_points, points.dtype)
-    # Next, update the face indices
+    # Finally, update the face indices
     face_height = len(face_indices)
     face_width = len(face_indices[0])
     for i in range(face_height):

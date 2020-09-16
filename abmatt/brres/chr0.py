@@ -1,9 +1,8 @@
 """CHR0 Subfile"""
 from copy import copy
 
-from brres.lib.matching import validInt, validBool
-from brres.subfile import SubFile, set_anim_str, get_anim_str
-from brres.lib.binfile import Folder
+from abmatt.brres.lib.binfile import Folder
+from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
 
 
 class Chr0(SubFile):
