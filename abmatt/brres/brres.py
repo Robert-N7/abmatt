@@ -120,9 +120,11 @@ class Brres(Clipable):
             return self.save(self.DESTINATION, self.OVERWRITE)
         return True
 
-    def save(self, filename, overwrite):
+    def save(self, filename=None, overwrite=None):
         if not filename:
             filename = self.name
+        if overwrite is None:
+            overwrite = self.OVERWRITE
             # if not self.isChanged():
             #     return
         if not overwrite and os.path.exists(filename):

@@ -1,25 +1,22 @@
 import sys
 
-from tests.integration.lib import abmatt_beginner
+from tests.integration.lib import abmatt_beginner, run_tests
 
 
-def test_add_mdl0():
-    if not abmatt_beginner('-c add -t mdl0:test_files/beginner_course.dae'):
-        print('test_add_mdl0 failed!')
-        return 1
-    return 0
+class TestMdl0:
+    def test_add_mdl0(self):
+        if not abmatt_beginner('-c add -t mdl0:test_files/beginner_course.dae'):
+            print('test_add_mdl0 failed!')
+            return 1
+        return 0
 
 
-def test_remove_mdl0():
-    if not abmatt_beginner('-c remove -t mdl0:course'):
-        print('test_remove_mdl0 failed!')
-        return 1
-    return 0
+    def test_remove_mdl0(self):
+        if not abmatt_beginner('-c remove -t mdl0:course'):
+            print('test_remove_mdl0 failed!')
+            return 1
+        return 0
 
 
 if __name__ == '__main__':
-    err_count = 0
-    err_count += test_add_mdl0()
-    err_count += test_remove_mdl0()
-    print('\t{} tests failed.'.format(err_count))
-    sys.exit(err_count)
+    sys.exit(run_tests(TestMdl0()))

@@ -32,13 +32,13 @@ class Polygon(Node):
         self.normal_index_format = self.INDEX_FORMAT_BYTE
         self.color0_index_format = self.INDEX_FORMAT_BYTE
         self.color1_index_format = self.INDEX_FORMAT_NONE
-        self.vertex_format = 0
+        self.vertex_format = 4
         self.has_pos_matrix = False
         self.has_tex_matrix = [False] * 8
         self.vertex_divisor = 0
-        self.normal_format = 0
-        self.color0_has_alpha = 0
-        self.color1_has_alpha = 0
+        self.normal_format = 4
+        self.color0_has_alpha = 5
+        self.color1_has_alpha = 5
         self.num_colors = 1
         self.normal_type = 0
         self.num_tex = 1

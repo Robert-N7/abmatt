@@ -368,6 +368,9 @@ class BinFile:
         if not ptr:
             return None
         offset = self.beginOffset + ptr
+        name = self.nameRefMap.get(offset)
+        if name:
+            return name
         [name_lens] = self.readOffset("I", offset - 4)
         if name_lens > 256:
             # For debugging
@@ -375,8 +378,8 @@ class BinFile:
             # print(data)
             raise UnpackingError(self, "Incorrect name offset".format(self.filename))
         else:
-            name = self.readOffset(str(name_lens) + "s", offset)
-            return name[0].decode()
+            self.nameRefMap[offset] = name = self.readOffset(str(name_lens) + "s", offset)[0].decode()
+            return name
 
     def storeNameRef(self, name, is_encoded=False):
         """ Stores a name reference offset to be filled when packing names

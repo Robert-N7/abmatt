@@ -8,3 +8,4 @@ pycollada~=0.7.1
 numpy~=1.19.1
 
 pyinstaller~=4.0
+ifilter~=0.2
