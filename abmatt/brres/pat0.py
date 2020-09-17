@@ -2,7 +2,7 @@
 from copy import deepcopy
 
 from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
-from abmatt.brres.lib.binfile import Folder
+from abmatt.brres.lib.binfile import Folder, printCollectionHex
 from abmatt.brres.lib.matching import validBool, validInt, validFloat, splitKeyVal, fuzzy_strings
 from abmatt.brres.lib.node import Clipable, Node
 from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
@@ -368,7 +368,7 @@ class Pat0(SubFile):
         folder.unpack(binfile)
         while len(folder):
             name = folder.recallEntryI()
-            anim = Pat0MatAnimation(name, self.parent, self.framecount, self.loop).unpack(binfile)
+            anim = Pat0MatAnimation(name, self.parent, self.framecount, self.loop, binfile)
             self.mat_anims.append(anim)
         binfile.recall()  # section 1
         textures = []
@@ -376,6 +376,8 @@ class Pat0(SubFile):
         for i in range(num_tex):
             textures.append(binfile.unpack_name())
         binfile.end()
+        binfile.recall()
+        binfile.recall()
         for x in self.mat_anims:
             x.hook_textures(textures)
         binfile.end()
@@ -403,7 +405,8 @@ class Pat0(SubFile):
         for x in textures:
             binfile.storeNameRef(x)
         binfile.end()
-        # skip palettes
-        binfile.createRef(3, False)  # section 3: bunch of null
+        binfile.createRef()     # section 2: palettes
+        binfile.createRef()     # section 3: nulls
         binfile.advance(len(textures) * 4)
+        binfile.createRef()     # section 4: palette ptr table
         binfile.end()

@@ -109,7 +109,7 @@ def encode_polygon_data(polygon, vertex, normal, color, uvs, face_indices):
         else:
             polygon.color0_index_format = polygon.INDEX_FORMAT_BYTE
             fmt_str += 'B'
-        polygon.color0_has_alpha = color.has_alpha
+        polygon.color0_format = color.format
         polygon.color_group_indices[0] = color.index
     else:
         polygon.color0_index_format = polygon.INDEX_FORMAT_NONE

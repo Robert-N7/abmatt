@@ -37,8 +37,8 @@ class Polygon(Node):
         self.has_tex_matrix = [False] * 8
         self.vertex_divisor = 0
         self.normal_format = 4
-        self.color0_has_alpha = 5
-        self.color1_has_alpha = 5
+        self.color0_format = 5
+        self.color1_format = 5
         self.num_colors = 1
         self.normal_type = 0
         self.num_tex = 1
@@ -230,9 +230,9 @@ class Polygon(Node):
         self.normal_e = uvata >> 9 & 1
         self.normal_format = uvata >> 10 & 7
         self.color0_e = uvata >> 13 & 1
-        self.color0_has_alpha = uvata >> 14 & 7
+        self.color0_format = uvata >> 14 & 7
         self.color1_e = uvata >> 17 & 1
-        self.color1_has_alpha = uvata >> 18 & 7
+        self.color1_format = uvata >> 18 & 7
         self.tex_e[0] = uvata >> 21 & 1
         self.tex_format[0] = uvata >> 22 & 7
         self.tex_divisor[0] = uvata >> 25 & 0x1f
@@ -273,8 +273,8 @@ class Polygon(Node):
         tex_e = self.tex_e
         uvata = self.vertex_e | self.vertex_format << 1 | self.vertex_divisor << 4 \
                 | self.normal_e << 9 | self.normal_format << 10 \
-                | self.color0_e << 13 | self.color0_has_alpha << 14 \
-                | self.color1_e << 17 | self.color1_has_alpha << 18 \
+                | self.color0_e << 13 | self.color0_format << 14 \
+                | self.color1_e << 17 | self.color1_format << 18 \
                 | tex_e[0] << 21 | tex_format[0] << 22 | tex_divisor[0] << 25 \
                 | 1 << 30 | self.normal_index3 << 31
 

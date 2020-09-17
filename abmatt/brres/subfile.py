@@ -118,9 +118,9 @@ class SubFile(Clipable):
     def save(self, dest, overwrite):
         if dest is None:
             dest = self.name
-            ext = '.' + self.EXT
-            if not dest.endswith(ext):
-                dest += ext
+        ext = '.' + self.EXT
+        if not dest.endswith(ext):
+            dest += ext
         if os.path.exists(dest) and not overwrite and not self.OVERWRITE_MODE:
             AUTO_FIXER.error('{} already exists!'.format(dest))
             return

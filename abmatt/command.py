@@ -187,14 +187,15 @@ class Command:
         self.name = self.destination = None
         while len(params):
             param = params.pop(0)
-            if param == 'to':
+            lower = param.lower()
+            if lower == 'to':
                 try:
                     self.destination = params.pop(0)
                 except IndexError:
                     raise ParsingException('Expected destination after "to"')
-            elif param == 'no-normals':
+            elif lower == 'no-normals':
                 flags |= 1
-            elif param == 'no-colors':
+            elif lower == 'no-colors':
                 flags |= 2
             elif not self.name:
                 self.name = param
