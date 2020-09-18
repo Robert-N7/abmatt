@@ -18,6 +18,8 @@ def main(args):
     bit_width = c['bit_width']
     version = c['version']
     interpreter = c['64-bit'] if bit_width == 'x64' else c['32-bit']
+    if not os.path.exists(interpreter):
+        interpreter = os.path.join(os.getcwd(), '../../' + interpreter)
     name = c['build_name']
     build_type = c['build_type']
     # build

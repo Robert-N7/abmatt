@@ -187,10 +187,11 @@ class Brres(Clipable):
                 return None
         folders = self.folders
         for n in folders:
-            for x in folders[n]:
-                if old_name == x.name:  # possible bug... model animations with similar names may be renamed
-                    x.name = new_name
-            return new_name
+            if n != self.models and n != self.textures:
+                for x in folders[n]:
+                    if old_name == x.name:
+                        x.name = new_name
+        return new_name
 
     def getModelsByName(self, name):
         return MATCHING.findAll(name, self.models)

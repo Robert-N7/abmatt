@@ -133,6 +133,7 @@ class Mdl0(SubFile):
         self.paletteLinks = []
         self.textureLinks = []
         self.version = 11
+        self.is_map_model = True if 'map' in name else False
         self.sections = [self.definitions, self.bones, self.vertices, self.normals,
                          self.colors, self.texCoords, self.furVectors, self.furLayers,
                          self.materials, self.shaders, self.objects,
@@ -287,12 +288,9 @@ class Mdl0(SubFile):
 
     # ------------------ Name --------------------------------------
     def rename(self, name):
-        return self.parent.renameModel(self.name, name)
-        # if self.srt0_collection:
-        #     self.srt0_collection.rename(name)
-        # if self.pat0_collection:
-        #     self.pat0_collection.rename(name)
-        # self.name = name
+        self.is_map_model = True if 'map' in name else False
+        self.name = self.parent.renameModel(self.name, name)
+        return name
 
     # ------------------------------------ Materials ------------------------------
     def getMaterialByName(self, name):
@@ -475,7 +473,7 @@ class Mdl0(SubFile):
                     if self.rename(expected_name):
                         b.resolve()
                         self.mark_modified()
-            if expected_name == 'map':
+            if self.is_map_model:
                 names = [x.name for x in self.bones]
                 if 'posLD' not in names or 'posRU' not in names:
                     b = Bug(2, 2, 'Missing map model bones', 'Added map bones')

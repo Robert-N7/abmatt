@@ -21,7 +21,7 @@ class Config:
     @staticmethod
     def get_instance(filename=None):
         if Config.__instance is None:
-            Config(filename)
+            Config.__instance = Config(filename)
         elif filename:
             Config.__instance.set_filename(filename)
         return Config.__instance
@@ -30,7 +30,6 @@ class Config:
         if self.__instance:
             raise RuntimeError('Config is singleton!')
         self.set_file(filename)
-        Config.__instance = self
 
     def set_file(self, filename):
         self.config = {}

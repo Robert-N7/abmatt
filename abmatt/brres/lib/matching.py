@@ -71,6 +71,25 @@ def validInt(str, min=-0x7fffffff, max=0x7fffffff):
     return i
 
 
+def parse_color(color_str):
+    """parses color string"""
+    if not color_str:
+        return 0, 0, 0, 0
+    color_str = color_str.strip('()')
+    colors = color_str.split(',')
+    if len(colors) < 4:
+        if color_str == '0':
+            return 0, 0, 0, 0
+        return None
+    intVals = []
+    for x in colors:
+        i = int(x)
+        if not 0 <= i <= 255:
+            raise ValueError(f'{color_str} not a valid color string!')
+        intVals.append(i)
+    return intVals
+
+
 def validBool(str):
     """ Checks if its a valid boolean string """
     if str == "false" or not str or str == "0" or "disable" in str or str == "none":
@@ -161,7 +180,6 @@ class Matching:
         except ValueError:
             return False
         return True
-
 
     @staticmethod
     def match_group_partial_insensitive(name, group, results):

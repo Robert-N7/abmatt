@@ -305,17 +305,18 @@ def add_geometry(mdl0, name, vertices, normals, colors, tex_coord_groups):
     else:
         color = None
     uvs = []
-    uv_i = len(mdl0.texCoords)
-    for x in tex_coord_groups:
-        tex = TexCoord('#{}'.format(uv_i), mdl0)
-        # convert xy to st
-        x.points[:, 1] *= -1
-        x.encode_data(tex)
-        tex.index = uv_i
-        mdl0.texCoords.append(tex)
-        uv_i += 1
-        uvs.append(tex)
-        index_groups.append(x.face_indices)
+    if tex_coord_groups:
+        uv_i = len(mdl0.texCoords)
+        for x in tex_coord_groups:
+            tex = TexCoord('#{}'.format(uv_i), mdl0)
+            # convert xy to st
+            x.points[:, 1] *= -1
+            x.encode_data(tex)
+            tex.index = uv_i
+            mdl0.texCoords.append(tex)
+            uv_i += 1
+            uvs.append(tex)
+            index_groups.append(x.face_indices)
     p = Polygon(name, mdl0)
     indices = np.stack(index_groups, axis=-1)
     indices[:, [0, 1]] = indices[:, [1, 0]]

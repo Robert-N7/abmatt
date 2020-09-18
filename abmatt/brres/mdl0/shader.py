@@ -201,7 +201,7 @@ class Stage(Clipable):
             else:
                 key = 'colorconstantselection'
         if key not in self.map:
-            raise ValueError("No such shader stage setting {} possible keys are: \n\t{}".format(key, self.SETTINGS))
+            raise ValueError("Invalid setting {} possible keys are: \n\t{}".format(key, self.SETTINGS))
         return self.map[key]
 
     def check(self):
@@ -830,11 +830,18 @@ class Shader(Clipable):
         for x in mark_to_remove:
             self.stages.remove(x)
         if not self.stages:
-            b = Bug(2, 2, '{} has no stages!'.format(prefix)
-                    , 'Set solid color {}'.format(self.material.getColor(0)))
             self.set_single_color()
+            b = Bug(2, 2, '{} has no stages!'.format(prefix)
+                    , None)
+            if self.material.parent.is_map_model:
+                b.fix_des = 'Using raster color'
+                stage = self.stages[0]
+                stage['colora'] = 'rastercolor'
+                stage['alphaa'] = 'rasteralpha'
+            else:
+                b.fix_des = 'Set solid color {}'.format(self.material.getColor(0))
+                self.material.set_default_color()
             b.resolve()
-
         # indirect check
         ind_stages = self.getIndCoords()
         for stage_id in range(len(self.indTexCoords)):

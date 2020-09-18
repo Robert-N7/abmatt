@@ -54,7 +54,8 @@ class ObjConverter(Converter):
         # add geometries
         for geometry in obj.geometries:
             normals = None if self.NoNormals & self.flags or self.is_map else geometry.normals
-            geo = add_geometry(mdl, geometry.name, geometry.vertices, normals, None, [geometry.texcoords])
+            texcoords = [geometry.texcoords] if geometry.has_texcoords else None
+            geo = add_geometry(mdl, geometry.name, geometry.vertices, normals, None, texcoords)
             mat = obj.materials[geometry.material_name]
             material = self.encode_material(mat, mdl)
             mdl.add_definition(material, geo, bone)
@@ -72,11 +73,18 @@ class ObjConverter(Converter):
         geo.material_name = material_name
         geo.vertices = geometry.vertices
         geo.normals = geometry.normals
+        geo.has_normals = bool(geo.normals)
         texcoords = geometry.texcoords
         # if len(texcoords) > 1:
         #     print('WARN: Loss of UV data for {}.'.format(geo.name))
-        geo.texcoords = texcoords[0]
-        stack = [geo.vertices.face_indices, geo.texcoords.face_indices]
+        stack = [geo.vertices.face_indices]
+        if len(texcoords):
+            geo.texcoords = texcoords[0]
+            stack.append(geo.texcoords.face_indices)
+            geo.has_texcoords = True
+        else:
+            geo.texcoords = None
+            geo.has_texcoords = False
         if geo.normals:
             stack.append(geo.normals.face_indices)
         geo.triangles = np.stack(stack, -1)

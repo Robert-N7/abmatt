@@ -62,7 +62,10 @@ class ObjGeometry():
         self.triangles = []
         self.texcoords = self.normals = self.vertices = None
         self.material_name = None
-        self.smooth = False
+        self.has_normals = self.has_texcoords = self.smooth = False
+
+    def add_tri(self, tri):
+        self.triangles.append(tri)
 
     @staticmethod
     def normalize_indices_group(indices, data):
@@ -75,15 +78,15 @@ class ObjGeometry():
                 if ele > maximum:
                     maximum = ele
         ret = np.array(data[minimum:maximum + 1], np.float)
-        return ret, indices - minimum
+        return PointCollection(ret, indices - minimum)
 
     def normalize(self, vertices, normals, tex_coords):
         triangles = np.array(self.triangles)
         triangles = triangles - 1
         self.triangles = triangles
-        self.vertices = PointCollection(*self.normalize_indices_group(triangles[:, :, 0], vertices))
-        self.normals = PointCollection(*self.normalize_indices_group(triangles[:, :, 2], normals))
-        self.texcoords = PointCollection(*self.normalize_indices_group(triangles[:, :, 1], tex_coords))
+        self.vertices = self.normalize_indices_group(triangles[:, :, 0], vertices)
+        self.normals = self.normalize_indices_group(triangles[:, :, -1], normals) if self.has_normals else None
+        self.texcoords = self.normalize_indices_group(triangles[:, :, 1], tex_coords) if self.has_texcoords else None
 
 
 class Obj():
@@ -125,6 +128,7 @@ class Obj():
         s = '# Wavefront OBJ exported with abmatt v0.7.0\n\nmtllib ' + self.mtllib + '\n\n'
         vertex_index = 1
         normal_index = 1
+        normal_offset = -1
         texcoord_index = 1
         for geometry in self.geometries:
             s += '#\n# object ' + geometry.name + '\n#\n\n'
@@ -139,27 +143,34 @@ class Obj():
                 s += '# {} normals\n\n'.format(normal_count)
             else:
                 normal_count = 0
-            texcoord_count = len(geometry.texcoords)
-            for texcoord in geometry.texcoords:
-                s += 'vt ' + ' '.join(str(x) for x in texcoord) + '\n'
-            s += '# {} texture coordinates\n\n'.format(texcoord_count)
+            if geometry.texcoords:
+                texcoord_count = len(geometry.texcoords)
+                for texcoord in geometry.texcoords:
+                    s += 'vt ' + ' '.join(str(x) for x in texcoord) + '\n'
+                s += '# {} texture coordinates\n\n'.format(texcoord_count)
+                texcoord_offset = 1
+            else:
+                texcoord_offset = -1
             # now adjust the tri indices
             tris = np.copy(geometry.triangles)
             tris[:, :, 0] = tris[:, :, 0] + vertex_index
-            tris[:, :, 1] = tris[:, :, 1] + texcoord_index
+            if texcoord_offset > 0:
+                tris[:, :, texcoord_offset] = tris[:, :, texcoord_offset] + texcoord_index
             if normal_count:
-                tris[:, :, 2] = tris[:, :, 2] + normal_index
+                tris[:, :, normal_offset] = tris[:, :, normal_offset] + normal_index
             # start the group of indices
             s += 'o {}\ng {}\n'.format(geometry.name, geometry.name)
             s += 'usemtl {}\n'.format(geometry.material_name)
             s += 's off\n' if not geometry.smooth else 's\n'
+            joiner = '/' if geometry.texcoords else '//'
             for tri in tris:
-                s += 'f ' + ' '.join(['/'.join([str(x) for x in fp]) for fp in tri]) + '\n'
+                s += 'f ' + ' '.join([joiner.join([str(x) for x in fp]) for fp in tri]) + '\n'
             s += '# {} triangles\n\n'.format(len(tris))
             # now increase the indices
             vertex_index += vertex_count
             normal_index += normal_count
-            texcoord_index += texcoord_count
+            if geometry.texcoords:
+                texcoord_index += texcoord_count
         with open(self.filename, 'w') as f:
             f.write(s)
 
@@ -173,10 +184,20 @@ class Obj():
             self.normals.append([float(x) for x in words])
         elif start == 'f':
             tri = []
+            if self.start_new_geo:
+                first_word = words[0]
+                slash_one = first_word.find('/')
+                if slash_one >= 0:
+                    if first_word[slash_one + 1] != '/':
+                        geometry.has_texcoords = True
+                    slash_two = first_word.find('/', slash_one + 1)
+                    if slash_two > 0:
+                        geometry.has_normals = True
+                self.start_new_geo = False
             for x in words:
                 t = x.split('/')
                 tri.append([int(y) for y in t])
-            geometry.triangles.append(tri)
+            geometry.add_tri(tri)
         elif start == 'o' or start == 'g':
             return words[0]
         elif start == 'usemtl':
@@ -240,6 +261,7 @@ class Obj():
 
     def parse_file(self, filename):
         geometry = None
+        self.start_new_geo = False
         with open(filename) as f:
             data = f.readlines()
             for line in data:
@@ -251,5 +273,6 @@ class Obj():
                     if not geometry or geometry.name != new_geo:
                         geometry = ObjGeometry(new_geo)
                         self.geometries.append(geometry)
+                        self.start_new_geo = True
         if self.mtllib:
             self.parse_mat_lib(self.mtllib)

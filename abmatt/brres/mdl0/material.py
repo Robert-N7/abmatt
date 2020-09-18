@@ -6,29 +6,12 @@
 import re
 from copy import deepcopy
 
-from abmatt.brres.lib.matching import validBool, indexListItem, validInt, validFloat, splitKeyVal, MATCHING
+from abmatt.brres.lib.matching import validBool, indexListItem, validInt, validFloat, splitKeyVal, MATCHING, parse_color
 from abmatt.brres.lib.node import Clipable
 from abmatt.brres.mdl0.layer import Layer
 from abmatt.brres.mdl0.shader import Shader
 from abmatt.brres.mdl0.wiigraphics.matgx import MatGX
 from abmatt.brres.lib.autofix import AUTO_FIXER
-
-
-def parse_color(color_str):
-    """parses color string"""
-    color_str = color_str.strip('()')
-    colors = color_str.split(',')
-    if len(colors) < 4:
-        if color_str == '0':
-            return 0, 0, 0, 0
-        return None
-    intVals = []
-    for x in colors:
-        i = int(x)
-        if not 0 <= i <= 255:
-            return None
-        intVals.append(i)
-    return intVals
 
 
 class Material(Clipable):
@@ -59,7 +42,7 @@ class Material(Clipable):
                         "sourcealpha", "inversesourcealpha", "destinationalpha", "inversedestinationalpha")
     # Matrix mode
     MATRIXMODE = ("maya", "xsi", "3dsmax")
-
+    DEFAULT_COLOR = (200, 200, 200, 255)
     SHADERCOLOR_ERROR = "Invalid color '{}', Expected [constant]<i>:<r>,<g>,<b>,<a>"
 
     def __init__(self, name, parent=None, binfile=None):
@@ -84,6 +67,9 @@ class Material(Clipable):
         self.pat0 = pat0
         self.shader = shader
         return copy
+
+    def set_default_color(self):
+        self.set_color(self.DEFAULT_COLOR)
 
     @staticmethod
     def get_unique_material(name, mdl):
@@ -309,6 +295,9 @@ class Material(Clipable):
             raise ValueError(self.SHADERCOLOR_ERROR.format(str))
         list = self.matGX.cctevRegs if isConstant else self.matGX.tevRegs
         list[index].setColor(intVals)
+
+    def set_color(self, color, color_num=0):
+        self.matGX.tevRegs[color_num].setColor(color)
 
     def setCullModeStr(self, cullstr):
         cullstr = cullstr.replace('cull', '')

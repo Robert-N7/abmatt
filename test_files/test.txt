@@ -1,11 +1,7 @@
 # select * in ../test_files/cow.brres
 # convert ../test_files/beginner_course.dae to ../brres_files/beginner_course.brres
-# convert ../test_files/test.brres to ../test_files/abmatt_bll.obj
-# convert ../test_files/*.brres to ../test_files/*.dae
+# convert ../test_files/bll_vrcorn.obj to ../brres_files/bll_vrcorn.brres
+convert ../test_files/bll_vrcorn.dae to ../brres_files/bll_vrcorn.brres
 # convert ../test_files/bll.brres to ../test_files/abmatt_bll_course.dae
 # convert ../test_files/abmatt_bll_course.dae to ../test_files/bll.brres No-Normals
-# save as ../brres_files/test.brres overwrite
-# select * in ../brres_files/beginner_course.brres
-select * in ../brres_files/test.brres
-# set mdl0 name:course
-# select * in ../test_files/bll.brres
+save as W:\mkwii\Tracks\bowsers_lava_lair\a.d\vrcorn_model.brres overwrite

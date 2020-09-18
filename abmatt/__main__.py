@@ -9,7 +9,7 @@ import sys
 from cmd import Cmd
 
 from abmatt.config import Config
-from abmatt.brres.lib.matching import validBool, MATCHING
+from abmatt.brres.lib.matching import validBool, MATCHING, parse_color
 from abmatt.brres.mdl0 import Mdl0
 from abmatt.brres.mdl0.layer import Layer
 from abmatt.brres.mdl0.shader import Shader, Stage
@@ -19,6 +19,7 @@ from abmatt.brres.subfile import SubFile
 from abmatt.brres import Brres
 from abmatt.command import Command, ParsingException, NoSuchFile
 from abmatt.brres.lib.autofix import AUTO_FIXER
+from abmatt.brres.mdl0.material import Material
 
 VERSION = '0.7.0'
 USAGE = "USAGE: abmatt [command_line][-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]"
@@ -545,8 +546,6 @@ def set_remove_unused(val):
 
 def load_config(app_dir, loudness=None, autofix_level=None):
     conf = Config.get_instance(os.path.join(app_dir, 'config.conf'))
-    conf2 = Config.get_instance()
-    assert conf is conf2
     if not loudness:
         loudness = conf['loudness']
     if loudness:
@@ -585,6 +584,10 @@ def load_config(app_dir, loudness=None, autofix_level=None):
         pass
     try:
         Shader.MAP_ID_AUTO = validBool(conf['map_id_auto'])
+    except ValueError:
+        pass
+    try:
+        Material.DEFAULT_COLOR = parse_color(conf['default_material_color'])
     except ValueError:
         pass
     return conf
