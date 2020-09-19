@@ -6,8 +6,7 @@ with open('README.md') as file:
     long_description = file.read()
 
 
-# specify requirements of your package here
-REQUIREMENTS = ['fuzzywuzzy', 'python-Levenshtein', 'numpy']
+REQUIREMENTS = ['fuzzywuzzy', 'python-Levenshtein', 'numpy', 'pillow', 'colorama']
 
 # some more details
 CLASSIFIERS = [
@@ -23,8 +22,6 @@ setup(name='abmatt',
       entry_points={
           'console_scripts': [
               'abmatt = abmatt.__main__:main',
-              'convert-dae = abmatt.converters.convert_dae:main'
-              'convert-obj = abmatt.converters.convert_obj:main'
           ]
       },
       description='Brres file material editor',
@@ -35,7 +32,9 @@ setup(name='abmatt',
       author_email='robert7.nelson@gmail.com',
       license='GPLv3',
       packages=setuptools.find_packages(),
-      package_data={'abmatt': ['presets.txt', 'config.conf']},
+      # include_package_data=True,
+      # package_data={'abmatt': ['presets.txt', 'config.conf']},
+      data_files=[('etc/abmatt', ['etc/abmatt/presets.txt', 'etc/abmatt/config.conf'])],
       classifiers=CLASSIFIERS,
       install_requires=REQUIREMENTS,
       keywords='Mario Kart Wii Brres Material Model'

@@ -81,10 +81,10 @@ add tex0:ef_arrowGradS.png ia8              # Adds the image 'ef_arrowGradS.png'
 ABMatt supports reading in commands from files or in interactive mode which have a specified extended BNF format.
 Parameters are delimited by spaces except where a ':' or ',' is specified. Case is insensitive for commands, keys, and values.
 ```
-line = begin_preset | command;
+line = begin_preset | command_line;
 begin_preset = '[' <preset_name> ']' EOL; 
 
-command =  cmd-prefix ['for' selection] EOL;
+command_line =  cmd-prefix ['for' selection] EOL;
 cmd-prefix = set | info | add | remove | select | preset | save | copy | paste | convert;
 set   = 'set' type setting;
 info  = 'info' type [key | 'keys'];

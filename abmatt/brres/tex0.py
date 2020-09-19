@@ -153,6 +153,8 @@ class DecodeError(Exception):
 
 class NoImgConverterError(Exception):
     def __init__(self, msg=None):
+        if not msg:
+            msg = 'No image converter!'
         super(NoImgConverterError, self).__init__(msg)
 
 
@@ -210,7 +212,7 @@ class ImgConverter:
         def __init__(self):
             program = 'wimgt'
             if which(program):
-                self.temp_dest = 'tmp.tex0'
+                self.temp_dest = 'abmatt_tmp'
             else:
                 program = None
             super(ImgConverter.Wimgt, self).__init__(program)
@@ -276,6 +278,7 @@ class ImgConverter:
             img = img.resize((width, height), self.get_resample())
             img.save(tmp)
             tex = self.encode(tmp, tex0.get_str(tex0.format))
+            os.remove(tmp)
             tex0.paste(tex)
             return tex0
 

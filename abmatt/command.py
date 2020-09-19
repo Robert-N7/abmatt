@@ -13,7 +13,8 @@ from abmatt.brres.mdl0.material import Material
 from abmatt.brres.mdl0.shader import Shader, Stage
 from abmatt.brres.pat0 import Pat0MatAnimation
 from abmatt.brres.srt0 import SRTMatAnim, SRTTexAnim
-from abmatt.brres.tex0 import Tex0, ImgConverter, EncodeError
+from abmatt.brres.tex0 import Tex0, ImgConverter, EncodeError, NoImgConverterError
+from abmatt.brres.lib.binfile import UnpackingError, PackingError
 
 
 def convert_file_ext(path, new_ext):
@@ -158,8 +159,8 @@ class Command:
             x = x[0:in_index]
         if cmd == 'preset':
             if not self.PRESETS_LOADED:
-                load_presets(self.APP_DIR)
                 Command.PRESETS_LOADED = True
+                load_presets(self.APP_DIR)
             key = x[0]
             if key not in self.PRESETS:
                 raise ParsingException(self.txt, 'No such preset {}'.format(key))
@@ -387,7 +388,6 @@ class Command:
             file.close()
             marked.remove(file)
 
-
     @staticmethod
     def auto_close(amount, exclude=[]):
         can_close = []  # modified but can close
@@ -412,7 +412,6 @@ class Command:
                     break
         Command.closeFiles(to_close)
         return excluded
-
 
     @staticmethod
     def openFiles(filenames):
@@ -665,13 +664,13 @@ class Command:
     # ---------------------------------------------- RUN CMD ---------------------------------------------------
     @staticmethod
     def run_commands(commandlist):
-        # try:
-        for cmd in commandlist:
-            cmd.run_cmd()
-        # except (ValueError, SaveError, PasteError, MaxFileLimit, NoSuchFile, FileNotFoundError, ParsingException,
-        #         OSError, UnpackingError, NotImplementedError) as e:
-        #     AUTO_FIXER.error(e, 1)
-        #     return False
+        try:
+            for cmd in commandlist:
+                cmd.run_cmd()
+        except (ValueError, SaveError, PasteError, MaxFileLimit, NoSuchFile, FileNotFoundError, ParsingException,
+                OSError, UnpackingError, PackingError, NotImplementedError, NoImgConverterError) as e:
+            AUTO_FIXER.error(e)
+            return False
         return True
 
     def run_import(self, files, converted_format=None):
@@ -703,7 +702,6 @@ class Command:
         self.flags = 0
         self.destination = None
         self.run_convert()
-
 
     def import_texture(self, file, tex_format=None):
         try:
@@ -790,9 +788,9 @@ class Command:
                 if not brres:
                     converter = klass(self.create_or_open(convert_file_ext(file, '.brres')), file, self.flags)
                 else:
-                   converter = klass(brres, file, self.flags)
+                    converter = klass(brres, file, self.flags)
                 mdl = converter.load_model()
-        else:   # export
+        else:  # export
             dest_auto = True if multiple_files or self.destination.lower() == '*' + self.ext else False
             for file in files:
                 destination = self.destination if not dest_auto else convert_file_ext(file, self.ext)

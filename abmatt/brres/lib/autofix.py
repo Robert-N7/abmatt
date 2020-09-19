@@ -1,4 +1,16 @@
 """Debugging and fixing"""
+from colorama import init
+init()
+
+class bcolors:
+    HEADER = '\033[35m'
+    OKBLUE = '\033[34m'
+    OKGREEN = '\033[32m'
+    WARNING = '\033[33m'
+    FAIL = '\033[31m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 
 class Bug:
@@ -24,7 +36,7 @@ class Bug:
     def resolve(self):
         self.is_resolved = True
         if AUTO_FIXER.loudness >= self.notify_level:
-            print('(FIXED): {}'.format(self.fix_des))
+            print(f'(FIXED): {self.fix_des}')
 
 
 class AutoFixAbort(BaseException):
@@ -45,7 +57,7 @@ class AutoFix:
 
     # Loudness levels, 0 silent, 1 quiet, 2 mid, 3 loud, 4 max, 5 debug
     LOUD_LEVELS = ('SILENT', 'QUIET', 'MID', 'LOUD', 'MAX', 'DEBUG')
-    ERROR_LEVELS = ('NONE', 'ERROR', 'WARN', 'CHECK', 'SUGGEST', 'PROMPT')
+    ERROR_LEVELS = (bcolors.ENDC, bcolors.FAIL, bcolors.FAIL, bcolors.OKBLUE, bcolors.OKBLUE, bcolors.BOLD)
     RESULTS = ('NONE', 'ERROR', 'WARN', 'CHECK', 'SUCCESS')
 
     def __init__(self, fix_level=3, loudness=3):
@@ -67,18 +79,18 @@ class AutoFix:
 
     def log(self, message):
         if self.loudness >= 5:
-            print(message)
+            print(f'{bcolors.OKBLUE}{message}{bcolors.ENDC}')
 
     def info(self, message, loudness=2):
         if self.loudness >= loudness:
-            print('INFO: {}'.format(message))
+            print(message)
 
     def warn(self, message, loudness=2):
         if self.loudness >= loudness:
-            print('WARN: {}'.format(message))
+            print(f'{bcolors.FAIL}WARN: {message}{bcolors.ENDC}')
 
     def error(self, message, loudness=1):
-        print('ERROR: {}'.format(message))
+        print(f'{bcolors.FAIL}ERROR: {message}{bcolors.ENDC}')
 
     # def should_fix(self, bug):
     #     """Determines if a bug should be fixed"""
@@ -117,7 +129,7 @@ class AutoFix:
     def notify(self, bug):
         """Notifies of a bug check"""
         if self.loudness >= bug.notify_level:
-            print('{}: {}'.format(self.ERROR_LEVELS[bug.bug_level], bug.description))
+            print(f'{self.ERROR_LEVELS[bug.notify_level]}{bug.description}{bcolors.ENDC}')
 
     def get_level(self, level_str):
         """Expects level to be a string, as a number or one of the Error levels"""

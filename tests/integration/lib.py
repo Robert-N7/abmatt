@@ -1,7 +1,5 @@
-import inspect
 import os
-
-from itertools import filter
+import sys
 
 
 class bcolors:
@@ -20,16 +18,20 @@ def run_tests(obj):
     public_method_names = [method for method in dir(obj) if callable(getattr(obj, method)) if \
                            not method.startswith('_')]  # 'private' methods start from _
     for method in public_method_names:
+        print(f'{bcolors.OKGREEN}Running {method}{bcolors.ENDC}')
         result = getattr(obj, method)()
         if result:
             tests_passed += 1
         else:
-            print(f'{method} failed.')
+            print(f'{bcolors.FAIL}{method} failed.{bcolors.ENDC}')
         test_total += 1
-    print('{}/{} tests passed.'.format(tests_passed, test_total))
     tests_failed = test_total - tests_passed
     if tests_failed:
-        print(f'{bcolors.WARNING}{test_total - tests_passed} tests failed{bcolors.ENDC}')
+        print(f'{bcolors.FAIL}{tests_passed}/{test_total} tests passed.{bcolors.ENDC}')
+    else:
+        print(f'{bcolors.OKBLUE}{tests_passed}/{test_total} tests passed.{bcolors.ENDC}')
+    if tests_failed:
+        sys.exit(tests_failed)
     return tests_failed
 
 

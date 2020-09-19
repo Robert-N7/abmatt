@@ -39,7 +39,6 @@ RMDir /r "$INSTDIR\*.*"
 EnVar::DeleteValue "PATH" "$INSTDIR\bin\abmatt.exe"
 SectionEnd
 
-# Function that calls a messagebox when installation finished correctly
 Function .onInstSuccess
   # MessageBox MB_OK "Success! Start by using 'abmatt' from the command line."
   Quit

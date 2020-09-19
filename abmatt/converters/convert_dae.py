@@ -6,7 +6,7 @@ import numpy as np
 
 from abmatt.brres.lib.autofix import AUTO_FIXER
 from abmatt.brres.mdl0 import Mdl0
-from abmatt.brres.tex0 import ImgConverter
+from abmatt.brres.tex0 import ImgConverter, Tex0, NoImgConverterError
 from abmatt.converters.arg_parse import cmdline_convert
 from abmatt.converters.convert_lib import Converter, decode_polygon, \
     get_default_controller, Material
@@ -114,17 +114,20 @@ class DaeConverter2(Converter):
 
     def __create_image_library(self, mesh):
         if len(self.tex0_map):
+            converter = ImgConverter()
+            if not converter:
+                AUTO_FIXER.error('No image converter found!')
             if not os.path.exists(self.image_dir):
                 os.mkdir(self.image_dir)
             os.chdir(self.image_dir)
-            converter = ImgConverter()
             for image_name in self.tex0_map:
                 tex, path = self.tex0_map[image_name]
                 mesh.add_image(image_name, path)
                 if not tex:
                     AUTO_FIXER.warn('Missing texture {}'.format(image_name))
                     continue
-                converter.decode(tex, image_name + '.png')
+                if converter:
+                    converter.decode(tex, image_name + '.png')
 
     def __parse_controller(self, controller):
         bones = controller.bones
@@ -167,11 +170,14 @@ class DaeConverter2(Converter):
     def __parse_images(self, images, brres):
         # images
         self.image_path_map = image_path_map = {}
-        for image in images:
-            path = images[image]
-            image_path_map[path] = self.try_import_texture(brres, path)
-        if not brres.textures and len(images):
-            AUTO_FIXER.error('No textures found!')
+        try:
+            for image in images:
+                path = images[image]
+                image_path_map[path] = self.try_import_texture(brres, path)
+            if not brres.textures and len(images):
+                AUTO_FIXER.error('No textures found!')
+        except NoImgConverterError as e:
+            AUTO_FIXER.error(e)
 
 
 def main():

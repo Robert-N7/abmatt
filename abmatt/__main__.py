@@ -61,6 +61,25 @@ To see what keys are available, try `info keys`
 | -t | --type | Type selection. |
 | -v | --value | Value to set corresponding with key. (set command) |
 
+command_line =  cmd-prefix ['for' selection] EOL;
+cmd-prefix = set | info | add | remove | select | preset | save | copy | paste | convert;
+set   = 'set' type setting;
+info  = 'info' type [key | 'keys'];
+add   = 'add' type;
+remove = 'remove' type;
+select = 'select' selection;
+preset = 'preset' preset_name;
+save = 'save' [filename] ['as' destination] ['overwrite']
+copy = 'copy' type;
+paste = 'paste' type;
+convert = 'convert' filename ['to' destination] ['no-colors'] ['no-normals']
+
+selection = name ['in' container]
+container = ['brres' filename] ['model' name];
+type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id]
+    | 'srt0' | 'srt0layer' [':' id] | 'pat0'
+    | 'mdl0' [':' id] | 'tex0' [':' id] | 'brres';
+
 For more Help or if you want to contribute visit https://github.com/Robert-N7/abmatt
     '''
     print(helpstr.format(VERSION))
@@ -464,10 +483,10 @@ def main():
     # determine if application is a script file or frozen exe
     app_dir = None
     if getattr(sys, 'frozen', False):
-        base_path = os.path.dirname(os.path.dirname(sys.executable))
-        app_dir = os.path.join(os.path.join(base_path, 'etc'), 'abmatt')
-    elif __file__:
-        app_dir = os.path.dirname(__file__)
+        base_path = sys.executable
+    else:
+        base_path = __file__
+    app_dir = os.path.join(os.path.join(os.path.dirname(os.path.dirname(base_path)), 'etc'), 'abmatt')
     config = load_config(app_dir, loudness, autofix)
     Command.APP_DIR = app_dir
     cmds = []

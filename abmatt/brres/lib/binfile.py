@@ -42,7 +42,6 @@ class BinFile:
         if not self.isWriteMode:
             with open(filename, "rb") as file:
                 self.file = file.read()
-                file.close()
         else:
             self.file = bytearray()
         self.start()

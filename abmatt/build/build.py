@@ -55,8 +55,8 @@ def make_distribution(dir, platform, binary_path, binary_path_is_dir):
     shutil.copy('../../LICENSE', dir)
     shutil.copy('../../README.md', dir)
     etc = dir + '/etc/abmatt'
-    shutil.copy('../presets.txt', etc)
-    shutil.copy('../config.conf', etc)
+    shutil.copy('../../etc/abmatt/presets.txt', etc)
+    shutil.copy('../../etc/abmatt/config.conf', etc)
     dest_dir = os.path.join(dir, 'bin')
     bin_dir, base_name = os.path.split(binary_path)
     exe = os.path.join(dest_dir, 'abmatt')

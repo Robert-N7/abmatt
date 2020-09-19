@@ -7,7 +7,7 @@ import numpy as np
 from abmatt.brres.lib.autofix import AUTO_FIXER
 from abmatt.brres.mdl0 import Mdl0
 from abmatt.brres.mdl0.material import Material
-from abmatt.brres.tex0 import ImgConverter
+from abmatt.brres.tex0 import ImgConverter, NoImgConverterError
 from abmatt.converters.arg_parse import cmdline_convert
 from abmatt.converters.convert_lib import Converter, add_geometry, decode_polygon
 from abmatt.converters.obj import Obj, ObjGeometry, ObjMaterial
@@ -48,9 +48,11 @@ class ObjConverter(Converter):
         bone = mdl.add_bone(base_name)
         obj = Obj(name)
         # add images
-        for image in obj.images:
-            self.try_import_texture(brres, image)
-
+        try:
+            for image in obj.images:
+                self.try_import_texture(brres, image)
+        except NoImgConverterError as e:
+            AUTO_FIXER.error(e)
         # add geometries
         for geometry in obj.geometries:
             normals = None if self.NoNormals & self.flags or self.is_map else geometry.normals
@@ -134,6 +136,9 @@ class ObjConverter(Converter):
             obj_geometries.append(self.decode_geometry(geometry, material))
         tex0_map = self.tex0_map
         if len(tex0_map):
+            converter = ImgConverter()
+            if not converter:
+                AUTO_FIXER.error('No image converter found!')
             image_dir = os.path.join(dir, self.image_dir)
             if not os.path.exists(image_dir):
                 os.mkdir(image_dir)
@@ -143,7 +148,8 @@ class ObjConverter(Converter):
                 tex0 = tex0_map[tex]
                 destination = os.path.join(tex + '.png')
                 obj_images.add(destination)
-                ImgConverter().decode(tex0, destination)
+                if converter:
+                    converter.decode(tex0, destination)
             os.chdir(tmp)
         obj.save()
         AUTO_FIXER.info('\t...finished in {} seconds.'.format(round(time.time() - start, 2)))
