@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 # Updates the version throughout files
 import os
@@ -52,7 +52,7 @@ def update_bit_width(is_64_bit):
             f.write(new_data)
 
 
-def main(args):
+def run_update_version(args):
     usage = 'update_version.py [version [bit_width]]'
     bit_width = version = None
     c = Config('../build/config.txt')
@@ -85,4 +85,4 @@ def main(args):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    run_update_version(sys.argv[1:])

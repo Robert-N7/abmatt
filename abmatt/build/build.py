@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 import shutil
 import sys
@@ -13,7 +14,7 @@ def main(args):
         sys.exit(1)
     c = Config(config_path)
     os.chdir('../dist')
-    os.system('update_version.py')
+    os.system('./update_version.py')
     # read configuration
     bit_width = c['bit_width']
     version = c['version']
@@ -38,7 +39,7 @@ def main(args):
 
 
 def tar(path):
-    return not os.system('tar -czvf ' + path + '.tar.gz ' + path)
+    return not os.system('tar czvf ' + path + '.tar.gz ' + path)
 
 
 def zip(path):
@@ -82,12 +83,13 @@ def make_distribution(dir, platform, binary_path, binary_path_is_dir):
         if not zip(dir):
             return False
     else:
-        shutil.copy('./install.sh', dir)
-        shutil.copy('./uninstall.sh', dir)
+        # shutil.copy('./install.sh', dir)
+        # shutil.copy('./uninstall.sh', dir)
         shutil.copy('./install-ubu.txt', os.path.join(dir, 'install.txt'))
-        os.chdir('..')
         if not tar(dir):
+            os.chdir('..')
             return False
+        os.chdir('..')
     return True
 
 

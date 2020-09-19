@@ -6,5 +6,6 @@ OS: Ubuntu 18
 Github: https://github.com/Robert-N7/abmatt
 ====================================================================================
 Thank you for downloading ABMatt!
-Installation:
-sudo ./install.sh
+The entry point for abmatt is under the 'bin' folder.
+Add to your system path for easier access.
+

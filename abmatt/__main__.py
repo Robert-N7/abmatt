@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """
 ANoob's Brres Material Editor
 For editing Mario Kart Wii files
