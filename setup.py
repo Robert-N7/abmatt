@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import setuptools
 from setuptools import setup
 
@@ -6,8 +7,7 @@ with open('README.md') as file:
     long_description = file.read()
 
 
-# specify requirements of your package here
-REQUIREMENTS = ['fuzzywuzzy', 'python-Levenshtein']
+REQUIREMENTS = ['fuzzywuzzy', 'python-Levenshtein', 'numpy', 'pillow', 'colorama']
 
 # some more details
 CLASSIFIERS = [
@@ -19,10 +19,10 @@ CLASSIFIERS = [
 
 # calling the setup function
 setup(name='abmatt',
-      version='0.6.1',
+      version='0.7.0',
       entry_points={
           'console_scripts': [
-              'abmatt = abmatt.__main__:main'
+              'abmatt = abmatt.__main__:main',
           ]
       },
       description='Brres file material editor',
@@ -33,8 +33,10 @@ setup(name='abmatt',
       author_email='robert7.nelson@gmail.com',
       license='GPLv3',
       packages=setuptools.find_packages(),
-      package_data={'abmatt':['presets.txt']},
+      # include_package_data=True,
+      # package_data={'abmatt': ['presets.txt', 'config.conf']},
+      data_files=[('etc/abmatt', ['etc/abmatt/presets.txt', 'etc/abmatt/config.conf'])],
       classifiers=CLASSIFIERS,
       install_requires=REQUIREMENTS,
-      keywords='Mario Kart Wii Brres Material MDL0'
+      keywords='Mario Kart Wii Brres Material Model'
       )

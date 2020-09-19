@@ -1,2 +1,0 @@
-select * in Course/ridgehighway_course.d/course_model.brres
-save as test.brres overwrite

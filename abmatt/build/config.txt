@@ -1,0 +1,6 @@
+build_name = main   # build output name
+build_type = onedir   # the type of build, (auto|onefile|onedir)
+bit_width = x86
+version = 0.7.0
+64-bit = venv/bin/python3
+32-bit = venv/bin/python3

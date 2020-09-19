@@ -6,14 +6,23 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-path="/usr/local"
-etc_path="$path/etc/abmatt"
-# Binaries
-echo installing abmatt to "${path}"/bin
-install -p bin/abmatt "${path}"/bin/abmatt
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+echo 'export PATH="$DIR/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
 
-# Other
-mkdir -p "${etc_path}"
-install -p etc/abmatt/presets.txt "${etc_path}"/presets.txt
-install -p etc/abmatt/config.conf "${etc_path}"/config.conf
-echo '...done'
+#path="/usr/local"
+#bin_path="$path/bin/"
+## Binaries
+#echo installing abmatt to "${bin_path}"
+#mkdir -p "${bin_path}"
+#for file in bin/abmatt/*;do
+#  install -p "${file}" "${bin_path}"
+#done
+#
+## Other
+#etc_path="$path/etc/abmatt/"
+#mkdir -p "${etc_path}"
+#for file in etc/abmatt/*;do
+#  install -p "${file}" "${etc_path}"
+#done
+#echo '...done'

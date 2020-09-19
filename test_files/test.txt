@@ -1,0 +1,10 @@
+# select * in ../test_files/cow.brres
+# set tex0:ef_arrowGradS format:cmpr in ../brres_files/beginner_course.brres
+preset ef_dushboard for yama in ../brres_files/beginner_course.brres
+# convert ../test_files/beginner_course.dae to ../brres_files/beginner_course.brres
+# convert ../test_files/bll_vrcorn.obj to ../brres_files/bll_vrcorn.brres
+# convert ../test_files/bll_vrcorn.dae to ../brres_files/bll_vrcorn.brres
+# convert ../test_files/bll.brres to ../test_files/abmatt_bll_course.dae
+# convert ../test_files/abmatt_bll_course.dae to ../test_files/bll.brres No-Normals
+# save as W:\mkwii\Tracks\bowsers_lava_lair\a.d\vrcorn_model.brres overwrite
+# save as ../brres_files/test.brres overwrite

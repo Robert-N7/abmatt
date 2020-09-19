@@ -1,0 +1,12 @@
+IMPORTANT: update config.txt before building!
+Building the distribution is done through build.py.
+It uses the 'pyinstaller' package to build the binaries. It creates a single file '__main__' in the 'dist' folder.
+In order to build sucessfully, all required modules must be found. (Hopefully in venv/Lib/site-packages)
+The installer for distributions is also created, but may require additional dependencies:
+
+For Windows you need the following on your system path:
+1. make (for using makefile)
+2. makensis (windows installer)
+    a. Additionally the EnVar plug-in is required.
+3. 7z (zipping installer)
+

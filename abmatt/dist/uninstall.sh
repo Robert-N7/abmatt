@@ -6,4 +6,9 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 path=/usr/local
-rm "${path}"/bin/abmatt && rm -rf "${path}"/etc/abmatt && echo '...abmatt has been removed.'
+rm "${path}"/bin/abmatt
+# rm "${path}"/bin/python*
+rm "${path}"/
+rm -rf "${path}"/etc/abmatt
+rm -rf "${path}"/lib/abmatt
+echo '...abmatt has been removed.'

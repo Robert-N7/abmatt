@@ -1,41 +1,46 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """
 ANoob's Brres Material Editor
 For editing Mario Kart Wii files
 """
-
 import getopt
 import os
 import sys
-import Levenshtein
-import fuzzywuzzy
 from cmd import Cmd
 
+from abmatt.config import Config
+from abmatt.brres.lib.matching import validBool, MATCHING, parse_color
+from abmatt.brres.mdl0 import Mdl0
+from abmatt.brres.mdl0.layer import Layer
+from abmatt.brres.mdl0.shader import Shader, Stage
+from abmatt.brres.pat0 import Pat0
+from abmatt.brres.srt0 import Srt0
+from abmatt.brres.subfile import SubFile
 from abmatt.brres import Brres
-from abmatt.mdl0 import TexCoord
 from abmatt.command import Command, ParsingException, NoSuchFile
-from abmatt.autofix import AUTO_FIXER
-from abmatt.config import Config, load_config
-from matching import MATCHING
+from abmatt.brres.lib.autofix import AUTO_FIXER
+from abmatt.brres.mdl0.material import Material
 
-VERSION = '0.6.1'
-USAGE = "USAGE: abmatt [-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]"
+VERSION = '0.7.0'
+USAGE = "USAGE: abmatt [command_line][-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]"
 
 
 def hlp(cmd=None):
-    cmd_help = {'set': Shell.help_set, 'info': Shell.help_info, 'add': Shell.help_add, 'remove': Shell.help_remove,
-                'select': Shell.help_select, 'preset': Shell.help_preset, 'save': Shell.help_save,
-                'copy': Shell.help_copy, 'paste': Shell.help_paste}
-    help_fptr = cmd_help.get(cmd)
-    if help_fptr:
-        help_fptr(None)
-        return
     """ displays help message """
+    if cmd:
+        cmd_help = {'set': Shell.help_set, 'info': Shell.help_info, 'add': Shell.help_add, 'remove': Shell.help_remove,
+                    'select': Shell.help_select, 'preset': Shell.help_preset, 'save': Shell.help_save,
+                    'copy': Shell.help_copy, 'paste': Shell.help_paste, 'convert':Shell.help_convert}
+        help_fptr = cmd_help.get(cmd)
+        if help_fptr:
+            help_fptr(None)
+            return
+        print('Unknown command {}'.format(cmd))
     helpstr = '''
 ====================================================================================
 ANOOB'S BRRES MATERIAL TOOL
 Version {}
-commands = set | info | add | remove | select | preset | save | copy | paste
+commands = set | info | add | remove | select | preset | save | copy | paste | convert
 type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id]
     | 'srt0' | 'srt0layer' [':' id] | 'pat0'
     | 'mdl0' | 'brres';
@@ -55,6 +60,25 @@ To see what keys are available, try `info keys`
 | -o | --overwrite | Overwrite existing files.  |
 | -t | --type | Type selection. |
 | -v | --value | Value to set corresponding with key. (set command) |
+
+command_line =  cmd-prefix ['for' selection] EOL;
+cmd-prefix = set | info | add | remove | select | preset | save | copy | paste | convert;
+set   = 'set' type setting;
+info  = 'info' type [key | 'keys'];
+add   = 'add' type;
+remove = 'remove' type;
+select = 'select' selection;
+preset = 'preset' preset_name;
+save = 'save' [filename] ['as' destination] ['overwrite']
+copy = 'copy' type;
+paste = 'paste' type;
+convert = 'convert' filename ['to' destination] ['no-colors'] ['no-normals']
+
+selection = name ['in' container]
+container = ['brres' filename] ['model' name];
+type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id]
+    | 'srt0' | 'srt0layer' [':' id] | 'pat0'
+    | 'mdl0' [':' id] | 'tex0' [':' id] | 'brres';
 
 For more Help or if you want to contribute visit https://github.com/Robert-N7/abmatt
     '''
@@ -120,11 +144,10 @@ class Shell(Cmd, object):
         return files
 
     @staticmethod
-    def construct_file_path(sel_words):
-        start_file = False
+    def construct_file_path(sel_words, start_file=False):
         path = None
         for x in sel_words:
-            if x == 'in':
+            if x in ('in', 'to'):
                 start_file = True
             elif x == 'model':
                 start_file = False
@@ -362,37 +385,21 @@ class Shell(Cmd, object):
     def help_clear(self):
         print('Clears the interactive shell command queue.')
 
+    def do_convert(self, line):
+        self.run('convert', line)
+
+    def complete_convert(self, text, line, begid, endid):
+        words = self.get_words(text, line)
+        possible = self.find_files(self.construct_file_path(words), text)
+        return possible
+
+    def help_convert(self):
+        print('Converts dae or obj model to/from brres.\nUsage: convert <filename> [to <destination>]')
+
     def default(self, line):
         if line == 'x' or line == 'q':
             return self.do_quit(line)
         print('Syntax error, type ? for help')
-
-
-def load_preset_file(dir):
-    if dir is None:
-        return False
-    preset_path = os.path.join(dir, 'presets.txt')
-    if os.path.exists(preset_path):
-        Command.load_commandfile(preset_path)
-        return True
-    return False
-
-
-def load_presets(app_dir):
-    # Load presets in file directory
-    loaded = True
-    if not load_preset_file(app_dir):
-        loaded = False
-    # Load presets in cwd
-    loaded_cwd = False
-    cwd = os.getcwd()
-    if app_dir != cwd:
-        loaded_cwd = load_preset_file(cwd)
-    if loaded or loaded_cwd:
-        AUTO_FIXER.info('Presets loaded...', 5)
-    else:
-        AUTO_FIXER.info('No presets file detected', 3)
-    return loaded
 
 
 def main():
@@ -403,74 +410,88 @@ def main():
     if not argv:
         print(USAGE)
         sys.exit(0)
-    try:
-        opts, args = getopt.getopt(argv, "a:hd:oc:t:k:v:n:b:m:f:iul:",
-                                   ["help", "destination=", "overwrite",
-                                    "command=", "type=", "key=", "value=",
-                                    "name=", "brres=", "model=", "file=", "interactive",
-                                    "auto-fix=", "loudness="])
-    except getopt.GetoptError as e:
-        print(e)
-        print(USAGE)
-        sys.exit(2)
-    if args:
-        print('Unknown option {}'.format(args))
-        print(USAGE)
-        sys.exit(2)
+    cmd_string = ''
+    found_args = False
+    for i in range(len(argv)):
+        if argv[i][0] == '-':
+            if i > 0:
+                cmd_string = ' '.join(argv[0:i])
+                argv = argv[i:]
+            found_args = True
+            break
+
     interactive = overwrite = False
     type = ""
     command = destination = brres_file = command_file = model = value = key = ""
     autofix = loudness = None
     name = None
     do_help = False
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            do_help = True
-        elif opt in ('-b', '--brres'):
-            brres_file = arg
-        elif opt in ("-f", "--file"):
-            command_file = arg
-        elif opt in ("-d", "--destination"):
-            destination = arg
-        elif opt in ("-o", "--overwrite"):
-            overwrite = True
-        elif opt in ("-k", "--key"):
-            key = arg
-        elif opt in ("-v", "--value"):
-            value = arg
-        elif opt in ("-t", "--type"):
-            type = arg
-        elif opt in ("-n", "--name"):
-            name = arg
-        elif opt in ("-m", "--model"):
-            model = arg
-        elif opt in ("-c", "--command"):
-            command = arg
-        elif opt in ("-i", "--interactive"):
-            interactive = True
-        elif opt in ("-a", "--auto-fix"):
-            autofix = arg
-        elif opt in ("-l", "--loudness"):
-            loudness = arg
-        else:
-            print("Unknown option '{}'".format(opt))
+    if not found_args:
+        cmd_string = ' '.join(argv)
+    else:
+        try:
+            opts, args = getopt.getopt(argv, "hd:oc:t:k:v:n:b:m:f:iul:",
+                                       ["help", "destination=", "overwrite",
+                                        "command=", "type=", "key=", "value=",
+                                        "name=", "brres=", "model=", "file=", "interactive",
+                                         "loudness="])
+        except getopt.GetoptError as e:
+            print(e)
             print(USAGE)
             sys.exit(2)
 
+        for opt, arg in opts:
+            if opt in ("-h", "--help"):
+                do_help = True
+            elif opt in ('-b', '--brres'):
+                brres_file = arg
+            elif opt in ("-f", "--file"):
+                command_file = arg
+            elif opt in ("-d", "--destination"):
+                destination = arg
+            elif opt in ("-o", "--overwrite"):
+                overwrite = True
+            elif opt in ("-k", "--key"):
+                key = arg
+            elif opt in ("-v", "--value"):
+                value = arg
+            elif opt in ("-t", "--type"):
+                type = arg
+            elif opt in ("-n", "--name"):
+                name = arg
+            elif opt in ("-m", "--model"):
+                model = arg
+            elif opt in ("-c", "--command"):
+                command = arg
+            elif opt in ("-i", "--interactive"):
+                interactive = True
+            elif opt in ("-a", "--auto-fix"):
+                autofix = arg
+            elif opt in ("-l", "--loudness"):
+                loudness = arg
+            else:
+                print("Unknown option '{}'".format(opt))
+                print(USAGE)
+                sys.exit(2)
+
     if do_help:
+        if not command and cmd_string:
+            command = cmd_string.split()[0]
         hlp(command)
         sys.exit()
 
     # determine if application is a script file or frozen exe
     app_dir = None
     if getattr(sys, 'frozen', False):
-        base_path = os.path.dirname(os.path.dirname(sys.executable))
-        app_dir = os.path.join(os.path.join(base_path, 'etc'), 'abmatt')
-    elif __file__:
-        app_dir = os.path.dirname(__file__)
-    load_config(app_dir, loudness, autofix)
-    load_presets(app_dir)
+        base_path = sys.executable
+    else:
+        base_path = __file__
+    app_dir = os.path.join(os.path.join(os.path.dirname(os.path.dirname(base_path)), 'etc'), 'abmatt')
+    config = load_config(app_dir, loudness, autofix)
+    Command.APP_DIR = app_dir
     cmds = []
+    if cmd_string:
+        cmds.append(Command(cmd_string))
     if command:
         cmd = command + ' ' + type
         if key:
@@ -496,10 +517,10 @@ def main():
         except NoSuchFile as e:
             AUTO_FIXER.error(e)
             sys.exit(2)
-    elif command and (command != 'info' or key != 'keys' and type != 'keys'):
-        print('File is required to run commands')
-        print(USAGE)
-        sys.exit(2)
+    # elif command and (command != 'info' or key != 'keys' and type != 'keys'):
+    #     print('File is required to run commands')
+    #     print(USAGE)
+    #     sys.exit(2)
 
     if command_file:
         try:
@@ -518,6 +539,77 @@ def main():
     # cleanup
     for file in Command.ACTIVE_FILES:
         file.close()
+
+
+def set_rename_unknown(val):
+    try:
+        Mdl0.RENAME_UNKNOWN_REFS = Layer.RENAME_UNKNOWN_REFS = Pat0.RENAME_UNKNOWN_REFS = validBool(val)
+    except ValueError:
+        pass
+
+
+def set_remove_unknown(val):
+    try:
+        Mdl0.REMOVE_UNKNOWN_REFS = Layer.REMOVE_UNKNOWN_REFS = Pat0.REMOVE_UNKNOWN_REFS = Srt0.REMOVE_UNKNOWN_REFS = \
+            validBool(val)
+    except ValueError:
+        pass
+
+
+def set_remove_unused(val):
+    try:
+        Shader.REMOVE_UNUSED_LAYERS = Stage.REMOVE_UNUSED_LAYERS = validBool(val)
+    except ValueError:
+        pass
+
+
+def load_config(app_dir, loudness=None, autofix_level=None):
+    conf = Config.get_instance(os.path.join(app_dir, 'config.conf'))
+    if not loudness:
+        loudness = conf['loudness']
+    if loudness:
+        try:
+            AUTO_FIXER.set_loudness(loudness)
+        except ValueError:
+            AUTO_FIXER.warn('Invalid loudness level {}'.format(loudness))
+    Command.set_max_brres_files(conf)
+    # Matching stuff
+    MATCHING.set_case_sensitive(conf['case_sensitive'])
+    MATCHING.set_partial_matching(conf['partial_matching'])
+    MATCHING.set_regex_enable(conf['regex_matching'])
+    # Autofixes
+    try:
+        SubFile.FORCE_VERSION = validBool(conf['force_version'])
+    except ValueError:
+        pass
+    try:
+        Brres.REMOVE_UNUSED_TEXTURES = validBool(conf['remove_unused_textures'])
+    except ValueError:
+        pass
+    try:
+        Layer.MINFILTER_AUTO = validBool(conf['minfilter_auto'])
+    except ValueError:
+        pass
+    set_rename_unknown(conf['rename_unknown_refs'])
+    set_remove_unknown(conf['remove_unknown_refs'])
+    set_remove_unused(conf['remove_unused_layers'])
+    try:
+        Mdl0.DETECT_MODEL_NAME = validBool(conf['detect_model_name'])
+    except ValueError:
+        pass
+    try:
+        Mdl0.DRAW_PASS_AUTO = validBool(conf['draw_pass_auto'])
+    except ValueError:
+        pass
+    try:
+        Shader.MAP_ID_AUTO = validBool(conf['map_id_auto'])
+    except ValueError:
+        pass
+    try:
+        Material.DEFAULT_COLOR = parse_color(conf['default_material_color'])
+    except ValueError:
+        pass
+    return conf
 
 
 if __name__ == "__main__":
