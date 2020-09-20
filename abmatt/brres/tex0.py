@@ -210,11 +210,9 @@ class ImgConverter:
 
     class Wimgt(ImgConverterI):
         def __init__(self):
-            program = 'wimgt'
-            if which(program):
+            program = which('wimgt')
+            if program:
                 self.temp_dest = 'abmatt_tmp'
-            else:
-                program = None
             super(ImgConverter.Wimgt, self).__init__(program)
 
         def encode(self, img_file, tex_format=None, num_mips=-1):

@@ -72,6 +72,8 @@ class XML:
                     attrib_value = xml[start_offset:offset]
                     node.attributes[attrib_name] = attrib_value
                     if attrib_name == 'id':
+                        if attrib_value in self.elements_by_id:
+                            print('WARN: id {} used multiple times in xml'.format(attrib_value))
                         self.elements_by_id[attrib_value] = node
                     offset += 1
                     break

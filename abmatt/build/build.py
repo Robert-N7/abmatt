@@ -14,13 +14,19 @@ def main(args):
         sys.exit(1)
     c = Config(config_path)
     os.chdir('../dist')
-    os.system('./update_version.py')
+    os.system('update_version.py')
     # read configuration
     bit_width = c['bit_width']
     version = c['version']
     interpreter = c['64-bit'] if bit_width == 'x64' else c['32-bit']
     if not os.path.exists(interpreter):
         interpreter = os.path.join(os.getcwd(), '../../' + interpreter)
+        if os.path.isdir(interpreter):
+            try_inter = os.path.join(interpreter, 'Scripts/python.exe')
+            if not os.path.exists(try_inter):
+                interpreter = os.path.join(interpreter, 'bin/python3')
+            else:
+                interpreter = try_inter
     name = c['build_name']
     build_type = c['build_type']
     # build

@@ -183,8 +183,8 @@ def decode_polygon(polygon):
     if polygon.has_pos_matrix:
         fmt_str += 'B'
         pos_matrix_index = geometry_index
-        raise Converter.ConvertError('{} vertex weighting not supported'.format(polygon.name))
         geometry_index += 1
+        raise Converter.ConvertError('{} vertex weighting not supported'.format(polygon.name))
     else:
         pos_matrix_index = -1
     tex_matrix_index = -1
@@ -233,20 +233,30 @@ def decode_polygon(polygon):
     face_point_indices = []
     data = polygon.vt_data
     total_face_points = i = 0
-    matrix_indices = []
+    bones = []
     face_point_count = polygon.facepoint_count
     while total_face_points < face_point_count:
-        cmd, num_facepoints = unpack_from('>BH', data, i)
-        i += 3
-        total_face_points += num_facepoints
-        if cmd == 0x98:
-            i = decode_tri_strip(fmt_str, fp_data_length, data, i, num_facepoints, face_point_indices)
-        elif cmd == 0x90:
-            i = decode_tris(fmt_str, fp_data_length, data, i, num_facepoints, face_point_indices)
-        elif cmd in (0x20, 0x28, 0x30):  # load matrix
-            matrix_index = unpack_from('>2B', data, i)
-            matrix_indices.append(matrix_index)
+        [cmd] = unpack_from('>B', data, i)
+        i += 1
+        if cmd in (0x98, 0x90):
+            [num_facepoints] = unpack_from('>H', data, i)
             i += 2
+            if cmd == 0x98:
+                i = decode_tri_strip(fmt_str, fp_data_length, data, i, num_facepoints, face_point_indices)
+            elif cmd == 0x90:
+                i = decode_tris(fmt_str, fp_data_length, data, i, num_facepoints, face_point_indices)
+            total_face_points += num_facepoints
+        elif cmd in (0x20, 0x28, 0x30):  # load matrix
+            bone_index, len_and_xf_address = unpack_from('>2H', data, i)
+            xf_address = 0xfff & len_and_xf_address
+            length = (len_and_xf_address >> 12) + 1
+            i += 4
+            if cmd == 0x20:     # pos matrix
+                bones.append(bone_index)
+            elif cmd == 0x28:
+                pass     # normals  todo figure out how these work
+            else:
+                raise Converter.ConvertError('Texture matrices not supported')
         else:
             raise ValueError('Unsupported draw cmd {}'.format(cmd))
     face_point_indices = np.array(face_point_indices, np.int)
@@ -269,9 +279,17 @@ def decode_polygon(polygon):
         geo_texcoords.append(PointCollection(x, face_point_indices[:, :, texcoord_index],
                                              tex.minimum, tex.maximum))
         texcoord_index += 1
+    mdl0_bones = polygon.parent.bones
+    if pos_matrix_index >= 0:
+        pos_matrix_indices = face_point_indices[:, :, 0] / 3
+        bone_table = polygon.get_bone_table()
+        bones = [mdl0_bones[bone_table[i]] for i in bones]     # possibly need to do something different here
+    else:
+        pos_matrix_indices = None
+        bones = [mdl0_bones[polygon.get_bone()]]
     face_point_indices = np.copy(face_point_indices[:, :, vertex_index:])
     geometry = Geometry(polygon.name, polygon.get_material().name, face_point_indices, g_verts,
-                        geo_texcoords, g_normals, g_colors)
+                        geo_texcoords, g_normals, g_colors, bones, pos_matrix_indices, polygon.get_linked_bone())
     return geometry
 
 
@@ -365,7 +383,7 @@ def consolidate_data(points, face_indices):
     point_len = len(points)
     # Next consolidate and map point indices
     for original_index in range(point_len):
-        if original_index not in indices_set:   # the point isn't used!
+        if original_index not in indices_set:  # the point isn't used!
             continue
         x = points[original_index]
         y = tuple(x)
@@ -425,6 +443,20 @@ class PointCollection:
 
     def get_stride(self):
         return len(self.points[0])
+
+    def apply_affine_matrix(self, matrix):
+        """matrix is a 4x4 ndarray matrix
+        transforms points using the matrix (last row is ignored)
+        """
+        if np.allclose(matrix, Converter.IDENTITY_MATRIX):
+            return self.points
+        matrix = matrix[:3]
+        points = self.points
+        # add a 1 after each point (for transformation)
+        new_col = np.full((len(points), 1), 1, dtype=float)
+        points = np.append(points, new_col, 1)
+        self.points = np.array([matrix.dot(x) for x in points])
+        return self.points
 
     @staticmethod
     def get_format_divisor(minimum, maximum):
@@ -640,7 +672,8 @@ class ColorCollection:
 
 
 class Geometry:
-    def __init__(self, name, material_name, triangles, vertices, texcoords, normals=None, colors=None):
+    def __init__(self, name, material_name, triangles, vertices, texcoords, normals=None, colors=None,
+                 bones=None, bone_indices=None, linked_bone=None):
         self.name = name
         self.triangles = triangles
         self.vertices = vertices
@@ -648,9 +681,12 @@ class Geometry:
         self.normals = normals
         self.colors = colors
         self.material_name = material_name
+        self.bones = bones
+        self.bone_indices = bone_indices
+        self.linked_bone = linked_bone
+
 
     def swap_y_z_axis(self):
-        # self.triangles[:, [1, 2]] = self.triangles[:, [2, 1]]
         collections = [self.vertices, self.normals]
         points = self.vertices.points
         points[:, [1, 2]] = points[:, [2, 1]]
@@ -658,6 +694,8 @@ class Geometry:
         points = self.normals.points
         points[:, [1, 2]] = points[:, [2, 1]]
 
+    def apply_matrix(self, matrix):
+        self.vertices.apply_affine_matrix(matrix)
 
     def encode(self, mdl, bone=None):
         polygon = add_geometry(mdl, self.name, self.vertices, self.normals, self.colors, self.texcoords)
@@ -709,10 +747,11 @@ class Material:
 
 
 class Controller:
-    def __init__(self, name, bind_shape_matrix, bones, weights, vertex_weight_counts, vertex_weight_indices,
+    def __init__(self, name, bind_shape_matrix, inv_bind_matrix, bones, weights, vertex_weight_counts, vertex_weight_indices,
                  geometry):
         self.name = name
         self.bind_shape_matrix = bind_shape_matrix
+        self.inv_bind_matrix = inv_bind_matrix
         self.bones = bones
         self.weights = weights
         self.vertex_weight_counts = vertex_weight_counts
@@ -720,17 +759,15 @@ class Controller:
         self.geometry = geometry
 
     def has_multiple_weights(self):
-        return not np.min(self.vertex_weight_counts) == np.max(self.vertex_weight_counts) ==  1.0
+        return not np.min(self.vertex_weight_counts) == np.max(self.vertex_weight_counts) == 1.0
 
-
-def get_default_controller(geometry, bone_names):
-    vert_len = len(geometry.vertices)
-    bind_matrix = np.eye(4)
-    weights = np.array([1])
-    weight_indices = np.full((vert_len, 2), 0, np.uint)
-    # weight_indices = np.stack((np.zeros(vert_len, dtype=int), np.arange(1, vert_len + 1, dtype=int)), -1)
-    return Controller(geometry.name, bind_matrix, bone_names, weights,
-                      np.full(vert_len, 1, dtype=int), weight_indices, geometry)
+    def get_bound_geometry(self, matrix=None):
+        if matrix is not None and not np.allclose(matrix, Converter.IDENTITY_MATRIX):
+            matrix = np.matmul(matrix, self.bind_shape_matrix)
+        else:
+            matrix = self.bind_shape_matrix
+        self.geometry.apply_matrix(matrix)
+        return self.geometry
 
 
 def vector_magnitude(vector):
@@ -771,3 +808,11 @@ def rotationMatrixToEulerAngles(R):
 def scaleMatrix(matrix, scale):
     for i in range(len(scale)):
         matrix[i][i] *= scale[i]
+
+def combine_matrices(matrix1, matrix2):
+    if matrix1 is None:
+        return matrix2
+    elif matrix2 is None:
+        return matrix1
+    else:
+        return np.matmul(matrix1, matrix2)
