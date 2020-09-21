@@ -89,7 +89,7 @@ class Command:
     CLIPBOARD = None
     CLIPTYPE = None
     MAX_FILES_OPEN = 6
-    DEBUG = True
+    DEBUG = False
 
     @staticmethod
     def set_max_brres_files(config):
@@ -676,7 +676,7 @@ class Command:
                     OSError, UnpackingError, PackingError, NotImplementedError, NoImgConverterError) as e:
                 AUTO_FIXER.error(e)
                 return False
-            return True
+        return True
 
     def run_import(self, files, converted_format=None):
         mdl_extensions = ('dae', 'obj')

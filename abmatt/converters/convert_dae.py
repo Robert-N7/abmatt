@@ -146,6 +146,9 @@ class DaeConverter2(Converter):
             geometry.colors = None
         if self.flags & self.NoNormals:
             geometry.normals = None
+        replace = 'Mesh'
+        if geometry.name.endswith(replace) and len(replace) > len(geometry.name):
+            geometry.name = geometry.name[:len(replace)]
         geometry.encode(self.mdl, bone)
 
     def __add_bone(self, node, parent_bone=None, matrix=None):
@@ -157,18 +160,18 @@ class DaeConverter2(Converter):
 
     def __parse_nodes(self, nodes, matrix=None):
         for node in nodes:
-            matrix = combine_matrices(matrix, node.matrix)
+            current_node_matrix = combine_matrices(matrix, node.matrix)
             bone_added = False
             if node.controller:
-                self.__parse_controller(node.controller, matrix)
+                self.__parse_controller(node.controller, current_node_matrix)
             elif node.geometries:
                 for x in node.geometries:
-                    self.__encode_geometry(x, matrix=matrix)
+                    self.__encode_geometry(x, matrix=current_node_matrix)
             elif node.attributes.get('type') == 'JOINT':
-                self.__add_bone(node, matrix=matrix)
+                self.__add_bone(node, matrix=current_node_matrix)
                 bone_added = True
             if not bone_added:
-                self.__parse_nodes(node.nodes, matrix)
+                self.__parse_nodes(node.nodes, current_node_matrix)
 
     def __parse_materials(self, materials):
         for material in materials:
