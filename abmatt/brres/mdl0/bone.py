@@ -27,6 +27,11 @@ class Bone(Node):
         matrix.append([0,0,0,1])
         return matrix
 
+    def get_inv_transform_matrix(self):
+        matrix = [[y for y in x] for x in self.inverse_matrix]
+        matrix.append([0, 0, 0, 1])
+        return matrix
+
     def set_translation(self, trans):
         self.translation = trans
         for i in range(3):

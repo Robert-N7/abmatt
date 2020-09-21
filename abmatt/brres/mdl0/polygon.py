@@ -83,8 +83,7 @@ class Polygon(Node):
         return get_item_by_index(self.parent.materials, definition.matIndex)
 
     def get_bone(self):
-        definition = self.parent.get_definition_by_object_id(self.index)
-        return get_item_by_index(self.parent.bones, definition.boneIndex)
+        return self.bone
 
     def check(self):
         vertices = self.get_vertex_group()
@@ -195,6 +194,13 @@ class Polygon(Node):
         # if self.face_count < 30:
         #     printCollectionHex(self.vt_data)
         binfile.end()
+
+    def get_bone_table(self):
+        return self.bone_table
+
+    def get_linked_bone(self):
+        definition = self.parent.get_definition_by_object_id(self.index)
+        return get_item_by_index(self.parent.bones, definition.boneIndex)
 
     def parse_cp_vertex_format(self, hi, lo):
         self.has_pos_matrix = bool(lo & 0x1)

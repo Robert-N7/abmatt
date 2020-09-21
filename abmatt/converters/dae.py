@@ -137,6 +137,13 @@ class Dae:
         geometry = self.decode_geometry(ref, bind_material)
         bind_shape_matrix = np.array([float(x) for x in skin['bind_shape_matrix'].text.split()], dtype=float).reshape((4, 4))
         joints = skin['joints']
+        for input in joints.children:
+            semantic = input.attributes['semantic']
+            if semantic == 'INV_BIND_MATRIX':
+                matrices = self.get_referenced_element(input, 'source')
+                data_type, float_arr = self.trace_technique_common(matrices)
+                inv_bind_matrices = np.array([float(x) for x in float_arr.text.split()], float)
+                inv_bind_matrices.reshape((-1, 4, 4))
         vertex_weights = skin['vertex_weights']
         vertex_weight_count = [float(x) for x in vertex_weights['vcount'].text.split()]
         vertex_weight_indices = np.array([int(x) for x in vertex_weights['v'].text.split()], int)
@@ -159,8 +166,8 @@ class Dae:
                 raise ValueError('Unknown Semantic {} in controller {}'.format(semantic, name))
             input_count += 1
         assert input_count == 2
-        return Controller(name, bind_shape_matrix, joint_names, weights, vertex_weight_count, vertex_weight_indices,
-                          geometry)
+        return Controller(name, bind_shape_matrix, inv_bind_matrices, joint_names, weights, vertex_weight_count,
+                          vertex_weight_indices, geometry)
 
     def add_skin_controller(self, controller):
         controller_id = controller.name + '-controller'
@@ -181,7 +188,7 @@ class Dae:
         matrices_source_id = controller_id + '-matrices'
         matrices_source = XMLNode('source', id=matrices_source_id, parent=xml_skin, xml=self.xml)
         matrices_array_id = matrices_source_id + '-array'
-        inv_bind_matrix = np.linalg.inv(controller.bind_shape_matrix).flatten()
+        inv_bind_matrix = controller.inv_bind_matrix.flatten()
         float_array = XMLNode('float_array', ' '.join([str(x) for x in inv_bind_matrix]), id=matrices_array_id,
                               parent=matrices_source, xml=self.xml)
         float_array.attributes['count'] = 16 * bone_len

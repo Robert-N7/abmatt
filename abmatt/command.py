@@ -89,6 +89,7 @@ class Command:
     CLIPBOARD = None
     CLIPTYPE = None
     MAX_FILES_OPEN = 6
+    DEBUG = False
 
     @staticmethod
     def set_max_brres_files(config):
@@ -191,7 +192,7 @@ class Command:
             lower = param.lower()
             if lower == 'to':
                 try:
-                    self.destination = params.pop(0)
+                    self.destination = os.path.normpath(params.pop(0))
                 except IndexError:
                     raise ParsingException('Expected destination after "to"')
             elif lower == 'no-normals':
@@ -199,7 +200,7 @@ class Command:
             elif lower == 'no-colors':
                 flags |= 2
             elif not self.name:
-                self.name = param
+                self.name = os.path.normpath(param)
             else:
                 raise ParsingException('Unknown parameter {}'.format(param))
         # if not self.name:
@@ -256,9 +257,9 @@ class Command:
             elif x == 'overwrite':
                 self.overwrite = True
             elif saveAs and not self.destination:
-                self.destination = x
+                self.destination = os.path.normpath(x)
             elif not self.file:
-                self.file = x
+                self.file = os.path.normpath(x)
                 self.hasSelection = True
 
     def detectImportType(self, ext):
@@ -337,12 +338,12 @@ class Command:
                     x = in_sel[i].lower()
                     if x == 'file':
                         i += 1
-                        self.file = in_sel[i]  # possible exception
+                        self.file = os.path.normpath(in_sel[i])  # possible exception
                     elif x == 'model':
                         i += 1
                         self.model = in_sel[i]
                     elif not self.file:
-                        self.file = in_sel[i]
+                        self.file = os.path.normpath(in_sel[i])
                     else:
                         raise ParsingException(self.txt, 'Unknown argument {}'.format(li[i]))
                     i += 1
@@ -664,13 +665,17 @@ class Command:
     # ---------------------------------------------- RUN CMD ---------------------------------------------------
     @staticmethod
     def run_commands(commandlist):
-        try:
+        if Command.DEBUG:
             for cmd in commandlist:
                 cmd.run_cmd()
-        except (ValueError, SaveError, PasteError, MaxFileLimit, NoSuchFile, FileNotFoundError, ParsingException,
-                OSError, UnpackingError, PackingError, NotImplementedError, NoImgConverterError) as e:
-            AUTO_FIXER.error(e)
-            return False
+        else:
+            try:
+                for cmd in commandlist:
+                    cmd.run_cmd()
+            except (ValueError, SaveError, PasteError, MaxFileLimit, NoSuchFile, FileNotFoundError, ParsingException,
+                    OSError, UnpackingError, PackingError, NotImplementedError, NoImgConverterError) as e:
+                AUTO_FIXER.error(e)
+                return False
         return True
 
     def run_import(self, files, converted_format=None):

@@ -210,11 +210,10 @@ class ImgConverter:
 
     class Wimgt(ImgConverterI):
         def __init__(self):
-            program = 'wimgt'
-            if which(program):
+            program = which('wimgt')
+            if program:
                 self.temp_dest = 'abmatt_tmp'
-            else:
-                program = None
+                program = '"' + program + '"'
             super(ImgConverter.Wimgt, self).__init__(program)
 
         def encode(self, img_file, tex_format=None, num_mips=-1):
@@ -227,7 +226,7 @@ class ImgConverter:
             if not tex_format:
                 tex_format = self.IMG_FORMAT
             result = os.system(
-                '{} encode "{}" -d "{}" -x {} -q --n-mm={} -o'.format(self.converter, img_file, self.temp_dest, tex_format,
+                '"{} encode "{}" -d "{}" -x {} -q --n-mm={} -o"'.format(self.converter, img_file, self.temp_dest, tex_format,
                                                                   mips))
             if result:
                 raise EncodeError('Failed to encode {}'.format(img_file))
@@ -247,7 +246,7 @@ class ImgConverter:
             tex0.pack(f)
             f.commitWrite()
             result = os.system(
-                '{} decode "{}" -q -d "{}" --no-mipmaps -o'.format(self.converter, self.temp_dest, dest_file))
+                '"{} decode "{}" -q -d "{}" --no-mipmaps -o"'.format(self.converter, self.temp_dest, dest_file))
             if self.temp_dest != dest_file:
                 os.remove(self.temp_dest)
             if result:
@@ -258,7 +257,7 @@ class ImgConverter:
             f = BinFile(self.temp_dest, 'w')
             tex0.pack(f)
             f.commitWrite()
-            result = os.system('{} encode "{}" -o -q -x {}'.format(self.converter, self.temp_dest, tex_format))
+            result = os.system('"{} encode "{}" -o -q -x {}"'.format(self.converter, self.temp_dest, tex_format))
             if result:
                 os.remove(self.temp_dest)
                 raise EncodeError('Failed to encode {}'.format(tex0.name))
