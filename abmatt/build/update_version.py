@@ -5,6 +5,7 @@ import os
 import re
 import sys
 
+from get_bit_width import get_bit_width
 from config import Config
 
 
@@ -38,7 +39,7 @@ def update_version(version):
 
 
 def update_bit_width(is_64_bit):
-    filename = 'make_installer.nsi'
+    filename = '../dist/make_installer.nsi'
     new_data = data = None
     str_width = '64' if is_64_bit else '32'
     with open(filename, 'r') as f:
@@ -52,29 +53,25 @@ def update_bit_width(is_64_bit):
             f.write(new_data)
 
 
-def run_update_version(args):
-    usage = 'update_version.py [version [bit_width]]'
+def run_update_version(args, config=None):
+    usage = 'update_version.py [version]'
     bit_width = version = None
-    c = Config('../build/config.txt')
+    if not config:
+        config = Config('config.txt')
     if len(args):
         version = args.pop(0)
         if not re.match(r'\d+\.\d+\.\d+', version):
             print('Invalid version format {}'.format(version))
             sys.exit(1)
-        c['version'] = version
+        config['version'] = version
     else:
-        version = c['version']
+        version = config['version']
     if not version:
         print('No version detected!')
         print(usage)
         sys.exit(1)
-    if len(args):
-        bit_width = args.pop(0)
-        is_64_bit = ['x86', 'x64'].index(bit_width)
-        c['bit_width'] = bit_width
-    else:
-        bit_width = c['bit_width']
-        is_64_bit = ['x86', 'x64'].index(bit_width)
+    bit_width = get_bit_width(sys.executable)
+    is_64_bit = ['x86', 'x64'].index(bit_width)
     if not bit_width:
         print('Bit width not set!')
         print(usage)

@@ -1,6 +1,3 @@
 build_name = main   # build output name
 build_type = onedir   # the type of build, (auto|onefile|onedir)
-bit_width = x86
-version = 0.7.1
-64-bit = venv
-32-bit = venv1
+version = 0.7.2

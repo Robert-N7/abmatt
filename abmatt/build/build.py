@@ -4,6 +4,8 @@ import shutil
 import sys
 import platform
 from abmatt.config import Config
+from get_bit_width import get_bit_width
+from update_version import run_update_version
 
 
 def main(args):
@@ -14,19 +16,11 @@ def main(args):
         sys.exit(1)
     c = Config(config_path)
     os.chdir('../dist')
-    os.system('update_version.py')
-    # read configuration
-    bit_width = c['bit_width']
     version = c['version']
-    interpreter = c['64-bit'] if bit_width == 'x64' else c['32-bit']
-    if not os.path.exists(interpreter):
-        interpreter = os.path.join(os.getcwd(), '../../' + interpreter)
-        if os.path.isdir(interpreter):
-            try_inter = os.path.join(interpreter, 'Scripts/python.exe')
-            if not os.path.exists(try_inter):
-                interpreter = os.path.join(interpreter, 'bin/python3')
-            else:
-                interpreter = try_inter
+    run_update_version([version], c)
+    interpreter = sys.executable
+    # read configuration
+    bit_width = get_bit_width(interpreter)
     name = c['build_name']
     build_type = c['build_type']
     # build
@@ -130,7 +124,8 @@ def build(name, build_type, interpreter, platform):
             if not os.path.exists(output):
                 print('Unable to find PyInstaller output file!')
                 sys.exit(1)
-        result = os.system(os.path.join(os.getcwd(), output) + ' -b ../../brres_files/beginner_course.brres -d ../../brres_files/test.brres -o')
+        result = os.system(os.path.join(os.getcwd(),
+                                        output) + ' -b ../../brres_files/beginner_course.brres -d ../../brres_files/test.brres -o')
         if not result:
             return output, is_dir
     return None, is_dir
