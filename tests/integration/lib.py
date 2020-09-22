@@ -37,7 +37,7 @@ def run_tests(obj):
 
 def abmatt(params):
     os.chdir('../..')
-    result = os.system('"' + sys.executable + ' .\\abmatt\\__main__.py ' + params + '"')
+    result = os.system('"' + sys.executable + ' .\\abmatt\\__main__.py ' + params + ' -l 0"')
     os.chdir('tests/integration')
     return not result
 

@@ -9,3 +9,4 @@ for file in os.listdir('.'):
         err_count += os.system('"' + sys.executable + ' ' + file + '"')
 if err_count:
     print(f'{bcolors.FAIL}{err_count} tests failed.{bcolors.ENDC}')
+    sys.exit(err_count)
