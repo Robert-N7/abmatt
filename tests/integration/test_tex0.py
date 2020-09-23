@@ -1,9 +1,9 @@
 import sys
 
-from tests.integration.lib import abmatt_desert, run_tests
+from tests.integration.lib import abmatt_desert, IntegTest
 
 
-class TestTex0:
+class TestTex0(IntegTest):
     def test_add_tex0(self):
         return abmatt_desert('-c add -t tex0:test_files/images/yama.png')
 
@@ -18,4 +18,4 @@ class TestTex0:
 
 
 if __name__ == '__main__':
-    run_tests(TestTex0())
+    TestTex0()

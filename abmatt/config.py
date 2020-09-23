@@ -35,6 +35,7 @@ class Config:
         self.config = {}
         self.filename = filename
         if os.path.exists(filename):
+            self.filename = os.path.abspath(filename)
             with open(filename, 'r') as f:
                 for cnt, line, in enumerate(f):
                     result = parse_line(line)
@@ -45,6 +46,8 @@ class Config:
         return self.config.get(item)
 
     def __setitem__(self, key, value):
+        if value == self.config.get(key):
+            return
         self.config[key] = value
         n = None
         has_subbed = False

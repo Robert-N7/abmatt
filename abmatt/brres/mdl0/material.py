@@ -638,8 +638,8 @@ class Material(Clipable):
             self.srt0.updateLayerNameI(layer.layer_index, name)
         return self.parent.rename_texture_link(layer, name)
 
-    def enable_vertex_color(self):
-        self.lightChannels[0].enable_vertex_color()
+    def enable_vertex_color(self, enable=True):
+        self.lightChannels[0].enable_vertex_color(enable)
 
     # ---------------------------------PASTE------------------------------------------
     def paste(self, item):
@@ -841,8 +841,8 @@ class LightChannel:
         self.rasterAlphaEnabled = self.rasterColorEnabled = True
         self.materialColor = [128, 128, 128, 255]
         self.ambientColor = [0, 0, 0, 255]
-        self.colorLightControl = self.LightChannelControl(0x701)
-        self.alphaLightControl = self.LightChannelControl(0x701)
+        self.colorLightControl = self.LightChannelControl(0x700)
+        self.alphaLightControl = self.LightChannelControl(0x700)
 
     def __str__(self):
         return 'Flags:{:02X} Mat:{} Amb:{}\n\tColorControl: {}\n\tAlphaControl: {}'.format(self.flagsToInt(),

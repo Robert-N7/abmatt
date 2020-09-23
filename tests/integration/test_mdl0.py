@@ -1,9 +1,9 @@
 import sys
 
-from tests.integration.lib import abmatt_beginner, run_tests
+from tests.integration.lib import abmatt_beginner, IntegTest
 
 
-class TestMdl0:
+class TestMdl0(IntegTest):
     def test_add_mdl0(self):
         return abmatt_beginner('-c add -t mdl0:test_files/beginner_course.dae')
 
@@ -12,4 +12,4 @@ class TestMdl0:
 
 
 if __name__ == '__main__':
-    run_tests(TestMdl0())
+    TestMdl0()

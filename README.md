@@ -3,11 +3,9 @@ This command line tool is for converting and editing *Brres* files in *Mario Kar
 
 ## Installation
 Download compiled [releases](https://github.com/Robert-N7/abmatt/releases) for Linux and Windows, and follow the install.txt instructions.
-Alternatively, install with python:
+Alternatively, install as a python package:
 ```
-git clone https://github.com/Robert-N7/abmatt
-cd abmatt
-python setup.py install
+pip install git+https://github.com/Robert-N7/abmatt.git
 ```
 
 ## Dependencies
@@ -38,23 +36,17 @@ ABMatt supports editing the following types:
 ## Command Line Usage
 ABMatt supports a command line (see [FileFormat](##FileFormat)) followed by options.
 ```
-abmatt [command_line][-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]
+abmatt [command_line][--interactive -f <file> -b <brres-file> -d <destination> --overwrite]
 ```
 | Flag |Expanded| Description |
 |---|---|---|
 | -b | --brres | Brres file selection. |
-| -c | --command | Command name to run. |
 | -d | --destination | The file path to be written to. Multiple destinations are not supported. |
 | -f | --file | File with ABMatt commands to be processed as specified in file format. |
 | -h | --help | Displays a help message about program usage. |
 | -i | --interactive | Interactive shell mode. |
-| -k | --key | Setting key to be updated. |
 | -l | --loudness | Sets the verbosity level. (0-5)
-| -m | --model | Model selection. |
-| -n | --name | Material or layer name or regular expression to be found. |
 | -o | --overwrite | Overwrite existing files.  |
-| -t | --type | Type selection. |
-| -v | --value | Value to set corresponding with key. (set command) |
 
 ### Command Line Examples
 This command would open *course_model.brres* in overwrite mode and run the commands stored in *my_commands.txt*
