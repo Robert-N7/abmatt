@@ -41,7 +41,7 @@ class IntegTest:
 
 def abmatt(params):
     os.chdir('../..')
-    result = os.system('"' + sys.executable + ' .\\abmatt\\__main__.py ' + params + ' -g -l 0"')
+    result = os.system(sys.executable + ' ./abmatt/__main__.py ' + params + ' -g -l 0')
     os.chdir('tests/integration')
     return not result
 

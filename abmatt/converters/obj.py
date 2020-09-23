@@ -4,7 +4,7 @@ import re
 
 import numpy as np
 
-from abmatt.converters.convert_lib import PointCollection
+from abmatt.converters.convert_lib import PointCollection, float_to_str
 
 
 class ObjMaterial:
@@ -40,9 +40,9 @@ class ObjMaterial:
         s = 'newmtl ' + self.name + '\n\tNs ' + str(self.specular_highlight) + \
             '\n\tNi ' + str(self.optical_density) + '\n\td ' + str(self.dissolve) + \
             '\n\tTr ' + str(1 - self.dissolve) + '\n\tillum ' + str(self.illumination) +\
-            '\n\tKa ' + ' '.join([str(x) for x in self.ambient_color]) + \
-            '\n\tKd ' + ' '.join([str(x) for x in self.diffuse_color]) + \
-            '\n\tKs ' + ' '.join([str(x) for x in self.specular_color])
+            '\n\tKa ' + ' '.join([float_to_str(x) for x in self.ambient_color]) + \
+            '\n\tKd ' + ' '.join([float_to_str(x) for x in self.diffuse_color]) + \
+            '\n\tKs ' + ' '.join([float_to_str(x) for x in self.specular_color])
         if self.ambient_map:
             s += '\n\tmap_Ka ' + self.ambient_map
         if self.diffuse_map:
@@ -135,19 +135,19 @@ class Obj():
             s += '#\n# object ' + geometry.name + '\n#\n\n'
             vertex_count = len(geometry.vertices)
             for vert in geometry.vertices:
-                s += 'v ' + ' '.join(str(x) for x in vert) + '\n'
+                s += 'v ' + ' '.join(float_to_str(x) for x in vert) + '\n'
             s += '# {} vertices\n\n'.format(vertex_count)
             if geometry.normals:
                 normal_count = len(geometry.normals)
                 for normal in geometry.normals:
-                    s += 'vn ' + ' '.join(str(x) for x in normal) + '\n'
+                    s += 'vn ' + ' '.join(float_to_str(x) for x in normal) + '\n'
                 s += '# {} normals\n\n'.format(normal_count)
             else:
                 normal_count = 0
             if geometry.texcoords:
                 texcoord_count = len(geometry.texcoords)
                 for texcoord in geometry.texcoords:
-                    s += 'vt ' + ' '.join(str(x) for x in texcoord) + '\n'
+                    s += 'vt ' + ' '.join(float_to_str(x) for x in texcoord) + '\n'
                 s += '# {} texture coordinates\n\n'.format(texcoord_count)
                 texcoord_offset = 1
             else:
