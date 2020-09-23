@@ -13,31 +13,35 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
-def run_tests(obj):
-    test_total = tests_passed = 0
-    public_method_names = [method for method in dir(obj) if callable(getattr(obj, method)) if \
-                           not method.startswith('_')]  # 'private' methods start from _
-    for method in public_method_names:
-        print(f'{bcolors.OKGREEN}Running {method}{bcolors.ENDC}')
-        result = getattr(obj, method)()
-        if result:
-            tests_passed += 1
+class IntegTest:
+    def __init__(self):
+        self.__run_tests()
+
+    def __run_tests(self):
+        test_total = tests_passed = 0
+        public_method_names = [method for method in dir(self) if callable(getattr(self, method)) if \
+                               not method.startswith('_')]  # 'private' methods start from _
+        for method in public_method_names:
+            print(f'{bcolors.OKGREEN}Running {method}{bcolors.ENDC}')
+            result = getattr(self, method)()
+            if result:
+                tests_passed += 1
+            else:
+                print(f'{bcolors.FAIL}{method} failed.{bcolors.ENDC}')
+            test_total += 1
+        tests_failed = test_total - tests_passed
+        if tests_failed:
+            print(f'{bcolors.FAIL}{tests_passed}/{test_total} tests passed.{bcolors.ENDC}')
         else:
-            print(f'{bcolors.FAIL}{method} failed.{bcolors.ENDC}')
-        test_total += 1
-    tests_failed = test_total - tests_passed
-    if tests_failed:
-        print(f'{bcolors.FAIL}{tests_passed}/{test_total} tests passed.{bcolors.ENDC}')
-    else:
-        print(f'{bcolors.OKBLUE}{tests_passed}/{test_total} tests passed.{bcolors.ENDC}')
-    if tests_failed:
-        sys.exit(tests_failed)
-    return tests_failed
+            print(f'{bcolors.OKBLUE}{tests_passed}/{test_total} tests passed.{bcolors.ENDC}')
+        if tests_failed:
+            sys.exit(tests_failed)
+        return tests_failed
 
 
 def abmatt(params):
     os.chdir('../..')
-    result = os.system('"' + sys.executable + ' .\\abmatt\\__main__.py ' + params + ' -l 0"')
+    result = os.system('"' + sys.executable + ' .\\abmatt\\__main__.py ' + params + ' -g -l 0"')
     os.chdir('tests/integration')
     return not result
 

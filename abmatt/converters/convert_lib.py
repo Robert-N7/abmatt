@@ -29,6 +29,10 @@ class Converter:
         for x in common_models:
             if x in brres_name or x in model_name:
                 return x
+        model_name = os.path.splitext(model_name)[0]
+        replace = brres_name + '-'
+        if model_name.startswith(replace) and len(model_name) > len(replace):
+            model_name = model_name[len(replace):]
         return model_name
 
     @staticmethod

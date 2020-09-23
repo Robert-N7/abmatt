@@ -186,7 +186,7 @@ class Command:
 
     def set_convert(self, params):
         flags = 0
-        self.name = self.destination = None
+        self.name = self.destination = self.model = None
         while len(params):
             param = params.pop(0)
             lower = param.lower()
@@ -195,6 +195,12 @@ class Command:
                     self.destination = os.path.normpath(params.pop(0))
                 except IndexError:
                     raise ParsingException('Expected destination after "to"')
+            elif lower == 'in':
+                model = self.name
+                try:
+                    self.name = os.path.normpath(params.pop(0))
+                except IndexError:
+                    raise ParsingException('Expected brres filename after keyword "in"')
             elif lower == 'no-normals':
                 flags |= 1
             elif lower == 'no-colors':
@@ -203,8 +209,6 @@ class Command:
                 self.name = os.path.normpath(param)
             else:
                 raise ParsingException('Unknown parameter {}'.format(param))
-        # if not self.name:
-        #     raise ParsingException('Convert requires target!')
         self.ext = None
         supported_formats = ('.dae', '.obj')
         self.is_import = False
@@ -794,14 +798,28 @@ class Command:
                     converter = klass(self.create_or_open(convert_file_ext(file, '.brres')), file, self.flags)
                 else:
                     converter = klass(brres, file, self.flags)
-                mdl = converter.load_model()
+                base_name = os.path.splitext(os.path.basename(converter.brres.name))[0]
+                model = self.model
+                if model and len(model) > len(base_name) and model.startswith(base_name + '-'):
+                    model = model[len(model) + 1:]
+                mdl = converter.load_model(model)
         else:  # export
-            dest_auto = True if multiple_files or self.destination.lower() == '*' + self.ext else False
+            dest_auto = True if multiple_files or os.path.basename(self.destination).lower() == '*' + self.ext else False
             for file in files:
-                destination = self.destination if not dest_auto else convert_file_ext(file, self.ext)
+                destination = self.destination if not dest_auto \
+                    else os.path.join(os.path.dirname(self.destination), convert_file_ext(os.path.basename(file), self.ext))
                 brres = self.create_or_open(file)
                 converter = klass(brres, destination, self.flags)
-                converter.save_model()
+                models = MATCHING.findAll(self.model, brres.models)
+                if len(models) > 1:
+                    multi_model = True
+                    destination = destination[:-1 * len(self.ext)]
+                else:
+                    multi_model = False
+                for mdl0 in models:
+                    if multi_model:
+                        converter.mdl_file = destination + '-' + mdl0.name + self.ext
+                    converter.save_model(mdl0)
 
     # -------------------------------------------- COPY/PASTE -----------------------------------------------
     #   Items implementing clipboard must support the methods:

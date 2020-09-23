@@ -22,7 +22,7 @@ from abmatt.brres.lib.autofix import AUTO_FIXER
 from abmatt.brres.mdl0.material import Material
 
 VERSION = '0.7.2'
-USAGE = "USAGE: abmatt [command_line][-i -f <file> -b <brres-file> -c <command> -d <destination> -o -t <type> -k <key> -v <value> -n <name>]"
+USAGE = "USAGE: abmatt [command_line][--interactive -f <file> -b <brres-file> -d <destination> --overwrite]"
 
 
 def hlp(cmd=None):
@@ -410,70 +410,71 @@ def main():
     if not argv:
         print(USAGE)
         sys.exit(0)
-    cmd_string = ''
-    found_args = False
-    for i in range(len(argv)):
-        if argv[i][0] == '-':
-            if i > 0:
-                cmd_string = ' '.join(argv[0:i])
-                argv = argv[i:]
-            found_args = True
-            break
 
-    interactive = overwrite = False
-    type = ""
+    interactive = overwrite = debug = False
+    cmd_string = type = ""
     command = destination = brres_file = command_file = model = value = key = ""
     autofix = loudness = None
     name = None
     do_help = False
-    if not found_args:
-        cmd_string = ' '.join(argv)
-    else:
-        try:
-            opts, args = getopt.getopt(argv, "hd:oc:t:k:v:n:b:m:f:iul:",
-                                       ["help", "destination=", "overwrite",
-                                        "command=", "type=", "key=", "value=",
-                                        "name=", "brres=", "model=", "file=", "interactive",
-                                         "loudness="])
-        except getopt.GetoptError as e:
-            print(e)
+    for i in range(len(argv)):
+        if argv[i][0] == '-':
+            if i != 0:
+                cmd_string = ' '.join(argv[:i])
+                argv = argv[i:]
+            break
+
+    try:
+        opts, args = getopt.getopt(argv, "hd:oc:t:k:v:n:b:m:f:iul:g",
+                                   ["help", "destination=", "overwrite",
+                                    "command=", "type=", "key=", "value=",
+                                    "name=", "brres=", "model=", "file=", "interactive",
+                                     "loudness=", "debug="])
+    except getopt.GetoptError as e:
+        print(e)
+        print(USAGE)
+        sys.exit(2)
+
+    for opt, arg in opts:
+        if opt in ("-h", "--help"):
+            do_help = True
+        elif opt in ('-b', '--brres'):
+            brres_file = arg
+        elif opt in ("-f", "--file"):
+            command_file = arg
+        elif opt in ("-d", "--destination"):
+            destination = arg
+        elif opt in ("-o", "--overwrite"):
+            overwrite = True
+        elif opt in ("-k", "--key"):
+            key = arg
+        elif opt in ("-v", "--value"):
+            value = arg
+        elif opt in ("-t", "--type"):
+            type = arg
+        elif opt in ("-n", "--name"):
+            name = arg
+        elif opt in ("-m", "--model"):
+            model = arg
+        elif opt in ("-c", "--command"):
+            command = arg
+        elif opt in ("-i", "--interactive"):
+            interactive = True
+        elif opt in ("-a", "--auto-fix"):
+            autofix = arg
+        elif opt in ("-l", "--loudness"):
+            loudness = arg
+        elif opt in ("-g", "--debug"):
+            debug = True
+        else:
+            print("Unknown option '{}'".format(opt))
             print(USAGE)
             sys.exit(2)
-
-        for opt, arg in opts:
-            if opt in ("-h", "--help"):
-                do_help = True
-            elif opt in ('-b', '--brres'):
-                brres_file = arg
-            elif opt in ("-f", "--file"):
-                command_file = arg
-            elif opt in ("-d", "--destination"):
-                destination = arg
-            elif opt in ("-o", "--overwrite"):
-                overwrite = True
-            elif opt in ("-k", "--key"):
-                key = arg
-            elif opt in ("-v", "--value"):
-                value = arg
-            elif opt in ("-t", "--type"):
-                type = arg
-            elif opt in ("-n", "--name"):
-                name = arg
-            elif opt in ("-m", "--model"):
-                model = arg
-            elif opt in ("-c", "--command"):
-                command = arg
-            elif opt in ("-i", "--interactive"):
-                interactive = True
-            elif opt in ("-a", "--auto-fix"):
-                autofix = arg
-            elif opt in ("-l", "--loudness"):
-                loudness = arg
-            else:
-                print("Unknown option '{}'".format(opt))
-                print(USAGE)
-                sys.exit(2)
-
+    if args:
+        if cmd_string:
+            cmd_string += ' ' + ' '.join(args)
+        else:
+            cmd_string = ' '.join(args)
     if do_help:
         if not command and cmd_string:
             command = cmd_string.split()[0]
@@ -489,6 +490,7 @@ def main():
     app_dir = os.path.join(os.path.join(os.path.dirname(os.path.dirname(base_path)), 'etc'), 'abmatt')
     config = load_config(app_dir, loudness, autofix)
     Command.APP_DIR = app_dir
+    Command.DEBUG = debug
     cmds = []
     if cmd_string:
         cmds.append(Command(cmd_string))

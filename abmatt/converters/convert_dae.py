@@ -17,6 +17,8 @@ from converters.convert_lib import Controller
 class DaeConverter2(Converter):
 
     def load_model(self, model_name=None):
+        AUTO_FIXER.info('Converting {}... '.format(self.mdl_file))
+        start = time.time()
         brres = self.brres
         model_file = self.mdl_file
         cwd = os.getcwd()
@@ -27,8 +29,6 @@ class DaeConverter2(Converter):
         dir, name = os.path.split(model_file)
         if dir:
             os.chdir(dir)  # change to the collada dir to help find relative paths
-        AUTO_FIXER.info('Converting {}... '.format(self.mdl_file))
-        start = time.time()
         self.dae = dae = Dae(name)
         if not model_name:
             model_name = self.get_mdl0_name(base_name, name)
