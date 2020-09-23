@@ -3,11 +3,9 @@ This command line tool is for converting and editing *Brres* files in *Mario Kar
 
 ## Installation
 Download compiled [releases](https://github.com/Robert-N7/abmatt/releases) for Linux and Windows, and follow the install.txt instructions.
-Alternatively, install with python:
+Alternatively, install as a python package:
 ```
-git clone https://github.com/Robert-N7/abmatt
-cd abmatt
-python setup.py install
+pip install git+https://github.com/Robert-N7/abmatt.git
 ```
 
 ## Dependencies
