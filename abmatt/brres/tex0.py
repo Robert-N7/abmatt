@@ -215,7 +215,6 @@ class ImgConverter:
             program = which('wimgt')
             if program:
                 self.temp_dest = 'abmatt_tmp'
-                # program = '"' + program + '"'
             super(ImgConverter.Wimgt, self).__init__(program)
 
         def encode(self, img_file, tex_format=None, num_mips=-1):
@@ -224,12 +223,11 @@ class ImgConverter:
             if img_file.startswith('file://'):
                 img_file = img_file.replace('file://', '')
             name = os.path.splitext(fname)[0]
-            mips = str(num_mips) if num_mips >= 0 else 'auto'
+            mips = '--n-mm=' + str(num_mips) if num_mips >= 0 else ''
             if not tex_format:
                 tex_format = self.IMG_FORMAT
-            result = subprocess.call(
-                '{} encode "{}" -d "{}" -x {} -q --n-mm={} -o'.format(self.converter, img_file, self.temp_dest, tex_format,
-                                                                  mips))
+            result = subprocess.call([self.converter, 'encode', img_file, '-d',
+                                      self.temp_dest, '-x', tex_format, mips, '-qo'])
             if result:
                 raise EncodeError('Failed to encode {}'.format(img_file))
             t = Tex0(name, None, BinFile(self.temp_dest))
@@ -247,7 +245,6 @@ class ImgConverter:
             f = BinFile(self.temp_dest, 'w')
             tex0.pack(f)
             f.commitWrite()
-            # result = os.system(f'{self.converter} -d "{dest_file}" --no-mipmaps -qo decode "{self.temp_dest}"')
             result = subprocess.call([self.converter, 'decode', self.temp_dest,
                                       '-d', dest_file, '--no-mipmaps', '-qo'])
             if self.temp_dest != dest_file:
@@ -260,7 +257,7 @@ class ImgConverter:
             f = BinFile(self.temp_dest, 'w')
             tex0.pack(f)
             f.commitWrite()
-            result = subprocess.call('{} encode "{}" -o -q -x {}'.format(self.converter, self.temp_dest, tex_format))
+            result = subprocess.call([self.converter, 'encode', self.temp_dest, '-oq', '-x', tex_format])
             if result:
                 os.remove(self.temp_dest)
                 raise EncodeError('Failed to encode {}'.format(tex0.name))
