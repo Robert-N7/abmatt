@@ -215,7 +215,7 @@ class ImgConverter:
             program = which('wimgt')
             if program:
                 self.temp_dest = 'abmatt_tmp'
-                program = '"' + program + '"'
+                # program = '"' + program + '"'
             super(ImgConverter.Wimgt, self).__init__(program)
 
         def encode(self, img_file, tex_format=None, num_mips=-1):
@@ -247,8 +247,9 @@ class ImgConverter:
             f = BinFile(self.temp_dest, 'w')
             tex0.pack(f)
             f.commitWrite()
-            result = subprocess.call(
-                '{} decode "{}" -q -d "{}" --no-mipmaps -o'.format(self.converter, self.temp_dest, dest_file))
+            # result = os.system(f'{self.converter} -d "{dest_file}" --no-mipmaps -qo decode "{self.temp_dest}"')
+            result = subprocess.call([self.converter, 'decode', self.temp_dest,
+                                      '-d', dest_file, '--no-mipmaps', '-qo'])
             if self.temp_dest != dest_file:
                 os.remove(self.temp_dest)
             if result:
