@@ -41,9 +41,10 @@ class IntegTest:
 
 
 def abmatt(params):
-    os.chdir('../..')
-    result = subprocess.call(sys.executable + ' ./abmatt/__main__.py ' + params + ' -g -l 0')
-    os.chdir('tests/integration')
+    params += ' -g -l 0'
+    p = [sys.executable, './abmatt/__main__.py']
+    p.extend(params.split(' '))
+    result = subprocess.call(p, cwd=os.path.dirname(os.path.dirname(os.getcwd())))
     return not result
 
 
