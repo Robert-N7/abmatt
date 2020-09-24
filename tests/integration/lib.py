@@ -1,13 +1,14 @@
 import os
+import subprocess
 import sys
 
 
 class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
+    HEADER = '\033[35m'
+    OKBLUE = '\033[34m'
+    OKGREEN = '\033[32m'
+    WARNING = '\033[33m'
+    FAIL = '\033[31m'
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
@@ -41,7 +42,7 @@ class IntegTest:
 
 def abmatt(params):
     os.chdir('../..')
-    result = os.system(sys.executable + ' ./abmatt/__main__.py ' + params + ' -g -l 0')
+    result = subprocess.call(sys.executable + ' ./abmatt/__main__.py ' + params + ' -g -l 0')
     os.chdir('tests/integration')
     return not result
 

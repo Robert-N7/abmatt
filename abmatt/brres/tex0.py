@@ -210,6 +210,7 @@ class ImgConverter:
             self.INSTANCE.converter = converter
 
     class Wimgt(ImgConverterI):
+
         def __init__(self):
             program = which('wimgt')
             if program:
@@ -226,7 +227,7 @@ class ImgConverter:
             mips = str(num_mips) if num_mips >= 0 else 'auto'
             if not tex_format:
                 tex_format = self.IMG_FORMAT
-            result = os.system(
+            result = subprocess.call(
                 '{} encode "{}" -d "{}" -x {} -q --n-mm={} -o'.format(self.converter, img_file, self.temp_dest, tex_format,
                                                                   mips))
             if result:
@@ -246,7 +247,7 @@ class ImgConverter:
             f = BinFile(self.temp_dest, 'w')
             tex0.pack(f)
             f.commitWrite()
-            result = os.system(
+            result = subprocess.call(
                 '{} decode "{}" -q -d "{}" --no-mipmaps -o'.format(self.converter, self.temp_dest, dest_file))
             if self.temp_dest != dest_file:
                 os.remove(self.temp_dest)
@@ -258,7 +259,7 @@ class ImgConverter:
             f = BinFile(self.temp_dest, 'w')
             tex0.pack(f)
             f.commitWrite()
-            result = os.system('{} encode "{}" -o -q -x {}'.format(self.converter, self.temp_dest, tex_format))
+            result = subprocess.call('{} encode "{}" -o -q -x {}'.format(self.converter, self.temp_dest, tex_format))
             if result:
                 os.remove(self.temp_dest)
                 raise EncodeError('Failed to encode {}'.format(tex0.name))
