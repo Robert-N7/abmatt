@@ -3,7 +3,8 @@ from datetime import datetime
 import numpy as np
 
 from abmatt.brres.lib.autofix import AUTO_FIXER
-from abmatt.converters.convert_lib import Geometry, PointCollection, ColorCollection, Material, Controller, scaleMatrix
+from abmatt.converters.convert_lib import Geometry, PointCollection, ColorCollection, Material, Controller, scaleMatrix, \
+    float_to_str
 from abmatt.converters.xml import XML, XMLNode
 
 
@@ -111,7 +112,7 @@ class Dae:
                 xml_node.attributes[key] = att[key]
         xml_node.attributes['sid'] = node.name
         if node.matrix is not None:
-            matrix_xml = XMLNode('matrix', ' '.join([str(x) for x in node.matrix.flatten()]), parent=xml_node)
+            matrix_xml = XMLNode('matrix', ' '.join([float_to_str(x) for x in node.matrix.flatten()]), parent=xml_node)
             matrix_xml.attributes['sid'] = 'matrix'
         if node.extra is not None:
             xml_node.add_child(node.extra)
@@ -174,7 +175,7 @@ class Dae:
         xml_controller = XMLNode('controller', id=controller_id, parent=self.controllers, xml=self.xml)
         xml_skin = XMLNode('skin', parent=xml_controller)
         xml_skin.attributes['source'] = '#' + self.add_geometry(controller.geometry).get_id()
-        bind_shape_matrix = XMLNode('bind_shape_matrix', ' '.join([str(x) for \
+        bind_shape_matrix = XMLNode('bind_shape_matrix', ' '.join([float_to_str(x) for \
                                                                    x in controller.bind_shape_matrix.flatten()]),
                                     parent=xml_skin)
         joint_source_id = controller_id + '-joints'
@@ -189,15 +190,15 @@ class Dae:
         matrices_source = XMLNode('source', id=matrices_source_id, parent=xml_skin, xml=self.xml)
         matrices_array_id = matrices_source_id + '-array'
         inv_bind_matrix = controller.inv_bind_matrix.flatten()
-        float_array = XMLNode('float_array', ' '.join([str(x) for x in inv_bind_matrix]), id=matrices_array_id,
+        float_array = XMLNode('float_array', ' '.join([float_to_str(x) for x in inv_bind_matrix]), id=matrices_array_id,
                               parent=matrices_source, xml=self.xml)
         float_array.attributes['count'] = 16 * bone_len
         self.__create_technique_common(matrices_array_id, bone_len, 'float4x4', matrices_source, 16)
         weight_source_id = controller_id + '-weights'
-        weight_source = XMLNode('source', ' '.join([str(x) for x in controller.weights.flatten()]), id=weight_source_id,
+        weight_source = XMLNode('source', ' '.join([float_to_str(x) for x in controller.weights.flatten()]), id=weight_source_id,
                                 parent=xml_skin, xml=self.xml)
         float_array_id = weight_source_id + '-array'
-        float_array = XMLNode('float_array', ' '.join([str(x) for x in controller.weights.flatten()]),
+        float_array = XMLNode('float_array', ' '.join([float_to_str(x) for x in controller.weights.flatten()]),
                               id=float_array_id, parent=weight_source, xml=self.xml)
         weight_count = len(controller.weights)
         float_array.attributes['count'] = str(weight_count)  # todo, vertex count or total weight?
@@ -442,7 +443,7 @@ class Dae:
     @staticmethod
     def __get_default_shader_color(name, iterable=(0.0, 0.0, 0.0, 1.0)):
         shader_color = XMLNode(name)
-        text = ' '.join([str(x) for x in iterable])
+        text = ' '.join([float_to_str(x) for x in iterable])
         color = XMLNode('color', text)
         color.attributes['sid'] = name
         shader_color.add_child(color)
@@ -451,7 +452,7 @@ class Dae:
     @staticmethod
     def __get_default_shader_float(name, fl=0.0):
         node = XMLNode(name)
-        fl = XMLNode('float', str(fl), parent=node)
+        fl = XMLNode('float', float_to_str(fl), parent=node)
         fl.attributes['sid'] = name
         return node
 
@@ -460,7 +461,7 @@ class Dae:
         source = XMLNode('source', id=name)
         text = ''
         for x in data_collection:
-            text += ' '.join([str(y) for y in x.flatten()]) + ' '
+            text += ' '.join([float_to_str(y) for y in x.flatten()]) + ' '
         source_array = XMLNode('float_array', text, id=name + '-array', parent=source)
         technique_common = XMLNode('technique_common', parent=source)
         accessor = XMLNode('accessor', parent=technique_common)

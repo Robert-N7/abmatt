@@ -820,3 +820,7 @@ def combine_matrices(matrix1, matrix2):
         return matrix1
     else:
         return np.matmul(matrix1, matrix2)
+
+
+def float_to_str(fl):
+    return format(fl, '.8f') if 0.0001 > fl > -0.0001 else str(fl)

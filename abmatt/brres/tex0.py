@@ -1,11 +1,12 @@
 """Tex0 subfile"""
-from math import log
 import os
+import subprocess
+from math import log
 
-from abmatt.brres.lib.binfile import BinFile
-from abmatt.brres.lib.matching import parseValStr, validInt, validFloat, validBool
-from abmatt.brres.subfile import SubFile
 from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
+from abmatt.brres.lib.binfile import BinFile
+from abmatt.brres.lib.matching import parseValStr, validInt, validBool
+from abmatt.brres.subfile import SubFile
 from abmatt.config import Config
 
 
@@ -209,11 +210,11 @@ class ImgConverter:
             self.INSTANCE.converter = converter
 
     class Wimgt(ImgConverterI):
+
         def __init__(self):
             program = which('wimgt')
             if program:
                 self.temp_dest = 'abmatt_tmp'
-                program = '"' + program + '"'
             super(ImgConverter.Wimgt, self).__init__(program)
 
         def encode(self, img_file, tex_format=None, num_mips=-1):
@@ -222,12 +223,11 @@ class ImgConverter:
             if img_file.startswith('file://'):
                 img_file = img_file.replace('file://', '')
             name = os.path.splitext(fname)[0]
-            mips = str(num_mips) if num_mips >= 0 else 'auto'
+            mips = '--n-mm=' + str(num_mips) if num_mips >= 0 else ''
             if not tex_format:
                 tex_format = self.IMG_FORMAT
-            result = os.system(
-                '"{} encode "{}" -d "{}" -x {} -q --n-mm={} -o"'.format(self.converter, img_file, self.temp_dest, tex_format,
-                                                                  mips))
+            result = subprocess.call([self.converter, 'encode', img_file, '-d',
+                                      self.temp_dest, '-x', tex_format, mips, '-qo'])
             if result:
                 raise EncodeError('Failed to encode {}'.format(img_file))
             t = Tex0(name, None, BinFile(self.temp_dest))
@@ -245,8 +245,8 @@ class ImgConverter:
             f = BinFile(self.temp_dest, 'w')
             tex0.pack(f)
             f.commitWrite()
-            result = os.system(
-                '"{} decode "{}" -q -d "{}" --no-mipmaps -o"'.format(self.converter, self.temp_dest, dest_file))
+            result = subprocess.call([self.converter, 'decode', self.temp_dest,
+                                      '-d', dest_file, '--no-mipmaps', '-qo'])
             if self.temp_dest != dest_file:
                 os.remove(self.temp_dest)
             if result:
@@ -257,7 +257,7 @@ class ImgConverter:
             f = BinFile(self.temp_dest, 'w')
             tex0.pack(f)
             f.commitWrite()
-            result = os.system('"{} encode "{}" -o -q -x {}"'.format(self.converter, self.temp_dest, tex_format))
+            result = subprocess.call([self.converter, 'encode', self.temp_dest, '-oq', '-x', tex_format])
             if result:
                 os.remove(self.temp_dest)
                 raise EncodeError('Failed to encode {}'.format(tex0.name))

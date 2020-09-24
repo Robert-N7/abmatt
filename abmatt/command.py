@@ -423,7 +423,7 @@ class Command:
         opened = Command.OPEN_FILES
         max = Command.MAX_FILES_OPEN  # max that can remain open
         if max - len(filenames) < 0:
-            raise MaxFileLimit
+            raise MaxFileLimit()
         to_open = [f for f in filenames if f not in opened]
         total = len(to_open) + len(opened)
         if total > max:

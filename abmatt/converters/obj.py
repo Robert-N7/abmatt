@@ -4,7 +4,7 @@ import re
 
 import numpy as np
 
-from abmatt.converters.convert_lib import PointCollection
+from abmatt.converters.convert_lib import PointCollection, float_to_str
 
 
 class ObjMaterial:
@@ -40,9 +40,9 @@ class ObjMaterial:
         s = 'newmtl ' + self.name + '\n\tNs ' + str(self.specular_highlight) + \
             '\n\tNi ' + str(self.optical_density) + '\n\td ' + str(self.dissolve) + \
             '\n\tTr ' + str(1 - self.dissolve) + '\n\tillum ' + str(self.illumination) +\
-            '\n\tKa ' + ' '.join([str(x) for x in self.ambient_color]) + \
-            '\n\tKd ' + ' '.join([str(x) for x in self.diffuse_color]) + \
-            '\n\tKs ' + ' '.join([str(x) for x in self.specular_color])
+            '\n\tKa ' + ' '.join([float_to_str(x) for x in self.ambient_color]) + \
+            '\n\tKd ' + ' '.join([float_to_str(x) for x in self.diffuse_color]) + \
+            '\n\tKs ' + ' '.join([float_to_str(x) for x in self.specular_color])
         if self.ambient_map:
             s += '\n\tmap_Ka ' + self.ambient_map
         if self.diffuse_map:
@@ -63,7 +63,7 @@ class ObjGeometry():
         self.texcoords = self.normals = self.vertices = None
         self.material_name = None
         self.has_normals = self.has_texcoords = False
-        self.smooth = True
+        self.smooth = False
 
     def add_tri(self, tri):
         self.triangles.append(tri)
@@ -118,7 +118,7 @@ class Obj():
         self.save_obj()
 
     def save_mtllib(self, folder):
-        s = '# Wavefront MTL exported with abmatt v0.7.2'
+        s = '# Wavefront MTL exported with abmatt v0.7.3'
         materials = self.materials
         for x in materials:
             s += '\n' + materials[x].get_save_str()
@@ -126,28 +126,29 @@ class Obj():
             f.write(s)
 
     def save_obj(self):
-        s = '# Wavefront OBJ exported with abmatt v0.7.2\n\nmtllib ' + self.mtllib + '\n\n'
+        s = '# Wavefront OBJ exported with abmatt v0.7.3\n\nmtllib ' + self.mtllib + '\n\n'
         vertex_index = 1
         normal_index = 1
         normal_offset = -1
         texcoord_index = 1
+        smooth = False
         for geometry in self.geometries:
             s += '#\n# object ' + geometry.name + '\n#\n\n'
             vertex_count = len(geometry.vertices)
             for vert in geometry.vertices:
-                s += 'v ' + ' '.join(str(x) for x in vert) + '\n'
+                s += 'v ' + ' '.join(float_to_str(x) for x in vert) + '\n'
             s += '# {} vertices\n\n'.format(vertex_count)
             if geometry.normals:
                 normal_count = len(geometry.normals)
                 for normal in geometry.normals:
-                    s += 'vn ' + ' '.join(str(x) for x in normal) + '\n'
+                    s += 'vn ' + ' '.join(float_to_str(x) for x in normal) + '\n'
                 s += '# {} normals\n\n'.format(normal_count)
             else:
                 normal_count = 0
             if geometry.texcoords:
                 texcoord_count = len(geometry.texcoords)
                 for texcoord in geometry.texcoords:
-                    s += 'vt ' + ' '.join(str(x) for x in texcoord) + '\n'
+                    s += 'vt ' + ' '.join(float_to_str(x) for x in texcoord) + '\n'
                 s += '# {} texture coordinates\n\n'.format(texcoord_count)
                 texcoord_offset = 1
             else:
@@ -162,7 +163,9 @@ class Obj():
             # start the group of indices
             s += 'o {}\ng {}\n'.format(geometry.name, geometry.name)
             s += 'usemtl {}\n'.format(geometry.material_name)
-            s += 's off\n' if not geometry.smooth else 's\n'
+            if geometry.smooth != smooth:
+                s += 's off\n' if not geometry.smooth else 's\n'
+                smooth = geometry.smooth
             joiner = '/' if geometry.texcoords else '//'
             for tri in tris:
                 s += 'f ' + ' '.join([joiner.join([str(x) for x in fp]) for fp in tri]) + '\n'

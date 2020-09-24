@@ -21,7 +21,7 @@ from abmatt.command import Command, ParsingException, NoSuchFile
 from abmatt.brres.lib.autofix import AUTO_FIXER
 from abmatt.brres.mdl0.material import Material
 
-VERSION = '0.7.2'
+VERSION = '0.7.3'
 USAGE = "USAGE: abmatt [command_line][--interactive -f <file> -b <brres-file> -d <destination> --overwrite]"
 
 

@@ -12,7 +12,8 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(len(b.pat0), 1)
         self.assertEqual(len(b.srt0), 1)
         test_file = '../brres_files/test.brres'
-        os.remove(test_file)
+        if os.path.exists(test_file):
+            os.remove(test_file)
         b.save(test_file, True)
         self.assertTrue(os.path.exists(test_file))
 
