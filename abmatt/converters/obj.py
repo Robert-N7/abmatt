@@ -63,7 +63,7 @@ class ObjGeometry():
         self.texcoords = self.normals = self.vertices = None
         self.material_name = None
         self.has_normals = self.has_texcoords = False
-        self.smooth = True
+        self.smooth = False
 
     def add_tri(self, tri):
         self.triangles.append(tri)
@@ -131,6 +131,7 @@ class Obj():
         normal_index = 1
         normal_offset = -1
         texcoord_index = 1
+        smooth = False
         for geometry in self.geometries:
             s += '#\n# object ' + geometry.name + '\n#\n\n'
             vertex_count = len(geometry.vertices)
@@ -162,7 +163,9 @@ class Obj():
             # start the group of indices
             s += 'o {}\ng {}\n'.format(geometry.name, geometry.name)
             s += 'usemtl {}\n'.format(geometry.material_name)
-            s += 's off\n' if not geometry.smooth else 's\n'
+            if geometry.smooth != smooth:
+                s += 's off\n' if not geometry.smooth else 's\n'
+                smooth = geometry.smooth
             joiner = '/' if geometry.texcoords else '//'
             for tri in tris:
                 s += 'f ' + ' '.join([joiner.join([str(x) for x in fp]) for fp in tri]) + '\n'
