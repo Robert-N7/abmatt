@@ -149,13 +149,27 @@ def make_distribution(dir, platform, binary_path, binary_path_is_dir, make_nsis,
     else:
         # shutil.copy('./install.sh', dir)
         # shutil.copy('./uninstall.sh', dir)
-        shutil.copy('./install-ubu.txt', os.path.join(dir, 'install.txt'))
+        install_file = './install-ubu.txt'
+        update_os(install_file, platform)
+        shutil.copy(install_file, os.path.join(dir, 'install.txt'))
         if not tar(dir):
             os.chdir('..')
             return False
         os.chdir('..')
     return True
 
+
+def update_os(file, platform):
+    with open(file) as f:
+        lines = f.readlines()
+    new_lines = []
+    for line in lines:
+        if line.startswith('OS:'):
+            new_lines.append('OS: ' + platform)
+        else:
+            new_lines.append(line)
+    with open(file, 'w') as f:
+        f.write('\n'.join(new_lines))
 
 def clean(folder, files):
     if os.path.exists(folder) and os.path.isdir(folder):

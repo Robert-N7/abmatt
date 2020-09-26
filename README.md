@@ -65,7 +65,7 @@ convert course_model.obj                    # Converts obj to brres
 set xlu:true for xlu.* in model course      # Sets all materials in course starting with xlu to transparent
 set scale:(1,1) for *                       # Sets the scale for all layers to 1,1
 info layer:ef_arrowGradS                    # Prints information about the layer 'ef_arrowGradS'
-add tex0:ef_arrowGradS.png ia8              # Adds the image 'ef_arrowGradS.png' as a tex0 in ia8 format
+add tex0:ef_arrowGradS.png format:ia8       # Adds the image 'ef_arrowGradS.png' as a tex0 in ia8 format
 ```
 
 
