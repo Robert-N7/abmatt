@@ -4,14 +4,14 @@ from struct import pack, unpack, unpack_from
 
 import numpy as np
 
-from abmatt.brres.lib.autofix import AUTO_FIXER
+from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
 from abmatt.brres.mdl0.color import Color
 from abmatt.brres.mdl0.normal import Normal
 from abmatt.brres.mdl0.polygon import Polygon
 from abmatt.brres.mdl0.texcoord import TexCoord
 from abmatt.brres.mdl0.vertex import Vertex
 from abmatt.brres.mdl0 import material
-from abmatt.brres.tex0 import EncodeError
+from abmatt.brres.tex0 import EncodeError, Tex0, ImgConverter
 from abmatt.converters.triangle import TriangleSet
 
 
@@ -57,22 +57,40 @@ class Converter:
     def is_identity_matrix(matrix):
         return np.allclose(matrix, Converter.IDENTITY_MATRIX)
 
-    @staticmethod
-    def try_import_texture(brres, image_path, layer_name=None):
+    def try_import_texture(self, brres, image_path, layer_name=None):
         if not layer_name:
             layer_name = os.path.splitext(os.path.basename(image_path))[0]
         if not brres.hasTexture(layer_name):
-            if os.path.exists(image_path):
-                try:
-                    brres.import_texture(image_path, layer_name)
-                except EncodeError:
-                    AUTO_FIXER.warn('WARN: Failed to encode image {}'.format(image_path))
+            if self.is_first_image or self.check_image:     # check it if it's the first or if a resize occurred
+                self.is_first_image = False
+                if image_path.startswith('file://'):
+                    image_path = image_path.replace('file://', '')
+                if not os.path.exists(image_path):
+                    return layer_name
+                from PIL import Image
+                im = Image.open(image_path)
+                width, height = im.size
+                if width > Tex0.MAX_IMG_SIZE or height > Tex0.MAX_IMG_SIZE:
+                    new_width, new_height = Tex0.get_scaled_size(width, height)
+                    b = Bug(2, 2, f'Texture {layer_name} too large ({width}x{height}).', f'Resize to {new_width}x{new_height}.')
+                    dir, name = os.path.split(image_path)
+                    base, ext = os.path.splitext(name)
+                    image_path = os.path.join(dir, base + '-resized' + ext)
+                    ImgConverter().resize_image(im, new_width, new_height, image_path)
+                    b.resolve()
+                    self.check_image = True
+            try:
+                brres.import_texture(image_path, layer_name)
+            except EncodeError:
+                AUTO_FIXER.warn('WARN: Failed to encode image {}'.format(image_path))
         return layer_name
 
     def __init__(self, brres, mdl_file, flags=0):
         self.brres = brres
         self.mdl_file = mdl_file
         self.flags = flags
+        self.check_image = False
+        self.is_first_image = True
 
     def load_model(self, model_name):
         raise NotImplementedError()
@@ -81,38 +99,36 @@ class Converter:
         raise NotImplementedError()
 
 
+def get_index_format(item, fmt_str):
+    l = len(item)
+    if l > 0xffff:
+        raise Converter.ConvertError(f'{item.name} exceeds max length! ({len(item)})')
+    elif l > 0xff:
+        fmt_str += 'H'
+        return Polygon.INDEX_FORMAT_SHORT, fmt_str
+    else:
+        fmt_str += 'B'
+        return Polygon.INDEX_FORMAT_BYTE, fmt_str
+
+
 def encode_polygon_data(polygon, vertex, normal, color, uvs, face_indices):
     # set up vertex declaration
     polygon.vertex_format = vertex.format
     polygon.vertex_divisor = vertex.divisor
-    if len(vertex) > 0xff:
-        polygon.vertex_index_format = polygon.INDEX_FORMAT_SHORT
-        fmt_str = '>H'
-    else:
-        polygon.vertex_index_format = polygon.INDEX_FORMAT_BYTE
-        fmt_str = '>B'
+    fmt_str = '>'
+    polygon.vertex_index_format, fmt_str = get_index_format(vertex, fmt_str)
     polygon.facepoint_count = len(vertex)
     polygon.vertex_group_index = vertex.index
     if normal:
         polygon.normal_type = normal.comp_count
         polygon.normal_group_index = normal.index
         polygon.normal_format = normal.format
-        if len(normal) > 0xff:
-            polygon.normal_index_format = polygon.INDEX_FORMAT_SHORT
-            fmt_str += 'H'
-        else:
-            polygon.normal_index_format = polygon.INDEX_FORMAT_BYTE
-            fmt_str += 'B'
+        polygon.normal_index_format, fmt_str = get_index_format(normal, fmt_str)
     else:
         polygon.normal_index_format = polygon.INDEX_FORMAT_NONE
         polygon.normal_group_index = -1
     if color:
-        if len(color) > 0xff:
-            polygon.color0_index_format = polygon.INDEX_FORMAT_SHORT
-            fmt_str += 'H'
-        else:
-            polygon.color0_index_format = polygon.INDEX_FORMAT_BYTE
-            fmt_str += 'B'
+        polygon.color0_index_format, fmt_str = get_index_format(color, fmt_str)
         polygon.color0_format = color.format
         polygon.color_group_indices[0] = color.index
     else:
@@ -125,12 +141,7 @@ def encode_polygon_data(polygon, vertex, normal, color, uvs, face_indices):
             polygon.tex_coord_group_indices[i] = uv.index
             polygon.tex_format[i] = uv.format
             polygon.tex_divisor[i] = uv.divisor
-            if len(uv) > 0xff:
-                polygon.tex_index_format[i] = polygon.INDEX_FORMAT_SHORT
-                fmt_str += 'H'
-            else:
-                polygon.tex_index_format[i] = polygon.INDEX_FORMAT_BYTE
-                fmt_str += 'B'
+            polygon.tex_index_format[i], fmt_str = get_index_format(uv, fmt_str)
     else:
         polygon.tex_coord_group_indices[0] = -1
     triset = TriangleSet(face_indices)
@@ -255,10 +266,10 @@ def decode_polygon(polygon):
             xf_address = 0xfff & len_and_xf_address
             length = (len_and_xf_address >> 12) + 1
             i += 4
-            if cmd == 0x20:     # pos matrix
+            if cmd == 0x20:  # pos matrix
                 bones.append(bone_index)
             elif cmd == 0x28:
-                pass     # normals  todo figure out how these work
+                pass  # normals  todo figure out how these work
             else:
                 raise Converter.ConvertError('Texture matrices not supported')
         else:
@@ -287,7 +298,7 @@ def decode_polygon(polygon):
     if pos_matrix_index >= 0:
         pos_matrix_indices = face_point_indices[:, :, 0] / 3
         bone_table = polygon.get_bone_table()
-        bones = [mdl0_bones[bone_table[i]] for i in bones]     # possibly need to do something different here
+        bones = [mdl0_bones[bone_table[i]] for i in bones]  # possibly need to do something different here
     else:
         pos_matrix_indices = None
         bones = [mdl0_bones[polygon.get_bone()]]
@@ -504,6 +515,8 @@ class PointCollection:
             self.encode_points(multiplyBy, dtype)
         points = self.consolidate_points()
         geometry.count = len(self)
+        if geometry.count > 0xffff:
+            raise Converter.ConvertError(f'{geometry.name} has too many points! ({geometry.count})')
         for x in points:
             data.append(x)
         return data
@@ -689,7 +702,6 @@ class Geometry:
         self.bone_indices = bone_indices
         self.linked_bone = linked_bone
 
-
     def swap_y_z_axis(self):
         collections = [self.vertices, self.normals]
         points = self.vertices.points
@@ -751,7 +763,8 @@ class Material:
 
 
 class Controller:
-    def __init__(self, name, bind_shape_matrix, inv_bind_matrix, bones, weights, vertex_weight_counts, vertex_weight_indices,
+    def __init__(self, name, bind_shape_matrix, inv_bind_matrix, bones, weights, vertex_weight_counts,
+                 vertex_weight_indices,
                  geometry):
         self.name = name
         self.bind_shape_matrix = bind_shape_matrix
@@ -812,6 +825,7 @@ def rotationMatrixToEulerAngles(R):
 def scaleMatrix(matrix, scale):
     for i in range(len(scale)):
         matrix[i][i] *= scale[i]
+
 
 def combine_matrices(matrix1, matrix2):
     if matrix1 is None:

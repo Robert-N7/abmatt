@@ -5,9 +5,8 @@ from math import log
 
 from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
 from abmatt.brres.lib.binfile import BinFile
-from abmatt.brres.lib.matching import parseValStr, validInt, validBool
+from abmatt.brres.lib.matching import parseValStr, validInt
 from abmatt.brres.subfile import SubFile
-from abmatt.config import Config
 
 
 class Tex0(SubFile):
@@ -16,7 +15,8 @@ class Tex0(SubFile):
     EXT = 'tex0'
     VERSION_SECTIONCOUNT = {1: 1, 2: 2, 3: 1}
     EXPECTED_VERSION = 3
-    RESIZE_TO_POW_TWO = None
+    RESIZE_TO_POW_TWO = False
+    MAX_IMG_SIZE = 1024
     SETTINGS = ('dimensions', 'format', 'mipmapcount', 'name')
     FORMATS = {0: 'I4', 1: 'I8', 2: 'IA4', 3: 'IA8',
                4: 'RGB565', 5: 'RGB5A3', 6: 'RGBA32',
@@ -24,6 +24,10 @@ class Tex0(SubFile):
 
     def __init__(self, name, parent=None, binfile=None):
         super(Tex0, self).__init__(name, parent, binfile)
+
+    @staticmethod
+    def set_max_image_size(size):
+        Tex0.MAX_IMG_SIZE = size if Tex0.is_power_of_two(size) else Tex0.lower_power_of_two(size)
 
     def begin(self):
         self.width = 0
@@ -46,8 +50,8 @@ class Tex0(SubFile):
     def set_str(self, key, value):
         if key == 'dimensions':
             width, height = parseValStr(value)
-            width = validInt(width, 1, 2050)
-            height = validInt(height, 1, 2050)
+            width = validInt(width, 1, self.MAX_IMG_SIZE + 1)
+            height = validInt(height, 1, self.MAX_IMG_SIZE + 1)
             ImgConverter().set_dimensions(self, width, height)
         elif key == 'format':
             return self.set_format(value)
@@ -77,6 +81,10 @@ class Tex0(SubFile):
     def nearest_power_of_two(v):
         return pow(2, round(log(v) / log(2)))
 
+    @staticmethod
+    def lower_power_of_two(v):
+        return pow(2, log(v) // log(2))
+
     def set_power_of_two(self):
         width = self.width if self.is_power_of_two(self.width) else self.nearest_power_of_two(self.width)
         height = self.height if self.is_power_of_two(self.height) else self.nearest_power_of_two(self.height)
@@ -91,23 +99,37 @@ class Tex0(SubFile):
         self.data = item.data
 
     def should_resize_pow_two(self):
-        if self.RESIZE_TO_POW_TWO is None:
-            try:
-                v = Config.get_instance()['resize_pow_two']
-                Tex0.RESIZE_TO_POW_TWO = validBool(v)
-            except ValueError:
-                AUTO_FIXER.warn('Invalid config for resize_pow_two "{}"'.format(v))
-                Tex0.RESIZE_TO_POW_TWO = False
         return self.RESIZE_TO_POW_TWO
+
+    def __str__(self):
+        return f'TEX0 {self.name} {self.width}x{self.height} ({self.FORMATS[self.format]})'
+
+    @staticmethod
+    def get_scaled_size(width, height):
+        highest = max(width, height)
+        ratio = highest / Tex0.MAX_IMG_SIZE
+        if highest == height:
+            width = Tex0.nearest_power_of_two(width / ratio)
+            height = Tex0.MAX_IMG_SIZE
+        else:
+            height = Tex0.nearest_power_of_two(height / ratio)
+            width = Tex0.MAX_IMG_SIZE
+        return width, height
 
     def check(self):
         super(Tex0, self).check()
         if not self.is_power_of_two(self.width) or not self.is_power_of_two(self.height):
-            b = Bug(2, 2, 'TEX0 {} {}x{} not a power of 2'.format(self.name, self.width, self.height), None)
+            b = Bug(2, 2, str(self) + ' not a power of 2', None)
             if self.should_resize_pow_two():
                 self.set_power_of_two()
                 b.fix_des = 'Resize to {}x{}'.format(self.width, self.height)
                 b.resolve()
+        if self.width > self.MAX_IMG_SIZE or self.height > self.MAX_IMG_SIZE:
+            width, height = self.get_scaled_size(self.width, self.height)
+            b = Bug(2, 2, str(self) + ' is too large', f'resize to {width}x{height}')
+            ImgConverter().set_dimensions(self, width, height)
+            b.resolve()
+
 
     def unpack(self, binfile):
         self._unpack(binfile)
@@ -161,7 +183,7 @@ class NoImgConverterError(Exception):
 
 class ImgConverterI:
     IMG_FORMAT = 'cmpr'
-    RESAMPLE = None
+    RESAMPLE = 3
 
     def __init__(self, converter):
         self.converter = converter
@@ -181,18 +203,24 @@ class ImgConverterI:
     def set_dimensions(self, tex0, width, height):
         raise NotImplementedError()
 
-    def get_resample(self):
-        if not self.RESAMPLE:
-            sample = Config.get_instance()['img_resample']
-            from PIL import Image
-            filters = {"nearest": Image.NEAREST, "box": Image.BOX, "bilinear": Image.BILINEAR, "hamming": Image.HAMMING,
-                       "bicubic": Image.BICUBIC, "lanczos": Image.LANCZOS}
-            if not sample in filters:
-                AUTO_FIXER.warn('Invalid config value {} for "img_resample", using bicubic'.format(sample))
-                ImgConverterI.RESAMPLE = Image.BICUBIC
-            else:
-                ImgConverterI.RESAMPLE = filters[sample]
-        return self.RESAMPLE
+    @staticmethod
+    def set_resample(sample):
+        filters = ['nearest', 'lanczos', 'bilinear', 'bicubic', 'box', 'hamming']
+        try:
+            sampler_index = filters.index(sample)
+            ImgConverterI.RESAMPLE = sampler_index
+        except IndexError:
+            AUTO_FIXER.warn('Invalid config value {} for "img_resample", using {}'.format(sample,
+                                                                                      filters[ImgConverterI.RESAMPLE]))
+
+    @staticmethod
+    def get_resample():
+        return ImgConverterI.RESAMPLE
+
+    @staticmethod
+    def resize_image(img, width, height, img_file_path):
+        img = img.resize((width, height), ImgConverterI.get_resample())
+        img.save(img_file_path)
 
     def __bool__(self):
         return self.converter is not None
@@ -219,9 +247,11 @@ class ImgConverter:
 
         def encode(self, img_file, tex_format=None, num_mips=-1):
             # encode
-            dir, fname = os.path.split(img_file)
             if img_file.startswith('file://'):
                 img_file = img_file.replace('file://', '')
+            if not os.path.exists(img_file):
+                raise EncodeError('No such file {}'.format(img_file))
+            dir, fname = os.path.split(img_file)
             name = os.path.splitext(fname)[0]
             mips = '--n-mm=' + str(num_mips) if num_mips >= 0 else ''
             if not tex_format:
@@ -273,9 +303,7 @@ class ImgConverter:
         def set_dimensions(self, tex0, width, height):
             tmp = self.decode(tex0, 'tmp.png')
             from PIL import Image
-            img = Image.open(tmp)
-            img = img.resize((width, height), self.get_resample())
-            img.save(tmp)
+            self.resize_image(Image.open(tmp), width, height, tmp)
             tex = self.encode(tmp, tex0.get_str(tex0.format))
             os.remove(tmp)
             tex0.paste(tex)

@@ -1,3 +1,8 @@
-convert ../brres_files/FlagB2.brres to ../test_files/*.obj
-# convert ../test_files/FlagB2-FlagB2.obj to ../brres_files/FlagB2.brres
+# convert ../test_files/delfino_plaza_3ds.obj to ../brres_files/dp_course.brres
+# convert W:/demo/course2.DAE
+# copy shader for a_MainRoad_m in W:/demo/beginner_course.d/course_model.brres
+# paste shader for * in W:/demo/course2.brres
+select * in W:/demo/course2.brres
+remove layer
+info
 # save as ../test_files/test.brres overwrite

@@ -765,6 +765,7 @@ class Command:
         elif self.cmd == 'copy':
             self.run_copy(self.SELECT_TYPE)
         elif self.cmd == 'paste':
+            self.markModified()
             self.run_paste(self.SELECT_TYPE)
         return True
 
@@ -943,20 +944,17 @@ class Command:
             else:  # remove layer case
                 if self.SELECT_ID_NUMERIC:
                     for x in self.SELECTED:
-                        for i in range(type_id):
-                            x.removeLayerI()
+                        x.removeLayerI(type_id)
                 else:
                     for x in self.SELECTED:
                         x.removeLayer(type_id)
         elif type == 'shader':  # remove stage case
             for x in self.SELECTED:
-                for i in range(type_id):
-                    x.removeStage()
+                x.removeStage(type_id)
         elif type == 'srt0':  # remove srt0 layer
             if self.SELECT_ID_NUMERIC:
                 for x in self.SELECTED:
-                    for i in range(type_id):
-                        x.removeLayer()
+                    x.removeLayerI(type_id)
             else:
                 for x in self.SELECTED:
                     x.removeLayerByName(type_id)

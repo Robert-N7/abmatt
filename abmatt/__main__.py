@@ -9,7 +9,7 @@ import sys
 from cmd import Cmd
 
 from abmatt.config import Config
-from abmatt.brres.lib.matching import validBool, MATCHING, parse_color
+from abmatt.brres.lib.matching import validBool, MATCHING, parse_color, validInt
 from abmatt.brres.mdl0 import Mdl0
 from abmatt.brres.mdl0.layer import Layer
 from abmatt.brres.mdl0.shader import Shader, Stage
@@ -20,6 +20,7 @@ from abmatt.brres import Brres
 from abmatt.command import Command, ParsingException, NoSuchFile
 from abmatt.brres.lib.autofix import AUTO_FIXER
 from abmatt.brres.mdl0.material import Material
+from brres.tex0 import Tex0, ImgConverter, ImgConverterI
 
 VERSION = '0.7.3'
 USAGE = "USAGE: abmatt [command_line][--interactive -f <file> -b <brres-file> -d <destination> --overwrite]"
@@ -611,6 +612,15 @@ def load_config(app_dir, loudness=None, autofix_level=None):
         Material.DEFAULT_COLOR = parse_color(conf['default_material_color'])
     except ValueError:
         pass
+    try:
+        Tex0.RESIZE_TO_POW_TWO = validBool(conf['resize_pow_two'])
+    except ValueError:
+        pass
+    try:
+        Tex0.set_max_image_size(validInt(conf['max_image_size'], 0, 10000))
+    except ValueError:
+        pass
+    ImgConverterI.set_resample(conf['img_resample'])
     return conf
 
 
