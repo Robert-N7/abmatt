@@ -20,8 +20,8 @@ def update_version(version):
     if version == get_last_update(version_file):
         print('Version already up to date')
         return 0
-    version_files = ['../../setup.py', 'install-ubu.txt', 'install-win.txt', '../__main__.py', 'Makefile',
-                     'update_version.py', 'make_installer.nsi', '../converters/obj.py']
+    version_files = ['../../setup.py', '../dist/install-ubu.txt', '../dist/install-win.txt', '../__main__.py', '../dist/Makefile',
+                     'update_version.py', '../dist/make_installer.nsi', '../converters/obj.py']
     # version_files = ['test.txt']
     rex = re.compile("(v(ersion)?\s*(\:|\=)?\s*(\"|\')?)\d+\.\d+\.\d+", re.IGNORECASE)
     replacement = '\g<1>' + version
@@ -33,6 +33,8 @@ def update_version(version):
             with open(x, 'w') as file:
                 file.write(fixed)
                 count += 1
+        else:
+            print('WARN: Version file {} not found!'.format(x))
     with open(version_file, 'w') as f:
         f.write(version)
     return count

@@ -1,4 +1,4 @@
-!define VERSION "0.7.2"
+!define VERSION "0.7.3"
 !define PROGRAM_NAME "ANoob's Brres Material Tool ${VERSION}"
 InstallDir "$PROGRAMFILES64\abmatt"
 Name "${PROGRAM_NAME}"
@@ -29,7 +29,9 @@ EnVar::AddValue "PATH" "$INSTDIR\bin"
 File /a /r "bin\"
 # etc
 SetOutPath "$INSTDIR\etc\abmatt"
+SetOverwrite off    # don't overwrite user files!
 File /a /r "etc\abmatt\"
+# SetOverwrite on
 SectionEnd
 
 # UNINSTALL
