@@ -72,6 +72,7 @@ class ObjConverter(Converter):
     @staticmethod
     def decode_geometry(geometry, material_name):
         geo = ObjGeometry(geometry.name)
+        geo.vertices = geometry.apply_linked_bone_bindings()
         geo.material_name = material_name
         geo.vertices = geometry.vertices
         geo.normals = geometry.normals

@@ -25,7 +25,8 @@ class ColladaNode:
 class Dae:
     def __init__(self, filename=None, initial_scene_name=None):
         self.y_up = True
-        self.xml = XML(filename) if filename else self.__initialize_xml(self.y_up)
+        self.unit_meter = 1
+        self.xml = XML(filename) if filename else self.__initialize_xml()
         self.__initialize_libraries(initial_scene_name)
 
     def write(self, filename):
@@ -222,7 +223,10 @@ class Dae:
             material_name = tri_node.attributes['material']
         inputs = tri_node.get_elements_by_tag('input')
         stride = 0
-        indices = [int(x) for x in tri_node['p'].text.split()]
+        indices = []
+        for x in tri_node.get_elements_by_tag('p'):
+            indices.extend([int(index) for index in x.text.split()])
+        # indices = [int(x) for x in tri_node['p'].text.split()]
         triangles = np.array(indices, np.uint16).reshape((-1, 3, len(inputs)))
         vertices = normals = colors = None
         texcoords = []
@@ -390,6 +394,16 @@ class Dae:
         shader.add_child(self.__get_default_shader_float('transparency', transparency))
         return material_node
 
+    def __parse_assets(self, assets):
+        for x in assets.children:
+            if x.tag == 'up_axis':
+                self.y_up = True if x.text == 'Y_UP' else False
+            elif x.tag == 'unit':
+                try:
+                    self.unit_meter = float(x.attributes['meter'])
+                except (ValueError, AttributeError):
+                    pass
+
     def __initialize_libraries(self, initial_name):
         libraries = ('images', 'materials', 'effects',
                      'geometries', 'controllers', 'visual_scenes')
@@ -402,9 +416,7 @@ class Dae:
             if tag.startswith(lib_str):
                 self.__setattr__(tag[start:], library)
             elif tag == 'asset':
-                up_axis = library['up_axis']
-                if up_axis:
-                    self.y_up = True if up_axis.text == 'Y_UP' else False
+                self.__parse_assets(library)
         for library in libraries:
             if not hasattr(self, library):
                 node = XMLNode('library_' + library)
@@ -419,24 +431,24 @@ class Dae:
         else:
             self.scene = self.get_referenced_element(self.xml.root['scene']['instance_visual_scene'], 'url')
 
-    @staticmethod
-    def __initialize_assets(root, y_up):
+    def __initialize_assets(self, root):
         asset = XMLNode('asset', parent=root)
         contributor = XMLNode('contributor', parent=asset)
-        authoring_tool = XMLNode('authoring_tool', 'abmatt COLLADA exporter', parent=contributor)
+        authoring_tool = XMLNode('authoring_tool', 'ABMATT COLLADA exporter v0.7.4', parent=contributor)
         time_stamp = datetime.now()
         created = XMLNode('created', time_stamp, parent=asset)
         modified = XMLNode('modified', time_stamp, parent=asset)
-        up = 'Y_UP' if y_up else 'Z_UP'
+        units = XMLNode('unit', name='centimeter', parent=asset)
+        units.attributes['meter'] = str(self.unit_meter)
+        up = 'Y_UP' if self.y_up else 'Z_UP'
         up_axis = XMLNode('up_axis', up, parent=asset)
 
-    @staticmethod
-    def __initialize_xml(y_up):
+    def __initialize_xml(self):
         xml = XML()
         root = XMLNode('COLLADA')
         root.attributes['xmlns'] = 'http://www.collada.org/2005/11/COLLADASchema'
         root.attributes['version'] = '1.4.1'
-        Dae.__initialize_assets(root, y_up)
+        self.__initialize_assets(root)
         xml.root = root
         return xml
 

@@ -133,6 +133,7 @@ class Mdl0(SubFile):
         self.paletteLinks = []
         self.textureLinks = []
         self.version = 11
+        self.find_min_max = False
         self.is_map_model = True if 'map' in name else False
         self.sections = [self.definitions, self.bones, self.vertices, self.normals,
                          self.colors, self.texCoords, self.furVectors, self.furLayers,
@@ -151,9 +152,7 @@ class Mdl0(SubFile):
         self.drawXLU = DrawList(Definition.names[1], self)
         self.nodeTree = NodeTree(Definition.names[3], self)
 
-    def rebuild_header(self):
-        """After encoding data, calculates the header data"""
-        self.boneCount = len(self.bones)
+    def search_for_min_and_max(self):
         minimum = [math.inf] * 3
         maximum = [-math.inf] * 3
         for vertex in self.vertices:
@@ -167,8 +166,14 @@ class Mdl0(SubFile):
         self.minimum = minimum
         self.maximum = maximum
         bone = self.bones[0]
-        bone.minimum = [x for x in minimum]
-        bone.maximum = [x for x in maximum]
+        bone.minimum = [x for x in self.minimum]
+        bone.maximum = [x for x in self.maximum]
+        self.find_min_max = False
+
+    def rebuild_header(self):
+        """After encoding data, calculates the header data"""
+        self.boneCount = len(self.bones)
+        self.search_for_min_and_max()
         self.facepoint_count = sum(obj.facepoint_count for obj in self.objects)
         self.faceCount = sum(obj.face_count for obj in self.objects)
 
@@ -288,9 +293,11 @@ class Mdl0(SubFile):
 
     # ------------------ Name --------------------------------------
     def rename(self, name):
-        self.is_map_model = True if 'map' in name else False
-        self.name = self.parent.renameModel(self.name, name)
-        return name
+        result = self.parent.renameModel(self.name, name)
+        if result:
+            self.name = result
+            self.is_map_model = True if 'map' in name else False
+        return result
 
     # ------------------------------------ Materials ------------------------------
     def getMaterialByName(self, name):
@@ -457,7 +464,7 @@ class Mdl0(SubFile):
         return self.parent.get_texture_map()
 
     # --------------------------------------- Check -----------------------------------
-    def check(self):
+    def check(self, expected_name=None):
         """Checks model (somewhat) for validity
             texture_map: dictionary of tex_name:texture
         """
@@ -465,7 +472,6 @@ class Mdl0(SubFile):
         texture_map = self.getTextureMap()
         for x in self.materials:
             x.check(texture_map)
-        expected_name = self.parent.getExpectedMdl()
         if expected_name:
             if expected_name != self.name:
                 b = Bug(2, 2, 'Model name does not match file', 'Rename to {}'.format(expected_name))
@@ -547,6 +553,8 @@ class Mdl0(SubFile):
                 else:
                     texture_links[name].num_references += 1
         self.sections[11] = self.textureLinks = texture_links.values()
+        if self.find_min_max:
+            self.search_for_min_and_max()
 
     def post_unpack(self):
         Bone.post_unpack(self.bones)
@@ -609,6 +617,8 @@ class Mdl0(SubFile):
         if binfile.offset - offset < ln:
             self.minimum = binfile.read("3f", 12)
             self.maximum = binfile.read("3f", 12)
+        else:
+            self.find_min_max = True
         binfile.end()  # end header
         binfile.recallOffset(offset)
         self.boneTable = BoneTable()

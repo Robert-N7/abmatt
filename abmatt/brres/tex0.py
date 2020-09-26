@@ -209,7 +209,7 @@ class ImgConverterI:
         try:
             sampler_index = filters.index(sample)
             ImgConverterI.RESAMPLE = sampler_index
-        except IndexError:
+        except (ValueError, IndexError):
             AUTO_FIXER.warn('Invalid config value {} for "img_resample", using {}'.format(sample,
                                                                                       filters[ImgConverterI.RESAMPLE]))
 

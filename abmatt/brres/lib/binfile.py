@@ -1,5 +1,6 @@
 #!/usr/bin/python
 """ binary file read/writing operations """
+import struct
 from struct import *
 import sys
 
@@ -367,12 +368,15 @@ class BinFile:
         name = self.nameRefMap.get(offset)
         if name:
             return name
-        [name_lens] = self.readOffset("I", offset - 4)
+        try:
+            [name_lens] = self.readOffset("I", offset - 4)
+        except struct.error:
+            raise UnpackingError(self, 'Incorrect name offset')
         if name_lens > 256:
             # For debugging
             # data = self.readOffset('64s', offset - 4)
             # print(data)
-            raise UnpackingError(self, "Incorrect name offset".format(self.filename))
+            raise UnpackingError(self, "Incorrect name offset")
         else:
             self.nameRefMap[offset] = name = self.readOffset(str(name_lens) + "s", offset)[0].decode()
             return name

@@ -19,6 +19,7 @@ class Converter:
     NoNormals = 0x1
     NoColors = 0x2
     IDENTITY_MATRIX = np.identity(4)
+    DETECT_FILE_UNITS = True
 
     class ConvertError(Exception):
         pass
@@ -61,7 +62,7 @@ class Converter:
         if not layer_name:
             layer_name = os.path.splitext(os.path.basename(image_path))[0]
         if not brres.hasTexture(layer_name):
-            if self.is_first_image or self.check_image:     # check it if it's the first or if a resize occurred
+            if self.is_first_image or self.check_image:  # check it if it's the first or if a resize occurred
                 self.is_first_image = False
                 if image_path.startswith('file://'):
                     image_path = image_path.replace('file://', '')
@@ -72,7 +73,8 @@ class Converter:
                 width, height = im.size
                 if width > Tex0.MAX_IMG_SIZE or height > Tex0.MAX_IMG_SIZE:
                     new_width, new_height = Tex0.get_scaled_size(width, height)
-                    b = Bug(2, 2, f'Texture {layer_name} too large ({width}x{height}).', f'Resize to {new_width}x{new_height}.')
+                    b = Bug(2, 2, f'Texture {layer_name} too large ({width}x{height}).',
+                            f'Resize to {new_width}x{new_height}.')
                     dir, name = os.path.split(image_path)
                     base, ext = os.path.splitext(name)
                     image_path = os.path.join(dir, base + '-resized' + ext)
@@ -82,7 +84,7 @@ class Converter:
             try:
                 brres.import_texture(image_path, layer_name)
             except EncodeError:
-                AUTO_FIXER.warn('WARN: Failed to encode image {}'.format(image_path))
+                AUTO_FIXER.warn('Failed to encode image {}'.format(image_path))
         return layer_name
 
     def __init__(self, brres, mdl_file, flags=0):
@@ -469,8 +471,7 @@ class PointCollection:
         points = self.points
         # add a 1 after each point (for transformation)
         new_col = np.full((len(points), 1), 1, dtype=float)
-        points = np.append(points, new_col, 1)
-        self.points = np.array([matrix.dot(x) for x in points])
+        self.points = np.array([matrix.dot(x) for x in np.append(points, new_col, 1)])
         return self.points
 
     @staticmethod
@@ -710,6 +711,9 @@ class Geometry:
         points = self.normals.points
         points[:, [1, 2]] = points[:, [2, 1]]
 
+    def apply_linked_bone_bindings(self):
+        self.apply_matrix(np.array(self.linked_bone.get_transform_matrix(), np.float))
+
     def apply_matrix(self, matrix):
         self.vertices.apply_affine_matrix(matrix)
 
@@ -795,7 +799,7 @@ def vector_magnitude(vector):
 def isRotationMatrix(R):
     Rt = np.transpose(R)
     shouldBeIdentity = np.dot(Rt, R)
-    I = np.identity(3, dtype=R.dtype)
+    I = np.identity(R.shape[0], dtype=R.dtype)
     n = np.linalg.norm(I - shouldBeIdentity)
     return n < 1e-6
 

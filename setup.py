@@ -11,18 +11,18 @@ REQUIREMENTS = ['fuzzywuzzy', 'python-Levenshtein', 'numpy', 'pillow', 'colorama
 
 # some more details
 CLASSIFIERS = [
-  "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent"
  ]
 
 # calling the setup function
 setup(name='abmatt',
-      version='0.7.3',
+      version='0.7.4',
       entry_points={
           'console_scripts': [
-              'abmatt = abmatt.__main__:main',
+              'abmatt = abmatt.__main__:main'
           ]
       },
       description='Brres file material editor',
@@ -33,8 +33,6 @@ setup(name='abmatt',
       author_email='robert7.nelson@gmail.com',
       license='GPLv3',
       packages=setuptools.find_packages(),
-      # include_package_data=True,
-      # package_data={'abmatt': ['presets.txt', 'config.conf']},
       data_files=[('etc/abmatt', ['etc/abmatt/presets.txt', 'etc/abmatt/config.conf'])],
       classifiers=CLASSIFIERS,
       install_requires=REQUIREMENTS,

@@ -179,6 +179,8 @@ class Polygon(Node):
         self.tex_coord_group_indices = binfile.read('8h', 16)
         if self.parent.version >= 10:
             self.fur_vector_id, self.fur_coord_id = binfile.read('2h', 4)
+        else:
+            self.fur_vector_id = self.fur_coord_id = -1
             # binfile.advance(4)  # ignore
         binfile.store()  # bt offset
         binfile.recall()  # bt

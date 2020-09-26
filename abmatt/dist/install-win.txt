@@ -1,6 +1,6 @@
 ===================================================================================================
 ANOOB'S BRRES MATERIAL TOOL
-Version 0.7.3
+Version 0.7.4
 Robert Nelson
 OS: Windows 10 64-bit
 Github: https://github.com/Robert-N7/abmatt
