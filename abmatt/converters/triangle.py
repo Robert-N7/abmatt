@@ -37,13 +37,13 @@ class TriangleSet:
         return bool(self.triangles)
 
     def get_next(self, queue):
-        try:
-            start = queue.pop(0)
-        except IndexError:
-            return None
-        if start.is_used:
-            return self.get_next(queue)
-        return start
+        while True:
+            try:
+                start = queue.pop(0)
+            except IndexError:
+                return None
+            if not start.is_used:
+                return start
 
     def get_tri_strips(self, fmt_str):
         queue = sorted(self.triangles, key=lambda tri: tri.get_connection_count())
