@@ -59,7 +59,7 @@ abmatt -b course_model.brres -o -n xlu.* -k xlu -v true
 ```
 
 ### Examples
-Example file commands:
+Example command lines:
 ```
 convert course_model.obj                    # Converts obj to brres 
 set xlu:true for xlu.* in model course      # Sets all materials in course starting with xlu to transparent
@@ -68,6 +68,22 @@ info layer:ef_arrowGradS                    # Prints information about the layer
 add tex0:ef_arrowGradS.png format:ia8       # Adds the image 'ef_arrowGradS.png' as a tex0 in ia8 format
 ```
 
+## Copy/Paste
+* Group copying matches selected items on their names.
+* Single copying pastes over all selected without matching names.
+* Names are not changed when pasting.
+* Copying a material will copy all settings related to the material, including layers, shaders, and animations.
+
+An example of pasting material data using a wildcard:
+```
+copy material for * in course_model.brres
+paste material for * in new_model.brres
+```  
+An example of pasting a single material:
+```
+copy material for ef_dushBoard in course_model.brres
+paste material for my_ramp in my_course.brres
+```
 
 ## File Format
 ABMatt supports reading in commands from files or in interactive mode which have a specified extended BNF format.
@@ -242,16 +258,6 @@ set layer mapmode:linear_mipmap_linear
 To call the preset:
 `preset my_preset for my_material_name`
 
-### Copy/Paste
-* Copy operations do not perform byte copying.
-* The type must match when copying. 
-* Group copying matches selected items on their names/ids.
-* Single copying pastes over all selected without matching names.
-* Names are not changed when pasting.
-* Copying a material will copy all settings related to the material, including layers, shaders, and animations.
-
-The following finds matches by material names in two brres files and pastes the material data.
-```
-copy material for * in course_model.brres
-paste material for * in new_model.brres
-```  
+## Known Limitations and Bugs
+* Windows installer sometimes hangs in the background until the process is terminated.
+* Rigged models are not supported.
