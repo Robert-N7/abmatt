@@ -1,18 +1,17 @@
 import os
 import sys
-import threading
 import time
 
 import numpy as np
 
 from abmatt.brres.lib.autofix import AUTO_FIXER
 from abmatt.brres.mdl0 import Mdl0
-from abmatt.brres.tex0 import ImgConverter, Tex0, NoImgConverterError
+from abmatt.brres.tex0 import ImgConverter, NoImgConverterError
 from abmatt.converters.arg_parse import cmdline_convert
+from abmatt.converters.convert_lib import Controller
 from abmatt.converters.convert_lib import Converter, decode_polygon, \
     Material, combine_matrices
 from abmatt.converters.dae import Dae, ColladaNode
-from converters.convert_lib import Controller
 
 
 class DaeConverter2(Converter):

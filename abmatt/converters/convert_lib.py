@@ -13,7 +13,7 @@ from abmatt.brres.mdl0.vertex import Vertex
 from abmatt.brres.mdl0 import material
 from abmatt.brres.tex0 import EncodeError, Tex0, ImgConverter
 from abmatt.converters.triangle import TriangleSet
-from converters.matrix import apply_matrix, combine_matrices, matrix_to_srt
+from abmatt.converters.matrix import apply_matrix, combine_matrices, matrix_to_srt
 
 
 class Converter:

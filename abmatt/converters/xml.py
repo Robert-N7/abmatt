@@ -1,4 +1,4 @@
-from brres.lib.autofix import AUTO_FIXER
+from abmatt.brres.lib.autofix import AUTO_FIXER
 
 
 class XML:

@@ -11,6 +11,8 @@ from abmatt.config import Config
 from get_bit_width import get_bit_width
 from update_version import run_update_version
 
+from check_imports import check_imports
+
 
 def which(program):
     def is_exe(exe_file):
@@ -75,6 +77,7 @@ def main(args):
     config = Config(config_path)
     version = config['version']
     run_update_version([version], config)
+    check_imports(os.path.dirname(os.path.dirname(__file__)))
     processes = []
     thread = Thread(target=build_distribution, args=(config, version))
     thread.start()

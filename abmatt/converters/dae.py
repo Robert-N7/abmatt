@@ -6,7 +6,7 @@ from abmatt.brres.lib.autofix import AUTO_FIXER
 from abmatt.converters.convert_lib import Geometry, PointCollection, ColorCollection, Material, Controller, \
     float_to_str
 from abmatt.converters.xml import XML, XMLNode
-from converters.matrix import scale_matrix, rotate_matrix, translate_matrix
+from abmatt.converters.matrix import scale_matrix, rotate_matrix, translate_matrix
 
 
 class ColladaNode:

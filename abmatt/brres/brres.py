@@ -72,7 +72,7 @@ class Brres(Clipable):
             raise ValueError('Unknown key "{}"'.format(key))
 
     def import_model(self, file_path):
-        from converters.convert_dae import DaeConverter2
+        from abmatt.converters.convert_dae import DaeConverter2
         converter = DaeConverter2(self, file_path)
         converter.load_model()
 

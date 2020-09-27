@@ -1,6 +1,6 @@
 !define VERSION "0.7.4"
 !define PROGRAM_NAME "ANoob's Brres Material Tool ${VERSION}"
-InstallDir "$PROGRAMFILES64\abmatt"
+InstallDir "$PROGRAMFILES32\abmatt"
 Name "${PROGRAM_NAME}"
 OutFile "install.exe"
 # Request admin rights

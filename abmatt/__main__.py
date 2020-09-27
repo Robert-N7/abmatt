@@ -20,7 +20,7 @@ from abmatt.brres import Brres
 from abmatt.command import Command, ParsingException, NoSuchFile
 from abmatt.brres.lib.autofix import AUTO_FIXER
 from abmatt.brres.mdl0.material import Material
-from brres.tex0 import Tex0, ImgConverter, ImgConverterI
+from abmatt.brres.tex0 import Tex0, ImgConverter, ImgConverterI
 
 VERSION = '0.7.4'
 USAGE = "USAGE: abmatt [command_line][--interactive -f <file> -b <brres-file> -d <destination> --overwrite]"
