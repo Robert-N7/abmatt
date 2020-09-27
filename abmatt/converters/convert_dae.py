@@ -138,8 +138,8 @@ class DaeConverter2(Converter):
 
     def __parse_controller(self, controller, matrix):
         bones = controller.bones
-        if controller.has_multiple_weights():
-            raise self.ConvertError('ERROR: Multiple bone bindings not supported!')
+        if len(bones) > 1:
+            AUTO_FIXER.warn('Rigged Models not supported!')
         bone = self.bones[bones[0]]
         self.__encode_geometry(controller.get_bound_geometry(matrix), bone)
 
@@ -162,7 +162,7 @@ class DaeConverter2(Converter):
         self.bones[name] = bone = self.mdl.add_bone(name, parent_bone)
         self.set_bone_matrix(bone, matrix)
         for n in node.nodes:
-            self.__add_bone(n, bone, matrix=n.matrix)
+            self.__add_bone(n, bone, matrix=n.get_matrix())
 
     def __parse_nodes(self, nodes, matrix=None):
         for node in nodes:

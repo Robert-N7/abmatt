@@ -13,6 +13,7 @@ from abmatt.brres.mdl0.vertex import Vertex
 from abmatt.brres.mdl0 import material
 from abmatt.brres.tex0 import EncodeError, Tex0, ImgConverter
 from abmatt.converters.triangle import TriangleSet
+from converters.matrix import apply_matrix, combine_matrices, matrix_to_srt
 
 
 class Converter:
@@ -41,18 +42,7 @@ class Converter:
         """Untested set translation/scale/rotation with matrix"""
         bone.transform_matrix = matrix[:3]  # don't include fourth row
         bone.inverse_matrix = np.linalg.inv(matrix)[:3]
-        bone.translation = matrix[:, 3][:3]
-        bone.scale = (vector_magnitude(matrix[:, 0]),
-                      vector_magnitude(matrix[:, 1]),
-                      vector_magnitude(matrix[:, 2]))
-        matrix = np.delete(matrix, 3, 0)
-        matrix = np.delete(matrix, 3, 1)
-        for i in range(3):
-            scale_factor = bone.scale[i]
-            if scale_factor != 1:
-                for j in range(3):
-                    matrix[j][i] = matrix[j][i] / scale_factor
-        bone.rotation = rotationMatrixToEulerAngles(matrix)
+        bone.scale, bone.rotation, bone.translation = matrix_to_srt(matrix)
 
     @staticmethod
     def is_identity_matrix(matrix):
@@ -462,17 +452,11 @@ class PointCollection:
         return len(self.points[0])
 
     def apply_affine_matrix(self, matrix):
-        """matrix is a 4x4 ndarray matrix
-        transforms points using the matrix (last row is ignored)
         """
-        if np.allclose(matrix, Converter.IDENTITY_MATRIX):
-            return self.points
-        matrix = matrix[:3]
-        points = self.points
-        # add a 1 after each point (for transformation)
-        new_col = np.full((len(points), 1), 1, dtype=float)
-        self.points = np.array([matrix.dot(x) for x in np.append(points, new_col, 1)])
-        return self.points
+        transforms points using the matrix (last row is ignored)
+        matrix: 4x4 ndarray matrix
+        """
+        self.points = apply_matrix(matrix, self.points)
 
     @staticmethod
     def get_format_divisor(minimum, maximum):
@@ -783,61 +767,9 @@ class Controller:
         return not np.min(self.vertex_weight_counts) == np.max(self.vertex_weight_counts) == 1.0
 
     def get_bound_geometry(self, matrix=None):
-        if matrix is not None and not np.allclose(matrix, Converter.IDENTITY_MATRIX):
-            matrix = np.matmul(matrix, self.bind_shape_matrix)
-        else:
-            matrix = self.bind_shape_matrix
+        matrix = combine_matrices(matrix, self.bind_shape_matrix)
         self.geometry.apply_matrix(matrix)
         return self.geometry
-
-
-def vector_magnitude(vector):
-    return math.sqrt(sum(x ** 2 for x in vector))
-
-
-# Checks if a matrix is a valid rotation matrix.
-def isRotationMatrix(R):
-    Rt = np.transpose(R)
-    shouldBeIdentity = np.dot(Rt, R)
-    I = np.identity(R.shape[0], dtype=R.dtype)
-    n = np.linalg.norm(I - shouldBeIdentity)
-    return n < 1e-6
-
-
-# Calculates rotation matrix to euler angles
-# The result is the same as MATLAB except the order
-# of the euler angles ( x and z are swapped ).
-def rotationMatrixToEulerAngles(R):
-    assert (isRotationMatrix(R))
-
-    sy = math.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])
-
-    singular = sy < 1e-6
-
-    if not singular:
-        x = math.atan2(R[2, 1], R[2, 2])
-        y = math.atan2(-R[2, 0], sy)
-        z = math.atan2(R[1, 0], R[0, 0])
-    else:
-        x = math.atan2(-R[1, 2], R[1, 1])
-        y = math.atan2(-R[2, 0], sy)
-        z = 0
-
-    return np.array([x, y, z]) * 180 / math.pi
-
-
-def scaleMatrix(matrix, scale):
-    for i in range(len(scale)):
-        matrix[i][i] *= scale[i]
-
-
-def combine_matrices(matrix1, matrix2):
-    if matrix1 is None:
-        return matrix2
-    elif matrix2 is None:
-        return matrix1
-    else:
-        return np.matmul(matrix1, matrix2)
 
 
 def float_to_str(fl):

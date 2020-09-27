@@ -1,3 +1,6 @@
+from brres.lib.autofix import AUTO_FIXER
+
+
 class XML:
     def __init__(self, filename=None):
         self.elements_by_id = {}
@@ -73,7 +76,7 @@ class XML:
                     node.attributes[attrib_name] = attrib_value
                     if attrib_name == 'id':
                         if attrib_value in self.elements_by_id:
-                            print('WARN: id {} used multiple times in xml'.format(attrib_value))
+                            AUTO_FIXER.warn('xml id {} used multiple times'.format(attrib_value), 5)
                         self.elements_by_id[attrib_value] = node
                     offset += 1
                     break

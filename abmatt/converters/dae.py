@@ -3,9 +3,10 @@ from datetime import datetime
 import numpy as np
 
 from abmatt.brres.lib.autofix import AUTO_FIXER
-from abmatt.converters.convert_lib import Geometry, PointCollection, ColorCollection, Material, Controller, scaleMatrix, \
+from abmatt.converters.convert_lib import Geometry, PointCollection, ColorCollection, Material, Controller, \
     float_to_str
 from abmatt.converters.xml import XML, XMLNode
+from converters.matrix import scale_matrix, rotate_matrix, translate_matrix
 
 
 class ColladaNode:
@@ -17,9 +18,18 @@ class ColladaNode:
         self.nodes = []
 
     def get_matrix(self):
-        if not self.matrix:
+        if self.matrix is None:
             self.matrix = np.identity(4)
         return self.matrix
+
+    def scale(self, scale):
+        self.matrix = scale_matrix(self.get_matrix(), scale)
+
+    def rotate(self, rotation):
+        self.matrix = rotate_matrix(self.get_matrix(), rotation)
+
+    def translate(self, translation):
+        self.matrix = translate_matrix(self.get_matrix(), translation)
 
 
 class Dae:
@@ -92,15 +102,13 @@ class Dae:
             elif child.tag == 'node':
                 node.nodes.append(self.decode_node(child))
             elif child.tag == 'scale':
-                matrix = node.get_matrix()
-                scaleMatrix(matrix, [float(x) for x in child.text.split()])
-            elif child.tag == 'rotation':
-                AUTO_FIXER.warn('WARN: rotation transformation not supported for {}'.format(node.name))
-            elif child.tag == 'transformation':
-                matrix = node.get_matrix()
-                transform = [float(x) for x in child.text.split()]
-                for i in range(len(transform)):
-                    matrix[3, i] += transform[i]
+                node.scale([float(x) for x in child.text.split()])
+            elif child.tag == 'rotate':
+                rotation = [float(x) for x in child.text.split()]
+                angle = rotation.pop(-1)
+                node.rotate([x * angle for x in rotation])
+            elif child.tag == 'translate':
+                node.translate([float(x) for x in child.text.split()])
         return node
 
     def add_node(self, node, parent=None):

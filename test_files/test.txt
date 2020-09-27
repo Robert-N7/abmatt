@@ -1,2 +1,2 @@
-convert ../test_files/course.dae to ../test_files/test.brres
-# save as ../test_files\test.brres overwrite
+select * in ../brres_files/beginner_course.brres
+save as ../test_files\test.brres overwrite
