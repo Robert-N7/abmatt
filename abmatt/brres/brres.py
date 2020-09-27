@@ -476,8 +476,10 @@ class Brres(Clipable):
     # --------------------------------------------------------------------------
     def check(self):
         AUTO_FIXER.info('checking file {}'.format(self.name), 4)
+        expected = self.getExpectedMdl()
         for mdl in self.models:
-            mdl.check()
+            mdl.check(expected)
+            expected = None
         tex_names = set(self.get_texture_map().keys())
         tex_used = self.getUsedTextures()
         unused = tex_names - tex_used

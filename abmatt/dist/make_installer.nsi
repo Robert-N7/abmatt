@@ -1,6 +1,6 @@
-!define VERSION "0.7.2"
+!define VERSION "0.7.4"
 !define PROGRAM_NAME "ANoob's Brres Material Tool ${VERSION}"
-InstallDir "$PROGRAMFILES32\abmatt"
+InstallDir "$PROGRAMFILES64\abmatt"
 Name "${PROGRAM_NAME}"
 OutFile "install.exe"
 # Request admin rights
@@ -29,7 +29,9 @@ EnVar::AddValue "PATH" "$INSTDIR\bin"
 File /a /r "bin\"
 # etc
 SetOutPath "$INSTDIR\etc\abmatt"
+SetOverwrite off    # don't overwrite user files!
 File /a /r "etc\abmatt\"
+# SetOverwrite on
 SectionEnd
 
 # UNINSTALL

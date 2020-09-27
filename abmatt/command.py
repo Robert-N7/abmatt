@@ -196,7 +196,7 @@ class Command:
                 except IndexError:
                     raise ParsingException('Expected destination after "to"')
             elif lower == 'in':
-                model = self.name
+                self.model = self.name
                 try:
                     self.name = os.path.normpath(params.pop(0))
                 except IndexError:
@@ -510,20 +510,21 @@ class Command:
         return files
 
     # ------------------------------------  UPDATING TYPE/SELECTION ------------------------------------------------
-    def updateSelection(self):
+    @staticmethod
+    def updateSelection(file, model=None, material=None):
         """ updates container items """
-        if self.file:
-            self.updateFile(self.file)
+        if file:
+            Command.updateFile(file)
         # Models
-        if self.model or not self.MODELS:
+        if model or not Command.MODELS:
             Command.MODELS = []
-            for x in self.ACTIVE_FILES:
-                Command.MODELS.extend(x.getModelsByName(self.model))
-            if self.MATERIALS:
+            for x in Command.ACTIVE_FILES:
+                Command.MODELS.extend(x.getModelsByName(model))
+            if Command.MATERIALS:
                 Command.MATERIALS = []
         # Materials
-        for x in self.MODELS:
-            Command.MATERIALS.extend(x.getMaterialsByName(self.name))
+        for x in Command.MODELS:
+            Command.MATERIALS.extend(x.getMaterialsByName(material))
         Command.SELECT_TYPE = None  # reset selection
         return True
 
@@ -602,7 +603,12 @@ class Command:
                 Command.SELECTED = self.MATERIALS
             elif type == 'layer':
                 if self.SELECT_ID_NUMERIC:
-                    Command.SELECTED = [x.getLayerI(self.SELECT_ID) for x in self.MATERIALS]
+                    selected = []
+                    for x in self.MATERIALS:
+                        layer = x.getLayerI(self.SELECT_ID)
+                        if layer:
+                            selected.append(layer)
+                    Command.SELECTED = selected
                 else:
                     Command.SELECTED = []
                     for x in self.MATERIALS:
@@ -628,6 +634,8 @@ class Command:
                 if self.SELECT_ID_NUMERIC:
                     brres = getBrresFromMaterials(self.MATERIALS)
                     Command.SELECTED = {x.getModelI(self.SELECT_ID) for x in brres}
+                    if None in Command.SELECTED:
+                        Command.SELECTED.remove(None)
                 else:
                     Command.SELECTED = MATCHING.findAll(self.SELECT_ID, getParents(self.MATERIALS))
             elif type == 'brres':
@@ -677,7 +685,7 @@ class Command:
                 for cmd in commandlist:
                     cmd.run_cmd()
             except (ValueError, SaveError, PasteError, MaxFileLimit, NoSuchFile, FileNotFoundError, ParsingException,
-                    OSError, UnpackingError, PackingError, NotImplementedError, NoImgConverterError) as e:
+                    OSError, UnpackingError, PackingError, NotImplementedError, NoImgConverterError, RuntimeError) as e:
                 AUTO_FIXER.error(e)
                 return False
         return True
@@ -712,15 +720,16 @@ class Command:
         self.destination = None
         self.run_convert()
 
-    def import_texture(self, file, tex_format=None):
+    def import_texture(self, file, tex_format=None, num_mips=-1):
         try:
-            return ImgConverter().encode(file, tex_format)
+            return ImgConverter().encode(file, tex_format, num_mips)
         except EncodeError as e:
             print(e)
 
     def run_cmd(self):
         if self.hasSelection:
-            if not self.updateSelection():
+            if not self.updateSelection(self.file, self.model, self.name):
+                AUTO_FIXER.warn('No selection found for "{}"'.format(self.txt))
                 return False
             elif self.cmd == 'select':
                 return True
@@ -729,21 +738,23 @@ class Command:
                 ctype = self.type if self.type else self.SELECT_TYPE
                 self.info_keys(ctype)
                 return True
-            self.file = self.model = self.name = None
-            self.updateSelection()
+            # self.file = self.model = self.name = None
+            # self.updateSelection(None)         # reset selection
         if self.cmd == 'preset':
             return self.runPreset(self.key)
         elif self.cmd == 'convert':
             return self.run_convert()
         if not self.ACTIVE_FILES:
-            raise ParsingException(self.txt, 'No file detected!')
+            raise RuntimeError('No file detected! ({})'.format(self.txt))
         if self.cmd == 'save':
             self.run_save()
             return True
         self.updateTypeSelection()
         if not self.SELECTED:
-            AUTO_FIXER.error("No items found in selection for '{}'".format(self.txt), 3)
-            return False
+            if self.cmd == 'info':
+                AUTO_FIXER.info('No items in selection.')
+                return True
+            raise RuntimeError('No items found in selection! ({})'.format(self.txt))
         if self.cmd == 'set':
             self.markModified()
             for x in self.SELECTED:
@@ -765,6 +776,7 @@ class Command:
         elif self.cmd == 'copy':
             self.run_copy(self.SELECT_TYPE)
         elif self.cmd == 'paste':
+            self.markModified()
             self.run_paste(self.SELECT_TYPE)
         return True
 
@@ -785,6 +797,7 @@ class Command:
         if not files:
             return False
         multiple_files = False if len(files) < 2 else True
+        brres = None
         if self.is_import:
             if not self.destination:
                 if active_files and not multiple_files:
@@ -803,6 +816,7 @@ class Command:
                 if model and len(model) > len(base_name) and model.startswith(base_name + '-'):
                     model = model[len(model) + 1:]
                 mdl = converter.load_model(model)
+                brres = converter.brres
         else:  # export
             dest_auto = True if multiple_files or os.path.basename(self.destination).lower() == '*' + self.ext else False
             for file in files:
@@ -820,6 +834,8 @@ class Command:
                     if multi_model:
                         converter.mdl_file = destination + '-' + mdl0.name + self.ext
                     converter.save_model(mdl0)
+        if brres is not None:
+            self.updateSelection(brres.name)
 
     # -------------------------------------------- COPY/PASTE -----------------------------------------------
     #   Items implementing clipboard must support the methods:
@@ -913,15 +929,24 @@ class Command:
                     x.addLayerByName(type_id)
         elif type == 'brres':
             if self.type == 'tex0':
-                convert_fmt = None
+                resize = convert_fmt = None
+                num_mips = -1
                 try:
-                    convert_fmt = self.value
+                    key = self.key
+                    if key == 'format':
+                        convert_fmt = self.value
+                    elif key == 'mipmapcount':
+                        num_mips = validInt(self.value, -1, 20)
+                    else:
+                        resize = self.value
                 except AttributeError:
                     pass
                 files = self.getFiles(type_id)
                 for file in files:
-                    tex = self.import_texture(file, convert_fmt)
+                    tex = self.import_texture(file, convert_fmt, num_mips)
                     if tex:
+                        if resize:
+                            tex.set_str(self.key, self.value)
                         for x in self.SELECTED:
                             x.add_tex0(tex)
             elif self.type == 'mdl0':
@@ -943,20 +968,17 @@ class Command:
             else:  # remove layer case
                 if self.SELECT_ID_NUMERIC:
                     for x in self.SELECTED:
-                        for i in range(type_id):
-                            x.removeLayerI()
+                        x.removeLayerI(type_id)
                 else:
                     for x in self.SELECTED:
                         x.removeLayer(type_id)
         elif type == 'shader':  # remove stage case
             for x in self.SELECTED:
-                for i in range(type_id):
-                    x.removeStage()
+                x.removeStage(type_id)
         elif type == 'srt0':  # remove srt0 layer
             if self.SELECT_ID_NUMERIC:
                 for x in self.SELECTED:
-                    for i in range(type_id):
-                        x.removeLayer()
+                    x.removeLayerI(type_id)
             else:
                 for x in self.SELECTED:
                     x.removeLayerByName(type_id)

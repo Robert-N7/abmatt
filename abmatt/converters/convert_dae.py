@@ -37,7 +37,12 @@ class DaeConverter2(Converter):
         self.__parse_images(dae.get_images(), brres)
         self.__parse_materials(dae.get_materials())
         # geometry
-        self.__parse_nodes(dae.get_scene())
+        matrix = np.identity(4)
+        if self.DETECT_FILE_UNITS:
+            if dae.unit_meter != 1:     # set the matrix scale to convert to meters
+                for i in range(3):
+                    matrix[i][i] = dae.unit_meter
+        self.__parse_nodes(dae.get_scene(), matrix)
         mdl.rebuild_header()
         brres.add_mdl0(mdl)
         if self.is_map:
@@ -133,8 +138,8 @@ class DaeConverter2(Converter):
 
     def __parse_controller(self, controller, matrix):
         bones = controller.bones
-        if controller.has_multiple_weights():
-            raise self.ConvertError('ERROR: Multiple bone bindings not supported!')
+        if len(bones) > 1:
+            AUTO_FIXER.warn('Rigged Models not supported!')
         bone = self.bones[bones[0]]
         self.__encode_geometry(controller.get_bound_geometry(matrix), bone)
 
@@ -148,8 +153,8 @@ class DaeConverter2(Converter):
         if self.flags & self.NoNormals:
             geometry.normals = None
         replace = 'Mesh'
-        if geometry.name.endswith(replace) and len(replace) > len(geometry.name):
-            geometry.name = geometry.name[:len(replace)]
+        if geometry.name.endswith(replace) and len(replace) < len(geometry.name):
+            geometry.name = geometry.name[:len(replace) * -1]
         geometry.encode(self.mdl, bone)
 
     def __add_bone(self, node, parent_bone=None, matrix=None):
@@ -157,7 +162,7 @@ class DaeConverter2(Converter):
         self.bones[name] = bone = self.mdl.add_bone(name, parent_bone)
         self.set_bone_matrix(bone, matrix)
         for n in node.nodes:
-            self.__add_bone(n, bone, matrix=n.matrix)
+            self.__add_bone(n, bone, matrix=n.get_matrix())
 
     def __parse_nodes(self, nodes, matrix=None):
         for node in nodes:

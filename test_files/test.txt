@@ -1,3 +1,2 @@
-convert ../brres_files/FlagB2.brres to ../test_files/*.obj
-# convert ../test_files/FlagB2-FlagB2.obj to ../brres_files/FlagB2.brres
-# save as ../test_files/test.brres overwrite
+convert C:\Users\rober\Desktop\YWR\test.DAE to C:\Users\rober\Desktop\YWR\tmp.brres
+save as ../test_files\test.brres overwrite

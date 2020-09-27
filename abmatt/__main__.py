@@ -9,7 +9,7 @@ import sys
 from cmd import Cmd
 
 from abmatt.config import Config
-from abmatt.brres.lib.matching import validBool, MATCHING, parse_color
+from abmatt.brres.lib.matching import validBool, MATCHING, parse_color, validInt
 from abmatt.brres.mdl0 import Mdl0
 from abmatt.brres.mdl0.layer import Layer
 from abmatt.brres.mdl0.shader import Shader, Stage
@@ -20,8 +20,9 @@ from abmatt.brres import Brres
 from abmatt.command import Command, ParsingException, NoSuchFile
 from abmatt.brres.lib.autofix import AUTO_FIXER
 from abmatt.brres.mdl0.material import Material
+from brres.tex0 import Tex0, ImgConverter, ImgConverterI
 
-VERSION = '0.7.3'
+VERSION = '0.7.4'
 USAGE = "USAGE: abmatt [command_line][--interactive -f <file> -b <brres-file> -d <destination> --overwrite]"
 
 
@@ -98,9 +99,7 @@ class Shell(Cmd, object):
         self.cmd_queue.append(line)
         try:
             Command.run_commands([Command(line)])
-        except ParsingException as e:
-            print('{}, Type "?" for help.'.format(e))
-        except NoSuchFile as e:
+        except (ParsingException, NoSuchFile) as e:
             AUTO_FIXER.error(e)
 
     @staticmethod
@@ -429,7 +428,7 @@ def main():
                                    ["help", "destination=", "overwrite",
                                     "command=", "type=", "key=", "value=",
                                     "name=", "brres=", "model=", "file=", "interactive",
-                                     "loudness=", "debug="])
+                                     "loudness=", "debug"])
     except getopt.GetoptError as e:
         print(e)
         print(USAGE)
@@ -515,7 +514,7 @@ def main():
         Brres.OVERWRITE = overwrite
     if brres_file:
         try:
-            Command.updateFile(brres_file)
+            Command.updateSelection(brres_file)
         except NoSuchFile as e:
             AUTO_FIXER.error(e)
             sys.exit(2)
@@ -574,6 +573,9 @@ def load_config(app_dir, loudness=None, autofix_level=None):
             AUTO_FIXER.set_loudness(loudness)
         except ValueError:
             AUTO_FIXER.warn('Invalid loudness level {}'.format(loudness))
+    if not len(conf):
+        AUTO_FIXER.warn('No configuration detected (etc/abmatt/config.conf).')
+        return
     Command.set_max_brres_files(conf)
     # Matching stuff
     MATCHING.set_case_sensitive(conf['case_sensitive'])
@@ -611,6 +613,17 @@ def load_config(app_dir, loudness=None, autofix_level=None):
         Material.DEFAULT_COLOR = parse_color(conf['default_material_color'])
     except ValueError:
         pass
+    try:
+        Tex0.RESIZE_TO_POW_TWO = validBool(conf['resize_pow_two'])
+    except ValueError:
+        pass
+    try:
+        Tex0.set_max_image_size(validInt(conf['max_image_size'], 0, 10000))
+    except (TypeError, ValueError):
+        pass
+    resample = conf['img_resample']
+    if resample is not None:
+        ImgConverterI.set_resample(resample)
     return conf
 
 

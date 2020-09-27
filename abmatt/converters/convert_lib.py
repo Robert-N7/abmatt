@@ -4,21 +4,23 @@ from struct import pack, unpack, unpack_from
 
 import numpy as np
 
-from abmatt.brres.lib.autofix import AUTO_FIXER
+from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
 from abmatt.brres.mdl0.color import Color
 from abmatt.brres.mdl0.normal import Normal
 from abmatt.brres.mdl0.polygon import Polygon
 from abmatt.brres.mdl0.texcoord import TexCoord
 from abmatt.brres.mdl0.vertex import Vertex
 from abmatt.brres.mdl0 import material
-from abmatt.brres.tex0 import EncodeError
+from abmatt.brres.tex0 import EncodeError, Tex0, ImgConverter
 from abmatt.converters.triangle import TriangleSet
+from converters.matrix import apply_matrix, combine_matrices, matrix_to_srt
 
 
 class Converter:
     NoNormals = 0x1
     NoColors = 0x2
     IDENTITY_MATRIX = np.identity(4)
+    DETECT_FILE_UNITS = True
 
     class ConvertError(Exception):
         pass
@@ -40,39 +42,47 @@ class Converter:
         """Untested set translation/scale/rotation with matrix"""
         bone.transform_matrix = matrix[:3]  # don't include fourth row
         bone.inverse_matrix = np.linalg.inv(matrix)[:3]
-        bone.translation = matrix[:, 3][:3]
-        bone.scale = (vector_magnitude(matrix[:, 0]),
-                      vector_magnitude(matrix[:, 1]),
-                      vector_magnitude(matrix[:, 2]))
-        matrix = np.delete(matrix, 3, 0)
-        matrix = np.delete(matrix, 3, 1)
-        for i in range(3):
-            scale_factor = bone.scale[i]
-            if scale_factor != 1:
-                for j in range(3):
-                    matrix[j][i] = matrix[j][i] / scale_factor
-        bone.rotation = rotationMatrixToEulerAngles(matrix)
+        bone.scale, bone.rotation, bone.translation = matrix_to_srt(matrix)
 
     @staticmethod
     def is_identity_matrix(matrix):
         return np.allclose(matrix, Converter.IDENTITY_MATRIX)
 
-    @staticmethod
-    def try_import_texture(brres, image_path, layer_name=None):
+    def try_import_texture(self, brres, image_path, layer_name=None):
         if not layer_name:
             layer_name = os.path.splitext(os.path.basename(image_path))[0]
         if not brres.hasTexture(layer_name):
-            if os.path.exists(image_path):
-                try:
-                    brres.import_texture(image_path, layer_name)
-                except EncodeError:
-                    AUTO_FIXER.warn('WARN: Failed to encode image {}'.format(image_path))
+            if self.is_first_image or self.check_image:  # check it if it's the first or if a resize occurred
+                self.is_first_image = False
+                if image_path.startswith('file://'):
+                    image_path = image_path.replace('file://', '')
+                if not os.path.exists(image_path):
+                    return layer_name
+                from PIL import Image
+                im = Image.open(image_path)
+                width, height = im.size
+                if width > Tex0.MAX_IMG_SIZE or height > Tex0.MAX_IMG_SIZE:
+                    new_width, new_height = Tex0.get_scaled_size(width, height)
+                    b = Bug(2, 2, f'Texture {layer_name} too large ({width}x{height}).',
+                            f'Resize to {new_width}x{new_height}.')
+                    dir, name = os.path.split(image_path)
+                    base, ext = os.path.splitext(name)
+                    image_path = os.path.join(dir, base + '-resized' + ext)
+                    ImgConverter().resize_image(im, new_width, new_height, image_path)
+                    b.resolve()
+                    self.check_image = True
+            try:
+                brres.import_texture(image_path, layer_name)
+            except EncodeError:
+                AUTO_FIXER.warn('Failed to encode image {}'.format(image_path))
         return layer_name
 
     def __init__(self, brres, mdl_file, flags=0):
         self.brres = brres
         self.mdl_file = mdl_file
         self.flags = flags
+        self.check_image = False
+        self.is_first_image = True
 
     def load_model(self, model_name):
         raise NotImplementedError()
@@ -81,38 +91,36 @@ class Converter:
         raise NotImplementedError()
 
 
+def get_index_format(item, fmt_str):
+    l = len(item)
+    if l > 0xffff:
+        raise Converter.ConvertError(f'{item.name} exceeds max length! ({len(item)})')
+    elif l > 0xff:
+        fmt_str += 'H'
+        return Polygon.INDEX_FORMAT_SHORT, fmt_str
+    else:
+        fmt_str += 'B'
+        return Polygon.INDEX_FORMAT_BYTE, fmt_str
+
+
 def encode_polygon_data(polygon, vertex, normal, color, uvs, face_indices):
     # set up vertex declaration
     polygon.vertex_format = vertex.format
     polygon.vertex_divisor = vertex.divisor
-    if len(vertex) > 0xff:
-        polygon.vertex_index_format = polygon.INDEX_FORMAT_SHORT
-        fmt_str = '>H'
-    else:
-        polygon.vertex_index_format = polygon.INDEX_FORMAT_BYTE
-        fmt_str = '>B'
+    fmt_str = '>'
+    polygon.vertex_index_format, fmt_str = get_index_format(vertex, fmt_str)
     polygon.facepoint_count = len(vertex)
     polygon.vertex_group_index = vertex.index
     if normal:
         polygon.normal_type = normal.comp_count
         polygon.normal_group_index = normal.index
         polygon.normal_format = normal.format
-        if len(normal) > 0xff:
-            polygon.normal_index_format = polygon.INDEX_FORMAT_SHORT
-            fmt_str += 'H'
-        else:
-            polygon.normal_index_format = polygon.INDEX_FORMAT_BYTE
-            fmt_str += 'B'
+        polygon.normal_index_format, fmt_str = get_index_format(normal, fmt_str)
     else:
         polygon.normal_index_format = polygon.INDEX_FORMAT_NONE
         polygon.normal_group_index = -1
     if color:
-        if len(color) > 0xff:
-            polygon.color0_index_format = polygon.INDEX_FORMAT_SHORT
-            fmt_str += 'H'
-        else:
-            polygon.color0_index_format = polygon.INDEX_FORMAT_BYTE
-            fmt_str += 'B'
+        polygon.color0_index_format, fmt_str = get_index_format(color, fmt_str)
         polygon.color0_format = color.format
         polygon.color_group_indices[0] = color.index
     else:
@@ -125,12 +133,7 @@ def encode_polygon_data(polygon, vertex, normal, color, uvs, face_indices):
             polygon.tex_coord_group_indices[i] = uv.index
             polygon.tex_format[i] = uv.format
             polygon.tex_divisor[i] = uv.divisor
-            if len(uv) > 0xff:
-                polygon.tex_index_format[i] = polygon.INDEX_FORMAT_SHORT
-                fmt_str += 'H'
-            else:
-                polygon.tex_index_format[i] = polygon.INDEX_FORMAT_BYTE
-                fmt_str += 'B'
+            polygon.tex_index_format[i], fmt_str = get_index_format(uv, fmt_str)
     else:
         polygon.tex_coord_group_indices[0] = -1
     triset = TriangleSet(face_indices)
@@ -255,10 +258,10 @@ def decode_polygon(polygon):
             xf_address = 0xfff & len_and_xf_address
             length = (len_and_xf_address >> 12) + 1
             i += 4
-            if cmd == 0x20:     # pos matrix
+            if cmd == 0x20:  # pos matrix
                 bones.append(bone_index)
             elif cmd == 0x28:
-                pass     # normals  todo figure out how these work
+                pass  # normals  todo figure out how these work
             else:
                 raise Converter.ConvertError('Texture matrices not supported')
         else:
@@ -287,7 +290,7 @@ def decode_polygon(polygon):
     if pos_matrix_index >= 0:
         pos_matrix_indices = face_point_indices[:, :, 0] / 3
         bone_table = polygon.get_bone_table()
-        bones = [mdl0_bones[bone_table[i]] for i in bones]     # possibly need to do something different here
+        bones = [mdl0_bones[bone_table[i]] for i in bones]  # possibly need to do something different here
     else:
         pos_matrix_indices = None
         bones = [mdl0_bones[polygon.get_bone()]]
@@ -449,18 +452,11 @@ class PointCollection:
         return len(self.points[0])
 
     def apply_affine_matrix(self, matrix):
-        """matrix is a 4x4 ndarray matrix
-        transforms points using the matrix (last row is ignored)
         """
-        if np.allclose(matrix, Converter.IDENTITY_MATRIX):
-            return self.points
-        matrix = matrix[:3]
-        points = self.points
-        # add a 1 after each point (for transformation)
-        new_col = np.full((len(points), 1), 1, dtype=float)
-        points = np.append(points, new_col, 1)
-        self.points = np.array([matrix.dot(x) for x in points])
-        return self.points
+        transforms points using the matrix (last row is ignored)
+        matrix: 4x4 ndarray matrix
+        """
+        self.points = apply_matrix(matrix, self.points)
 
     @staticmethod
     def get_format_divisor(minimum, maximum):
@@ -504,6 +500,8 @@ class PointCollection:
             self.encode_points(multiplyBy, dtype)
         points = self.consolidate_points()
         geometry.count = len(self)
+        if geometry.count > 0xffff:
+            raise Converter.ConvertError(f'{geometry.name} has too many points! ({geometry.count})')
         for x in points:
             data.append(x)
         return data
@@ -689,7 +687,6 @@ class Geometry:
         self.bone_indices = bone_indices
         self.linked_bone = linked_bone
 
-
     def swap_y_z_axis(self):
         collections = [self.vertices, self.normals]
         points = self.vertices.points
@@ -697,6 +694,9 @@ class Geometry:
         points[:, 2] *= -1
         points = self.normals.points
         points[:, [1, 2]] = points[:, [2, 1]]
+
+    def apply_linked_bone_bindings(self):
+        self.apply_matrix(np.array(self.linked_bone.get_transform_matrix(), np.float))
 
     def apply_matrix(self, matrix):
         self.vertices.apply_affine_matrix(matrix)
@@ -751,7 +751,8 @@ class Material:
 
 
 class Controller:
-    def __init__(self, name, bind_shape_matrix, inv_bind_matrix, bones, weights, vertex_weight_counts, vertex_weight_indices,
+    def __init__(self, name, bind_shape_matrix, inv_bind_matrix, bones, weights, vertex_weight_counts,
+                 vertex_weight_indices,
                  geometry):
         self.name = name
         self.bind_shape_matrix = bind_shape_matrix
@@ -766,60 +767,9 @@ class Controller:
         return not np.min(self.vertex_weight_counts) == np.max(self.vertex_weight_counts) == 1.0
 
     def get_bound_geometry(self, matrix=None):
-        if matrix is not None and not np.allclose(matrix, Converter.IDENTITY_MATRIX):
-            matrix = np.matmul(matrix, self.bind_shape_matrix)
-        else:
-            matrix = self.bind_shape_matrix
+        matrix = combine_matrices(matrix, self.bind_shape_matrix)
         self.geometry.apply_matrix(matrix)
         return self.geometry
-
-
-def vector_magnitude(vector):
-    return math.sqrt(sum(x ** 2 for x in vector))
-
-
-# Checks if a matrix is a valid rotation matrix.
-def isRotationMatrix(R):
-    Rt = np.transpose(R)
-    shouldBeIdentity = np.dot(Rt, R)
-    I = np.identity(3, dtype=R.dtype)
-    n = np.linalg.norm(I - shouldBeIdentity)
-    return n < 1e-6
-
-
-# Calculates rotation matrix to euler angles
-# The result is the same as MATLAB except the order
-# of the euler angles ( x and z are swapped ).
-def rotationMatrixToEulerAngles(R):
-    assert (isRotationMatrix(R))
-
-    sy = math.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])
-
-    singular = sy < 1e-6
-
-    if not singular:
-        x = math.atan2(R[2, 1], R[2, 2])
-        y = math.atan2(-R[2, 0], sy)
-        z = math.atan2(R[1, 0], R[0, 0])
-    else:
-        x = math.atan2(-R[1, 2], R[1, 1])
-        y = math.atan2(-R[2, 0], sy)
-        z = 0
-
-    return np.array([x, y, z]) * 180 / math.pi
-
-
-def scaleMatrix(matrix, scale):
-    for i in range(len(scale)):
-        matrix[i][i] *= scale[i]
-
-def combine_matrices(matrix1, matrix2):
-    if matrix1 is None:
-        return matrix2
-    elif matrix2 is None:
-        return matrix1
-    else:
-        return np.matmul(matrix1, matrix2)
 
 
 def float_to_str(fl):

@@ -42,6 +42,9 @@ class Config:
                     if result is not None:
                         self.config[result[0]] = result[1]
 
+    def __len__(self):
+        return len(self.config)
+
     def __getitem__(self, item):
         return self.config.get(item)
 
