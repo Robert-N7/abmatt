@@ -252,7 +252,12 @@ class ImgConverter:
             if not os.path.exists(img_file):
                 raise EncodeError('No such file {}'.format(img_file))
             dir, fname = os.path.split(img_file)
-            name = os.path.splitext(fname)[0]
+            name, ext = os.path.splitext(fname)
+            if ext.lower() != '.png':
+                from PIL import Image
+                im = Image.open(img_file)
+                img_file = os.path.join(dir, name + '.png')
+                im.save(img_file)
             mips = '--n-mm=' + str(num_mips) if num_mips >= 0 else ''
             if not tex_format:
                 tex_format = self.IMG_FORMAT

@@ -5,7 +5,6 @@ import time
 import numpy as np
 
 from abmatt.brres.lib.autofix import AUTO_FIXER
-from abmatt.brres.mdl0 import Mdl0
 from abmatt.brres.tex0 import ImgConverter, NoImgConverterError
 from abmatt.converters.arg_parse import cmdline_convert
 from abmatt.converters.convert_lib import Controller
@@ -17,23 +16,9 @@ from abmatt.converters.dae import Dae, ColladaNode
 class DaeConverter2(Converter):
 
     def load_model(self, model_name=None):
-        AUTO_FIXER.info('Converting {}... '.format(self.mdl_file))
-        start = time.time()
-        brres = self.brres
-        model_file = self.mdl_file
-        cwd = os.getcwd()
+        self._start_loading(model_name)
         self.bones = {}
-        brres_dir, brres_name = os.path.split(brres.name)
-        base_name = os.path.splitext(brres_name)[0]
-        self.is_map = True if 'map' in base_name else False
-        dir, name = os.path.split(model_file)
-        if dir:
-            os.chdir(dir)  # change to the collada dir to help find relative paths
-        self.dae = dae = Dae(name)
-        if not model_name:
-            model_name = self.get_mdl0_name(base_name, name)
-        self.mdl = mdl = Mdl0(model_name, brres)
-        self.__parse_images(dae.get_images(), brres)
+        self.dae = dae = Dae(self.mdl_file)
         self.__parse_materials(dae.get_materials())
         # geometry
         matrix = np.identity(4)
@@ -41,14 +26,14 @@ class DaeConverter2(Converter):
             if dae.unit_meter != 1:     # set the matrix scale to convert to meters
                 for i in range(3):
                     matrix[i][i] = dae.unit_meter
-        self.__parse_nodes(dae.get_scene(), matrix)
-        mdl.rebuild_header()
-        brres.add_mdl0(mdl)
-        if self.is_map:
-            mdl.add_map_bones()
-        os.chdir(cwd)
-        AUTO_FIXER.info('\t... finished in {} secs'.format(round(time.time() - start, 2)))
-        return mdl
+        material_geometry_map = {}
+        self.__parse_nodes(dae.get_scene(), material_geometry_map, matrix)
+        for material in material_geometry_map:
+            geometries = material_geometry_map[material]
+            for x in geometries:
+                self.__encode_geometry(x)
+        self._import_images(dae.get_images())
+        return self._end_loading()
 
     def save_model(self, mdl0=None):
         AUTO_FIXER.info('Exporting to {}...'.format(self.mdl_file))
@@ -135,16 +120,16 @@ class DaeConverter2(Converter):
                 if converter:
                     converter.decode(tex, image_name + '.png')
 
-    def __parse_controller(self, controller, matrix):
+    def __parse_controller(self, controller, matrix, material_geometry_map):
         bones = controller.bones
         if len(bones) > 1:
             AUTO_FIXER.warn('Rigged Models not supported!')
         bone = self.bones[bones[0]]
-        self.__encode_geometry(controller.get_bound_geometry(matrix), bone)
+        geometry = controller.get_bound_geometry(matrix)
+        geometry.linked_bone = bone
+        self.__add_geometry(geometry, material_geometry_map)
 
-    def __encode_geometry(self, geometry, bone=None, matrix=None):
-        if matrix is not None and not np.allclose(matrix, self.IDENTITY_MATRIX):
-            geometry.apply_matrix(matrix)
+    def __encode_geometry(self, geometry, bone=None):
         if not self.dae.y_up:
             geometry.swap_y_z_axis()
         if self.flags & self.NoColors:
@@ -154,45 +139,45 @@ class DaeConverter2(Converter):
         replace = 'Mesh'
         if geometry.name.endswith(replace) and len(replace) < len(geometry.name):
             geometry.name = geometry.name[:len(replace) * -1]
-        geometry.encode(self.mdl, bone)
+        geometry.encode(self.mdl0, bone)
 
     def __add_bone(self, node, parent_bone=None, matrix=None):
         name = node.attributes['id']
-        self.bones[name] = bone = self.mdl.add_bone(name, parent_bone)
+        self.bones[name] = bone = self.mdl0.add_bone(name, parent_bone)
         self.set_bone_matrix(bone, matrix)
         for n in node.nodes:
             self.__add_bone(n, bone, matrix=n.get_matrix())
 
-    def __parse_nodes(self, nodes, matrix=None):
+    def __add_geometry(self, geometry, material_geometry_map):
+        geo = material_geometry_map.get(geometry.material_name)
+        add_geo = True
+        if geo is not None:
+            if not geo[0].combine(geometry):
+                geo.append(geometry)
+        else:
+            material_geometry_map[geometry.material_name] = [geometry]
+
+    def __parse_nodes(self, nodes, material_geometry_map, matrix=None):
         for node in nodes:
             current_node_matrix = combine_matrices(matrix, node.matrix)
             bone_added = False
             if node.controller:
-                self.__parse_controller(node.controller, current_node_matrix)
+                self.__parse_controller(node.controller, current_node_matrix, material_geometry_map)
             elif node.geometries:
                 for x in node.geometries:
-                    self.__encode_geometry(x, matrix=current_node_matrix)
+                    if current_node_matrix is not None:
+                        x.apply_matrix(current_node_matrix)
+                    self.__add_geometry(x, material_geometry_map)
+                    # self.__encode_geometry(x)
             elif node.attributes.get('type') == 'JOINT':
                 self.__add_bone(node, matrix=current_node_matrix)
                 bone_added = True
             if not bone_added:
-                self.__parse_nodes(node.nodes, current_node_matrix)
+                self.__parse_nodes(node.nodes, {}, current_node_matrix)
 
     def __parse_materials(self, materials):
         for material in materials:
-            material.encode(self.mdl)
-
-    def __parse_images(self, images, brres):
-        # images
-        self.image_path_map = image_path_map = {}
-        try:
-            for image in images:
-                path = images[image]
-                image_path_map[path] = self.try_import_texture(brres, path)
-            if not brres.textures and len(images):
-                AUTO_FIXER.error('No textures found!')
-        except NoImgConverterError as e:
-            AUTO_FIXER.error(e)
+            self._encode_material(material)
 
 
 def get_controller(geometry):

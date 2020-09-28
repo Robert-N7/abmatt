@@ -39,7 +39,7 @@ class Polygon(Node):
         self.normal_format = 4
         self.color0_format = 5
         self.color1_format = 5
-        self.num_colors = 1
+        self.num_colors = 0
         self.normal_type = 0
         self.num_tex = 1
         self.facepoint_count = 0

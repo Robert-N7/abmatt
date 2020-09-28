@@ -19,7 +19,7 @@ CLASSIFIERS = [
 
 # calling the setup function
 setup(name='abmatt',
-      version='0.7.4',
+      version='0.8.0',
       entry_points={
           'console_scripts': [
               'abmatt = abmatt.__main__:main'

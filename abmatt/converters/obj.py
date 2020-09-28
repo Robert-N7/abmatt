@@ -24,6 +24,9 @@ class ObjMaterial:
         self.optical_density = 1.5
         self.illumination = 2
 
+    def get_transparency(self):
+        return 1 - self.dissolve
+
     def get_maps(self):
         maps = set()
         maps.add(self.ambient_map)
@@ -118,7 +121,7 @@ class Obj():
         self.save_obj()
 
     def save_mtllib(self, folder):
-        s = '# Wavefront MTL exported with ABMATT v0.7.4'
+        s = '# Wavefront MTL exported with ABMATT v0.8.0'
         materials = self.materials
         for x in materials:
             s += '\n' + materials[x].get_save_str()
@@ -126,7 +129,7 @@ class Obj():
             f.write(s)
 
     def save_obj(self):
-        s = '# Wavefront OBJ exported with ABMATT v0.7.4\n\nmtllib ' + self.mtllib + '\n\n'
+        s = '# Wavefront OBJ exported with ABMATT v0.8.0\n\nmtllib ' + self.mtllib + '\n\n'
         vertex_index = 1
         normal_index = 1
         normal_offset = -1

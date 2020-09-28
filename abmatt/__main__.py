@@ -22,7 +22,7 @@ from abmatt.brres.lib.autofix import AUTO_FIXER
 from abmatt.brres.mdl0.material import Material
 from abmatt.brres.tex0 import Tex0, ImgConverter, ImgConverterI
 
-VERSION = '0.7.4'
+VERSION = '0.8.0'
 USAGE = "USAGE: abmatt [command_line][--interactive -f <file> -b <brres-file> -d <destination> --overwrite]"
 
 

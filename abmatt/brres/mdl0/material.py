@@ -19,6 +19,7 @@ class Material(Clipable):
     #   CONSTANTS
     # -----------------------------------------------------------------------
     EXT = 'matl'
+    WARNINGS_ON = True
     SETTINGS = ("xlu", "ref0", "ref1",
                 "comp0", "comp1", "comparebeforetexture", "blend",
                 "blendsrc", "blendlogic", "blenddest", "constantalpha",
@@ -623,7 +624,8 @@ class Material(Clipable):
 
     def addLayer(self, name):
         """ Creates and returns new layer """
-        self.parent.add_texture_link(name)  # update model texture link/check that exists
+        if self.WARNINGS_ON:
+            self.parent.add_texture_link(name)  # update model texture link/check that exists
         i = len(self.layers)
         l = Layer(i, name, self)
         self.layers.append(l)

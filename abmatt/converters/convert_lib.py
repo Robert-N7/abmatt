@@ -1,7 +1,9 @@
 import math
 import os
+import time
 from struct import pack, unpack, unpack_from
 
+from PIL import Image
 import numpy as np
 
 from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
@@ -11,9 +13,10 @@ from abmatt.brres.mdl0.polygon import Polygon
 from abmatt.brres.mdl0.texcoord import TexCoord
 from abmatt.brres.mdl0.vertex import Vertex
 from abmatt.brres.mdl0 import material
-from abmatt.brres.tex0 import EncodeError, Tex0, ImgConverter
+from abmatt.brres.tex0 import EncodeError, Tex0, ImgConverter, ImgConverterI, NoImgConverterError
 from abmatt.converters.triangle import TriangleSet
 from abmatt.converters.matrix import apply_matrix, combine_matrices, matrix_to_srt
+from abmatt.brres.mdl0 import Mdl0
 
 
 class Converter:
@@ -25,8 +28,40 @@ class Converter:
     class ConvertError(Exception):
         pass
 
+    def _start_loading(self, model_name):
+        AUTO_FIXER.info('Converting {}... '.format(self.mdl_file))
+        self.start = time.time()
+        self.cwd = os.getcwd()
+        self.mdl_file = os.path.abspath(self.mdl_file)
+        brres_dir, brres_name = os.path.split(self.brres.name)
+        base_name = os.path.splitext(brres_name)[0]
+        self.is_map = True if 'map' in base_name else False
+        dir, name = os.path.split(self.mdl_file)
+        material.Material.WARNINGS_ON = False
+        if dir:
+            os.chdir(dir)  # change to the dir to help find relative paths
+        return self._init_mdl0(brres_name, os.path.splitext(name)[0], model_name)
+
+    def _end_loading(self):
+        mdl0 = self.mdl0
+        mdl0.rebuild_header()
+        self.brres.add_mdl0(mdl0)
+        if self.is_map:
+            mdl0.add_map_bones()
+        os.chdir(self.cwd)
+        material.Material.WARNINGS_ON = True
+        AUTO_FIXER.info('\t... finished in {} secs'.format(round(time.time() - self.start, 2)))
+        return mdl0
+
+    def _init_mdl0(self, brres_name, mdl_name, mdl0_name):
+        if mdl0_name is None:
+            mdl0_name = self.__get_mdl0_name(brres_name, mdl_name)
+        self.replacement_model = self.brres.getModel(mdl0_name)
+        self.mdl0 = Mdl0(mdl0_name, self.brres)
+        return self.mdl0
+
     @staticmethod
-    def get_mdl0_name(brres_name, model_name):
+    def __get_mdl0_name(brres_name, model_name):
         common_models = ('course', 'map', 'vrcorn')
         for x in common_models:
             if x in brres_name or x in model_name:
@@ -48,18 +83,69 @@ class Converter:
     def is_identity_matrix(matrix):
         return np.allclose(matrix, Converter.IDENTITY_MATRIX)
 
-    def try_import_texture(self, brres, image_path, layer_name=None):
+    def _encode_material(self, generic_mat):
+        if self.replacement_model:
+            m = self.replacement_model.getMaterialByName(generic_mat.name)
+            if m:
+                mat = material.Material.get_unique_material(generic_mat.name, self.mdl0)
+                self.mdl0.add_material(mat)
+                mat.paste(m)
+            else:
+                mat = generic_mat.encode(self.mdl0)
+        else:
+            mat = generic_mat.encode(self.mdl0)
+        for x in mat.layers:
+            self.image_library.add(x.name)
+        return mat
+
+    @staticmethod
+    def __normalize_image_path_map(image_path_map):
+        normalized = {}
+        for x in image_path_map:
+            path = image_path_map[x]
+            normalized[os.path.splitext(os.path.basename(path))[0]] = path
+        normalized.update(image_path_map)
+        return normalized
+
+    def _import_images(self, image_path_map):
+        try:
+            normalized = False
+            for map in self.image_library:  # only add images that are used
+                path = image_path_map.get(map)
+                if path is None:
+                    if not normalized:
+                        image_path_map = self.__normalize_image_path_map(image_path_map)
+                        path = image_path_map.get(map)
+                        normalized = True
+                    if path is None:
+                        continue
+                self._try_import_texture(self.brres, path, map)
+        except NoImgConverterError as e:
+            AUTO_FIXER.error(e)
+
+
+    def _try_import_texture(self, brres, image_path, layer_name=None):
         if not layer_name:
             layer_name = os.path.splitext(os.path.basename(image_path))[0]
         if not brres.hasTexture(layer_name):
-            if self.is_first_image or self.check_image:  # check it if it's the first or if a resize occurred
+            if len(image_path) < 4:
+                AUTO_FIXER.warn('Image path {} is not valid'.format(image_path))
+                return layer_name
+            ext = image_path[-4:].lower()
+            # check it if it's the first or if a resize occurred or not correct extension
+            if self.is_first_image or self.check_image or ext != '.png':
                 self.is_first_image = False
                 if image_path.startswith('file://'):
                     image_path = image_path.replace('file://', '')
                 if not os.path.exists(image_path):
                     return layer_name
-                from PIL import Image
                 im = Image.open(image_path)
+                modified = False
+                if ext != '.png':
+                    AUTO_FIXER.info(f'Conversion from {ext} to tex0 not supported, converting to png', 4)
+                    dir, name = os.path.split(image_path)
+                    image_path = os.path.join(dir, os.path.splitext(name)[0] + '.png')
+                    modified = True
                 width, height = im.size
                 if width > Tex0.MAX_IMG_SIZE or height > Tex0.MAX_IMG_SIZE:
                     new_width, new_height = Tex0.get_scaled_size(width, height)
@@ -68,9 +154,12 @@ class Converter:
                     dir, name = os.path.split(image_path)
                     base, ext = os.path.splitext(name)
                     image_path = os.path.join(dir, base + '-resized' + ext)
-                    ImgConverter().resize_image(im, new_width, new_height, image_path)
-                    b.resolve()
+                    im = im.resize((width, height), ImgConverterI.get_resample())
+                    modified = True
                     self.check_image = True
+                    b.resolve()
+                if modified:
+                    im.save(image_path)
             try:
                 brres.import_texture(image_path, layer_name)
             except EncodeError:
@@ -80,9 +169,12 @@ class Converter:
     def __init__(self, brres, mdl_file, flags=0):
         self.brres = brres
         self.mdl_file = mdl_file
+        self.mdl0 = None
         self.flags = flags
         self.check_image = False
         self.is_first_image = True
+        self.image_library = set()
+        self.replacement_model = None
 
     def load_model(self, model_name):
         raise NotImplementedError()
@@ -123,9 +215,11 @@ def encode_polygon_data(polygon, vertex, normal, color, uvs, face_indices):
         polygon.color0_index_format, fmt_str = get_index_format(color, fmt_str)
         polygon.color0_format = color.format
         polygon.color_group_indices[0] = color.index
+        polygon.num_colors = 1
     else:
         polygon.color0_index_format = polygon.INDEX_FORMAT_NONE
         polygon.num_colors = 0
+        polygon.color_group_indices[0] = -1
     polygon.num_tex = len(uvs)
     if polygon.num_tex:
         for i in range(len(uvs)):
@@ -282,9 +376,10 @@ def decode_polygon(polygon):
     geo_texcoords = []
     for tex in texcoords:
         x = decode_geometry_group(tex)
-        x[:, 1] *= -1  # flip y
-        geo_texcoords.append(PointCollection(x, face_point_indices[:, :, texcoord_index],
-                                             tex.minimum, tex.maximum))
+        pc = PointCollection(x, face_point_indices[:, :, texcoord_index],
+                                             tex.minimum, tex.maximum)
+        pc.flip_points()
+        geo_texcoords.append(pc)
         texcoord_index += 1
     mdl0_bones = polygon.parent.bones
     if pos_matrix_index >= 0:
@@ -335,7 +430,7 @@ def add_geometry(mdl0, name, vertices, normals, colors, tex_coord_groups):
         for x in tex_coord_groups:
             tex = TexCoord('#{}'.format(uv_i), mdl0)
             # convert xy to st
-            x.points[:, 1] *= -1
+            x.flip_points()
             x.encode_data(tex)
             tex.index = uv_i
             mdl0.texCoords.append(tex)
@@ -448,6 +543,16 @@ class PointCollection:
     def __len__(self):
         return len(self.points)
 
+    def combine(self, point_collection):
+        point_collection.face_indices += len(self)
+        self.points = np.append(self.points, point_collection.points, 0)
+        self.face_indices = np.append(self.face_indices, point_collection.face_indices, 0)
+        for i in range(len(self.minimum)):
+            if self.minimum[i] > point_collection.minimum[i]:
+                self.minimum[i] = point_collection.minimum[i]
+            if self.maximum[i] < point_collection.maximum[i]:
+                self.maximum[i] = point_collection.maximum[i]
+
     def get_stride(self):
         return len(self.points[0])
 
@@ -473,6 +578,11 @@ class PointCollection:
         if max_shift <= 5:  # guarantee 5 decimals of precision
             return 4, 0  # float
         return 0x2 + is_signed, max_shift  # short
+
+    def flip_points(self):
+        self.points[:, -1] = self.points[:, -1] * -1 + 1
+        self.minimum[-1] = min(self.points[:, -1])
+        self.maximum[-1] = max(self.points[:, -1])
 
     def encode_data(self, geometry):
         """Encodes the point collection as geometry data, returns the data width (component count)
@@ -529,6 +639,9 @@ class ColorCollection:
             self.normalize()
         self.face_indices = face_indices
         self.encode_format = encode_format
+
+    def __len__(self):
+        return len(self.rgba_colors)
 
     def get_encode_format(self):
         if (self.rgba_colors[:, 3] == 255).all():
@@ -672,6 +785,11 @@ class ColorCollection:
         """Opposite of normalize. returns ndarray converted from 0-255 to 0-1"""
         return self.rgba_colors.astype(np.float) / 255
 
+    def combine(self, color):
+        color.face_indices += len(self)
+        self.rgba_colors = np.append(self.rgba_colors, color.rgba_colors, 0)
+        self.face_indices = np.append(self.face_indices, color.face_indices, 0)
+
 
 class Geometry:
     def __init__(self, name, material_name, triangles, vertices, texcoords, normals=None, colors=None,
@@ -686,6 +804,29 @@ class Geometry:
         self.bones = bones
         self.bone_indices = bone_indices
         self.linked_bone = linked_bone
+
+    def geometry_matches(self, geometry):
+        return not (self.material_name != geometry.material_name or \
+                    self.linked_bone is not geometry.linked_bone or \
+                    ((self.normals is None) ^ (geometry.normals is None)) or \
+                    ((self.colors is None) ^ (geometry.colors is None)) or \
+                    len(self.texcoords) != len(geometry.texcoords))
+
+    def combine(self, geometry):
+        if not self.geometry_matches(geometry):
+            return False
+        self.vertices.combine(geometry.vertices)
+        mine = self.texcoords
+        theres = geometry.texcoords
+        for i in range(len(mine)):
+            mine[i].combine(theres[i])
+        if self.normals:
+            self.normals.combine(geometry.normals)
+        if self.colors:
+            self.colors.combine(geometry.colors)
+        self.triangles = np.append(self.triangles, geometry.triangles, 0)
+        return True
+        # todo bone indices
 
     def swap_y_z_axis(self):
         collections = [self.vertices, self.normals]
@@ -705,9 +846,11 @@ class Geometry:
         polygon = add_geometry(mdl, self.name, self.vertices, self.normals, self.colors, self.texcoords)
         if polygon:
             if not bone:
-                if not mdl.bones:
-                    mdl.add_bone(mdl.name)
-                bone = mdl.bones[0]
+                bone = self.linked_bone
+                if not bone:
+                    if not mdl.bones:
+                        mdl.add_bone(mdl.name)
+                    bone = mdl.bones[0]
             material = mdl.getMaterialByName(self.material_name)
             mdl.add_definition(material, polygon, bone)
             if self.colors:
@@ -733,10 +876,12 @@ class Material:
         return maps
 
     @staticmethod
-    def encode_map(map, material):
+    def encode_map(map, material, used_layers):
         if map:
             layer_name = os.path.splitext(os.path.basename(map))[0]
-            material.addLayer(layer_name)
+            if layer_name not in used_layers:
+                material.addLayer(layer_name)
+                used_layers.add(layer_name)
 
     def encode(self, mdl):
         m = material.Material.get_unique_material(self.name, mdl)
@@ -744,9 +889,10 @@ class Material:
         if self.transparency > 0:
             m.enable_blend()
         # maps
-        self.encode_map(self.diffuse_map, m)
-        self.encode_map(self.ambient_map, m)
-        self.encode_map(self.specular_map, m)
+        layers = set()
+        self.encode_map(self.diffuse_map, m, layers)
+        self.encode_map(self.ambient_map, m, layers)
+        self.encode_map(self.specular_map, m, layers)
         return m
 
 

@@ -2,11 +2,10 @@ from datetime import datetime
 
 import numpy as np
 
-from abmatt.brres.lib.autofix import AUTO_FIXER
 from abmatt.converters.convert_lib import Geometry, PointCollection, ColorCollection, Material, Controller, \
     float_to_str
-from abmatt.converters.xml import XML, XMLNode
 from abmatt.converters.matrix import scale_matrix, rotate_matrix, translate_matrix
+from abmatt.converters.xml import XML, XMLNode
 
 
 class ColladaNode:
@@ -442,7 +441,7 @@ class Dae:
     def __initialize_assets(self, root):
         asset = XMLNode('asset', parent=root)
         contributor = XMLNode('contributor', parent=asset)
-        authoring_tool = XMLNode('authoring_tool', 'ABMATT COLLADA exporter v0.7.4', parent=contributor)
+        authoring_tool = XMLNode('authoring_tool', 'ABMATT COLLADA exporter v0.8.0', parent=contributor)
         time_stamp = datetime.now()
         created = XMLNode('created', time_stamp, parent=asset)
         modified = XMLNode('modified', time_stamp, parent=asset)

@@ -81,7 +81,6 @@ class Brres(Clipable):
         prev = self.getModel(mdl0.name)
         if prev:
             self.remove_mdl0(mdl0.name)
-            mdl0.paste(prev)
         self.models.append(mdl0)
         mdl0.link_parent(self)
         return mdl0
