@@ -27,12 +27,18 @@ class DaeConverter2(Converter):
                 for i in range(3):
                     matrix[i][i] = dae.unit_meter
         material_geometry_map = {}
+        start = time.time()
         self.__parse_nodes(dae.get_scene(), material_geometry_map, matrix)
+        print(f'{time.time() - start} secs parsing nodes...')
+        start = time.time()
         for material in material_geometry_map:
             geometries = material_geometry_map[material]
             for x in geometries:
                 self.__encode_geometry(x)
+        print(f'{time.time() - start} secs encoding geometry...')
+        start = time.time()
         self._import_images(dae.get_images())
+        print(f'{time.time() - start} secs importing images...')
         return self._end_loading()
 
     def save_model(self, mdl0=None):
@@ -49,7 +55,7 @@ class DaeConverter2(Converter):
         self.texture_library = self.brres.get_texture_map()
         self.tex0_map = {}
         mesh = Dae(initial_scene_name=base_name)
-        decoded_mats = [self.__decode_material(x) for x in mdl0.materials]
+        decoded_mats = [self.__decode_material(x, mesh) for x in mdl0.materials]
         # images
         self.__create_image_library(mesh)
         # polygons
@@ -87,7 +93,7 @@ class DaeConverter2(Converter):
         node.controller = get_controller(geo)
         return node
 
-    def __decode_material(self, material):
+    def __decode_material(self, material, mesh):
         diffuse_map = ambient_map = specular_map = None
         for i in range(len(material.layers)):
             layer = material.layers[i].name
@@ -99,7 +105,8 @@ class DaeConverter2(Converter):
                 specular_map = layer
             if layer not in self.tex0_map:
                 tex0 = self.texture_library.get(layer)
-                map_path = os.path.join(self.image_dir, layer + '.png')
+                map_path = layer + '.png'
+                mesh.add_image(layer, os.path.join(self.image_dir, map_path))
                 self.tex0_map[layer] = (tex0, map_path)
         return Material(material.name, diffuse_map, ambient_map, specular_map, material.xlu * 0.5)
 
@@ -113,12 +120,12 @@ class DaeConverter2(Converter):
             os.chdir(self.image_dir)
             for image_name in self.tex0_map:
                 tex, path = self.tex0_map[image_name]
-                mesh.add_image(image_name, path)
+                # mesh.add_image(image_name, path)
                 if not tex:
                     AUTO_FIXER.warn('Missing texture {}'.format(image_name))
                     continue
                 if converter:
-                    converter.decode(tex, image_name + '.png')
+                    converter.decode(tex, path)
 
     def __parse_controller(self, controller, matrix, material_geometry_map):
         bones = controller.bones
@@ -142,7 +149,7 @@ class DaeConverter2(Converter):
         geometry.encode(self.mdl0, bone)
 
     def __add_bone(self, node, parent_bone=None, matrix=None):
-        name = node.attributes['id']
+        name = node.attrib['id']
         self.bones[name] = bone = self.mdl0.add_bone(name, parent_bone)
         self.set_bone_matrix(bone, matrix)
         for n in node.nodes:
@@ -169,7 +176,7 @@ class DaeConverter2(Converter):
                         x.apply_matrix(current_node_matrix)
                     self.__add_geometry(x, material_geometry_map)
                     # self.__encode_geometry(x)
-            elif node.attributes.get('type') == 'JOINT':
+            elif node.attrib.get('type') == 'JOINT':
                 self.__add_bone(node, matrix=current_node_matrix)
                 bone_added = True
             if not bone_added:

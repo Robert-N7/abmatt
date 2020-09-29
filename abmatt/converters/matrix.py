@@ -23,9 +23,9 @@ def srt_to_matrix(scale=(1, 1, 1), rotation=(0, 0, 0), translation=(0, 0, 0)):
 
 def matrix_to_srt(matrix):
     """Takes a matrix and returns scale, rotation, translation"""
-    scale = (vector_magnitude(matrix[:, 0]),
+    scale = np.array((vector_magnitude(matrix[:, 0]),
              vector_magnitude(matrix[:, 1]),
-             vector_magnitude(matrix[:, 2]))
+             vector_magnitude(matrix[:, 2])), np.float)
     translation = matrix[:, 3][:3]
     matrix = np.delete(matrix, 3, 0)
     matrix = np.delete(matrix, 3, 1)
@@ -105,4 +105,4 @@ def combine_matrices(matrix1, matrix2):
 #     return n < 1e-6
 
 def vector_magnitude(vector):
-    return math.sqrt(sum(x ** 2 for x in vector))
+    return round(math.sqrt(sum(x ** 2 for x in vector)), 3)

@@ -1,10 +1,14 @@
+import time
+
 from abmatt.brres.lib.autofix import AUTO_FIXER
 
 
 class XML:
     def __init__(self, filename=None):
         self.elements_by_id = {}
+        start = time.time()
         self.root = self.__read_xml(filename) if filename else None
+        print(f'{time.time() - start} secs to read xml...')
 
     def get_element_by_id(self, id):
         return self.elements_by_id.get(id)
@@ -158,7 +162,7 @@ class XMLNode:
         self.text = text
         self.tag = tag
         if parent:
-            parent.add_child(self)
+            parent.append(self)
 
     def __str__(self):
         tag = self.tag
@@ -237,5 +241,5 @@ class XMLNode:
                 ret.append(x)
         return ret
 
-    def add_child(self, xmlnode):
+    def append(self, xmlnode):
         self.children.append(xmlnode)

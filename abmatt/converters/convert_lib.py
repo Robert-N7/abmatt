@@ -123,7 +123,6 @@ class Converter:
         except NoImgConverterError as e:
             AUTO_FIXER.error(e)
 
-
     def _try_import_texture(self, brres, image_path, layer_name=None):
         if not layer_name:
             layer_name = os.path.splitext(os.path.basename(image_path))[0]
@@ -183,62 +182,14 @@ class Converter:
         raise NotImplementedError()
 
 
-def get_index_format(item, fmt_str):
+def get_index_format(item):
     l = len(item)
     if l > 0xffff:
         raise Converter.ConvertError(f'{item.name} exceeds max length! ({len(item)})')
     elif l > 0xff:
-        fmt_str += 'H'
-        return Polygon.INDEX_FORMAT_SHORT, fmt_str
+        return Polygon.INDEX_FORMAT_SHORT, 'H'
     else:
-        fmt_str += 'B'
-        return Polygon.INDEX_FORMAT_BYTE, fmt_str
-
-
-def encode_polygon_data(polygon, vertex, normal, color, uvs, face_indices):
-    # set up vertex declaration
-    polygon.vertex_format = vertex.format
-    polygon.vertex_divisor = vertex.divisor
-    fmt_str = '>'
-    polygon.vertex_index_format, fmt_str = get_index_format(vertex, fmt_str)
-    polygon.facepoint_count = len(vertex)
-    polygon.vertex_group_index = vertex.index
-    if normal:
-        polygon.normal_type = normal.comp_count
-        polygon.normal_group_index = normal.index
-        polygon.normal_format = normal.format
-        polygon.normal_index_format, fmt_str = get_index_format(normal, fmt_str)
-    else:
-        polygon.normal_index_format = polygon.INDEX_FORMAT_NONE
-        polygon.normal_group_index = -1
-    if color:
-        polygon.color0_index_format, fmt_str = get_index_format(color, fmt_str)
-        polygon.color0_format = color.format
-        polygon.color_group_indices[0] = color.index
-        polygon.num_colors = 1
-    else:
-        polygon.color0_index_format = polygon.INDEX_FORMAT_NONE
-        polygon.num_colors = 0
-        polygon.color_group_indices[0] = -1
-    polygon.num_tex = len(uvs)
-    if polygon.num_tex:
-        for i in range(len(uvs)):
-            uv = uvs[i]
-            polygon.tex_coord_group_indices[i] = uv.index
-            polygon.tex_format[i] = uv.format
-            polygon.tex_divisor[i] = uv.divisor
-            polygon.tex_index_format[i], fmt_str = get_index_format(uv, fmt_str)
-    else:
-        polygon.tex_coord_group_indices[0] = -1
-    triset = TriangleSet(face_indices)
-    if not triset:
-        return None
-    data, polygon.face_count, polygon.facepoint_count = triset.get_tri_strips(fmt_str)
-    past_align = len(data) % 32
-    if past_align:
-        data.extend(b'\0' * (32 - past_align))
-    polygon.vt_data = data
-    return polygon
+        return Polygon.INDEX_FORMAT_BYTE, 'B'
 
 
 def decode_tri_strip(decoder, decoder_byte_len, data, start_offset, num_facepoints, face_point_indices):
@@ -377,7 +328,7 @@ def decode_polygon(polygon):
     for tex in texcoords:
         x = decode_geometry_group(tex)
         pc = PointCollection(x, face_point_indices[:, :, texcoord_index],
-                                             tex.minimum, tex.maximum)
+                             tex.minimum, tex.maximum)
         pc.flip_points()
         geo_texcoords.append(pc)
         texcoord_index += 1
@@ -393,86 +344,6 @@ def decode_polygon(polygon):
     geometry = Geometry(polygon.name, polygon.get_material().name, face_point_indices, g_verts,
                         geo_texcoords, g_normals, g_colors, bones, pos_matrix_indices, polygon.get_linked_bone())
     return geometry
-
-
-def add_geometry(mdl0, name, vertices, normals, colors, tex_coord_groups):
-    """
-    Adds the geometry, note that point collection face indices must match in size!
-    :param mdl0:
-    :param name: obj name
-    :param vertices: point_collection
-    :param normals: optional point_collection
-    :param colors: optional color_collection
-    :param tex_coord_groups: list of up to 8 tex coord point_collection(s)
-    """
-    # print('Adding geometry {}'.format(name))    # Debug
-    vert = Vertex(name, mdl0)
-    vertices.encode_data(vert)
-    mdl0.add_to_group(mdl0.vertices, vert)
-    index_groups = [vertices.face_indices]
-    if normals:
-        normal = Normal(name, mdl0)
-        normals.encode_data(normal)
-        mdl0.add_to_group(mdl0.normals, normal)
-        index_groups.append(normals.face_indices)
-    else:
-        normal = None
-    if colors:
-        color = Color(name, mdl0)
-        colors.encode_data(color)
-        mdl0.add_to_group(mdl0.colors, color)
-        index_groups.append(colors.face_indices)
-    else:
-        color = None
-    uvs = []
-    if tex_coord_groups:
-        uv_i = len(mdl0.texCoords)
-        for x in tex_coord_groups:
-            tex = TexCoord('#{}'.format(uv_i), mdl0)
-            # convert xy to st
-            x.flip_points()
-            x.encode_data(tex)
-            tex.index = uv_i
-            mdl0.texCoords.append(tex)
-            uv_i += 1
-            uvs.append(tex)
-            index_groups.append(x.face_indices)
-    p = Polygon(name, mdl0)
-    indices = np.stack(index_groups, axis=-1)
-    indices[:, [0, 1]] = indices[:, [1, 0]]
-    if encode_polygon_data(p, vert, normal, color, uvs, indices):
-        mdl0.add_to_group(mdl0.objects, p)
-        return p
-    # cleanup
-    mdl0.vertices.pop(-1)
-    if normals:
-        mdl0.normals.pop(-1)
-    if colors:
-        mdl0.colors.pop(-1)
-    for x in tex_coord_groups:
-        mdl0.texCoords.pop(-1)
-
-
-def consolidate_point_collections(point_collections):
-    """Attempts to further join together collections that have already been consolidated"""
-    # Track the current points that are indexed by a byte (255 max) or by short
-    points_byte_indexed = None
-    points_short_indexed = None
-    for x in point_collections:
-        c_len = len(x)
-        consolidated = False
-        if c_len <= 0xff:  # byte indexed
-            # check if it can fit (even with no consolidation)
-            if len(points_byte_indexed) + c_len <= 0xff:
-                # try to consolidate
-                pass
-            if not consolidated and c_len < len(points_byte_indexed):
-                points_byte_indexed = x.points  # start over using the smallest size
-        else:  # short indexed
-            if len(points_short_indexed) + c_len <= 0xffff:
-                pass
-            if not consolidated and c_len < len(points_short_indexed):
-                points_short_indexed = x.points  # start over using the smallest size
 
 
 def consolidate_data(points, face_indices):
@@ -521,18 +392,11 @@ class PointCollection:
         """
         self.points = points
         self.face_indices = face_indices
-        width = len(points[0])
         if not minimum or not maximum:
-            minimum = [math.inf] * width
-            maximum = [-math.inf] * width
-            for x in points:
-                for i in range(width):
-                    if x[i] < minimum[i]:
-                        minimum[i] = x[i]
-                    if x[i] > maximum[i]:
-                        maximum[i] = x[i]
-        self.minimum = minimum
-        self.maximum = maximum
+            self.minimum, self.maximum = self.__calc_min_max(points)
+        else:
+            self.minimum = [x for x in minimum]
+            self.maximum = [x for x in maximum]
 
     def __iter__(self):
         return iter(self.points)
@@ -542,6 +406,11 @@ class PointCollection:
 
     def __len__(self):
         return len(self.points)
+
+    @staticmethod
+    def __calc_min_max(points):
+        width = len(points[0])
+        return [min(points[:, i]) for i in range(width)], [max(points[:, i]) for i in range(width)]
 
     def combine(self, point_collection):
         point_collection.face_indices += len(self)
@@ -562,6 +431,7 @@ class PointCollection:
         matrix: 4x4 ndarray matrix
         """
         self.points = apply_matrix(matrix, self.points)
+        self.minimum, self.maximum = self.__calc_min_max(self.points)
 
     @staticmethod
     def get_format_divisor(minimum, maximum):
@@ -569,15 +439,12 @@ class PointCollection:
         point_min = min(minimum)
         is_signed = True if point_min < 0 else False
         point_max = max(point_max, abs(point_min))
-        maxi = 0xffff if not is_signed else 0x7fff
-        max_shift = 0
-        while point_max < maxi and max_shift < 16:
-            point_max *= 2
-            max_shift += 1
-        max_shift -= 1
-        if max_shift <= 5:  # guarantee 5 decimals of precision
+        max_shift = 16 - math.frexp(point_max)[1] - is_signed
+        if max_shift <= 6:  # guarantee 6 decimals of precision
             return 4, 0  # float
-        return 0x2 + is_signed, max_shift  # short
+        elif max_shift < 15:
+            return 0x2 + is_signed, max_shift  # short
+        return is_signed, max_shift - 8
 
     def flip_points(self):
         self.points[:, -1] = self.points[:, -1] * -1 + 1
@@ -606,7 +473,16 @@ class PointCollection:
         multiplyBy = 2 ** divisor
         data = geometry.data
         if divisor:
-            dtype = np.int16 if form == 3 else np.uint16
+            if form == 3:
+                dtype = np.int16
+            elif form == 2:
+                dtype = np.uint16
+            elif form == 1:
+                dtype = np.int8
+            elif form == 0:
+                dtype = np.uint8
+            else:
+                raise ValueError(f'Unexpected format {form} for divisor {divisor}')
             self.encode_points(multiplyBy, dtype)
         points = self.consolidate_points()
         geometry.count = len(self)
@@ -614,7 +490,7 @@ class PointCollection:
             raise Converter.ConvertError(f'{geometry.name} has too many points! ({geometry.count})')
         for x in points:
             data.append(x)
-        return data
+        return form, divisor
 
     def consolidate_points(self, precision=None):
         points = self.points if not precision else np.around(self.points, precision)
@@ -671,7 +547,7 @@ class ColorCollection:
             color.data = self.encode_rgba6(rgba_colors)
         else:
             raise ValueError('Color {} format {} out of range'.format(color.name, form))
-        return color.data
+        return form
 
     @staticmethod
     def decode_data(color):
@@ -795,7 +671,6 @@ class Geometry:
     def __init__(self, name, material_name, triangles, vertices, texcoords, normals=None, colors=None,
                  bones=None, bone_indices=None, linked_bone=None):
         self.name = name
-        self.triangles = triangles
         self.vertices = vertices
         self.texcoords = texcoords
         self.normals = normals
@@ -804,6 +679,17 @@ class Geometry:
         self.bones = bones
         self.bone_indices = bone_indices
         self.linked_bone = linked_bone
+        self.triangles = triangles
+
+    def __construct_tris(self):
+        tris = [self.vertices.face_indices]
+        if self.normals:
+            tris.append(self.normals.face_indices)
+        if self.colors:
+            tris.append(self.colors.face_indices)
+        for texcoord in self.texcoords:
+            tris.append(texcoord.face_indices)
+        return np.stack(tris, -1)
 
     def geometry_matches(self, geometry):
         return not (self.material_name != geometry.material_name or \
@@ -843,8 +729,14 @@ class Geometry:
         self.vertices.apply_affine_matrix(matrix)
 
     def encode(self, mdl, bone=None):
-        polygon = add_geometry(mdl, self.name, self.vertices, self.normals, self.colors, self.texcoords)
-        if polygon:
+        p = Polygon(self.name, mdl)
+        fmt_str = '>'
+        fmt_str += self.__encode_vertices(p, self.vertices, mdl)
+        fmt_str += self.__encode_normals(p, self.normals, mdl)
+        fmt_str += self.__encode_colors(p, self.colors, mdl)
+        fmt_str += self.__encode_texcoords(p, self.texcoords, mdl)
+        if self.__encode_tris(p, self.__construct_tris(), fmt_str):
+            mdl.add_to_group(mdl.objects, p)
             if not bone:
                 bone = self.linked_bone
                 if not bone:
@@ -852,11 +744,79 @@ class Geometry:
                         mdl.add_bone(mdl.name)
                     bone = mdl.bones[0]
             material = mdl.getMaterialByName(self.material_name)
-            mdl.add_definition(material, polygon, bone)
+            mdl.add_definition(material, p, bone)
             if self.colors:
                 material.enable_vertex_color()
-        return polygon
+        return p
 
+    def __encode_tris(self, polygon, tris, fmt_str):
+        tris[:, [0, 1]] = tris[:, [1, 0]]
+        triset = TriangleSet(tris)
+        if not triset:
+            return False
+        data, polygon.face_count, polygon.facepoint_count = triset.get_tri_strips(fmt_str)
+        past_align = len(data) % 32
+        if past_align:
+            data.extend(b'\0' * (32 - past_align))
+        polygon.vt_data = data
+        return True
+
+    def __encode_vertices(self, polygon, vertices, mdl0):
+        vert = Vertex(self.name, mdl0)
+        mdl0.add_to_group(mdl0.vertices, vert)
+        polygon.vertex_format, polygon.vertex_divisor = vertices.encode_data(vert)
+        polygon.vertex_group_index = vert.index
+        polygon.vertex_index_format, fmt_str = get_index_format(vert)
+        return fmt_str
+
+    def __encode_normals(self, polygon, normals, mdl0):
+        if normals:
+            normal = Normal(self.name, mdl0)
+            polygon.normal_format = normals.encode_data(normal)[0]
+            mdl0.add_to_group(mdl0.normals, normal)
+            polygon.normal_type = normal.comp_count
+            polygon.normal_group_index = normal.index
+            polygon.normal_index_format, fmt_str = get_index_format(normal)
+        else:
+            polygon.normal_index_format = polygon.INDEX_FORMAT_NONE
+            polygon.normal_group_index = -1
+            fmt_str = ''
+        return fmt_str
+
+    def __encode_colors(self, polygon, colors, mdl0):
+        if colors:
+            color = Color(self.name, mdl0)
+            polygon.color0_format = colors.encode_data(color)
+            mdl0.add_to_group(mdl0.colors, color)
+            polygon.color0_index_format, fmt_str = get_index_format(color)
+            polygon.color_group_indices[0] = color.index
+            polygon.num_colors = 1
+        else:
+            polygon.color0_index_format = polygon.INDEX_FORMAT_NONE
+            polygon.num_colors = 0
+            polygon.color_group_indices[0] = -1
+            fmt_str = ''
+        return fmt_str
+
+    def __encode_texcoords(self, polygon, texcoords, mdl0):
+        fmt_str = ''
+        if texcoords:
+            uv_i = len(mdl0.texCoords)
+            for i in range(len(texcoords)):
+                x = texcoords[i]
+                tex = TexCoord(self.name + '#{}'.format(i), mdl0)
+                # convert xy to st
+                x.flip_points()
+                polygon.tex_format[i], polygon.tex_divisor[i] = x.encode_data(tex)
+                tex.index = uv_i + i
+                mdl0.texCoords.append(tex)
+                polygon.tex_index_format[i], fmt = get_index_format(tex)
+                fmt_str += fmt
+                polygon.tex_coord_group_indices[i] = tex.index
+        else:
+            polygon.tex_coord_group_indices[0] = -1
+            polygon.tex_index_format[0] = polygon.INDEX_FORMAT_NONE
+        return fmt_str
 
 class Material:
     def __init__(self, name, diffuse_map=None, ambient_map=None, specular_map=None, transparency=0):
