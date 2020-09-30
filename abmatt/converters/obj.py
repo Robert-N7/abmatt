@@ -4,7 +4,8 @@ import re
 
 import numpy as np
 
-from abmatt.converters.convert_lib import PointCollection, float_to_str
+from abmatt.converters.convert_lib import float_to_str
+from converters.points import PointCollection
 
 
 class ObjMaterial:

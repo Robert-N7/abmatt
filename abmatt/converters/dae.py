@@ -3,8 +3,12 @@ from datetime import datetime
 import numpy as np
 from lxml import etree
 
-from abmatt.converters.convert_lib import Geometry, PointCollection, ColorCollection, Material, Controller, \
-    float_to_str
+from abmatt.converters.convert_lib import float_to_str
+from converters.controller import Controller
+from converters.material import Material
+from converters.geometry import Geometry
+from converters.colors import ColorCollection
+from converters.points import PointCollection
 from abmatt.converters.matrix import scale_matrix, rotate_matrix, translate_matrix
 
 
@@ -307,8 +311,8 @@ class Dae:
         name = xml_geometry.attrib.get('name')
         if not name:
             name = get_id(xml_geometry)
-        geometry = Geometry(name, material_name, triangles=None, vertices=vertices,
-                            normals=normals, texcoords=texcoords, colors=colors)
+        geometry = Geometry(name, material_name, vertices=vertices, texcoords=texcoords, normals=normals, colors=colors,
+                            triangles=None)
         return geometry
 
     def add_geometry(self, geometry):
@@ -638,3 +642,5 @@ class Dae:
     def __get_bound_material(node):
         bound_material = first(first(first(node, 'bind_material'), 'technique_common'), 'instance_material')
         return bound_material.attrib['target'][1:]
+
+

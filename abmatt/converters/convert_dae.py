@@ -7,10 +7,12 @@ import numpy as np
 from abmatt.brres.lib.autofix import AUTO_FIXER
 from abmatt.brres.tex0 import ImgConverter, NoImgConverterError
 from abmatt.converters.arg_parse import cmdline_convert
-from abmatt.converters.convert_lib import Controller
-from abmatt.converters.convert_lib import Converter, decode_polygon, \
-    Material, combine_matrices
+from converters.controller import Controller
+from abmatt.converters.convert_lib import Converter
+from converters.geometry import decode_polygon
+from converters.material import Material
 from abmatt.converters.dae import Dae, ColladaNode
+from converters.matrix import combine_matrices
 
 
 class DaeConverter2(Converter):

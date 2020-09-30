@@ -16,16 +16,15 @@ def srt_to_matrix(scale=(1, 1, 1), rotation=(0, 0, 0), translation=(0, 0, 0)):
     matrix = euler_to_rotation_matrix(rotation)
     for i in range(3):
         matrix[:, i] = matrix[:, i] * scale[i]
-    np.append(matrix, np.array(translation, float).reshape((3, 1)), 1)
-    np.append(matrix, np.array([[0, 0, 0, 1]], float), 0)
-    return matrix
+    matrix = np.append(matrix, np.array(translation, float).reshape((3, 1)), 1)
+    return np.append(matrix, np.array([[0, 0, 0, 1]], float), 0)
 
 
 def matrix_to_srt(matrix):
     """Takes a matrix and returns scale, rotation, translation"""
-    scale = np.array((vector_magnitude(matrix[:, 0]),
-             vector_magnitude(matrix[:, 1]),
-             vector_magnitude(matrix[:, 2])), np.float)
+    scale = np.array((round(vector_magnitude(matrix[:, 0]), 3),
+             round(vector_magnitude(matrix[:, 1]), 3),
+             round(vector_magnitude(matrix[:, 2]), 3)), np.float)
     translation = matrix[:, 3][:3]
     matrix = np.delete(matrix, 3, 0)
     matrix = np.delete(matrix, 3, 1)
@@ -67,7 +66,7 @@ def rotation_matrix_to_euler(matrix):
         x = math.atan2(-matrix[1, 2], matrix[1, 1])
         y = math.atan2(-matrix[2, 0], sy)
         z = 0
-    return np.array([x, y, z]) * 180 / math.pi
+    return np.round(np.array([x, y, z]) * 180 / math.pi, 3)
 
 
 def scale_matrix(matrix, scale):
@@ -105,4 +104,4 @@ def combine_matrices(matrix1, matrix2):
 #     return n < 1e-6
 
 def vector_magnitude(vector):
-    return round(math.sqrt(sum(x ** 2 for x in vector)), 3)
+    return math.sqrt(sum(x ** 2 for x in vector))

@@ -69,7 +69,8 @@ class TriangleSet:
             else:
                 disconnected.append(start)
             start = self.get_next(queue)
-        face_point_count += encode_triangles(disconnected, fmt_str, tristrips)
+        if len(disconnected):
+            face_point_count += encode_triangles(disconnected, fmt_str, tristrips)
         # print('Total tristrip triangles {}'.format(self.triangles_in_strips_count))
         return tristrips, len(self.triangles), face_point_count
 

@@ -1,7 +1,7 @@
-from abmatt.brres.mdl0.geometry import Geometry
+from abmatt.brres.mdl0.point import Point
 
 
-class TexCoord(Geometry):
+class TexCoord(Point):
     COMP_COUNT = (1, 2)
 
     def unpack(self, binfile):

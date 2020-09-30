@@ -8,7 +8,7 @@ from abmatt.brres.lib.matching import fuzzy_match, MATCHING
 from abmatt.brres.lib.node import Node
 from abmatt.brres.mdl0.bone import Bone, BoneTable
 from abmatt.brres.mdl0.color import Color
-from abmatt.brres.mdl0.definition import DrawList, Definition, NodeTree
+from abmatt.brres.mdl0.definition import DrawList, NodeTree, get_definition
 from abmatt.brres.mdl0.material import Material
 from abmatt.brres.mdl0.normal import Normal
 from abmatt.brres.mdl0.polygon import Polygon
@@ -119,6 +119,7 @@ class Mdl0(SubFile):
         """ initialize model """
         self.srt0_collection = None
         self.pat0_collection = None
+        self.DrawOpa = self.DrawXlu = self.NodeTree = self.NodeMix = None
         self.definitions = []
         self.bones = []
         self.vertices = []
@@ -148,9 +149,8 @@ class Mdl0(SubFile):
         self.facepoint_count = 0
         self.scaling_rule = 0
         self.texture_matrix_mode = 0
-        self.drawOpa = DrawList(Definition.names[0], self)
-        self.drawXLU = DrawList(Definition.names[1], self)
-        self.nodeTree = NodeTree(Definition.names[3], self)
+        for definition in ('DrawOpa', 'DrawXlu', 'NodeTree'):
+            self.__setattr__(definition, get_definition(definition, self))
 
     def search_for_min_and_max(self):
         minimum = [math.inf] * 3
@@ -211,14 +211,14 @@ class Mdl0(SubFile):
             parent_bone.link_child(b)
         else:
             parent_index = 0
-        self.nodeTree.add_entry(self.boneCount, parent_index)
+        self.NodeTree.add_entry(self.boneCount, parent_index)
         self.boneCount += 1
         return b
 
     def add_definition(self, material, polygon, bone=None, priority=0):
         if bone is None:
             bone = self.bones[0]
-        definitions = self.drawOpa if not material.xlu else self.drawXLU
+        definitions = self.DrawOpa if not material.xlu else self.DrawXlu
         definitions.add_entry(material.index, polygon.index, bone.index, priority)
 
     # ---------------------------------- SRT0 ------------------------------------------
@@ -316,38 +316,38 @@ class Mdl0(SubFile):
         return MATCHING.findAll(name, self.materials)
 
     def isMaterialDrawXlu(self, material_id):
-        if self.drawXLU.getByMaterialID(material_id):
+        if self.DrawXlu.getByMaterialID(material_id):
             return True
         return False
 
     def setMaterialDrawXlu(self, material_id):
-        x = self.drawOpa.pop(material_id)
+        x = self.DrawOpa.pop(material_id)
         if x is not None:
-            self.drawXLU.insert(x)
+            self.DrawXlu.insert(x)
         return x
 
     def setMaterialDrawOpa(self, material_id):
-        x = self.drawXLU.pop(material_id)
+        x = self.DrawXlu.pop(material_id)
         if x is not None:
-            self.drawOpa.insert(x)
+            self.DrawOpa.insert(x)
         return x
 
     def setDrawPriority(self, material_id, priority):
-        return self.drawXLU.setPriority(material_id, priority) or self.drawOpa.setPriority(material_id, priority)
+        return self.DrawXlu.setPriority(material_id, priority) or self.DrawOpa.setPriority(material_id, priority)
 
     def getDrawPriority(self, material_id):
         return self.get_definition_by_material_id(material_id).getPriority()
 
     def get_definition_by_material_id(self, material_id):
-        definition = self.drawOpa.getByMaterialID(material_id)
+        definition = self.DrawOpa.getByMaterialID(material_id)
         if not definition:
-            definition = self.drawXLU.getByMaterialID(material_id)
+            definition = self.DrawXlu.getByMaterialID(material_id)
         return definition
 
     def get_definition_by_object_id(self, object_id):
-        definition = self.drawOpa.getByObjectID(object_id)
+        definition = self.DrawOpa.getByObjectID(object_id)
         if not definition:
-            definition = self.drawXLU.getByObjectID(object_id)
+            definition = self.DrawXlu.getByObjectID(object_id)
         return definition
 
     # ------------------------------- Shaders -------------------------------------------
@@ -537,10 +537,7 @@ class Mdl0(SubFile):
     # ---------------START PACKING STUFF -------------------------------------
     def pre_pack(self):
         """Cleans up references in preparation for packing"""
-        defs = [self.nodeTree, self.drawOpa, self.drawXLU]
-        for x in self.sections[0]:
-            if x not in defs:
-                defs.append(x)
+        defs = [self.NodeTree, self.DrawOpa, self.DrawXlu, self.NodeMix]
         defs = [x for x in defs if x]
         self.sections[0] = defs
         # rebuild texture links
@@ -587,24 +584,11 @@ class Mdl0(SubFile):
         found_xlu = found_opa = False
         while len(folder.entries):
             name = folder.recallEntryI()
-            if 'Draw' in name:
-                if 'Xlu' in name:
-                    self.drawXLU = DrawList(name, self, binfile)
-                    found_xlu = True
-                elif 'Opa' in name:
-                    self.drawOpa = DrawList(name, self, binfile)
-                    found_opa = True
-                else:
-                    raise ValueError('Unknown Drawlist {}'.format(name))
-            elif name == 'NodeTree':
-                self.nodeTree = NodeTree(name, self, binfile)
-            else:
-                d = Definition(name, self, binfile)
-                self.definitions.append(d)
-        if not found_xlu:
-            self.drawXLU = DrawList(Definition.names[1], self)
-        if not found_opa:
-            self.drawOpa = DrawList(Definition.names[0], self)
+            self.__setattr__(name, get_definition(name, self, binfile))
+        if not self.DrawOpa:
+            self.DrawOpa = DrawList('DrawOpa', self)
+        if not self.DrawXlu:
+            self.DrawXlu = DrawList('DrawXlu', self)
 
     def unpack(self, binfile):
         """ unpacks model data """

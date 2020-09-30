@@ -11,15 +11,15 @@ class TestMatrix(TestWater):
         bone = self.brres.models[0].bones[0]
         transform_matrix = np.array(bone.get_transform_matrix())
         converted_matrix = srt_to_matrix(bone.scale, bone.rotation, bone.translation)
-        self.assertTrue(np.allclose(transform_matrix, converted_matrix))
+        self.assertTrue(np.allclose(transform_matrix, converted_matrix, atol=0.0001))
 
     def test_matrix_to_srt(self):
         bone = self.brres.models[0].bones[0]
         transform_matrix = np.array(bone.get_transform_matrix())
         scale, rotation, translation = matrix_to_srt(transform_matrix)
-        self.assertTrue(np.allclose(scale, bone.scale))
-        self.assertTrue(np.allclose(rotation, bone.rotation))
-        self.assertTrue(np.allclose(translation, bone.translation))
+        self.assertTrue(np.allclose(scale, bone.scale, atol=0.0001))
+        self.assertTrue(np.allclose(rotation, bone.rotation, atol=0.0001))
+        self.assertTrue(np.allclose(translation, bone.translation, atol=0.0001))
 
 
 

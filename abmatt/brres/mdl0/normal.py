@@ -1,7 +1,7 @@
-from abmatt.brres.mdl0.geometry import Geometry
+from abmatt.brres.mdl0.point import Point
 
 
-class Normal(Geometry):
+class Normal(Point):
     COMP_COUNT = (3, 9, 3)
 
     def unpack(self, binfile):

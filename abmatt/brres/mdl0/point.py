@@ -2,7 +2,7 @@ from abmatt.brres.lib.autofix import AUTO_FIXER
 from abmatt.brres.lib.node import Node
 
 
-class Geometry(Node):
+class Point(Node):
     FMT = ('B', 'b', 'H', 'h', 'f')
 
     def __str__(self):

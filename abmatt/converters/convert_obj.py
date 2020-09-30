@@ -7,7 +7,9 @@ import numpy as np
 from abmatt.brres.lib.autofix import AUTO_FIXER
 from abmatt.brres.tex0 import ImgConverter
 from abmatt.converters.arg_parse import cmdline_convert
-from abmatt.converters.convert_lib import Converter, add_geometry, decode_polygon, Material, Geometry
+from abmatt.converters.convert_lib import Converter, add_geometry
+from converters.material import Material
+from converters.geometry import Geometry, decode_polygon
 from abmatt.converters.obj import Obj, ObjGeometry, ObjMaterial
 
 
@@ -19,8 +21,8 @@ class ObjConverter(Converter):
         for geometry in obj_geometries:
             normals = None if self.NoNormals & self.flags or self.is_map else geometry.normals
             texcoords = [geometry.texcoords] if geometry.has_texcoords else None
-            geo = Geometry(geometry.name, geometry.material_name, geometry.triangles, geometry.vertices,
-                           texcoords, normals, linked_bone=bone)
+            geo = Geometry(geometry.name, geometry.material_name, geometry.vertices, texcoords, normals,
+                           triangles=geometry.triangles, linked_bone=bone)
             # geo.encode(self.mdl0)
             mat = geometry.material_name
             if mat in material_geometry_map:

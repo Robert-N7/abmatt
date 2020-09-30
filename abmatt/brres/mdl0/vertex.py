@@ -1,7 +1,7 @@
-from abmatt.brres.mdl0.geometry import Geometry
+from abmatt.brres.mdl0.point import Point
 
 
-class Vertex(Geometry):
+class Vertex(Point):
     """ Vertex class for storing vertices data """
     COMP_COUNT = (2, 3)
     def __str__(self):

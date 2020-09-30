@@ -1,6 +1,4 @@
-# convert ../test_files/3ds_simple.DAE to ../brres_files/simple.brres
-# convert ../test_files/water_course.dae to ../brres_files/water_course.brres
-convert ../brres_files/water_course.brres to ../test_files/test.dae
-# CONVERT ../test_files/test.dae TO ../brres_files/water_course.brres
-# select * in ../brres_files/simple.brres
-# save as ../brres_files/test.brres overwrite
+Convert ../test_files/simple_multi_bone_rigged.brres TO ../test_files/test.dae
+# CONVERT ../test_files/simple_multi_bone.dae TO ../brres_files/test.brres
+select * in ../brres_files/simple.brres
+save as ../brres_files/test.brres overwrite
