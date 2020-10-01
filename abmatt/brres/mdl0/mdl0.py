@@ -120,6 +120,7 @@ class Mdl0(SubFile):
         self.srt0_collection = None
         self.pat0_collection = None
         self.DrawOpa = self.DrawXlu = self.NodeTree = self.NodeMix = None
+        self.weights_by_id = None
         self.definitions = []
         self.bones = []
         self.vertices = []
@@ -151,6 +152,22 @@ class Mdl0(SubFile):
         self.texture_matrix_mode = 0
         for definition in ('DrawOpa', 'DrawXlu', 'NodeTree'):
             self.__setattr__(definition, get_definition(definition, self))
+
+    def create_or_find_influence(self, influence):
+        if self.NodeMix is None:
+            self.NodeMix = get_definition('NodeMix', self)
+        return self.NodeMix.create_or_find_influence(influence)
+
+    def get_weights_by_ids(self, indices):
+        weights_by_id = self.weights_by_id
+        if weights_by_id is None:
+            self.weights_by_id = weights_by_id = {}
+            for x in self.NodeMix.fixed_weights:
+                self.weights_by_id[x.weight_id] = x
+            for x in self.NodeMix.mixed_weights:
+                self.weights_by_id[x.weight_id] = x
+        return [[(self.boneTable[x[0]], x[1]) for x in weights_by_id[i].to_inf()] for i in indices]
+
 
     def search_for_min_and_max(self):
         minimum = [math.inf] * 3

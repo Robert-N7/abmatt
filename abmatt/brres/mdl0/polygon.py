@@ -58,6 +58,17 @@ class Polygon(Node):
         self.normal_index3 = self.normal_e = 0
         self.color0_e = self.color1_e = 1
 
+    def add_bone_table(self, table):
+        self.bone_table = table
+        self.bone = -1
+
+    def get_influences(self, weight_indices=None):
+        if weight_indices is not None:
+            indices = {x for x in weight_indices.flatten()}
+            return self.parent.get_weights_by_ids(indices)
+        return [(self.get_linked_bone_id(), 1)]
+
+
     def get_vertex_group(self):
         if self.vertex_index_format >= self.INDEX_FORMAT_BYTE:
             return self.parent.vertices[self.vertex_group_index]
@@ -83,7 +94,7 @@ class Polygon(Node):
         return get_item_by_index(self.parent.materials, definition.matIndex)
 
     def get_bone(self):
-        return self.bone
+        return self.parent.bones[self.get_linked_bone_id()]
 
     def check(self):
         vertices = self.get_vertex_group()
@@ -200,9 +211,9 @@ class Polygon(Node):
     def get_bone_table(self):
         return self.bone_table
 
-    def get_linked_bone(self):
+    def get_linked_bone_id(self):
         definition = self.parent.get_definition_by_object_id(self.index)
-        return get_item_by_index(self.parent.bones, definition.boneIndex)
+        return definition.boneIndex
 
     def parse_cp_vertex_format(self, hi, lo):
         self.has_pos_matrix = bool(lo & 0x1)

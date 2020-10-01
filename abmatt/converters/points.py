@@ -76,27 +76,28 @@ class PointCollection:
         self.minimum[-1] = min(self.points[:, -1])
         self.maximum[-1] = max(self.points[:, -1])
 
-    def encode_data(self, geometry):
+    def encode_data(self, points, remap_indices=None):
         """Encodes the point collection as geometry data, returns the data width (component count)
-        :type geometry: Geometry
+        :type points: Points
         :type self: PointCollection
+        :type remap_indices: list of np arrays to have their facepoint indices remapped
         """
-        geometry.minimum = self.minimum
-        geometry.maximum = self.maximum
+        points.minimum = self.minimum
+        points.maximum = self.maximum
         form, divisor = self.get_format_divisor(self.minimum, self.maximum)
         points = self.points
         point_width = len(points[0])
         if form == 4:
-            geometry.stride = point_width * 4
+            points.stride = point_width * 4
         elif form > 1:
-            geometry.stride = point_width * 2
+            points.stride = point_width * 2
         else:
-            geometry.stride = point_width
-        geometry.comp_count = geometry.COMP_COUNT.index(point_width)
-        geometry.format = form
-        geometry.divisor = divisor
+            points.stride = point_width
+        points.comp_count = points.COMP_COUNT.index(point_width)
+        points.format = form
+        points.divisor = divisor
         multiplyBy = 2 ** divisor
-        data = geometry.data
+        data = points.data
         if divisor:
             if form == 3:
                 dtype = np.int16
@@ -109,18 +110,30 @@ class PointCollection:
             else:
                 raise ValueError(f'Unexpected format {form} for divisor {divisor}')
             self.encode_points(multiplyBy, dtype)
-        points = self.consolidate_points()
-        geometry.count = len(self)
-        if geometry.count > 0xffff:
-            raise Converter.ConvertError(f'{geometry.name} has too many points! ({geometry.count})')
+        points, index_remapper = self.__consolidate_points()
+        if index_remapper and remap_indices:
+            for indices in remap_indices:
+                self.remap_face_points(indices, index_remapper)
+        points.count = len(self)
+        if points.count > 0xffff:
+            raise Converter.ConvertError(f'{points.name} has too many points! ({points.count})')
         for x in points:
             data.append(x)
+        self.points = points
         return form, divisor
 
-    def consolidate_points(self, precision=None):
+    @staticmethod
+    def remap_face_points(face_indices, index_remapper):
+        face_height = len(face_indices)
+        face_width = len(face_indices[0])
+        for i in range(face_height):
+            x = face_indices[i]
+            for j in range(face_width):
+                x[j] = index_remapper[x[j]]
+
+    def __consolidate_points(self, precision=None):
         points = self.points if not precision else np.around(self.points, precision)
-        self.points = consolidate_data(points, self.face_indices)
-        return self.points
+        return consolidate_data(points, self.face_indices)
 
     def encode_points(self, multiplier, dtype):
         x = np.around(self.points * multiplier)
@@ -150,13 +163,8 @@ def consolidate_data(points, face_indices):
         else:
             index_remapper[original_index] = point_index
     if len(new_points) >= point_len:  # No gain
-        return points
+        return points, None
     points = np.array(new_points, points.dtype)
     # Finally, update the face indices
-    face_height = len(face_indices)
-    face_width = len(face_indices[0])
-    for i in range(face_height):
-        x = face_indices[i]
-        for j in range(face_width):
-            x[j] = index_remapper[x[j]]
-    return points
+    PointCollection.remap_face_points(face_indices, index_remapper)
+    return points, index_remapper

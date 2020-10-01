@@ -7,7 +7,7 @@ import numpy as np
 from abmatt.brres.lib.autofix import AUTO_FIXER
 from abmatt.brres.tex0 import ImgConverter, NoImgConverterError
 from abmatt.converters.arg_parse import cmdline_convert
-from converters.controller import Controller
+from converters.controller import Controller, InfluenceCollection
 from abmatt.converters.convert_lib import Converter
 from converters.geometry import decode_polygon
 from converters.material import Material
@@ -92,7 +92,7 @@ class DaeConverter2(Converter):
         if geo.normals and self.flags & self.NoNormals:
             geo.normals = None
         node.geometries.append(geo)
-        node.controller = get_controller(geo)
+        node.controller = get_controller(geo, polygon.parent.bones)
         return node
 
     def __decode_material(self, material, mesh):
@@ -130,12 +130,7 @@ class DaeConverter2(Converter):
                     converter.decode(tex, path)
 
     def __parse_controller(self, controller, matrix, material_geometry_map):
-        bones = controller.bones
-        if len(bones) > 1:
-            AUTO_FIXER.warn('Rigged Models not supported!')
-        bone = self.bones[bones[0]]
-        geometry = controller.get_bound_geometry(matrix)
-        geometry.linked_bone = bone
+        geometry = controller.get_bound_geometry(self.bones, matrix)
         self.__add_geometry(geometry, material_geometry_map)
 
     def __encode_geometry(self, geometry, bone=None):
@@ -152,7 +147,11 @@ class DaeConverter2(Converter):
 
     def __add_bone(self, node, parent_bone=None, matrix=None):
         name = node.attrib['id']
-        self.bones[name] = bone = self.mdl0.add_bone(name, parent_bone)
+        bone = self.mdl0.add_bone(name, parent_bone)
+        if name in self.bones:
+            bone.bone_id = self.bones[name]
+        else:
+            self.bones[name] = bone.bone_id
         self.set_bone_matrix(bone, matrix)
         for n in node.nodes:
             self.__add_bone(n, bone, matrix=n.get_matrix())
@@ -189,21 +188,33 @@ class DaeConverter2(Converter):
             self._encode_material(material)
 
 
-def get_controller(geometry):
+def get_controller(geometry, bones):
     vert_len = len(geometry.vertices)
-    bones = geometry.bones
+    influences = geometry.influences
+    if type(influences) == InfluenceCollection:
+        bones = [bones[i] for i in influences.bone_indices]
+        vert_counts = []
+        indexer = []
+        weights = []
+        weight_index = 0
+        for inf in influences:
+            vert_counts.append(len(inf))
+            for x in inf:
+                indexer.append((x[0], weight_index))
+                weights.append(x[1])
+                weight_index += 1
+        vert_counts = np.array(vert_counts, dtype=np.uint)
+    else:
+        bones = [bones[influences]]
+        indexer = np.full((vert_len, 2), 0, np.uint)
+        weights = [1]
+        vert_counts = np.full(vert_len, 1, dtype=int)
+
     bone_names = [x.name for x in bones]
     inv_bind_matrix = np.array([x.get_inv_transform_matrix() for x in bones], np.float)
     bind_matrix = np.array(geometry.linked_bone.get_transform_matrix(), np.float)
-    # inv_bind_matrix = np.linalg.inv(bind_matrix)
-    weights = np.array([1])
-    if geometry.bone_indices is None:
-        weight_indices = np.full((vert_len, 2), 0, np.uint)
-    else:
-        weight_indices = np.stack([geometry.bone_indices, np.full(geometry.bone_indices.shape, 0, np.uint)], -1)
-    # weight_indices = np.stack((np.zeros(vert_len, dtype=int), np.arange(1, vert_len + 1, dtype=int)), -1)
-    return Controller(geometry.name, bind_matrix, inv_bind_matrix, bone_names, weights,
-                      np.full(vert_len, 1, dtype=int), weight_indices, geometry)
+    return Controller(geometry.name, bind_matrix, inv_bind_matrix, bone_names, np.array(weights, float),
+                      vert_counts, np.array(indexer, np.uint), geometry)
 
 
 def main():

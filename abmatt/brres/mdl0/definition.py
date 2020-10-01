@@ -1,4 +1,3 @@
-from abmatt.brres.lib.binfile import UnpackingError, printCollectionHex
 from abmatt.brres.lib.node import Node
 
 
@@ -19,32 +18,64 @@ class NodeMix(Node):
         self.fixed_weights = []
         super().__init__(name, parent, binfile)
 
+    def create_or_find_influence(self, influence):
+        if len(influence) > 1:
+            for x in self.mixed_weights:
+                if x.inf_eq(influence):
+                    return x.weight_id
+            # wasn't found! Let's create it
+            weight = self.MixedWeight(len(self.mixed_weights) + len(self.fixed_weights))
+            for x in influence:
+                weight.add_weight(*x)
+            return weight.weight_id
+        else:
+            # search in fixed weights
+            for x in self.fixed_weights:
+                if x.bone_id == influence[0]:
+                    return x.weight_id
+            # wasn't found! Let's create it
+            weight = self.FixedWeight(len(self.mixed_weights) + len(self.fixed_weights), influence[0])
+            return weight.weight_id
+
     class MixedWeight:
         def __init__(self, weight_id=None, binfile=None):
             if binfile:
                 self.__unpack(binfile)
             else:
-                self.id = weight_id
+                self.weight_id = weight_id
                 self.weights = []
 
-        class WeightSingle:
-            def __init__(self, bone_id, weight):
-                self.bone_id = bone_id
-                self.weight = weight
+        def inf_eq(self, influence):
+            weights = self.weights
+            if len(weights) != len(influence):
+                return False
+            for i in range(len(weights)):
+                if weights[i] != influence[i]:
+                    return False
+            return True
+
+        def to_inf(self):
+            return [x for x in self.weights]
+
+        def add_weight(self, x):
+            self.weights.append(x)
 
         def __unpack(self, binfile):
             self.weight_id, weight_count = binfile.read("HB", 3)
-            self.weights = [self.WeightSingle(*binfile.read('Hf', 6)) for i in range(weight_count)]
+            self.weights = [binfile.read('Hf', 6) for i in range(weight_count)]
 
         def pack(self, binfile):
             binfile.write('HB', self.weight_id, len(self.weights))
             for x in self.weights:
-                binfile.write('Hf', x.bone_id, x.weight)
+                binfile.write('Hf', *x)
 
     class FixedWeight:
         def __init__(self, weight_id, bone_id):
             self.weight_id = weight_id
             self.bone_id = bone_id
+
+        def to_inf(self):
+            return [(self.bone_id, 1.0)]
 
     def unpack(self, binfile):
         while True:

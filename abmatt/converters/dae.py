@@ -79,12 +79,7 @@ class Dae:
             self.__init_elements_by_id(x)
 
     def write(self, filename):
-        # root = self.xml.root
-        # temp = root.children
-        # non_empty_libraries = [x for x in root if len(x)]
-        # root.children = non_empty_libraries
-        self.xml.write(filename, pretty_print=True)
-        # root.children = temp
+        self.xml.write(filename, pretty_print=True, xml_declaration=True, encoding='utf-8')
 
     def get_scene(self):
         return [self.decode_node(x) for x in self.scene]
@@ -195,7 +190,7 @@ class Dae:
                 inv_bind_matrices = np.array([float(x) for x in float_arr.text.split()], float)
                 inv_bind_matrices.reshape((-1, 4, 4))
         vertex_weights = first(skin, 'vertex_weights')
-        vertex_weight_count = [float(x) for x in first(vertex_weights, 'vcount').text.split()]
+        vertex_weight_count = [int(x) for x in first(vertex_weights, 'vcount').text.split()]
         vertex_weight_indices = np.array([int(x) for x in first(vertex_weights, 'v').text.split()], int)
         vertex_weight_indices = vertex_weight_indices.reshape((-1, 2))
         input_count = 0
@@ -623,7 +618,7 @@ class Dae:
         if texture is not None:
             id = texture.attrib['texture']
             image = self.get_element_by_id(id)
-            if not image:
+            if image is None:
                 sampler = self.get_element_by_sid(id, profile_common)
                 surface_id = first(first(sampler, 'sampler2D'), 'source').text
                 surface_param = self.get_element_by_sid(surface_id, profile_common)

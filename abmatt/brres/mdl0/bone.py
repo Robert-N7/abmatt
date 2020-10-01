@@ -146,9 +146,9 @@ class BoneTable:
     def unpack(self, binfile):
         """ unpacks bonetable """
         [length] = binfile.read("I", 4)
-        self.entries = binfile.read("{}I".format(length), length * 4)
+        self.entries = binfile.read("{}i".format(length), length * 4)
 
     def pack(self, binfile):
         length = len(self.entries)
         binfile.write("I", length)
-        binfile.write("{}I".format(length), *self.entries)
+        binfile.write("{}i".format(length), *self.entries)

@@ -174,5 +174,20 @@ class Converter:
         raise NotImplementedError()
 
 
+def remap_collection(iterable):
+    remap = {}
+    item_to_index = {}
+    new_index = 0
+    for i in range(len(iterable)):
+        x = iterable[i]
+        index = item_to_index.get(x)
+        if index is not None:
+            remap[i] = index
+        else:
+            remap[i] = item_to_index[x] = new_index
+            new_index += 1
+    new_collection = []
+
+
 def float_to_str(fl):
     return format(fl, '.8f') if 0.0001 > fl > -0.0001 else str(fl)
