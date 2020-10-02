@@ -3,6 +3,10 @@ import math
 import numpy as np
 
 
+def apply_matrix_single(matrix, point):
+    matrix = matrix[:3]
+    return np.dot(matrix, np.append(point, 1))
+
 def apply_matrix(matrix, points):
     if np.allclose(matrix, np.identity(4)):
         return points
@@ -40,17 +44,19 @@ def matrix_to_srt(matrix):
 def euler_to_rotation_matrix(euler_angles):
     x, y, z = np.array(euler_angles, float) * math.pi / 180
     rot_x = np.array([[1, 0, 0],
-                      [0, math.cos(x), -1 * math.sin(x)],
+                      [0, math.cos(x), -math.sin(x)],
                       [0, math.sin(x), math.cos(x)]], dtype=float)
 
     rot_y = np.array([[math.cos(y), 0, math.sin(y)],
                       [0, 1, 0],
-                      [-1 * math.sin(y), 0, math.cos(y)]], dtype=float)
+                      [-math.sin(y), 0, math.cos(y)]], dtype=float)
 
-    rot_z = np.array([[math.cos(z), -1 * math.sin(z), 0],
+    rot_z = np.array([[math.cos(z), -math.sin(z), 0],
                       [math.sin(z), math.cos(z), 0],
                       [0, 0, 1]], dtype=float)
-    return np.matmul(np.matmul(rot_x, rot_y), rot_z)
+    y_x = np.matmul(rot_y, rot_x)
+    matrix = np.matmul(rot_z, y_x)
+    return matrix
 
 
 def rotation_matrix_to_euler(matrix):

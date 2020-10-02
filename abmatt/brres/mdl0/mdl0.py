@@ -156,17 +156,34 @@ class Mdl0(SubFile):
     def create_or_find_influence(self, influence):
         if self.NodeMix is None:
             self.NodeMix = get_definition('NodeMix', self)
+        if len(influence) == 1:  # single?
+            bone_table = self.boneTable
+            for i in range(len(bone_table)):
+                if bone_table[i] == influence[0]:
+                    return i
+            return bone_table.add_entry(influence[0])
+        # multiple influences
+
         return self.NodeMix.create_or_find_influence(influence)
 
     def get_weights_by_ids(self, indices):
         weights_by_id = self.weights_by_id
         if weights_by_id is None:
             self.weights_by_id = weights_by_id = {}
-            for x in self.NodeMix.fixed_weights:
-                self.weights_by_id[x.weight_id] = x
-            for x in self.NodeMix.mixed_weights:
-                self.weights_by_id[x.weight_id] = x
-        return [[(self.boneTable[x[0]], x[1]) for x in weights_by_id[i].to_inf()] for i in indices]
+            if self.NodeMix is not None:
+                for x in self.NodeMix.fixed_weights:
+                    self.weights_by_id[x.weight_id] = x
+                for x in self.NodeMix.mixed_weights:
+                    self.weights_by_id[x.weight_id] = x
+        weights = []
+        bonetable = self.boneTable
+        for index in indices:
+            # weight = bonetable[index]
+            if False:
+                weights.append([(weight, 1)])
+            else:
+                weights.append([(bonetable[x[0]], x[1]) for x in weights_by_id[index].to_inf()])
+        return weights
 
 
     def search_for_min_and_max(self):
@@ -219,8 +236,12 @@ class Mdl0(SubFile):
             self.add_texture_link(x.name)
         return material
 
-    def add_bone(self, name, parent_bone=None):
-        b = Bone(name, self)
+    def add_bone(self, name, parent_bone=None, has_geometry=True,
+                 scale_equal=True, fixed_scale=True,
+                 fixed_rotation=True, fixed_translation=True):
+        b = Bone(name, self, has_geometry=has_geometry,
+                 scale_equal=scale_equal, fixed_scale=fixed_scale,
+                 fixed_rotation=fixed_rotation, fixed_translation=fixed_translation)
         self.add_to_group(self.bones, b)
         b.bone_id = self.boneTable.add_entry(self.boneCount)
         if parent_bone:
@@ -533,12 +554,12 @@ class Mdl0(SubFile):
         minimum = self.minimum
         maximum = self.maximum
         if not 'posLD' in current_names:
-            b = self.add_bone('posLD', parent)
+            b = self.add_bone('posLD', parent, fixed_translation=False, has_geometry=False)
             left = round(minimum[0] - 8000)
             down = round(maximum[2] + 8000)
             b.set_translation((left, 0, down))
         if not 'posRU' in current_names:
-            b = self.add_bone('posRU', parent)
+            b = self.add_bone('posRU', parent, fixed_translation=False, has_geometry=False)
             right = round(maximum[0] + 8000)
             up = round(minimum[2] - 8000)
             b.set_translation((right, 0, up))

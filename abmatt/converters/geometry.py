@@ -1,4 +1,4 @@
-from struct import unpack_from
+from struct import unpack_from, pack
 
 import numpy as np
 
@@ -8,8 +8,8 @@ from brres.mdl0.polygon import Polygon
 from brres.mdl0.texcoord import TexCoord
 from brres.mdl0.vertex import Vertex
 from converters.colors import ColorCollection
-from converters.controller import InfluenceCollection
 from converters.convert_lib import Converter
+from converters.influence import InfluenceCollection
 from converters.points import PointCollection
 from converters.triangle import TriangleSet
 
@@ -42,6 +42,8 @@ class Geometry:
             self.normals.combine(geometry.normals)
         if self.colors:
             self.colors.combine(geometry.colors)
+        if self.influences:
+            self.influences.combine(geometry.influences)
         self.triangles = np.append(self.triangles, geometry.triangles, 0)
         return True
         # todo bone indices
@@ -67,49 +69,81 @@ class Geometry:
             self.vertices.apply_affine_matrix(matrix)
 
     def get_linked_bone(self):
-        pass    # todo
+        return self.linked_bone
 
     def encode(self, mdl, bone=None):
         p = Polygon(self.name, mdl)
         fmt_str = '>'
-        fmt_str += self.__encode_influences(p, self.influences, mdl)
+        if len(self.influences) > 1:
+            p.has_pos_matrix = True
+            fmt_str += 'B'
+            self.__encode_influences(p, self.influences, mdl)
+            matrix_data = self.__encode_load_matrices(self.influences)
         fmt_str += self.__encode_vertices(p, self.vertices, mdl)
         fmt_str += self.__encode_normals(p, self.normals, mdl)
         fmt_str += self.__encode_colors(p, self.colors, mdl)
         fmt_str += self.__encode_texcoords(p, self.texcoords, mdl)
-        if self.__encode_tris(p, self.__construct_tris(), fmt_str):
-            mdl.add_to_group(mdl.objects, p)
+        data = self.__encode_tris(p, self.__construct_tris(), fmt_str)
+        if data is None:
+            # todo, cleanup?
+            return data
+        if p.has_pos_matrix:
+            data = matrix_data + data
+        p.vt_data = data
+        mdl.add_to_group(mdl.objects, p)
+        if not bone:
+            bone = self.get_linked_bone()
             if not bone:
-                bone = self.get_linked_bone()
-                if not bone:
-                    if not mdl.bones:
-                        mdl.add_bone(mdl.name)
-                    bone = mdl.bones[0]
-            material = mdl.getMaterialByName(self.material_name)
-            mdl.add_definition(material, p, bone)
-            if self.colors:
-                material.enable_vertex_color()
+                if not mdl.bones:
+                    mdl.add_bone(mdl.name)
+                bone = mdl.bones[0]
+        material = mdl.getMaterialByName(self.material_name)
+        mdl.add_definition(material, p, bone)
+        if self.colors:
+            material.enable_vertex_color()
         return p
+
+    @staticmethod
+    def __encode_load_matrices_helper(data, indices, xf_address, matrix_len, cmd):
+        data += pack('>B', cmd)
+        for bone_index in indices:
+            data += pack('>2H', bone_index, matrix_len + 1 << 12 | xf_address)
+            xf_address += matrix_len
+
+    @staticmethod
+    def __encode_load_matrices(influences):
+        indices = sorted(influences.bone_indices)
+        data = bytearray()
+        # pos matrices
+        Geometry.__encode_load_matrices_helper(data, indices, 0, 12, 0x20)
+        # normal matrices
+        Geometry.__encode_load_matrices_helper(data, indices, 1024, 9, 0x28)
+        return data
+
 
     @staticmethod
     def __encode_tris(polygon, tris, fmt_str):
         tris[:, [0, 1]] = tris[:, [1, 0]]
         triset = TriangleSet(tris)
         if not triset:
-            return False
+            return None
         data, polygon.face_count, polygon.facepoint_count = triset.get_tri_strips(fmt_str)
         past_align = len(data) % 32
         if past_align:
             data.extend(b'\0' * (32 - past_align))
-        polygon.vt_data = data
-        return True
+        return data
 
-    def __encode_influences(self, polygon, influences, mdl0):
+    @staticmethod
+    def __encode_influences(polygon, influences, mdl0):
         polygon.bone_table = influences.bone_indices
         if not np.array_equal(influences.face_indices):     # multiple bones?
-            for influence in influences:
-                weight_id = mdl0.create_or_find_influence(influence)
-
+            remapper = {}
+            for i in range(len(influences)):
+                weight_id = mdl0.create_or_find_influence(influences[i])
+                remapper[i] = weight_id
+            indices = influences.face_indices
+            for i in range(len(indices)):
+                indices[i] = remapper[indices[i]]
 
     def __encode_vertices(self, polygon, vertices, mdl0):
         vert = Vertex(self.name, mdl0)
@@ -170,7 +204,10 @@ class Geometry:
         return fmt_str
 
     def __construct_tris(self):
-        tris = [self.vertices.face_indices]
+        tris = []
+        if len(self.influences) > 1:    # multiple influences?
+            tris.append(self.influences.face_indices)
+        tris.append(self.vertices.face_indices)
         if self.normals:
             tris.append(self.normals.face_indices)
         if self.colors:
@@ -184,7 +221,8 @@ class Geometry:
                     self.linked_bone is not geometry.linked_bone or \
                     ((self.normals is None) ^ (geometry.normals is None)) or \
                     ((self.colors is None) ^ (geometry.colors is None)) or \
-                    len(self.texcoords) != len(geometry.texcoords))
+                    len(self.texcoords) != len(geometry.texcoords) or \
+                    self.influences != geometry.influences)
 
 
 def get_index_format(item):
@@ -263,8 +301,8 @@ def decode_indices(polygon, fmt_str):
             total_face_points += num_facepoints
         elif cmd in (0x20, 0x28, 0x30):  # load matrix
             bone_index, len_and_xf_address = unpack_from('>2H', data, i)
-            xf_address = 0xfff & len_and_xf_address
-            length = (len_and_xf_address >> 12) + 1
+            # xf_address = 0xfff & len_and_xf_address
+            # length = (len_and_xf_address >> 12) + 1
             i += 4
             if cmd == 0x20:  # pos matrix
                 bones.append(bone_index)
@@ -277,7 +315,19 @@ def decode_indices(polygon, fmt_str):
     return face_point_indices, bones
 
 
-def decode_polygon(polygon):
+def order_influences(vertex_indices, influence_indices):
+    arr, indices = np.unique(vertex_indices, return_index=True)
+    return influence_indices.flatten()[indices]
+
+def apply_influences(influences, vertices, bone_transform_matrices):
+    """Applies the influence [(bone_id, weight), ...] to each vertex"""
+    assert len(influences) == len(vertices)
+    for i in range(len(influences)):
+        pass
+
+
+
+def decode_polygon(polygon, influences):
         """ Decodes an mdl0 polygon
             :returns geometry
         """
@@ -326,19 +376,28 @@ def decode_polygon(polygon):
         face_point_indices, bones = decode_indices(polygon, fmt_str)
         face_point_indices = np.array(face_point_indices, dtype=np.uint)
         face_point_indices[:, [0, 1]] = face_point_indices[:, [1, 0]]
+        vert_face_points = face_point_indices[:, :, vertex_index]
+        decoded_verts = decode_geometry_group(vertices)
         if pos_matrix_index >= 0:
-            influence_indices = face_point_indices[:, :, pos_matrix_index] // 3
+            influence_indices = face_point_indices[:, :, pos_matrix_index].flatten() // 3
+            geo_infs = {}
+            # get the ordered indices corresponding to vertices
+            ordered = order_influences(vert_face_points, influence_indices)
+            for i in range(len(decoded_verts)):
+                influence = influences[ordered[i]]
+                geo_infs[i] = influence
+                decoded_verts[i] = influence.apply(decoded_verts[i])
+            influence_collection = InfluenceCollection(geo_infs)
         else:
-            influence_indices = None
-        infs = polygon.get_influences(influence_indices)
-        influence = InfluenceCollection(infs, influence_indices)
-            # face_point_indices = np.copy(face_point_indices[:, :, vertex_index:])
-        # create the point collections
-        g_verts = PointCollection(decode_geometry_group(vertices), face_point_indices[:, :, vertex_index],
-                                  vertices.minimum, vertices.maximum)
+            influence = influences[polygon.bone]
+            decoded_verts = influence.apply_all(decoded_verts)
+            influence_collection = InfluenceCollection({0: influence})
+
+        g_verts = PointCollection(decoded_verts, vert_face_points)
         geometry = Geometry(polygon.name, polygon.get_material().name, g_verts,
-                            triangles=face_point_indices[:, :, vertex_index:], influences=influence,
+                            triangles=face_point_indices[:, :, vertex_index:], influences=influence_collection,
                             linked_bone=polygon.get_bone())
+        # create the point collections
         if normals:
             geometry.normals = PointCollection(decode_geometry_group(normals), face_point_indices[:, :, normal_index])
         if colors:

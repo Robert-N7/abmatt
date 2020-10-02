@@ -45,17 +45,23 @@ class NodeMix(Node):
                 self.weight_id = weight_id
                 self.weights = []
 
-        def inf_eq(self, influence):
-            weights = self.weights
-            if len(weights) != len(influence):
-                return False
-            for i in range(len(weights)):
-                if weights[i] != influence[i]:
-                    return False
-            return True
+        def __iter__(self):
+            return iter(self.weights)
 
-        def to_inf(self):
-            return [x for x in self.weights]
+        def __next__(self):
+            return next(self.weights)
+
+        # def inf_eq(self, influence):
+        #     weights = self.weights
+        #     if len(weights) != len(influence):
+        #         return False
+        #     for i in range(len(weights)):
+        #         if weights[i] != influence[i]:
+        #             return False
+        #     return True
+        #
+        # def to_inf(self):
+        #     return [x for x in self.weights]
 
         def add_weight(self, x):
             self.weights.append(x)

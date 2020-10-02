@@ -7,12 +7,13 @@ import numpy as np
 from abmatt.brres.lib.autofix import AUTO_FIXER
 from abmatt.brres.tex0 import ImgConverter, NoImgConverterError
 from abmatt.converters.arg_parse import cmdline_convert
-from converters.controller import Controller, InfluenceCollection
+from converters.controller import Controller
 from abmatt.converters.convert_lib import Converter
 from converters.geometry import decode_polygon
+from converters.influence import InfluenceCollection, decode_mdl0_influences
 from converters.material import Material
 from abmatt.converters.dae import Dae, ColladaNode
-from converters.matrix import combine_matrices
+from converters.matrix import combine_matrices, srt_to_matrix
 
 
 class DaeConverter2(Converter):
@@ -55,6 +56,7 @@ class DaeConverter2(Converter):
         base_name, ext = os.path.splitext(name)
         self.image_dir = base_name + '_maps'
         self.texture_library = self.brres.get_texture_map()
+        self.influences = decode_mdl0_influences(mdl0)
         self.tex0_map = {}
         mesh = Dae(initial_scene_name=base_name)
         decoded_mats = [self.__decode_material(x, mesh) for x in mdl0.materials]
@@ -71,22 +73,30 @@ class DaeConverter2(Converter):
         mesh.write(self.mdl_file)
         AUTO_FIXER.info('\t...finished in {} seconds.'.format(round(time.time() - start, 2)))
 
-    def __decode_bone(self, mdl0_bone, collada_parent=None):
+    @staticmethod
+    def __get_matrix(bone):
+        return srt_to_matrix(bone.scale, bone.rotation, bone.translation)
+
+    def __decode_bone(self, mdl0_bone, collada_parent=None, matrix=None):
         name = mdl0_bone.name
         node = ColladaNode(name, {'type': 'JOINT'})
-        node.matrix = np.array(mdl0_bone.get_transform_matrix())
+        transform = np.array(mdl0_bone.get_inv_transform_matrix())
+        matrix = self.__get_matrix(mdl0_bone)
+        # assert np.allclose(matrix, transform, atol=0.0001)
+        node.matrix = matrix
+            # combine_matrices(matrix, transform)
         if collada_parent:
             collada_parent.nodes.append(node)
         if mdl0_bone.child:
-            self.__decode_bone(mdl0_bone.child, node)
+            self.__decode_bone(mdl0_bone.child, node, node.matrix)
         if mdl0_bone.next:
-            self.__decode_bone(mdl0_bone.next, collada_parent)
+            self.__decode_bone(mdl0_bone.next, collada_parent, matrix)
         return node
 
     def __decode_geometry(self, polygon):
         name = polygon.name
         node = ColladaNode(name)
-        geo = decode_polygon(polygon)
+        geo = decode_polygon(polygon, self.influences)
         if geo.colors and self.flags & self.NoColors:
             geo.colors = None
         if geo.normals and self.flags & self.NoNormals:
@@ -189,30 +199,31 @@ class DaeConverter2(Converter):
 
 
 def get_controller(geometry, bones):
-    vert_len = len(geometry.vertices)
     influences = geometry.influences
-    if type(influences) == InfluenceCollection:
-        bones = [bones[i] for i in influences.bone_indices]
-        vert_counts = []
-        indexer = []
-        weights = []
-        weight_index = 0
-        for inf in influences:
-            vert_counts.append(len(inf))
-            for x in inf:
-                indexer.append((x[0], weight_index))
-                weights.append(x[1])
-                weight_index += 1
-        vert_counts = np.array(vert_counts, dtype=np.uint)
-    else:
-        bones = [bones[influences]]
-        indexer = np.full((vert_len, 2), 0, np.uint)
-        weights = [1]
-        vert_counts = np.full(vert_len, 1, dtype=int)
-
+    bones = []
+    vert_counts = []
+    indexer = []
+    weights = []
+    bone_index = weight_index = 0
+    for vert_index in sorted(influences):
+        inf = influences[vert_index]
+        vert_counts.append(len(inf))
+        for x in inf:
+            bone = x.bone
+            try:
+                bone_id = bones.index(bone)
+            except ValueError:
+                bones.append(bone)
+                bone_id = bone_index
+                bone_index += 1
+            indexer.append((bone_id, weight_index))
+            weights.append(x.weight)
+            weight_index += 1
+    vert_counts = np.array(vert_counts, dtype=np.uint)
     bone_names = [x.name for x in bones]
     inv_bind_matrix = np.array([x.get_inv_transform_matrix() for x in bones], np.float)
     bind_matrix = np.array(geometry.linked_bone.get_transform_matrix(), np.float)
+    bind_matrix[:, 3] = 0   # 0 out translation
     return Controller(geometry.name, bind_matrix, inv_bind_matrix, bone_names, np.array(weights, float),
                       vert_counts, np.array(indexer, np.uint), geometry)
 

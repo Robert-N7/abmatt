@@ -190,4 +190,4 @@ def remap_collection(iterable):
 
 
 def float_to_str(fl):
-    return format(fl, '.8f') if 0.0001 > fl > -0.0001 else str(fl)
+    return ('%f' % fl).rstrip('0').rstrip('.')

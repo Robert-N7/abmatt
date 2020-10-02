@@ -18,7 +18,7 @@ def XMLNode(tag, text=None, id=None, name=None, parent=None):
     else:
         ele = etree.Element(tag)
     if text is not None:
-        ele.text = str(text)
+        ele.text = text
     if id is not None:
         ele.attrib['id'] = id
     if name is not None:
@@ -238,7 +238,7 @@ class Dae:
         float_array.attrib['count'] = str(16 * bone_len)
         self.__create_technique_common(matrices_array_id, bone_len, 'float4x4', matrices_source, 16)
         weight_source_id = controller_id + '-weights'
-        weight_source = XMLNode('source', ' '.join([float_to_str(x) for x in controller.weights.flatten()]),
+        weight_source = XMLNode('source',
                                 id=weight_source_id, parent=xml_skin)
         float_array_id = weight_source_id + '-array'
         float_array = XMLNode('float_array', ' '.join([float_to_str(x) for x in controller.weights.flatten()]),
@@ -250,7 +250,7 @@ class Dae:
         self.__create_input_node('JOINT', joint_source_id, parent=joints)
         self.__create_input_node('INV_BIND_MATRIX', matrices_source_id, parent=joints)
         vertex_weights = XMLNode('vertex_weights', parent=xml_skin)
-        vertex_weights.attrib['count'] = str(len(controller.vertex_weight_indices))
+        vertex_weights.attrib['count'] = str(len(controller.vertex_weight_counts))
         self.__create_input_node('JOINT', joint_source_id, 0, vertex_weights)
         self.__create_input_node('WEIGHT', weight_source_id, 1, vertex_weights)
         vcount = XMLNode('vcount', ' '.join([str(x) for x in controller.vertex_weight_counts]), parent=vertex_weights)
@@ -488,8 +488,8 @@ class Dae:
         contributor = XMLNode('contributor', parent=asset)
         authoring_tool = XMLNode('authoring_tool', 'ABMATT COLLADA exporter v0.8.0', parent=contributor)
         time_stamp = datetime.now()
-        created = XMLNode('created', time_stamp, parent=asset)
-        modified = XMLNode('modified', time_stamp, parent=asset)
+        created = XMLNode('created', str(time_stamp), parent=asset)
+        modified = XMLNode('modified', str(time_stamp), parent=asset)
         units = XMLNode('unit', name='centimeter', parent=asset)
         units.attrib['meter'] = str(self.unit_meter)
         up = 'Y_UP' if self.y_up else 'Z_UP'

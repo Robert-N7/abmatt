@@ -1,6 +1,8 @@
 import numpy as np
 
 
+
+
 class Controller:
     def __init__(self, name, bind_shape_matrix, inv_bind_matrix, bones, weights, vertex_weight_counts,
                  vertex_weight_indices,
@@ -14,50 +16,33 @@ class Controller:
         self.vertex_weight_indices = vertex_weight_indices
         self.geometry = geometry
 
-    @staticmethod
-    def __add_bone(bone, bone_map):
-        i = len(bone_map)
-        bone_map[bone] = i
-        return i
-
     def get_influences(self, bone_map):
         """
-        :param bone_map: map of bone names to indices
+        :param bone_map: map of bone names to bones
         :returns influence collection
         """
-        # construct my own bone map to map indices
-        my_bone_map = []
-        bones = self.bones
-        for i in range(len(bones)):
-            index = bone_map.get(bones[i])
-            if index is not None:
-                my_bone_map.append(index)
-            else:
-                my_bone_map.append(self.__add_bone(bones[i], bone_map))
-        facepoint_indices = []   # maps the face point index to influence index
+        # construct my own bone map
+        my_bone_map = [bone_map[name] for name in self.bones]
         influences = []
-        index = 0
         indices = self.vertex_weight_indices
         weights = self.weights
         vertex_weight_counts = self.vertex_weight_counts
+        vertex_influence_map = {}
         # Now construct influences
-        for facepoint_index in range(len(vertex_weight_counts)):
-            vert_weight_count = vertex_weight_counts[facepoint_index]
-            influence = []
-            for i in range(vert_weight_count):
-                inf = indices[index]
-                influence.append((inf[0], weights[inf[1]]))
-                index += 1
+        for vertex_index in range(len(vertex_weight_counts)):
+            weight_count = vertex_weight_counts[vertex_index]
+            influence = Influence([Weight(my_bone_map[indices[i, 0]], weights[indices[i, 1]]) for i in range(weight_count)])
+            # consolidate along the way by checking for duplicate influences
             found = False
             for i in range(len(influences)):
                 if influence == influences[i]:
                     found = True
-                    facepoint_indices.append(i)
+                    vertex_influence_map[vertex_index] = influences[i]
                     break
             if not found:
-                facepoint_indices.append(len(influences))
-                influences.append(np.array(influence, float))
-        return InfluenceCollection(influences, np.array(facepoint_indices, dtype=np.uint), my_bone_map)
+                vertex_influence_map[vertex_index] = influence
+                influences.append(influence)
+        return InfluenceCollection(influences, vertex_influence_map)
 
     def has_multiple_weights(self):
         return not np.min(self.vertex_weight_counts) == np.max(self.vertex_weight_counts) == 1.0
@@ -67,31 +52,6 @@ class Controller:
         self.geometry.apply_matrix(matrix)
         self.geometry.influences = self.get_influences(bone_map)
         return self.geometry
-
-
-class InfluenceCollection:
-    def __init__(self, influences, face_indices, bone_indices=None):
-        """
-        :param influences:  list of lists of tuples [[(bone_id, weight), ..], ...]
-        :param face_indices: np array of face_indices that map to influences
-        """
-        self.influences = influences
-        self.face_indices = face_indices
-        if bone_indices is None:
-            bone_indices = set()
-            for x in influences:
-                for y in x:
-                    bone_indices.add(y[0])
-        self.bone_indices = bone_indices
-
-    def __len__(self):
-        return len(self.influences)
-
-    def __iter__(self):
-        return iter(self.influences)
-
-    def __next__(self):
-        return next(self.influences)
 
 
 
@@ -131,3 +91,6 @@ class InfluenceCollection:
 #
 #     def __eq__(self, other):
 #         return self.bone == other.bone and self.weight == other.weight
+
+
+

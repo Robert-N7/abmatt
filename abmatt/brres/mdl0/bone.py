@@ -7,10 +7,26 @@ class Bone(Node):
                        (0, 1, 0, 0),
                        (0, 0, 1, 0))
 
+    def __init__(self, name, parent, binfile=None, has_geometry=True,
+                 scale_equal=True, fixed_scale=True,
+                 fixed_rotation=True, fixed_translation=True):
+        self.no_transform = False
+        self.fixed_translation = fixed_translation
+        self.fixed_rotation = fixed_rotation
+        self.fixed_scale = fixed_scale
+        self.scale_equal = scale_equal
+        self.seg_scale_comp_apply = False
+        self.seg_scale_comp_parent = False
+        self.classic_scale_off = False
+        self.visible = True
+        self.has_geometry = has_geometry
+        self.has_billboard_parent = False
+        super().__init__(name, parent, binfile)
+
+
     def begin(self):
         self.index = 0
         self.bone_id = 0       # id in bone_table
-        self.flags = 790
         self.billboard = 0
         self.scale = (1, 1, 1)
         self.rotation = (0, 0, 0)
@@ -34,6 +50,7 @@ class Bone(Node):
 
     def set_translation(self, trans):
         self.translation = trans
+        self.fixed_translation = self.no_transform = False
         for i in range(3):
             self.transform_matrix[i][2] = trans[i]
             self.inverse_matrix[i][2] = trans[i] * -1
@@ -71,11 +88,31 @@ class Bone(Node):
                 else:
                     return bone
 
+    def __parse_flags(self, flags):
+        self.no_transform = flags & 1 != 0
+        self.fixed_translation = flags & 0x2 != 0
+        self.fixed_rotation = flags & 0x4 != 0
+        self.fixed_scale = flags & 0x8 != 0
+        self.scale_equal = flags & 0x10 != 0
+        self.seg_scale_comp_apply = flags & 0x20 != 0
+        self.seg_scale_comp_parent = flags & 0x40 != 0
+        self.classic_scale_off = flags & 0x80 != 0
+        self.visible = flags & 0x100 != 0
+        self.has_geometry = flags & 0x200 != 0
+        self.has_billboard_parent = flags & 0x400 != 0
+
+    def __get_flags(self):
+        return self.no_transform | self.fixed_translation << 1 | self.fixed_rotation << 2 \
+            | self.fixed_scale << 3 | self.scale_equal << 4 | self.seg_scale_comp_apply << 5 \
+            | self.seg_scale_comp_parent << 6 | self.classic_scale_off << 7 | self.visible << 8 \
+            | self.has_geometry << 9 | self.has_billboard_parent << 10
+
     def unpack(self, binfile):
         self.offset = binfile.start()
         binfile.readLen()
         binfile.advance(8)
-        self.index, self.bone_id, self.flags, self.billboard = binfile.read('4I', 20)
+        self.index, self.bone_id, flags, self.billboard = binfile.read('4I', 20)
+        self.__parse_flags(flags)
         self.scale = binfile.read('3f', 12)
         self.rotation = binfile.read('3f', 12)
         self.translation = binfile.read('3f', 12)
@@ -113,7 +150,7 @@ class Bone(Node):
         binfile.markLen()
         binfile.write('i', binfile.getOuterOffset())
         binfile.storeNameRef(self.name)
-        binfile.write('5I', self.index, self.bone_id, self.flags, self.billboard, 0)
+        binfile.write('5I', self.index, self.bone_id, self.__get_flags(), self.billboard, 0)
         binfile.write('3f', *self.scale)
         binfile.write('3f', *self.rotation)
         binfile.write('3f', *self.translation)
@@ -138,6 +175,9 @@ class BoneTable:
 
     def __getitem__(self, item):
         return self.entries[item]
+
+    def __len__(self):
+        return len(self.entries)
 
     def add_entry(self, entry):
         self.entries.append(entry)

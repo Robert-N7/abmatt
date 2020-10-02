@@ -64,9 +64,9 @@ class Polygon(Node):
 
     def get_influences(self, weight_indices=None):
         if weight_indices is not None:
-            indices = {x for x in weight_indices.flatten()}
-            return self.parent.get_weights_by_ids(indices)
-        return [(self.get_linked_bone_id(), 1)]
+            # indices = {x for x in weight_indices.flatten()}
+            return self.parent.get_weights_by_ids(weight_indices)
+        return [[(self.get_linked_bone_id(), 1)]]
 
 
     def get_vertex_group(self):
