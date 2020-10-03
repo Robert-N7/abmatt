@@ -6,19 +6,43 @@ import numpy as np
 
 from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
 from abmatt.brres.mdl0 import material
-from abmatt.brres.tex0 import EncodeError, Tex0, ImgConverterI, NoImgConverterError
+from abmatt.brres.tex0 import EncodeError, Tex0, ImgConverterI, NoImgConverterError, ImgConverter
 from abmatt.converters.matrix import matrix_to_srt
 from abmatt.brres.mdl0 import Mdl0
+from converters import matrix
+from converters.influence import decode_mdl0_influences
 
 
 class Converter:
     NoNormals = 0x1
     NoColors = 0x2
-    IDENTITY_MATRIX = np.identity(4)
     DETECT_FILE_UNITS = True
+    OVERWRITE_IMAGES = False
 
     class ConvertError(Exception):
         pass
+
+    def _start_saving(self, mdl0):
+        AUTO_FIXER.info('Exporting to {}...'.format(self.mdl_file))
+        self.start = time.time()
+        if not mdl0:
+            mdl0 = self.brres.models[0]
+        self.cwd = os.getcwd()
+        dir, name = os.path.split(self.mdl_file)
+        if dir:
+            os.chdir(dir)
+        base_name, ext = os.path.splitext(name)
+        self.image_dir = base_name + '_maps'
+        self.texture_library = self.brres.get_texture_map()
+        self.influences = decode_mdl0_influences(mdl0)
+        self.tex0_map = {}
+        return base_name
+
+    def _end_saving(self, writer):
+        self._create_image_library(self.tex0_map.values())
+        os.chdir(self.cwd)
+        writer.write(self.mdl_file)
+        AUTO_FIXER.info('\t...finished in {} seconds.'.format(round(time.time() - self.start, 2)))
 
     def _start_loading(self, model_name):
         AUTO_FIXER.info('Converting {}... '.format(self.mdl_file))
@@ -72,8 +96,8 @@ class Converter:
         bone.scale, bone.rotation, bone.translation = matrix_to_srt(matrix)
 
     @staticmethod
-    def is_identity_matrix(matrix):
-        return np.allclose(matrix, Converter.IDENTITY_MATRIX)
+    def is_identity_matrix(mtx):
+        return np.allclose(mtx, matrix.IDENTITY)
 
     def _encode_material(self, generic_mat):
         if self.replacement_model:
@@ -90,6 +114,24 @@ class Converter:
             self.image_library.add(x.name)
         return mat
 
+    def _create_image_library(self, tex0s):
+        if not tex0s:
+            return True
+        image_dir = self.image_dir
+        if not os.path.exists(image_dir):
+            os.mkdir(image_dir)
+        converter = ImgConverter()
+        if not converter:
+            AUTO_FIXER.error('No image converter found!')
+            return False
+        os.chdir(image_dir)
+        for tex in tex0s:
+            destination = tex.name + '.png'
+            if self.OVERWRITE_IMAGES or not os.path.exists(destination):
+                converter.decode(tex, destination)
+        os.chdir('..')
+        return True
+
     @staticmethod
     def __normalize_image_path_map(image_path_map):
         normalized = {}
@@ -102,6 +144,7 @@ class Converter:
     def _import_images(self, image_path_map):
         try:
             normalized = False
+            image_paths = {}
             for map in self.image_library:  # only add images that are used
                 path = image_path_map.get(map)
                 if path is None:
@@ -111,7 +154,8 @@ class Converter:
                         normalized = True
                     if path is None:
                         continue
-                self._try_import_texture(self.brres, path, map)
+                image_paths[map] = path
+                # self._try_import_texture(self.brres, path, map)
         except NoImgConverterError as e:
             AUTO_FIXER.error(e)
 
@@ -172,21 +216,6 @@ class Converter:
 
     def save_model(self, mdl0):
         raise NotImplementedError()
-
-
-def remap_collection(iterable):
-    remap = {}
-    item_to_index = {}
-    new_index = 0
-    for i in range(len(iterable)):
-        x = iterable[i]
-        index = item_to_index.get(x)
-        if index is not None:
-            remap[i] = index
-        else:
-            remap[i] = item_to_index[x] = new_index
-            new_index += 1
-    new_collection = []
 
 
 def float_to_str(fl):

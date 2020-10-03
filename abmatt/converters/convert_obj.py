@@ -1,16 +1,13 @@
 import os
 import sys
-import time
 
 import numpy as np
 
-from abmatt.brres.lib.autofix import AUTO_FIXER
-from abmatt.brres.tex0 import ImgConverter
 from abmatt.converters.arg_parse import cmdline_convert
-from abmatt.converters.convert_lib import Converter, add_geometry
-from converters.material import Material
-from converters.geometry import Geometry, decode_polygon
+from abmatt.converters.convert_lib import Converter
 from abmatt.converters.obj import Obj, ObjGeometry, ObjMaterial
+from converters.geometry import Geometry, decode_polygon
+from converters.material import Material
 
 
 class ObjConverter(Converter):
@@ -43,15 +40,7 @@ class ObjConverter(Converter):
         return self._end_loading()
 
     def save_model(self, mdl0=None):
-        AUTO_FIXER.info('Exporting to {}...'.format(self.mdl_file))
-        start = time.time()
-        dir, name = os.path.split(self.mdl_file)
-        base_name, ext = os.path.splitext(name)
-        self.image_dir = base_name + '_maps'
-        self.tex0_map = {}
-        self.brres_textures = self.brres.get_texture_map()
-        if not mdl0:
-            mdl0 = self.brres.models[0]
+        self._start_saving(mdl0)
         polygons = mdl0.objects
         obj = Obj(self.mdl_file, False)
         obj_materials = obj.materials
@@ -59,30 +48,11 @@ class ObjConverter(Converter):
             obj_mat = self.__decode_material(mat)
             obj_materials[obj_mat.name] = obj_mat
         obj_geometries = obj.geometries
-        obj_images = obj.images
         for x in polygons:
-            geometry = decode_polygon(x)
+            geometry = decode_polygon(x, self.influences)
             material = geometry.material_name
             obj_geometries.append(self.__decode_geometry(geometry, material))
-        tex0_map = self.tex0_map
-        if len(tex0_map):
-            converter = ImgConverter()
-            if not converter:
-                AUTO_FIXER.error('No image converter found!')
-            image_dir = os.path.join(dir, self.image_dir)
-            if not os.path.exists(image_dir):
-                os.mkdir(image_dir)
-            tmp = os.getcwd()
-            os.chdir(image_dir)
-            for tex in tex0_map:
-                tex0 = tex0_map[tex]
-                destination = os.path.join(tex + '.png')
-                obj_images.add(destination)
-                if converter:
-                    converter.decode(tex0, destination)
-            os.chdir(tmp)
-        obj.save()
-        AUTO_FIXER.info('\t...finished in {} seconds.'.format(round(time.time() - start, 2)))
+        self._end_saving(obj)
 
     @staticmethod
     def __convert_map_to_layer(material, map):
@@ -132,7 +102,7 @@ class ObjConverter(Converter):
         for layer in material.layers:
             name = layer.name
             if name not in self.tex0_map:
-                tex = self.brres_textures.get(name)
+                tex = self.texture_library.get(name)
                 if tex:
                     self.tex0_map[name] = tex
             if first:

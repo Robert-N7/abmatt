@@ -1,5 +1,6 @@
 """Tex0 subfile"""
 import os
+import shutil
 import subprocess
 from math import log
 
@@ -245,19 +246,31 @@ class ImgConverter:
                 self.temp_dest = 'abmatt_tmp'
             super(ImgConverter.Wimgt, self).__init__(program)
 
-        def encode(self, img_file, tex_format=None, num_mips=-1):
-            # encode
-            if img_file.startswith('file://'):
-                img_file = img_file.replace('file://', '')
-            if not os.path.exists(img_file):
-                raise EncodeError('No such file {}'.format(img_file))
+        @staticmethod
+        def find_file(filename):
+            if filename.startswith('file://'):
+                filename = filename.replace('file://', '')
+            if not os.path.exists(filename):
+                raise EncodeError('No such file {}'.format(filename))
+            return filename
+
+        @staticmethod
+        def convert_png(img_file, remove_old=False):
             dir, fname = os.path.split(img_file)
             name, ext = os.path.splitext(fname)
             if ext.lower() != '.png':
                 from PIL import Image
                 im = Image.open(img_file)
-                img_file = os.path.join(dir, name + '.png')
-                im.save(img_file)
+                new_file = os.path.join(dir, name + '.png')
+                im.save(new_file)
+                if remove_old:
+                    os.remove(img_file)
+                img_file = new_file
+            return img_file, name
+
+        def encode(self, img_file, tex_format=None, num_mips=-1):
+            img_file, name = self.convert_png(self.find_file(img_file))
+            # encode
             mips = '--n-mm=' + str(num_mips) if num_mips >= 0 else ''
             if not tex_format:
                 tex_format = self.IMG_FORMAT
@@ -269,6 +282,44 @@ class ImgConverter:
             os.remove(self.temp_dest)
             t.name = name
             return t
+
+        @staticmethod
+        def __move_to_temp_dir(files, tmp_dir):
+            if os.path.exists(tmp_dir):
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+            os.mkdir(tmp_dir)
+            for file in files:
+                shutil.copy(file, tmp_dir)
+            os.chdir(tmp_dir)
+            return os.listdir()
+
+        @staticmethod
+        def __move_out_of_temp_dir(tmp_dir):
+            os.chdir('..')
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+        def batch_encode(self, files, tex_format=None, num_mips=-1):
+            """Batch encode, faster than single encode when doing multiple files"""
+            mips = '--n-mm=' + str(num_mips) if num_mips >= 0 else ''
+            if not tex_format:
+                tex_format = self.IMG_FORMAT
+            t_files = [self.find_file(x) for x in files]
+            tmp = 'abmatt-tmp'
+            # create a new dir to work in
+            t_files = self.__move_to_temp_dir(t_files, tmp)
+            t_files = set([self.convert_png(x, remove_old=True)[0] for x in t_files])
+            result = subprocess.call([self.converter, 'encode', '*.png',
+                                      '-x', tex_format, mips, '-qo'])
+            if result:
+                self.__move_out_of_temp_dir(tmp)
+                raise EncodeError('Failed to encode images {}'.format(files))
+            tex0s = []
+            new_files = os.listdir()
+            for x in new_files:
+                if x not in t_files:
+                    tex0s.append(Tex0(x, None, BinFile(x)))
+            self.__move_out_of_temp_dir(tmp)    # cleanup
+            return tex0s
 
         def decode(self, tex0, dest_file):
             if not dest_file:
@@ -287,6 +338,9 @@ class ImgConverter:
             if result:
                 raise DecodeError('Failed to decode {}'.format(tex0.name))
             return dest_file
+
+        def batch_decode(self, tex0s, dest_dir=None):
+            pass
 
         def convert(self, tex0, tex_format):
             f = BinFile(self.temp_dest, 'w')

@@ -7,7 +7,7 @@ import numpy as np
 from abmatt.brres.lib.autofix import AUTO_FIXER
 from abmatt.brres.tex0 import ImgConverter, NoImgConverterError
 from abmatt.converters.arg_parse import cmdline_convert
-from converters.controller import Controller
+from converters.controller import Controller, get_controller
 from abmatt.converters.convert_lib import Converter
 from converters.geometry import decode_polygon
 from converters.influence import InfluenceCollection, decode_mdl0_influences
@@ -45,23 +45,9 @@ class DaeConverter2(Converter):
         return self._end_loading()
 
     def save_model(self, mdl0=None):
-        AUTO_FIXER.info('Exporting to {}...'.format(self.mdl_file))
-        start = time.time()
-        if not mdl0:
-            mdl0 = self.brres.models[0]
-        cwd = os.getcwd()
-        dir, name = os.path.split(self.mdl_file)
-        if dir:
-            os.chdir(dir)
-        base_name, ext = os.path.splitext(name)
-        self.image_dir = base_name + '_maps'
-        self.texture_library = self.brres.get_texture_map()
-        self.influences = decode_mdl0_influences(mdl0)
-        self.tex0_map = {}
+        base_name = self._start_saving(mdl0)
         mesh = Dae(initial_scene_name=base_name)
         decoded_mats = [self.__decode_material(x, mesh) for x in mdl0.materials]
-        # images
-        self.__create_image_library(mesh)
         # polygons
         polygons = mdl0.objects
         mesh.add_node(self.__decode_bone(mdl0.bones[0]))
@@ -69,9 +55,7 @@ class DaeConverter2(Converter):
             mesh.add_node(self.__decode_geometry(polygon))
         for mat in decoded_mats:
             mesh.add_material(mat)
-        os.chdir(cwd)
-        mesh.write(self.mdl_file)
-        AUTO_FIXER.info('\t...finished in {} seconds.'.format(round(time.time() - start, 2)))
+        self._end_saving(mesh)
 
     @staticmethod
     def __get_matrix(bone):
@@ -80,11 +64,8 @@ class DaeConverter2(Converter):
     def __decode_bone(self, mdl0_bone, collada_parent=None, matrix=None):
         name = mdl0_bone.name
         node = ColladaNode(name, {'type': 'JOINT'})
-        transform = np.array(mdl0_bone.get_inv_transform_matrix())
         matrix = self.__get_matrix(mdl0_bone)
-        # assert np.allclose(matrix, transform, atol=0.0001)
         node.matrix = matrix
-            # combine_matrices(matrix, transform)
         if collada_parent:
             collada_parent.nodes.append(node)
         if mdl0_bone.child:
@@ -102,7 +83,7 @@ class DaeConverter2(Converter):
         if geo.normals and self.flags & self.NoNormals:
             geo.normals = None
         node.geometries.append(geo)
-        node.controller = get_controller(geo, polygon.parent.bones)
+        node.controller = get_controller(geo)
         return node
 
     def __decode_material(self, material, mesh):
@@ -119,25 +100,8 @@ class DaeConverter2(Converter):
                 tex0 = self.texture_library.get(layer)
                 map_path = layer + '.png'
                 mesh.add_image(layer, os.path.join(self.image_dir, map_path))
-                self.tex0_map[layer] = (tex0, map_path)
+                self.tex0_map[layer] = tex0
         return Material(material.name, diffuse_map, ambient_map, specular_map, material.xlu * 0.5)
-
-    def __create_image_library(self, mesh):
-        if len(self.tex0_map):
-            converter = ImgConverter()
-            if not converter:
-                AUTO_FIXER.error('No image converter found!')
-            if not os.path.exists(self.image_dir):
-                os.mkdir(self.image_dir)
-            os.chdir(self.image_dir)
-            for image_name in self.tex0_map:
-                tex, path = self.tex0_map[image_name]
-                # mesh.add_image(image_name, path)
-                if not tex:
-                    AUTO_FIXER.warn('Missing texture {}'.format(image_name))
-                    continue
-                if converter:
-                    converter.decode(tex, path)
 
     def __parse_controller(self, controller, matrix, material_geometry_map):
         geometry = controller.get_bound_geometry(self.bones, matrix)
@@ -196,36 +160,6 @@ class DaeConverter2(Converter):
     def __parse_materials(self, materials):
         for material in materials:
             self._encode_material(material)
-
-
-def get_controller(geometry, bones):
-    influences = geometry.influences
-    bones = []
-    vert_counts = []
-    indexer = []
-    weights = []
-    bone_index = weight_index = 0
-    for vert_index in sorted(influences):
-        inf = influences[vert_index]
-        vert_counts.append(len(inf))
-        for x in inf:
-            bone = x.bone
-            try:
-                bone_id = bones.index(bone)
-            except ValueError:
-                bones.append(bone)
-                bone_id = bone_index
-                bone_index += 1
-            indexer.append((bone_id, weight_index))
-            weights.append(x.weight)
-            weight_index += 1
-    vert_counts = np.array(vert_counts, dtype=np.uint)
-    bone_names = [x.name for x in bones]
-    inv_bind_matrix = np.array([x.get_inv_transform_matrix() for x in bones], np.float)
-    bind_matrix = np.array(geometry.linked_bone.get_transform_matrix(), np.float)
-    bind_matrix[:, 3] = 0   # 0 out translation
-    return Controller(geometry.name, bind_matrix, inv_bind_matrix, bone_names, np.array(weights, float),
-                      vert_counts, np.array(indexer, np.uint), geometry)
 
 
 def main():

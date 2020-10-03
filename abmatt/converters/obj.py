@@ -116,6 +116,10 @@ class Obj():
             base_name = os.path.splitext(name)[0]
             self.mtllib = base_name + '.mtl'
 
+    def write(self, filename):
+        self.filename = filename
+        self.save()
+
     def save(self):
         folder, name = os.path.split(self.filename)
         self.save_mtllib(folder)

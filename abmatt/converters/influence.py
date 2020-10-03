@@ -1,6 +1,6 @@
 import numpy as np
 
-from converters.matrix import apply_matrix, apply_matrix_single
+from converters.matrix import apply_matrix, apply_matrix_single, get_rotation_matrix, scale_matrix, translate_matrix
 
 
 class Joint:
@@ -18,29 +18,33 @@ class Joint:
 
 class Influence:
     def __init__(self, weights=None):
-        self.weights = [] if weights is None else weights
-        self.matrix = None
+        self.weights = {} if weights is None else weights
+        self.rotation_matrix = self.matrix = None
 
     def get_matrix(self):
         if self.matrix is None:
             # calculate matrix
             matrix = None
-            for weight in self.weights:
+            for bone in self.weights:
+                weight = self.weights[bone]
                 if matrix is None:
-                    matrix = weight.bone.get_transform_matrix()
+                    matrix = np.array(weight.bone.get_transform_matrix())
+                    # self.rotation_matrix, scale = get_rotation_matrix(matrix, True)
+                    # mtx = scale_matrix(np.identity(4), scale)
+                    # matrix = translate_matrix(mtx, matrix[:, 3])
                 else:
                     matrix = np.dot(matrix, weight.bone.get_transform_matrix())
             self.matrix = matrix
         return self.matrix
 
-    def apply(self, vertex):
+    def apply_to(self, vertex):
         """Takes a vertex and apply influence"""
         if self.is_mixed():
             return vertex
         matrix = self.get_matrix()
         return apply_matrix_single(matrix, vertex)
 
-    def apply_all(self, vertices):
+    def apply_to_all(self, vertices):
         if self.is_mixed():
             return vertices
         matrix = self.get_matrix()
@@ -62,16 +66,13 @@ class Influence:
         return self.weights[item]
 
     def __eq__(self, other):
-        l = len(self)
-        if l != len(other):
-            return False
-        for i in range(l):
-            if self[i] != other[i]:
-                return False
-        return True
+        return self.weights == other.weights
 
-    def append(self, weight):
-        self.weights.append(weight)
+    def __setitem__(self, key, value):
+        self.weights[key] = value
+
+    def __getitem__(self, item):
+        return self.weights[item]
 
 
 class Weight:
@@ -116,12 +117,17 @@ def decode_mdl0_influences(mdl0):
     if nodemix is not None:
         for weight in nodemix.fixed_weights:
             weight_id = weight.weight_id
-            influences[weight_id] = Influence([Weight(bones[bonetable[weight_id]], 1)])
+            bone = bones[bonetable[weight_id]]
+            influences[weight_id] = Influence({bone.name: Weight(bone, 1)})
         for inf in nodemix.mixed_weights:
             weight_id = inf.weight_id
-            influences[weight_id] = Influence([Weight(bones[bonetable[x[0]]], x[1]) for x in inf])
+            influences[weight_id] = influence = Influence()
+            for x in inf:
+                bone = bones[bonetable[x[0]]]
+                influence[bone.name] = Weight(bone, x[1])
     else:
         for i in range(len(bonetable)):
             index = bonetable[i]
-            influences[i] = Influence(weights=[Weight(bones[bonetable[index]], 1)])
+            bone = bones[bonetable[index]]
+            influences[i] = Influence(weights={bone.name: Weight(bone, 1)})
     return InfluenceCollection(influences)
