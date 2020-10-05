@@ -145,12 +145,12 @@ class Mdl0(SubFile):
 
     def begin(self):
         self.boneTable = BoneTable()
-        self.boneCount = 0
+        self.boneMatrixCount = 0
         self.faceCount = 0
         self.facepoint_count = 0
         self.scaling_rule = 0
         self.texture_matrix_mode = 0
-        for definition in ('DrawOpa', 'DrawXlu', 'NodeTree'):
+        for definition in ('DrawOpa', 'DrawXlu', 'NodeTree', 'NodeMix'):
             self.__setattr__(definition, get_definition(definition, self))
 
     def create_or_find_influence(self, influence):
@@ -185,6 +185,8 @@ class Mdl0(SubFile):
                 weights.append([(bonetable[x[0]], x[1]) for x in weights_by_id[index].to_inf()])
         return weights
 
+    def set_bonetable(self, bonetable):
+        self.boneTable.entries = bonetable
 
     def search_for_min_and_max(self):
         minimum = [math.inf] * 3
@@ -206,7 +208,7 @@ class Mdl0(SubFile):
 
     def rebuild_header(self):
         """After encoding data, calculates the header data"""
-        self.boneCount = len(self.bones)
+        self.boneMatrixCount = len(self.boneTable)
         self.search_for_min_and_max()
         self.facepoint_count = sum(obj.facepoint_count for obj in self.objects)
         self.faceCount = sum(obj.face_count for obj in self.objects)
@@ -236,21 +238,21 @@ class Mdl0(SubFile):
             self.add_texture_link(x.name)
         return material
 
-    def add_bone(self, name, parent_bone=None, has_geometry=True,
+    def add_bone(self, name, parent_bone=None, has_geometry=False,
                  scale_equal=True, fixed_scale=True,
                  fixed_rotation=True, fixed_translation=True):
         b = Bone(name, self, has_geometry=has_geometry,
                  scale_equal=scale_equal, fixed_scale=fixed_scale,
                  fixed_rotation=fixed_rotation, fixed_translation=fixed_translation)
         self.add_to_group(self.bones, b)
-        b.bone_id = self.boneTable.add_entry(self.boneCount)
+        b.weight_id = self.boneTable.add_entry(self.boneMatrixCount)
         if parent_bone:
-            parent_index = parent_bone.bone_id
+            parent_index = parent_bone.index    # todo check this
             parent_bone.link_child(b)
         else:
             parent_index = 0
-        self.NodeTree.add_entry(self.boneCount, parent_index)
-        self.boneCount += 1
+        self.NodeTree.add_entry(self.boneMatrixCount, parent_index)
+        self.boneMatrixCount += 1
         return b
 
     def add_definition(self, material, polygon, bone=None, priority=0):
@@ -575,7 +577,7 @@ class Mdl0(SubFile):
     # ---------------START PACKING STUFF -------------------------------------
     def pre_pack(self):
         """Cleans up references in preparation for packing"""
-        defs = [self.NodeTree, self.DrawOpa, self.DrawXlu, self.NodeMix]
+        defs = [self.NodeTree, self.NodeMix, self.DrawOpa, self.DrawXlu]
         defs = [x for x in defs if x]
         self.sections[0] = defs
         # rebuild texture links
@@ -634,7 +636,7 @@ class Mdl0(SubFile):
         offset = binfile.start()  # Header
         ln = binfile.readLen()
         fh, self.scaling_rule, self.texture_matrix_mode, self.facepoint_count, \
-            self.faceCount, _, self.boneCount, _ = binfile.read("i7I", 32)
+        self.faceCount, _, self.boneMatrixCount, _ = binfile.read("i7I", 32)
         binfile.store()  # bone table offset
         if binfile.offset - offset < ln:
             self.minimum = binfile.read("3f", 12)
@@ -729,7 +731,7 @@ class Mdl0(SubFile):
         self._pack(binfile)
         binfile.start()  # header
         binfile.write("Ii7I", 0x40, binfile.getOuterOffset(), self.scaling_rule, self.texture_matrix_mode,
-                      self.facepoint_count, self.faceCount, 0, self.boneCount, 0x01000000)
+                      self.facepoint_count, self.faceCount, 0, self.boneMatrixCount, 0x01000000)
         binfile.mark()  # bone table offset
         if self.version >= 10:
             binfile.write("6f", self.minimum[0], self.minimum[1], self.minimum[2],

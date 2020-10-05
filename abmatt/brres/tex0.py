@@ -185,11 +185,12 @@ class NoImgConverterError(Exception):
 class ImgConverterI:
     IMG_FORMAT = 'cmpr'
     RESAMPLE = 3
+    OVERWRITE_IMAGES = False
 
     def __init__(self, converter):
         self.converter = converter
 
-    def encode(self, img_file, tex_format, num_mips=-1):
+    def encode(self, img_file, tex_format, num_mips=-1, check=False):
         raise NotImplementedError()
 
     def decode(self, tex0, dest_file):
@@ -268,8 +269,36 @@ class ImgConverter:
                 img_file = new_file
             return img_file, name
 
-        def encode(self, img_file, tex_format=None, num_mips=-1):
+        def check_image_dimensions(self, image_file):
+            from PIL import Image
+            im = Image.open(image_file)
+            width, height = im.size
+            if width > Tex0.MAX_IMG_SIZE or height > Tex0.MAX_IMG_SIZE:
+                new_width, new_height = Tex0.get_scaled_size(width, height)
+                b = Bug(2, 2, f'Texture {image_file} too large ({width}x{height}).',
+                        f'Resize to {new_width}x{new_height}.')
+                im = im.resize((new_width, new_height), self.RESAMPLE)
+                im.save(image_file)
+                b.resolve()
+            elif not Tex0.is_power_of_two(width) or not Tex0.is_power_of_two(height):
+                new_width = Tex0.nearest_power_of_two(width)
+                new_height = Tex0.nearest_power_of_two(height)
+                b = Bug(2, 2, f'Texture {image_file} not a power of 2 ({width}x{height})',
+                        f'Resize to {new_width}x{new_height}')
+                im = im.resize((new_width, new_height), self.RESAMPLE)
+                im.save(image_file)
+                b.resolve()
+            return im
+
+        def encode(self, img_file, brres, tex_format=None, num_mips=-1, check=False, overwrite=None):
+            if overwrite is None:
+                overwrite = self.OVERWRITE_IMAGES
             img_file, name = self.convert_png(self.find_file(img_file))
+            if not overwrite and name in brres.get_texture_map():
+                AUTO_FIXER.warn(f'Tex0 {name} already exists!')
+                return None
+            if check:
+                self.check_image_dimensions(img_file)
             # encode
             mips = '--n-mm=' + str(num_mips) if num_mips >= 0 else ''
             if not tex_format:
@@ -278,7 +307,8 @@ class ImgConverter:
                                       self.temp_dest, '-x', tex_format, mips, '-qo'])
             if result:
                 raise EncodeError('Failed to encode {}'.format(img_file))
-            t = Tex0(name, None, BinFile(self.temp_dest))
+            t = Tex0(name, brres, BinFile(self.temp_dest))
+            brres.add_tex0(t)
             os.remove(self.temp_dest)
             t.name = name
             return t
@@ -298,8 +328,10 @@ class ImgConverter:
             os.chdir('..')
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
-        def batch_encode(self, files, tex_format=None, num_mips=-1):
+        def batch_encode(self, files, brres, tex_format=None, num_mips=-1, check=False, overwrite=None):
             """Batch encode, faster than single encode when doing multiple files"""
+            if overwrite is None:
+                overwrite = self.OVERWRITE_IMAGES
             mips = '--n-mm=' + str(num_mips) if num_mips >= 0 else ''
             if not tex_format:
                 tex_format = self.IMG_FORMAT
@@ -307,8 +339,19 @@ class ImgConverter:
             tmp = 'abmatt-tmp'
             # create a new dir to work in
             t_files = self.__move_to_temp_dir(t_files, tmp)
-            t_files = set([self.convert_png(x, remove_old=True)[0] for x in t_files])
-            result = subprocess.call([self.converter, 'encode', '*.png',
+            path_set = set()
+            textures = brres.get_texture_map()
+            for x in t_files:
+                path, name = self.convert_png(x, remove_old=True)
+                if overwrite or name not in textures:
+                    path_set.add(path)
+            if not len(path_set):
+                self.__move_out_of_temp_dir(tmp)
+                return None
+            if check:
+                for x in path_set:
+                    self.check_image_dimensions(x)
+            result = subprocess.call([self.converter, 'encode', '*',
                                       '-x', tex_format, mips, '-qo'])
             if result:
                 self.__move_out_of_temp_dir(tmp)
@@ -316,18 +359,25 @@ class ImgConverter:
             tex0s = []
             new_files = os.listdir()
             for x in new_files:
-                if x not in t_files:
-                    tex0s.append(Tex0(x, None, BinFile(x)))
+                if x not in path_set:
+                    t = Tex0(x, brres, BinFile(x))
+                    tex0s.append(t)
+                    brres.add_tex0(t)
             self.__move_out_of_temp_dir(tmp)    # cleanup
             return tex0s
 
-        def decode(self, tex0, dest_file):
+        def decode(self, tex0, dest_file, overwrite=None):
+            if overwrite is None:
+                overwrite = self.OVERWRITE_IMAGES
             if not dest_file:
                 dest_file = tex0.name + '.png'
             elif os.path.isdir(dest_file):
                 dest_file = os.path.join(dest_file, tex0.name + '.png')
             elif os.path.splitext(os.path.basename(dest_file))[1].lower() != '.png':
                 dest_file += '.png'
+            if not overwrite and os.path.exists(dest_file):
+                AUTO_FIXER.warn('File {} already exists!'.format(dest_file))
+                return None
             f = BinFile(self.temp_dest, 'w')
             tex0.pack(f)
             f.commitWrite()
@@ -339,8 +389,31 @@ class ImgConverter:
                 raise DecodeError('Failed to decode {}'.format(tex0.name))
             return dest_file
 
-        def batch_decode(self, tex0s, dest_dir=None):
-            pass
+        def batch_decode(self, tex0s, dest_dir=None, overwrite=None):
+            if overwrite is None:
+                overwrite = self.OVERWRITE_IMAGES
+            tmp = os.getcwd()
+            if dest_dir is not None:
+                if not os.path.exists(dest_dir):
+                    os.mkdir(dest_dir)
+                os.chdir(dest_dir)
+            files = []
+            for tex in tex0s:
+                name = tex.name
+                if overwrite or not os.path.exists(name + '.png'):
+                    f = BinFile(name, 'w')
+                    tex.pack(f)
+                    f.commitWrite()
+                    files.append(name)
+            result = subprocess.call([self.converter, 'decode', '*',
+                                      '--no-mipmaps', '-qo'])
+            if result:
+                raise DecodeError('Failed to decode images')
+            for x in files:
+                os.remove(x)
+            files = os.listdir()
+            os.chdir(tmp)
+            return files
 
         def convert(self, tex0, tex_format):
             f = BinFile(self.temp_dest, 'w')
@@ -355,17 +428,15 @@ class ImgConverter:
             return t
 
         def set_mipmap_count(self, tex0, mip_count=-1):
-            fname = self.decode(tex0, self.temp_dest)
-            tex = self.encode(fname, tex0.format, mip_count)
-            tex0.paste(tex)
+            fname = self.decode(tex0, self.temp_dest, overwrite=True)
+            tex = self.encode(fname, tex0.parent, tex0.get_str(tex0.format), mip_count, overwrite=True)
 
         def set_dimensions(self, tex0, width, height):
-            tmp = self.decode(tex0, 'tmp.png')
+            tmp = self.decode(tex0, 'tmp.png', overwrite=True)
             from PIL import Image
             self.resize_image(Image.open(tmp), width, height, tmp)
-            tex = self.encode(tmp, tex0.get_str(tex0.format))
+            tex = self.encode(tmp, tex0.parent, tex0.get_str(tex0.format), overwrite=True)
             os.remove(tmp)
-            tex0.paste(tex)
             return tex0
 
     def __getattr__(self, item):

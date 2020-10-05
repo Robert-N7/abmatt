@@ -17,11 +17,11 @@ class PointCollection:
         """
         self.points = points
         self.face_indices = face_indices
-        if not minimum or not maximum:
-            self.minimum, self.maximum = self.__calc_min_max(points)
-        else:
-            self.minimum = [x for x in minimum]
-            self.maximum = [x for x in maximum]
+        # if not minimum or not maximum:
+        #     self.minimum, self.maximum = self.__calc_min_max(points)
+        # else:
+        self.minimum = minimum
+        self.maximum = maximum
 
     def __iter__(self):
         return iter(self.points)
@@ -73,31 +73,30 @@ class PointCollection:
 
     def flip_points(self):
         self.points[:, -1] = self.points[:, -1] * -1 + 1
-        self.minimum[-1] = min(self.points[:, -1])
-        self.maximum[-1] = max(self.points[:, -1])
 
-    def encode_data(self, points, remap_indices=None):
+    def encode_data(self, mdl0_points, get_index_remapper=False):
         """Encodes the point collection as geometry data, returns the data width (component count)
-        :type points: Points
+        :param get_index_remapper: set to true to get the index remapping, (useful for influences)
+        :type mdl0_points: Points
         :type self: PointCollection
-        :type remap_indices: list of np arrays to have their facepoint indices remapped
         """
-        points.minimum = self.minimum
-        points.maximum = self.maximum
+        self.minimum, self.maximum = self.__calc_min_max(self.points)
+        mdl0_points.minimum = self.minimum
+        mdl0_points.maximum = self.maximum
         form, divisor = self.get_format_divisor(self.minimum, self.maximum)
         points = self.points
         point_width = len(points[0])
         if form == 4:
-            points.stride = point_width * 4
+            mdl0_points.stride = point_width * 4
         elif form > 1:
-            points.stride = point_width * 2
+            mdl0_points.stride = point_width * 2
         else:
-            points.stride = point_width
-        points.comp_count = points.COMP_COUNT.index(point_width)
-        points.format = form
-        points.divisor = divisor
+            mdl0_points.stride = point_width
+        mdl0_points.comp_count = mdl0_points.COMP_COUNT.index(point_width)
+        mdl0_points.format = form
+        mdl0_points.divisor = divisor
         multiplyBy = 2 ** divisor
-        data = points.data
+        data = mdl0_points.data
         if divisor:
             if form == 3:
                 dtype = np.int16
@@ -111,15 +110,14 @@ class PointCollection:
                 raise ValueError(f'Unexpected format {form} for divisor {divisor}')
             self.encode_points(multiplyBy, dtype)
         points, index_remapper = self.__consolidate_points()
-        if index_remapper and remap_indices:
-            for indices in remap_indices:
-                self.remap_face_points(indices, index_remapper)
-        points.count = len(self)
-        if points.count > 0xffff:
-            raise Converter.ConvertError(f'{points.name} has too many points! ({points.count})')
+        mdl0_points.count = len(points)
+        if mdl0_points.count > 0xffff:
+            raise Converter.ConvertError(f'{mdl0_points.name} has too many points! ({mdl0_points.count})')
         for x in points:
             data.append(x)
         self.points = points
+        if get_index_remapper:
+            return form, divisor, index_remapper
         return form, divisor
 
     @staticmethod

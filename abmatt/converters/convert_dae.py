@@ -10,7 +10,7 @@ from abmatt.converters.arg_parse import cmdline_convert
 from converters.controller import Controller, get_controller
 from abmatt.converters.convert_lib import Converter
 from converters.geometry import decode_polygon
-from converters.influence import InfluenceCollection, decode_mdl0_influences
+from converters.influence import InfluenceCollection, decode_mdl0_influences, InfluenceManager
 from converters.material import Material
 from abmatt.converters.dae import Dae, ColladaNode
 from converters.matrix import combine_matrices, srt_to_matrix
@@ -23,6 +23,8 @@ class DaeConverter2(Converter):
         self.bones = {}
         self.dae = dae = Dae(self.mdl_file)
         self.__parse_materials(dae.get_materials())
+        self.controllers = []
+        self.influences = InfluenceManager()   # this is to track all influences, consolidating from each controller
         # geometry
         matrix = np.identity(4)
         if self.DETECT_FILE_UNITS:
@@ -30,18 +32,14 @@ class DaeConverter2(Converter):
                 for i in range(3):
                     matrix[i][i] = dae.unit_meter
         material_geometry_map = {}
-        start = time.time()
         self.__parse_nodes(dae.get_scene(), material_geometry_map, matrix)
-        print(f'{time.time() - start} secs parsing nodes...')
-        start = time.time()
+        self.__parse_controllers(material_geometry_map)
+        self.influences.encode_bone_weights(self.mdl0)
         for material in material_geometry_map:
             geometries = material_geometry_map[material]
             for x in geometries:
                 self.__encode_geometry(x)
-        print(f'{time.time() - start} secs encoding geometry...')
-        start = time.time()
         self._import_images(dae.get_images())
-        print(f'{time.time() - start} secs importing images...')
         return self._end_loading()
 
     def save_model(self, mdl0=None):
@@ -103,8 +101,12 @@ class DaeConverter2(Converter):
                 self.tex0_map[layer] = tex0
         return Material(material.name, diffuse_map, ambient_map, specular_map, material.xlu * 0.5)
 
+    def __parse_controllers(self, material_geometry_map):
+        for controller, matrix in self.controllers:
+            self.__parse_controller(controller, matrix, material_geometry_map)
+
     def __parse_controller(self, controller, matrix, material_geometry_map):
-        geometry = controller.get_bound_geometry(self.bones, matrix)
+        geometry, influences = controller.get_bound_geometry(self.bones, self.influences, matrix)
         self.__add_geometry(geometry, material_geometry_map)
 
     def __encode_geometry(self, geometry, bone=None):
@@ -121,11 +123,7 @@ class DaeConverter2(Converter):
 
     def __add_bone(self, node, parent_bone=None, matrix=None):
         name = node.attrib['id']
-        bone = self.mdl0.add_bone(name, parent_bone)
-        if name in self.bones:
-            bone.bone_id = self.bones[name]
-        else:
-            self.bones[name] = bone.bone_id
+        self.bones[name] = bone = self.mdl0.add_bone(name, parent_bone)
         self.set_bone_matrix(bone, matrix)
         for n in node.nodes:
             self.__add_bone(n, bone, matrix=n.get_matrix())
@@ -144,7 +142,8 @@ class DaeConverter2(Converter):
             current_node_matrix = combine_matrices(matrix, node.matrix)
             bone_added = False
             if node.controller:
-                self.__parse_controller(node.controller, current_node_matrix, material_geometry_map)
+                self.controllers.append((node.controller, current_node_matrix))
+                # self.__parse_controller(node.controller, current_node_matrix, material_geometry_map)
             elif node.geometries:
                 for x in node.geometries:
                     if current_node_matrix is not None:

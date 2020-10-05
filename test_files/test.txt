@@ -1,5 +1,8 @@
-# Convert ../brres_files/cow.brres TO ../test_files/test.dae
-Convert ../brres_files/simple.brres TO ../test_files/test.dae
-# CONVERT ../test_files/simple_multi_bone_rigged.dae TO ../brres_files/test.brres
-# select * in ../brres_files/simple.brres
-save as ../brres_files/test.brres overwrite
+Convert hanachan in ../brres_files/hanachan.brres TO ../test_files/test.dae
+# convert ../test_files/3ds_simple_multi_bone.dae to ../brres_files/test.brres
+# Convert ../brres_files/simple.brres TO ../test_files/test.dae
+# CONVERT ../test_files/3ds_simple.dae TO ../brres_files/test.brres
+# select * in ../brres_files/simple_multi_bone_rigged.brres
+# select * in ../brres_files/simple_multi_bone_rigged.brres
+# select * in ../brres_files/test.brres
+# save as ../brres_files/test.brres overwrite

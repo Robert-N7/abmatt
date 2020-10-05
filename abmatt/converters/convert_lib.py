@@ -33,7 +33,6 @@ class Converter:
             os.chdir(dir)
         base_name, ext = os.path.splitext(name)
         self.image_dir = base_name + '_maps'
-        self.texture_library = self.brres.get_texture_map()
         self.influences = decode_mdl0_influences(mdl0)
         self.tex0_map = {}
         return base_name
@@ -93,7 +92,16 @@ class Converter:
         """Untested set translation/scale/rotation with matrix"""
         bone.transform_matrix = matrix[:3]  # don't include fourth row
         bone.inverse_matrix = np.linalg.inv(matrix)[:3]
-        bone.scale, bone.rotation, bone.translation = matrix_to_srt(matrix)
+        scale, rotation, translation = matrix_to_srt(matrix)
+        bone.scale = scale
+        bone.fixed_scale = np.allclose(scale, 1)
+        bone.scale_equal = scale[2] == scale[1] == scale[0]
+        bone.rotation = rotation
+        bone.fixed_rotation = np.allclose(rotation, 0)
+        bone.translation = translation
+        bone.fixed_translation = np.allclose(translation, 0)
+
+
 
     @staticmethod
     def is_identity_matrix(mtx):
@@ -117,19 +125,11 @@ class Converter:
     def _create_image_library(self, tex0s):
         if not tex0s:
             return True
-        image_dir = self.image_dir
-        if not os.path.exists(image_dir):
-            os.mkdir(image_dir)
         converter = ImgConverter()
         if not converter:
             AUTO_FIXER.error('No image converter found!')
             return False
-        os.chdir(image_dir)
-        for tex in tex0s:
-            destination = tex.name + '.png'
-            if self.OVERWRITE_IMAGES or not os.path.exists(destination):
-                converter.decode(tex, destination)
-        os.chdir('..')
+        converter.batch_decode(tex0s, self.image_dir)
         return True
 
     @staticmethod
@@ -142,72 +142,39 @@ class Converter:
         return normalized
 
     def _import_images(self, image_path_map):
-        try:
-            normalized = False
-            image_paths = {}
-            for map in self.image_library:  # only add images that are used
-                path = image_path_map.get(map)
+        normalized = False
+        image_paths = {}
+        for map in self.image_library:  # only add images that are used
+            path = image_path_map.get(map)
+            if path is None:
+                if not normalized:
+                    image_path_map = self.__normalize_image_path_map(image_path_map)
+                    path = image_path_map.get(map)
+                    normalized = True
                 if path is None:
-                    if not normalized:
-                        image_path_map = self.__normalize_image_path_map(image_path_map)
-                        path = image_path_map.get(map)
-                        normalized = True
-                    if path is None:
-                        continue
-                image_paths[map] = path
-                # self._try_import_texture(self.brres, path, map)
+                    continue
+            image_paths[map] = path
+        try:
+            return self._try_import_textures(self.brres, image_paths)
         except NoImgConverterError as e:
             AUTO_FIXER.error(e)
 
-    def _try_import_texture(self, brres, image_path, layer_name=None):
-        if not layer_name:
-            layer_name = os.path.splitext(os.path.basename(image_path))[0]
-        if not brres.hasTexture(layer_name):
-            if len(image_path) < 4:
-                AUTO_FIXER.warn('Image path {} is not valid'.format(image_path))
-                return layer_name
-            ext = image_path[-4:].lower()
-            # check it if it's the first or if a resize occurred or not correct extension
-            if self.is_first_image or self.check_image or ext != '.png':
-                self.is_first_image = False
-                if image_path.startswith('file://'):
-                    image_path = image_path.replace('file://', '')
-                if not os.path.exists(image_path):
-                    return layer_name
-                im = Image.open(image_path)
-                modified = False
-                if ext != '.png':
-                    AUTO_FIXER.info(f'Conversion from {ext} to tex0 not supported, converting to png', 4)
-                    dir, name = os.path.split(image_path)
-                    image_path = os.path.join(dir, os.path.splitext(name)[0] + '.png')
-                    modified = True
-                width, height = im.size
-                if width > Tex0.MAX_IMG_SIZE or height > Tex0.MAX_IMG_SIZE:
-                    new_width, new_height = Tex0.get_scaled_size(width, height)
-                    b = Bug(2, 2, f'Texture {layer_name} too large ({width}x{height}).',
-                            f'Resize to {new_width}x{new_height}.')
-                    dir, name = os.path.split(image_path)
-                    base, ext = os.path.splitext(name)
-                    image_path = os.path.join(dir, base + '-resized' + ext)
-                    im = im.resize((width, height), ImgConverterI.get_resample())
-                    modified = True
-                    self.check_image = True
-                    b.resolve()
-                if modified:
-                    im.save(image_path)
+    @staticmethod
+    def _try_import_textures(brres, image_paths):
+        if len(image_paths):
             try:
-                brres.import_texture(image_path, layer_name)
+                converter = ImgConverter()
+                converter.batch_encode(image_paths.values(), brres, overwrite=converter.OVERWRITE_IMAGES)
             except EncodeError:
-                AUTO_FIXER.warn('Failed to encode image {}'.format(image_path))
-        return layer_name
+                AUTO_FIXER.warn('Failed to encode images')
+        return image_paths
 
     def __init__(self, brres, mdl_file, flags=0):
         self.brres = brres
+        self.texture_library = brres.get_texture_map()
         self.mdl_file = mdl_file
         self.mdl0 = None
         self.flags = flags
-        self.check_image = False
-        self.is_first_image = True
         self.image_library = set()
         self.replacement_model = None
 

@@ -1,5 +1,6 @@
 import numpy as np
 
+from brres.mdl0.definition import get_definition
 from converters.matrix import apply_matrix, apply_matrix_single, get_rotation_matrix, scale_matrix, translate_matrix
 
 
@@ -17,16 +18,24 @@ class Joint:
 
 
 class Influence:
-    def __init__(self, weights=None):
-        self.weights = {} if weights is None else weights
-        self.rotation_matrix = self.matrix = None
+    """
+    Influence is used for skins to determine how bones effect vertices
+    An influence consists of a number of bone weights, the bone matrices
+    are combined using their corresponding weights to get a transformation matrix,
+    which is applied to the vertices.
+    """
+
+    def __init__(self, bone_weights=None):
+        self.bone_weights = {} if bone_weights is None else bone_weights
+        self.rotation_matrix = self.matrix = self.inv_matrix = None
+        self.influence_id = None
 
     def get_matrix(self):
         if self.matrix is None:
             # calculate matrix
             matrix = None
-            for bone in self.weights:
-                weight = self.weights[bone]
+            for bone in self.bone_weights:
+                weight = self.bone_weights[bone]
                 if matrix is None:
                     matrix = np.array(weight.bone.get_transform_matrix())
                     # self.rotation_matrix, scale = get_rotation_matrix(matrix, True)
@@ -37,45 +46,53 @@ class Influence:
             self.matrix = matrix
         return self.matrix
 
-    def apply_to(self, vertex):
-        """Takes a vertex and apply influence"""
+    def get_inv_matrix(self):
+        if self.inv_matrix is None:
+            self.inv_matrix = np.linalg.inv(self.get_matrix())
+        return self.inv_matrix
+
+    def apply_to(self, vertex, decode=True):
+        """Takes a vertex and apply influence, mixed influences are ignored"""
         if self.is_mixed():
             return vertex
-        matrix = self.get_matrix()
+        matrix = self.get_matrix() if decode else self.get_inv_matrix()
         return apply_matrix_single(matrix, vertex)
 
-    def apply_to_all(self, vertices):
+    def apply_to_all(self, vertices, decode=True):
         if self.is_mixed():
             return vertices
-        matrix = self.get_matrix()
+        matrix = self.get_matrix() if decode else self.get_inv_matrix()
         return apply_matrix(matrix, vertices)
 
     def is_mixed(self):
-        return len(self.weights) > 1
+        return len(self.bone_weights) > 1
+
+    def get_single_bone_bind(self):
+        for x in self.bone_weights:
+            return self.bone_weights[x].bone
 
     def __len__(self):
-        return len(self.weights)
+        return len(self.bone_weights)
 
     def __iter__(self):
-        return iter(self.weights)
+        return iter(self.bone_weights)
 
     def __next__(self):
-        return next(self.weights)
-
-    def __getattr__(self, item):
-        return self.weights[item]
+        return next(self.bone_weights)
 
     def __eq__(self, other):
-        return self.weights == other.weights
+        return self.bone_weights == other.bone_weights
 
     def __setitem__(self, key, value):
-        self.weights[key] = value
+        self.bone_weights[key] = value
 
     def __getitem__(self, item):
-        return self.weights[item]
+        return self.bone_weights[item]
 
 
 class Weight:
+    """A single bone and weight pair"""
+
     def __init__(self, bone, weight):
         self.bone = bone
         self.weight = weight
@@ -85,13 +102,11 @@ class Weight:
 
 
 class InfluenceCollection:
-    def __init__(self, influences, vertex_id_map=None):
+    def __init__(self, influences):
         """
-        :param influences:  list of influences
-        :param vertex_id_map: maps vertices to influences
+        :param influences:  map of vertex indices to influences
         """
         self.influences = influences
-        self.vertex_id_map = vertex_id_map
 
     def __len__(self):
         return len(self.influences)
@@ -108,26 +123,101 @@ class InfluenceCollection:
     def __eq__(self, other):
         return self.influences == other.influences
 
+    def is_mixed(self):
+        return not (len(self.influences) == 1 and not self.influences[0].is_mixed())
+
+    def get_single_bone_bind(self):
+        for weight in self.influences[0]:
+            return weight.bone
+
+    def get_face_indices(self, vertex_face_indices):
+        influences = self.influences
+        return np.array([influences[vert].influence_id for vert in vertex_face_indices.flatten()]).reshape((-1, 3)) * 3
+
 
 def decode_mdl0_influences(mdl0):
+    influences = {}
     bones = mdl0.bones
     bonetable = mdl0.boneTable
-    influences = {}
+    # Get bonetable influences
+    for i in range(len(bonetable)):
+        index = bonetable[i]
+        if index >= 0:
+            bone = bones[bonetable[index]]
+            influences[i] = Influence(bone_weights={bone.name: Weight(bone, 1)})
     nodemix = mdl0.NodeMix
     if nodemix is not None:
-        for weight in nodemix.fixed_weights:
-            weight_id = weight.weight_id
-            bone = bones[bonetable[weight_id]]
-            influences[weight_id] = Influence({bone.name: Weight(bone, 1)})
+        # for weight in nodemix.fixed_weights:
+        #     weight_id = weight.weight_id
+        #     bone = bones[bonetable[weight_id]]
+        #     influences[weight_id] = Influence({bone.name: Weight(bone, 1)})
         for inf in nodemix.mixed_weights:
             weight_id = inf.weight_id
             influences[weight_id] = influence = Influence()
             for x in inf:
                 bone = bones[bonetable[x[0]]]
                 influence[bone.name] = Weight(bone, x[1])
-    else:
-        for i in range(len(bonetable)):
-            index = bonetable[i]
-            bone = bones[bonetable[index]]
-            influences[i] = Influence(weights={bone.name: Weight(bone, 1)})
     return InfluenceCollection(influences)
+
+
+class InfluenceManager:
+    """Manages all influences"""
+    def __init__(self):
+        self.mixed_influences = []      # influences with mixed weights
+        self.single_influences = []     # influences with single weights
+
+    def encode_bone_weights(self, mdl0):
+        self.__create_inf_ids()
+        remaining_bones = self.__create_bone_table(mdl0)
+        if self.mixed_influences:    # create node mix
+            self.__create_node_mix(mdl0, remaining_bones)
+
+    def create_or_find(self, influence):
+        inf_list = self.mixed_influences if influence.is_mixed() else self.single_influences
+        for x in inf_list:
+            if x == influence:
+                return x
+        inf_list.append(influence)
+        return influence
+
+    def __create_node_mix(self, mdl0, remaining_bones):
+        """Creates the mdl0 node mix"""
+        node_mix = mdl0.NodeMix
+        for x in self.single_influences:
+            node_mix.add_fixed_weight(x.influence_id, x.get_single_bone_bind().index)
+        for x in remaining_bones:
+            node_mix.add_fixed_weight(x.weight_id, x.index)
+        for inf in self.mixed_influences:
+            node_mix.add_mixed_weight(inf.influence_id, [(x.bone.weight_id, x.weight) for x in inf.bone_weights.values()])
+        return node_mix
+
+    def __create_inf_ids(self):
+        index = 0
+        for x in self.single_influences:
+            x.influence_id = index
+            index += 1
+        for x in self.mixed_influences:
+            x.influence_id = index
+            index += 1
+        return index
+
+    def __create_bone_table(self, mdl0):
+        single_binds = [x.get_single_bone_bind() for x in self.single_influences]
+        bonetable = []
+        for i in range(len(single_binds)):
+            bone = single_binds[i]
+            bone.weight_id = i
+            bonetable.append(bone.index)
+        # influence ids for mixed
+        mixed_length = len(self.mixed_influences)
+        if mixed_length:
+            bonetable += [-1] * mixed_length
+        # now gather up remaining bones
+        remaining = [x for x in mdl0.bones if x not in single_binds]
+        index = len(bonetable)
+        for x in remaining:
+            bonetable.append(x.index)
+            x.weight_id = index
+            index += 1
+        mdl0.set_bonetable(bonetable)
+        return remaining

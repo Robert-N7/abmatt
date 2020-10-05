@@ -18,24 +18,36 @@ class NodeMix(Node):
         self.fixed_weights = []
         super().__init__(name, parent, binfile)
 
-    def create_or_find_influence(self, influence):
-        if len(influence) > 1:
-            for x in self.mixed_weights:
-                if x.inf_eq(influence):
-                    return x.weight_id
-            # wasn't found! Let's create it
-            weight = self.MixedWeight(len(self.mixed_weights) + len(self.fixed_weights))
-            for x in influence:
-                weight.add_weight(*x)
-            return weight.weight_id
-        else:
-            # search in fixed weights
-            for x in self.fixed_weights:
-                if x.bone_id == influence[0]:
-                    return x.weight_id
-            # wasn't found! Let's create it
-            weight = self.FixedWeight(len(self.mixed_weights) + len(self.fixed_weights), influence[0])
-            return weight.weight_id
+    def add_mixed_weight(self, weight_id, weights):
+        """
+        :param weight_id:   the id that is referenced by facepoints
+        :param weights:     list of 2-tuples [(bone_id, weight), ...]
+        """
+        weight = self.MixedWeight(weight_id)
+        weight.weights = weights
+        self.mixed_weights.append(weight)
+
+    def add_fixed_weight(self, weight_id, bone_id):
+        self.fixed_weights.append(self.FixedWeight(weight_id, bone_id))
+
+    # def create_or_find_influence(self, influence):
+    #     if len(influence) > 1:
+    #         for x in self.mixed_weights:
+    #             if x.inf_eq(influence):
+    #                 return x.weight_id
+    #         # wasn't found! Let's create it
+    #         weight = self.MixedWeight(len(self.mixed_weights) + len(self.fixed_weights))
+    #         for x in influence:
+    #             weight.add_weight(*x)
+    #         return weight.weight_id
+    #     else:
+    #         # search in fixed weights
+    #         for x in self.fixed_weights:
+    #             if x.bone_id == influence[0]:
+    #                 return x.weight_id
+    #         # wasn't found! Let's create it
+    #         weight = self.FixedWeight(len(self.mixed_weights) + len(self.fixed_weights), influence[0])
+    #         return weight.weight_id
 
     class MixedWeight:
         def __init__(self, weight_id=None, binfile=None):

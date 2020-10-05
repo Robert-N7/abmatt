@@ -219,12 +219,14 @@ class Brres(Clipable):
             self.add_tex0(tex_map[x])
 
     def import_texture(self, image_path, name=None):
-        tex0 = ImgConverter().encode(image_path)
+        tex0 = ImgConverter().encode(image_path, self)
         if tex0:
             if name:
                 tex0.name = name
-            self.add_tex0(tex0)
         return tex0
+
+    def import_textures(self, paths, tex0_format=None, num_mips=-1, check=False):
+        return ImgConverter().batch_encode(paths, tex0_format, num_mips, check)
 
     def rename_texture(self, tex0, name):
         self.texture_map[tex0.name] = None

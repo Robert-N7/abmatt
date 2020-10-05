@@ -52,6 +52,7 @@ class Chr0(SubFile):
         while len(f):
             name = f.recallEntryI()
             self.animations.append(self.ModelAnim(name, binfile.offset - binfile.beginOffset))
+        binfile.end()
 
     def pack(self, binfile):
         self._pack(binfile)

@@ -262,7 +262,7 @@ class Polygon(Node):
             self.tex_divisor[i] = uvatb >> 4 & 0x1f
             uvatb >>= 9
         self.tex_e[4] = uvatb & 1
-        self.tex_format[4] = uvatb >> 1
+        self.tex_format[4] = uvatb >> 1 & 0x7
         self.tex_divisor[4] = uvatc & 0x1f
         uvatc >>= 5
         for i in range(5, 8):

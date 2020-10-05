@@ -7,7 +7,7 @@ class Bone(Node):
                        (0, 1, 0, 0),
                        (0, 0, 1, 0))
 
-    def __init__(self, name, parent, binfile=None, has_geometry=True,
+    def __init__(self, name, parent, binfile=None, has_geometry=False,
                  scale_equal=True, fixed_scale=True,
                  fixed_rotation=True, fixed_translation=True):
         self.no_transform = False
@@ -26,7 +26,7 @@ class Bone(Node):
 
     def begin(self):
         self.index = 0
-        self.bone_id = 0       # id in bone_table
+        self.weight_id = 0       # id in bone_table
         self.billboard = 0
         self.scale = (1, 1, 1)
         self.rotation = (0, 0, 0)
@@ -111,7 +111,7 @@ class Bone(Node):
         self.offset = binfile.start()
         binfile.readLen()
         binfile.advance(8)
-        self.index, self.bone_id, flags, self.billboard = binfile.read('4I', 20)
+        self.index, self.weight_id, flags, self.billboard = binfile.read('4I', 20)
         self.__parse_flags(flags)
         self.scale = binfile.read('3f', 12)
         self.rotation = binfile.read('3f', 12)
@@ -150,7 +150,7 @@ class Bone(Node):
         binfile.markLen()
         binfile.write('i', binfile.getOuterOffset())
         binfile.storeNameRef(self.name)
-        binfile.write('5I', self.index, self.bone_id, self.__get_flags(), self.billboard, 0)
+        binfile.write('5I', self.index, self.weight_id, self.__get_flags(), self.billboard, 0)
         binfile.write('3f', *self.scale)
         binfile.write('3f', *self.rotation)
         binfile.write('3f', *self.translation)
