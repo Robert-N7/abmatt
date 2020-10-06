@@ -18,6 +18,9 @@ class NodeMix(Node):
         self.fixed_weights = []
         super().__init__(name, parent, binfile)
 
+    def __bool__(self):
+        return bool(self.mixed_weights)
+
     def add_mixed_weight(self, weight_id, weights):
         """
         :param weight_id:   the id that is referenced by facepoints

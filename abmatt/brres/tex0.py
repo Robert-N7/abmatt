@@ -190,6 +190,33 @@ class ImgConverterI:
     def __init__(self, converter):
         self.converter = converter
 
+    @staticmethod
+    def _get_tmp_dir_name():
+        prefix = name ='tmp'
+        id = 0
+        while os.path.exists(name):
+            name = prefix + str(id)
+            id += 1
+        return name
+
+    @staticmethod
+    def _move_to_temp_dir(files=[], tmp_dir=None):
+        if tmp_dir is None:
+            tmp_dir = ImgConverterI.__get_tmp_dir_name()
+        os.mkdir(tmp_dir)
+        for file in files:
+            shutil.copy(file, tmp_dir)
+        os.chdir(tmp_dir)
+        return tmp_dir
+
+    @staticmethod
+    def _move_out_of_temp_dir(tmp_dir, files=[]):
+        parent_dir = '..'
+        for file in files:
+            shutil.move(file, parent_dir)
+        os.chdir(parent_dir)
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
     def encode(self, img_file, tex_format, num_mips=-1, check=False):
         raise NotImplementedError()
 
@@ -313,21 +340,6 @@ class ImgConverter:
             t.name = name
             return t
 
-        @staticmethod
-        def __move_to_temp_dir(files, tmp_dir):
-            if os.path.exists(tmp_dir):
-                shutil.rmtree(tmp_dir, ignore_errors=True)
-            os.mkdir(tmp_dir)
-            for file in files:
-                shutil.copy(file, tmp_dir)
-            os.chdir(tmp_dir)
-            return os.listdir()
-
-        @staticmethod
-        def __move_out_of_temp_dir(tmp_dir):
-            os.chdir('..')
-            shutil.rmtree(tmp_dir, ignore_errors=True)
-
         def batch_encode(self, files, brres, tex_format=None, num_mips=-1, check=False, overwrite=None):
             """Batch encode, faster than single encode when doing multiple files"""
             if overwrite is None:
@@ -338,7 +350,7 @@ class ImgConverter:
             t_files = [self.find_file(x) for x in files]
             tmp = 'abmatt-tmp'
             # create a new dir to work in
-            t_files = self.__move_to_temp_dir(t_files, tmp)
+            self._move_to_temp_dir(t_files)
             path_set = set()
             textures = brres.get_texture_map()
             for x in t_files:
@@ -346,7 +358,7 @@ class ImgConverter:
                 if overwrite or name not in textures:
                     path_set.add(path)
             if not len(path_set):
-                self.__move_out_of_temp_dir(tmp)
+                self._move_out_of_temp_dir(tmp)
                 return None
             if check:
                 for x in path_set:
@@ -354,7 +366,7 @@ class ImgConverter:
             result = subprocess.call([self.converter, 'encode', '*',
                                       '-x', tex_format, mips, '-qo'])
             if result:
-                self.__move_out_of_temp_dir(tmp)
+                self._move_out_of_temp_dir(tmp)
                 raise EncodeError('Failed to encode images {}'.format(files))
             tex0s = []
             new_files = os.listdir()
@@ -363,7 +375,7 @@ class ImgConverter:
                     t = Tex0(x, brres, BinFile(x))
                     tex0s.append(t)
                     brres.add_tex0(t)
-            self.__move_out_of_temp_dir(tmp)    # cleanup
+            self._move_out_of_temp_dir(tmp)    # cleanup
             return tex0s
 
         def decode(self, tex0, dest_file, overwrite=None):
@@ -390,13 +402,19 @@ class ImgConverter:
             return dest_file
 
         def batch_decode(self, tex0s, dest_dir=None, overwrite=None):
+            if not tex0s:
+                return
             if overwrite is None:
                 overwrite = self.OVERWRITE_IMAGES
             tmp = os.getcwd()
+            use_temp_dir = True
             if dest_dir is not None:
                 if not os.path.exists(dest_dir):
                     os.mkdir(dest_dir)
+                    use_temp_dir = False
                 os.chdir(dest_dir)
+            if use_temp_dir:    # use a temporary directory if this one already has stuff
+                tmp_dir = self._move_to_temp_dir()
             files = []
             for tex in tex0s:
                 name = tex.name
@@ -405,6 +423,10 @@ class ImgConverter:
                     tex.pack(f)
                     f.commitWrite()
                     files.append(name)
+            if not files:   # our work is already done!
+                if use_temp_dir:
+                    self._move_out_of_temp_dir(tmp_dir)
+                return files
             result = subprocess.call([self.converter, 'decode', '*',
                                       '--no-mipmaps', '-qo'])
             if result:
@@ -412,6 +434,8 @@ class ImgConverter:
             for x in files:
                 os.remove(x)
             files = os.listdir()
+            if use_temp_dir:
+                self._move_out_of_temp_dir(tmp_dir, files)
             os.chdir(tmp)
             return files
 

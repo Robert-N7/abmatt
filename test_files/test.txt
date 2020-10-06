@@ -1,4 +1,4 @@
-Convert hanachan in ../brres_files/hanachan.brres TO ../test_files/test.dae
+Convert ../test_files/cow.dae to ../test_files/test.brres
 # convert ../test_files/3ds_simple_multi_bone.dae to ../brres_files/test.brres
 # Convert ../brres_files/simple.brres TO ../test_files/test.dae
 # CONVERT ../test_files/3ds_simple.dae TO ../brres_files/test.brres

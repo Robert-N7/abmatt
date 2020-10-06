@@ -1,7 +1,8 @@
 import numpy as np
 
 from brres.mdl0.definition import get_definition
-from converters.matrix import apply_matrix, apply_matrix_single, get_rotation_matrix, scale_matrix, translate_matrix
+from converters.matrix import apply_matrix, apply_matrix_single, get_rotation_matrix, scale_matrix, translate_matrix, \
+    rotation_matrix_to_transform
 
 
 class Joint:
@@ -25,10 +26,17 @@ class Influence:
     which is applied to the vertices.
     """
 
-    def __init__(self, bone_weights=None):
+    def __init__(self, bone_weights=None, influence_id=None):
         self.bone_weights = {} if bone_weights is None else bone_weights
         self.rotation_matrix = self.matrix = self.inv_matrix = None
-        self.influence_id = None
+        self.influence_id = influence_id
+
+    def calc_matrix(self, bone, matrix=None, inverse=False):
+        if bone is None:
+            return matrix
+        bone_matrix = bone.get_transform_matrix() if not inverse else bone.get_inv_transform_matrix()
+        matrix = np.dot(bone_matrix, matrix) if matrix is not None else bone_matrix
+        return self.calc_matrix(bone.get_bone_parent(), matrix, inverse)
 
     def get_matrix(self):
         if self.matrix is None:
@@ -38,7 +46,10 @@ class Influence:
                 weight = self.bone_weights[bone]
                 if matrix is None:
                     matrix = np.array(weight.bone.get_transform_matrix())
-                    # self.rotation_matrix, scale = get_rotation_matrix(matrix, True)
+                    # self.rotation_matrix = get_rotation_matrix(matrix)
+                    self.rotation_matrix = np.linalg.inv(get_rotation_matrix(matrix))
+                    # matrix = np.dot(rotation_matrix_to_transform(self.rotation_matrix), matrix)
+                    # matrix = self.calc_matrix(weight.bone)
                     # mtx = scale_matrix(np.identity(4), scale)
                     # matrix = translate_matrix(mtx, matrix[:, 3])
                 else:
@@ -46,9 +57,13 @@ class Influence:
             self.matrix = matrix
         return self.matrix
 
+    def get_rotation_matrix(self):
+        return self.rotation_matrix
+
     def get_inv_matrix(self):
         if self.inv_matrix is None:
             self.inv_matrix = np.linalg.inv(self.get_matrix())
+            self.rotation_matrix = np.linalg.inv(self.rotation_matrix)
         return self.inv_matrix
 
     def apply_to(self, vertex, decode=True):
@@ -62,7 +77,11 @@ class Influence:
         if self.is_mixed():
             return vertices
         matrix = self.get_matrix() if decode else self.get_inv_matrix()
-        return apply_matrix(matrix, vertices)
+        vertices = apply_matrix(matrix, vertices)
+        # rotation_matrix = self.get_rotation_matrix()
+        # for i in range(len(vertices)):
+        #     vertices[i] = np.dot(rotation_matrix, vertices[i])
+        return vertices
 
     def is_mixed(self):
         return len(self.bone_weights) > 1
@@ -144,7 +163,7 @@ def decode_mdl0_influences(mdl0):
         index = bonetable[i]
         if index >= 0:
             bone = bones[bonetable[index]]
-            influences[i] = Influence(bone_weights={bone.name: Weight(bone, 1)})
+            influences[i] = Influence(bone_weights={bone.name: Weight(bone, 1)}, influence_id=index)
     nodemix = mdl0.NodeMix
     if nodemix is not None:
         # for weight in nodemix.fixed_weights:
@@ -153,7 +172,7 @@ def decode_mdl0_influences(mdl0):
         #     influences[weight_id] = Influence({bone.name: Weight(bone, 1)})
         for inf in nodemix.mixed_weights:
             weight_id = inf.weight_id
-            influences[weight_id] = influence = Influence()
+            influences[weight_id] = influence = Influence(influence_id=weight_id)
             for x in inf:
                 bone = bones[bonetable[x[0]]]
                 influence[bone.name] = Weight(bone, x[1])
@@ -167,6 +186,7 @@ class InfluenceManager:
         self.single_influences = []     # influences with single weights
 
     def encode_bone_weights(self, mdl0):
+        self.single_influences = sorted(self.single_influences, key=lambda x: x.get_single_bone_bind().index)
         self.__create_inf_ids()
         remaining_bones = self.__create_bone_table(mdl0)
         if self.mixed_influences:    # create node mix
@@ -213,7 +233,7 @@ class InfluenceManager:
         if mixed_length:
             bonetable += [-1] * mixed_length
         # now gather up remaining bones
-        remaining = [x for x in mdl0.bones if x not in single_binds]
+        remaining = sorted([x for x in mdl0.bones if x not in single_binds], key=lambda x: x.index)
         index = len(bonetable)
         for x in remaining:
             bonetable.append(x.index)

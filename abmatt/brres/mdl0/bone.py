@@ -38,6 +38,9 @@ class Bone(Node):
         self.transform_matrix = [[y for y in x] for x in self.identity_matrix]
         self.inverse_matrix = [[y for y in x] for x in self.identity_matrix]
 
+    def get_bone_parent(self):
+        return self.b_parent
+
     def get_transform_matrix(self):
         matrix = [[y for y in x] for x in self.transform_matrix]
         matrix.append([0,0,0,1])

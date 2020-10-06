@@ -406,11 +406,13 @@ def decode_polygon(polygon, influences):
         for i in range(len(decoded_verts)):
             influence = influences[ordered[i]]
             geo_infs[i] = influence
-            decoded_verts[i] = np.dot(rotation_matrix, influence.apply_to(decoded_verts[i]))
+            # decoded_verts[i] = influence.apply_to(decoded_verts[i], decode=True)
+            decoded_verts[i] = np.dot(influence.apply_to(decoded_verts[i], decode=True), rotation_matrix)
+
         influence_collection = InfluenceCollection(geo_infs)
     else:
         influence = influences[polygon.bone]  # todo need to check this
-        decoded_verts = influence.apply_to_all(decoded_verts)
+        decoded_verts = influence.apply_to_all(decoded_verts, decode=True)
         for i in range(len(decoded_verts)):
             decoded_verts[i] = np.dot(rotation_matrix, decoded_verts[i])
         influence_collection = InfluenceCollection({0: influence})

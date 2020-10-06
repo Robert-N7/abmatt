@@ -9,6 +9,10 @@ def apply_matrix_single(matrix, point):
     return np.dot(matrix[:3], np.append(point, 1))
 
 
+def rotation_matrix_to_transform(matrix):
+    return np.append(np.append(matrix, np.array([0] * 3).reshape((3, 1)), 1), np.array([[0, 0, 0, 1]]), 0)
+
+
 def apply_matrix(matrix, points):
     if np.allclose(matrix, IDENTITY):
         return points
