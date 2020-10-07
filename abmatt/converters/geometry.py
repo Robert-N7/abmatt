@@ -2,6 +2,7 @@ from struct import unpack_from, pack
 
 import numpy as np
 
+from brres.lib.autofix import AUTO_FIXER
 from brres.mdl0.color import Color
 from brres.mdl0.normal import Normal
 from brres.mdl0.polygon import Polygon
@@ -146,12 +147,11 @@ class Geometry:
         vert = Vertex(self.name, mdl0)
         mdl0.add_to_group(mdl0.vertices, vert)
         linked_bone = self.linked_bone
-        rotation_matrix = get_rotation_matrix(np.array(linked_bone.get_transform_matrix(), dtype=float))
         points = vertices.points
         if polygon.has_pos_matrix:
             for i in range(len(vertices)):
                 influence = self.influences[i]
-                points[i] = np.dot(rotation_matrix, influence.apply_to(points[i], decode=False))
+                points[i] = influence.apply_to(points[i], decode=False)
             polygon.vertex_format, polygon.vertex_divisor, remapper = vertices.encode_data(vert, True)
             if remapper is not None:
                 new_inf_map = {}
@@ -160,6 +160,7 @@ class Geometry:
                     new_inf_map[remapper[i]] = old_inf_map[i]
                 self.influences.influences = new_inf_map
         else:
+            rotation_matrix = get_rotation_matrix(np.array(linked_bone.get_transform_matrix(), dtype=float))
             for i in range(len(points)):
                 points[i] = np.dot(rotation_matrix, points[i])
             inv_matrix = np.array(linked_bone.get_inv_transform_matrix(), dtype=float)
@@ -297,12 +298,17 @@ def get_stride(fmt_str):
 
 
 def decode_indices(polygon, fmt_str):
+    """Given a polygon and decoder string, decode the facepoint indices
+        :return (face_point_indices, weight_groups)
+        weight_groups is a map of the face_point index to a list of weight indices (matrices loaded)
+    """
     # now decode the indices
     face_point_indices = []
     stride = get_stride(fmt_str)
     data = polygon.vt_data
     total_face_points = i = 0
-    bones = []
+    weight_groups = {}
+    new_weight_group = True
     face_point_count = polygon.facepoint_count
     while total_face_points < face_point_count:
         [cmd] = unpack_from('>B', data, i)
@@ -315,34 +321,70 @@ def decode_indices(polygon, fmt_str):
             elif cmd == 0x90:
                 i = decode_tris(fmt_str, stride, data, i, num_facepoints, face_point_indices)
             total_face_points += num_facepoints
+            new_weight_group = True
         elif cmd in (0x20, 0x28, 0x30):  # load matrix
+            if new_weight_group:
+                weight_groups[len(face_point_indices)] = weights = []
+                new_weight_group = False
             bone_index, len_and_xf_address = unpack_from('>2H', data, i)
             xf_address = 0xfff & len_and_xf_address
-            length = (len_and_xf_address >> 12) + 1
+            # length = (len_and_xf_address >> 12) + 1
             i += 4
             if cmd == 0x20:  # pos matrix
-                bones.append(bone_index)
+                index = xf_address // 12
+                if index == len(weights):
+                    weights.append(bone_index)
+                elif index < len(weights):
+                    weights[index] = bone_index
             elif cmd == 0x28:
                 pass  # normals  no parsing?
-            elif cmd == 0x30:   # tex matrix
+            elif cmd == 0x30:  # tex matrix
                 pass
             else:
                 raise Converter.ConvertError('Texture matrices not supported')
         else:
             raise ValueError('Unsupported draw cmd {}'.format(cmd))
-    return face_point_indices, bones
+    return face_point_indices, weight_groups
 
 
-def order_influences(vertex_indices, influence_indices):
-    arr, indices = np.unique(vertex_indices, return_index=True)
-    return influence_indices.flatten()[indices]
+def decode_pos_mtx_indices(all_influences, weight_groups, vertices, pos_mtx_indices):
+    """ Finds and applies the weight matrix to the corresponding vertices
+    :param all_influences: map of influence ids to influences
+    :param weight_groups: map of each beginning group face_point index to list of weights
+    :param vertices: PointCollection
+    :param pos_mtx_indices: np array of face_point indices corresponding to those in vertices
+    :return: InfluenceCollection
+    """
+    influences = {}     # map vertex indices to influences used by this geometry
+    vert_indices = vertices.face_indices
+    points = vertices.points
+    # Order the indices of each group so we can slice up the indices
+    slicer = sorted(weight_groups.keys())
+    slicer.append(len(vert_indices))  # add the max onto the end for slicing
 
+    # Each weighting slice group
+    for i in range(len(slicer) - 1):
+        start = slicer[i]
+        end = slicer[i + 1]
+        weights = np.array(weight_groups[start])
+        vertex_slice = vert_indices[start:end].flatten()
+        pos_mtx_slice = pos_mtx_indices[start:end].flatten()
+        # get the ordered indices corresponding to vertices
+        vertex_indices, indices = np.unique(vertex_slice, return_index=True)
+        weight_indices = weights[pos_mtx_slice[indices]]   # get the matrix corresponding to vert index, resolve to weight_id
 
-def apply_influences(influences, vertices, bone_transform_matrices):
-    """Applies the influence [(bone_id, weight), ...] to each vertex"""
-    assert len(influences) == len(vertices)
-    for i in range(len(influences)):
-        pass
+        # map each vertex id to an influence and apply it
+        for i in range(len(vertex_indices)):
+            vertex_index = vertex_indices[i]
+            if vertex_index not in influences:
+                influences[vertex_index] = influence = all_influences[weight_indices[i]]
+                points[vertex_index] = influence.apply_to(points[vertex_index], decode=True)
+            elif influences[vertex_index].influence_id != weight_indices[i]:
+                AUTO_FIXER.warn(f'vertex {vertex_index} has multiple different influences!')
+                influences[vertex_index] = all_influences[weight_indices[i]]
+
+    assert len(influences) == len(points)
+    return InfluenceCollection(influences)
 
 
 def decode_polygon(polygon, influences):
@@ -391,30 +433,22 @@ def decode_polygon(polygon, influences):
             texcoord_index = geometry_index
             geometry_index += 1
 
-    face_point_indices, bones = decode_indices(polygon, fmt_str)
+    face_point_indices, weights = decode_indices(polygon, fmt_str)
     face_point_indices = np.array(face_point_indices, dtype=np.uint)
     face_point_indices[:, [0, 1]] = face_point_indices[:, [1, 0]]
-    vert_face_points = face_point_indices[:, :, vertex_index]
-    decoded_verts = decode_geometry_group(vertices)
+    # decoded_verts =
+    g_verts = PointCollection(decode_geometry_group(vertices), face_point_indices[:, :, vertex_index])
     linked_bone = polygon.get_bone()
-    rotation_matrix = get_rotation_matrix(np.array(linked_bone.get_inv_transform_matrix(), dtype=float))
     if pos_matrix_index >= 0:  # apply influences to vertices
-        influence_indices = face_point_indices[:, :, pos_matrix_index].flatten() // 3
-        geo_infs = {}
-        # get the ordered indices corresponding to vertices
-        ordered = order_influences(vert_face_points, influence_indices)
-        for i in range(len(decoded_verts)):
-            influence = influences[ordered[i]]
-            geo_infs[i] = influence
-            # decoded_verts[i] = influence.apply_to(decoded_verts[i], decode=True)
-            decoded_verts[i] = np.dot(influence.apply_to(decoded_verts[i], decode=True), rotation_matrix)
-
-        influence_collection = InfluenceCollection(geo_infs)
+        influence_collection = decode_pos_mtx_indices(influences, weights, g_verts,
+                                                      face_point_indices[:, :, pos_matrix_index] // 3)
     else:
-        influence = influences[polygon.bone]  # todo need to check this
-        decoded_verts = influence.apply_to_all(decoded_verts, decode=True)
-        for i in range(len(decoded_verts)):
-            decoded_verts[i] = np.dot(rotation_matrix, decoded_verts[i])
+        influence = influences[linked_bone.weight_id]
+        rotation_matrix = get_rotation_matrix(np.array(linked_bone.get_inv_transform_matrix(), dtype=float))
+        decoded_verts = influence.apply_to_all(g_verts.points, decode=True)
+        if not np.allclose(rotation_matrix, np.identity(3)):
+            for i in range(len(decoded_verts)):
+                decoded_verts[i] = np.dot(rotation_matrix, decoded_verts[i])
         influence_collection = InfluenceCollection({0: influence})
     if tex_matrix_index > 0:
         for x in polygon.has_tex_matrix:
@@ -422,7 +456,6 @@ def decode_polygon(polygon, influences):
                 indices = face_point_indices[:, :, tex_matrix_index]
                 tex_matrix_index += 1
 
-    g_verts = PointCollection(decoded_verts, vert_face_points)
     geometry = Geometry(polygon.name, polygon.get_material().name, g_verts,
                         triangles=face_point_indices[:, :, vertex_index:], influences=influence_collection,
                         linked_bone=linked_bone)

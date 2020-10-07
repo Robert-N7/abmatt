@@ -202,7 +202,7 @@ class ImgConverterI:
     @staticmethod
     def _move_to_temp_dir(files=[], tmp_dir=None):
         if tmp_dir is None:
-            tmp_dir = ImgConverterI.__get_tmp_dir_name()
+            tmp_dir = ImgConverterI._get_tmp_dir_name()
         os.mkdir(tmp_dir)
         for file in files:
             shutil.copy(file, tmp_dir)
@@ -413,26 +413,25 @@ class ImgConverter:
                     os.mkdir(dest_dir)
                     use_temp_dir = False
                 os.chdir(dest_dir)
-            if use_temp_dir:    # use a temporary directory if this one already has stuff
-                tmp_dir = self._move_to_temp_dir()
             files = []
             for tex in tex0s:
                 name = tex.name
                 if overwrite or not os.path.exists(name + '.png'):
                     f = BinFile(name, 'w')
                     tex.pack(f)
-                    f.commitWrite()
-                    files.append(name)
+                    files.append(f)
             if not files:   # our work is already done!
-                if use_temp_dir:
-                    self._move_out_of_temp_dir(tmp_dir)
                 return files
+            if use_temp_dir:    # use a temporary directory if this one already has stuff
+                tmp_dir = self._move_to_temp_dir()
+            for x in files:
+                x.commitWrite()
             result = subprocess.call([self.converter, 'decode', '*',
                                       '--no-mipmaps', '-qo'])
             if result:
                 raise DecodeError('Failed to decode images')
             for x in files:
-                os.remove(x)
+                os.remove(x.filename)
             files = os.listdir()
             if use_temp_dir:
                 self._move_out_of_temp_dir(tmp_dir, files)

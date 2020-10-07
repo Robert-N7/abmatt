@@ -88,7 +88,8 @@ def get_controller(geometry):
     vert_counts = np.array(vert_counts, dtype=np.uint)
     bone_names = [x.name for x in bones]
     inv_bind_matrix = np.array([x.get_inv_transform_matrix() for x in bones], np.float)
-    bind_matrix = np.array(geometry.linked_bone.get_transform_matrix(), np.float)
-    bind_matrix[:3, 3] = 0  # 0 out translation
+    # bind_matrix = np.array(geometry.linked_bone.get_transform_matrix(), np.float)
+    # bind_matrix[:3, 3] = 0  # 0 out translation
+    bind_matrix = np.identity(4)
     return Controller(geometry.name, bind_matrix, inv_bind_matrix, bone_names, np.array(weights, float),
                       vert_counts, np.array(indexer, np.uint), geometry)

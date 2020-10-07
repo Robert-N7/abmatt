@@ -31,12 +31,25 @@ class Influence:
         self.rotation_matrix = self.matrix = self.inv_matrix = None
         self.influence_id = influence_id
 
-    def calc_matrix(self, bone, matrix=None, inverse=False):
-        if bone is None:
-            return matrix
-        bone_matrix = bone.get_transform_matrix() if not inverse else bone.get_inv_transform_matrix()
-        matrix = np.dot(bone_matrix, matrix) if matrix is not None else bone_matrix
-        return self.calc_matrix(bone.get_bone_parent(), matrix, inverse)
+    def __str__(self):
+        return ' '.join(self.bone_weights.keys())
+
+    # def calc_matrix(self, bone, matrix=None, inverse=False):
+    #     if bone is None:
+    #         return matrix
+    #     bone_matrix = bone.get_transform_matrix() if not inverse else bone.get_inv_transform_matrix()
+    #     matrix = np.dot(bone_matrix, matrix) if matrix is not None else bone_matrix
+    #     return self.calc_matrix(bone.get_bone_parent(), matrix, inverse)
+
+    def __get_transformation_bind(self, bone):
+        # translation = np.array(bone.get_transform_matrix())[:3, 3]
+        parent = bone.get_bone_parent()
+        if parent:
+            transform = self.__get_transformation_bind(parent)
+            # translation += transform
+        # return tb ranslation
+            return np.dot(transform, np.array(bone.get_transform_matrix()))
+        return np.array(bone.get_transform_matrix())
 
     def get_matrix(self):
         if self.matrix is None:
@@ -46,14 +59,8 @@ class Influence:
                 weight = self.bone_weights[bone]
                 if matrix is None:
                     matrix = np.array(weight.bone.get_transform_matrix())
-                    # self.rotation_matrix = get_rotation_matrix(matrix)
-                    self.rotation_matrix = np.linalg.inv(get_rotation_matrix(matrix))
-                    # matrix = np.dot(rotation_matrix_to_transform(self.rotation_matrix), matrix)
-                    # matrix = self.calc_matrix(weight.bone)
-                    # mtx = scale_matrix(np.identity(4), scale)
-                    # matrix = translate_matrix(mtx, matrix[:, 3])
                 else:
-                    matrix = np.dot(matrix, weight.bone.get_transform_matrix())
+                    raise NotImplementedError()
             self.matrix = matrix
         return self.matrix
 
@@ -63,7 +70,7 @@ class Influence:
     def get_inv_matrix(self):
         if self.inv_matrix is None:
             self.inv_matrix = np.linalg.inv(self.get_matrix())
-            self.rotation_matrix = np.linalg.inv(self.rotation_matrix)
+            # self.rotation_matrix = np.linalg.inv(self.rotation_matrix)
         return self.inv_matrix
 
     def apply_to(self, vertex, decode=True):
@@ -78,9 +85,6 @@ class Influence:
             return vertices
         matrix = self.get_matrix() if decode else self.get_inv_matrix()
         vertices = apply_matrix(matrix, vertices)
-        # rotation_matrix = self.get_rotation_matrix()
-        # for i in range(len(vertices)):
-        #     vertices[i] = np.dot(rotation_matrix, vertices[i])
         return vertices
 
     def is_mixed(self):
@@ -162,7 +166,7 @@ def decode_mdl0_influences(mdl0):
     for i in range(len(bonetable)):
         index = bonetable[i]
         if index >= 0:
-            bone = bones[bonetable[index]]
+            bone = bones[index]
             influences[i] = Influence(bone_weights={bone.name: Weight(bone, 1)}, influence_id=index)
     nodemix = mdl0.NodeMix
     if nodemix is not None:
