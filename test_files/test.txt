@@ -1,4 +1,5 @@
 Convert ../test_files/cow.dae to ../test_files/test.brres
 # convert cow in ../brres_files/cow.brres to ../test_files/test.dae
+# convert ../test_files/test.brres to ../test_files/test.dae
 # select * in ../brres_files/test.brres
 # save as ../brres_files/test.brres overwrite

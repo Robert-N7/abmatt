@@ -56,7 +56,7 @@ class PointCollection:
         matrix: 4x4 ndarray matrix
         """
         self.points = apply_matrix(matrix, self.points)
-        self.minimum, self.maximum = self.__calc_min_max(self.points)
+        # self.minimum, self.maximum = self.__calc_min_max(self.points)
 
     @staticmethod
     def get_format_divisor(minimum, maximum):
@@ -109,7 +109,9 @@ class PointCollection:
             else:
                 raise ValueError(f'Unexpected format {form} for divisor {divisor}')
             self.encode_points(multiplyBy, dtype)
-        points, index_remapper = self.__consolidate_points()
+        points, face_indices, index_remapper = self.__consolidate_points()
+        self.points = points
+        self.face_indices = face_indices
         mdl0_points.count = len(points)
         if mdl0_points.count > 0xffff:
             raise Converter.ConvertError(f'{mdl0_points.name} has too many points! ({mdl0_points.count})')
@@ -120,15 +122,6 @@ class PointCollection:
             return form, divisor, index_remapper
         return form, divisor
 
-    @staticmethod
-    def remap_face_points(face_indices, index_remapper):
-        face_height = len(face_indices)
-        face_width = len(face_indices[0])
-        for i in range(face_height):
-            x = face_indices[i]
-            for j in range(face_width):
-                x[j] = index_remapper[x[j]]
-
     def __consolidate_points(self, precision=None):
         points = self.points if not precision else np.around(self.points, precision)
         return consolidate_data(points, self.face_indices)
@@ -136,6 +129,16 @@ class PointCollection:
     def encode_points(self, multiplier, dtype):
         x = np.around(self.points * multiplier)
         self.points = x.astype(dtype)
+
+
+def remap_face_points(face_indices, index_remapper):
+    face_height = len(face_indices)
+    face_width = len(face_indices[0])
+    for i in range(face_height):
+        x = face_indices[i]
+        for j in range(face_width):
+            x[j] = index_remapper[x[j]]
+    return face_indices
 
 
 def consolidate_data(points, face_indices):
@@ -161,8 +164,8 @@ def consolidate_data(points, face_indices):
         else:
             index_remapper[original_index] = point_index
     if len(new_points) >= point_len:  # No gain
-        return points, None
+        return points, face_indices, None
     points = np.array(new_points, points.dtype)
     # Finally, update the face indices
-    PointCollection.remap_face_points(face_indices, index_remapper)
-    return points, index_remapper
+    face_indices = remap_face_points(face_indices, index_remapper)
+    return points, face_indices, index_remapper

@@ -154,7 +154,8 @@ class ColorCollection:
         return colors
 
     def consolidate(self):
-        return consolidate_data(self.rgba_colors, self.face_indices)[0]
+        self.rgba_colors, self.face_indices, remapper = consolidate_data(self.rgba_colors, self.face_indices)
+        return self.rgba_colors
 
     def normalize(self):
         """Normalizes data between 0-1 to 0-255"""

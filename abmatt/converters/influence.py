@@ -153,10 +153,81 @@ class InfluenceCollection:
         for weight in self.influences[0]:
             return weight.bone
 
-    def get_face_indices(self, vertex_face_indices):
+    def get_weighted_tri_groups(self, tri_face_points):
+        """
+        Get the WeightedTriGroups corresponding to the tri_face_points
+        """
         influences = self.influences
-        return np.array([influences[vert].influence_id for vert in vertex_face_indices.flatten()]).reshape((-1, 3)) * 3
+        tris = [WeightedTri(x, [influences[x[i][0]] for i in range(3)]) for x in tri_face_points]
+        # construct the groups
+        groups = [WeightedTriGroup()]
+        for x in tris:
+            added = False
+            for group in groups:
+                if group.try_adding(x):
+                    added = True
+                    break
+            if not added:
+                group = WeightedTriGroup([x])
+                groups.append(group)
+        return groups
 
+
+
+
+class WeightedTri:
+    def __init__(self, tripoints, influences):
+        # self.vertices = [x[0] for x in tripoints]
+        self.tripoints = tripoints
+        self.influences = influences
+
+
+class WeightedTriGroup:
+    """Represents a set of weighted triangles with a maximum of 10 influences"""
+    MAX_INFLUENCES = 10     # can only have 10 matrices max
+
+    def __init__(self, triangles=None):
+        self.triangles = []
+        self.influences = set()
+        self.matrices = None
+        if triangles is not None:
+            for x in triangles:
+                self.try_adding(x)
+
+    def try_adding(self, triangle):
+        """
+        Tries to add the weighted triangle to the group by determining if the corresponding influences
+        will be too much to hold in the group
+        :param triangle: weighted triangle
+        :return: True on success
+        """
+        need_adding = {inf.influence_id for inf in triangle.influences if inf.influence_id not in self.influences}
+        if len(need_adding) + len(self.influences) > self.MAX_INFLUENCES:
+            return False
+        for x in need_adding:
+            self.influences.add(x)
+        self.triangles.append(triangle)
+        return True
+
+    def get_influence_indices(self):
+        """
+        Gets the influence indices (matrices) and the facepoint indexer for the triangles
+        :return: influence indices,  np array shape (n, 3, 2)
+        """
+        matrices = []
+        remapper = {}
+        for inf in self.influences:
+            remapper[inf] = len(matrices) * 3
+            matrices.append(inf)
+
+        # now construct facepoints
+        facepoint_indexer = []
+        for triangle in self.triangles:
+            tri = []
+            for i in range(3):  # each tri point
+                tri.append((remapper[triangle.influences[i].influence_id], *triangle.tripoints[i]))
+            facepoint_indexer.append(tri)
+        return matrices, np.array(facepoint_indexer, np.uint)
 
 def decode_mdl0_influences(mdl0):
     influences = {}
@@ -168,12 +239,10 @@ def decode_mdl0_influences(mdl0):
         if index >= 0:
             bone = bones[index]
             influences[i] = Influence(bone_weights={bone.name: Weight(bone, 1)}, influence_id=index)
+
+    # Get mixed influences
     nodemix = mdl0.NodeMix
     if nodemix is not None:
-        # for weight in nodemix.fixed_weights:
-        #     weight_id = weight.weight_id
-        #     bone = bones[bonetable[weight_id]]
-        #     influences[weight_id] = Influence({bone.name: Weight(bone, 1)})
         for inf in nodemix.mixed_weights:
             weight_id = inf.weight_id
             influences[weight_id] = influence = Influence(influence_id=weight_id)

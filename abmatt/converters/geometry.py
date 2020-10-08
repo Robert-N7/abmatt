@@ -88,12 +88,14 @@ class Geometry:
         fmt_str += self.__encode_normals(p, self.normals, mdl)
         fmt_str += self.__encode_colors(p, self.colors, mdl)
         fmt_str += self.__encode_texcoords(p, self.texcoords, mdl)
-        data = self.__encode_tris(p, self.__construct_tris(p), fmt_str)
-        if data is None:
+        tris = self.__construct_tris()
+        if p.has_pos_matrix:
+            data, p.face_count, p.facepoint_count = self.__encode_weighted_tris(tris, fmt_str)
+        else:
+            data, p.face_count, p.facepoint_count = self.__encode_tris(tris, fmt_str)
+        if p.face_count <= 0:
             # todo, cleanup?
             return data
-        if p.has_pos_matrix:
-            data = self.__encode_load_matrices(p.bone_table) + data
         p.vt_data = data
         mdl.add_to_group(mdl.objects, p)
         material = mdl.getMaterialByName(self.material_name)
@@ -119,17 +121,30 @@ class Geometry:
         Geometry.__encode_load_matrices_helper(data, indices, 1024, 9, 0x28)
         return data
 
+    def __encode_weighted_tris(self, tris, fmt_str):
+        data = bytearray()
+        total_facepoint_count = total_face_count = 0
+        # first get the weighted groups
+        weighted_groups = self.influences.get_weighted_tri_groups(tris)
+        for group in weighted_groups:
+            # now get the matrices and face points, encode them for each group
+            matrices, face_points = group.get_influence_indices()
+            data.extend(self.__encode_load_matrices(matrices))
+            new_data, face_count, facepoint_count = self.__encode_tris(face_points, fmt_str)
+            if face_count > 0:
+                total_face_count += face_count
+                total_facepoint_count += facepoint_count
+                data.extend(new_data)
+        return data, total_face_count, total_facepoint_count
+
     @staticmethod
-    def __encode_tris(polygon, tris, fmt_str):
+    def __encode_tris(tris, fmt_str, is_weighted=False):
         tris[:, [0, 1]] = tris[:, [1, 0]]
-        triset = TriangleSet(tris)
+        triset = TriangleSet(tris, is_weighted)
         if not triset:
-            return None
-        data, polygon.face_count, polygon.facepoint_count = triset.get_tri_strips(fmt_str)
-        past_align = len(data) % 32
-        if past_align:
-            data.extend(b'\0' * (32 - past_align))
-        return data
+            return None, 0, 0
+        data, face_count, facepoint_count = triset.get_tri_strips(fmt_str)
+        return data, face_count, facepoint_count
 
     def __encode_influences(self, polygon, influences, mdl0):
         if influences is not None:
@@ -219,11 +234,9 @@ class Geometry:
             polygon.tex_index_format[0] = polygon.INDEX_FORMAT_NONE
         return fmt_str
 
-    def __construct_tris(self, polygon):
+    def __construct_tris(self):
         tris = []
         vert_face_indices = self.vertices.face_indices
-        if polygon.has_pos_matrix:  # multiple influences?
-            tris.append(self.influences.get_face_indices(vert_face_indices))
         tris.append(vert_face_indices)
         if self.normals:
             tris.append(self.normals.face_indices)
@@ -285,9 +298,9 @@ def decode_geometry_group(geometry):
     return arr
 
 
-def get_stride(fmt_str):
+def get_stride(decoder_string):
     stride = 0
-    for x in fmt_str:
+    for x in decoder_string:
         if x == 'H':
             stride += 2
         elif x == 'B':
@@ -391,11 +404,11 @@ def decode_polygon(polygon, influences):
     """ Decodes an mdl0 polygon
             :returns geometry
         """
-    # build the fmt_str decoder
-    fmt_str = '>'
+    # build the decoder_string decoder
+    decoder_string = '>'
     geometry_index = 0
     if polygon.has_pos_matrix:
-        fmt_str += 'B'
+        decoder_string += 'B'
         pos_matrix_index = geometry_index
         geometry_index += 1
         # raise Converter.ConvertError('{} vertex weighting not supported'.format(polygon.name))
@@ -407,33 +420,33 @@ def decode_polygon(polygon, influences):
             continue
         if tex_matrix_index < 0:
             tex_matrix_index = geometry_index
-        fmt_str += 'B'
+        decoder_string += 'B'
         geometry_index += 1
         # raise Converter.ConvertError('{} texcoord matrix not supported'.format(polygon.name))
     vertex_index = geometry_index
     geometry_index += 1
     vertices = polygon.get_vertex_group()
-    fmt_str += polygon.get_fmt_str(polygon.vertex_index_format)
+    decoder_string += polygon.get_fmt_str(polygon.vertex_index_format)
     normals = polygon.get_normal_group()
     if normals:
-        fmt_str += polygon.get_fmt_str(polygon.normal_index_format)
+        decoder_string += polygon.get_fmt_str(polygon.normal_index_format)
         normal_index = geometry_index
         geometry_index += 1
     colors = polygon.get_color_group()
     if colors:
-        fmt_str += polygon.get_fmt_str(polygon.color0_index_format)
+        decoder_string += polygon.get_fmt_str(polygon.color0_index_format)
         color_index = geometry_index
         geometry_index += 1
     texcoords = []
     texcoord_index = -1
     for i in range(polygon.num_tex):
         texcoords.append(polygon.get_tex_group(i))
-        fmt_str += polygon.get_fmt_str(polygon.tex_index_format[i])
+        decoder_string += polygon.get_fmt_str(polygon.tex_index_format[i])
         if i == 0:
             texcoord_index = geometry_index
             geometry_index += 1
 
-    face_point_indices, weights = decode_indices(polygon, fmt_str)
+    face_point_indices, weights = decode_indices(polygon, decoder_string)
     face_point_indices = np.array(face_point_indices, dtype=np.uint)
     face_point_indices[:, [0, 1]] = face_point_indices[:, [1, 0]]
     # decoded_verts =
