@@ -288,9 +288,9 @@ class ImgConverter:
             name, ext = os.path.splitext(fname)
             if ext.lower() != '.png':
                 from PIL import Image
-                im = Image.open(img_file)
-                new_file = os.path.join(dir, name + '.png')
-                im.save(new_file)
+                with Image.open(img_file) as im:
+                    new_file = os.path.join(dir, name + '.png')
+                    im.save(new_file)
                 if remove_old:
                     os.remove(img_file)
                 img_file = new_file
@@ -298,30 +298,30 @@ class ImgConverter:
 
         def check_image_dimensions(self, image_file):
             from PIL import Image
-            im = Image.open(image_file)
-            width, height = im.size
-            if width > Tex0.MAX_IMG_SIZE or height > Tex0.MAX_IMG_SIZE:
-                new_width, new_height = Tex0.get_scaled_size(width, height)
-                b = Bug(2, 2, f'Texture {image_file} too large ({width}x{height}).',
-                        f'Resize to {new_width}x{new_height}.')
-                im = im.resize((new_width, new_height), self.RESAMPLE)
-                im.save(image_file)
-                b.resolve()
-            elif not Tex0.is_power_of_two(width) or not Tex0.is_power_of_two(height):
-                new_width = Tex0.nearest_power_of_two(width)
-                new_height = Tex0.nearest_power_of_two(height)
-                b = Bug(2, 2, f'Texture {image_file} not a power of 2 ({width}x{height})',
-                        f'Resize to {new_width}x{new_height}')
-                im = im.resize((new_width, new_height), self.RESAMPLE)
-                im.save(image_file)
-                b.resolve()
+            with Image.open(image_file) as im:
+                width, height = im.size
+                if width > Tex0.MAX_IMG_SIZE or height > Tex0.MAX_IMG_SIZE:
+                    new_width, new_height = Tex0.get_scaled_size(width, height)
+                    b = Bug(2, 2, f'Texture {image_file} too large ({width}x{height}).',
+                            f'Resize to {new_width}x{new_height}.')
+                    im = im.resize((new_width, new_height), self.RESAMPLE)
+                    im.save(image_file)
+                    b.resolve()
+                elif not Tex0.is_power_of_two(width) or not Tex0.is_power_of_two(height):
+                    new_width = Tex0.nearest_power_of_two(width)
+                    new_height = Tex0.nearest_power_of_two(height)
+                    b = Bug(2, 2, f'Texture {image_file} not a power of 2 ({width}x{height})',
+                            f'Resize to {new_width}x{new_height}')
+                    im = im.resize((new_width, new_height), self.RESAMPLE)
+                    im.save(image_file)
+                    b.resolve()
             return im
 
         def encode(self, img_file, brres, tex_format=None, num_mips=-1, check=False, overwrite=None):
             if overwrite is None:
                 overwrite = self.OVERWRITE_IMAGES
             img_file, name = self.convert_png(self.find_file(img_file))
-            if not overwrite and name in brres.get_texture_map():
+            if not overwrite and brres is not None and name in brres.get_texture_map():
                 AUTO_FIXER.warn(f'Tex0 {name} already exists!')
                 return None
             if check:
@@ -335,7 +335,8 @@ class ImgConverter:
             if result:
                 raise EncodeError('Failed to encode {}'.format(img_file))
             t = Tex0(name, brres, BinFile(self.temp_dest))
-            brres.add_tex0(t)
+            if brres is not None:
+                brres.add_tex0(t)
             os.remove(self.temp_dest)
             t.name = name
             return t
@@ -348,15 +349,18 @@ class ImgConverter:
             if not tex_format:
                 tex_format = self.IMG_FORMAT
             t_files = [self.find_file(x) for x in files]
-            tmp = 'abmatt-tmp'
+            # tmp = 'abmatt-tmp'
             # create a new dir to work in
-            self._move_to_temp_dir(t_files)
+            tmp = self._move_to_temp_dir(t_files)
+            t_files = [os.path.basename(x) for x in t_files]
             path_set = set()
             textures = brres.get_texture_map()
             for x in t_files:
                 path, name = self.convert_png(x, remove_old=True)
                 if overwrite or name not in textures:
                     path_set.add(path)
+                else:
+                    os.remove(path)
             if not len(path_set):
                 self._move_out_of_temp_dir(tmp)
                 return None
@@ -457,7 +461,8 @@ class ImgConverter:
         def set_dimensions(self, tex0, width, height):
             tmp = self.decode(tex0, 'tmp.png', overwrite=True)
             from PIL import Image
-            self.resize_image(Image.open(tmp), width, height, tmp)
+            with Image.open(tmp) as im:
+                self.resize_image(im, width, height, tmp)
             tex = self.encode(tmp, tex0.parent, tex0.get_str(tex0.format), overwrite=True)
             os.remove(tmp)
             return tex0

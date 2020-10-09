@@ -32,6 +32,12 @@ class PointCollection:
     def __len__(self):
         return len(self.points)
 
+    def __getitem__(self, item):
+        return self.points[item]
+
+    def __setitem__(self, key, value):
+        self.points[key] = value
+
     @staticmethod
     def __calc_min_max(points):
         width = len(points[0])
@@ -41,6 +47,10 @@ class PointCollection:
         point_collection.face_indices += len(self)
         self.points = np.append(self.points, point_collection.points, 0)
         self.face_indices = np.append(self.face_indices, point_collection.face_indices, 0)
+        if not self.minimum:
+            self.minimum, self.maximum = self.__calc_min_max(self.points)
+        if not point_collection.minimum:
+            point_collection.minimum, point_collection.maximum = point_collection.__calc_min_max(self.points)
         for i in range(len(self.minimum)):
             if self.minimum[i] > point_collection.minimum[i]:
                 self.minimum[i] = point_collection.minimum[i]

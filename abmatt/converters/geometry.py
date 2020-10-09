@@ -46,7 +46,8 @@ class Geometry:
             self.colors.combine(geometry.colors)
         if self.influences:
             self.influences.combine(geometry.influences)
-        self.triangles = np.append(self.triangles, geometry.triangles, 0)
+        if self.triangles is not None and geometry.triangles is not None:
+            self.triangles = np.append(self.triangles, geometry.triangles, 0)
         return True
         # todo bone indices
 
@@ -58,13 +59,8 @@ class Geometry:
         points = self.normals.points
         points[:, [1, 2]] = points[:, [2, 1]]
 
-    def apply_linked_bone_bindings(self, bones):
-        if self.influences is not None:
-            # multiple influences
-            if type(self.influences) == InfluenceCollection:
-                raise NotImplementedError('Multiple influences!')
-            else:
-                self.apply_matrix(np.array(bones[self.influences].get_transform_matrix(), np.float))
+    def apply_linked_bone_bindings(self):
+        self.influences.apply_world_position(self.vertices)
 
     def apply_matrix(self, matrix):
         if matrix is not None and not np.allclose(matrix, np.identity(4)):

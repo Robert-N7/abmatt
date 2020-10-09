@@ -12,3 +12,4 @@ pyinstaller~=4.0
 ifilter~=0.2
 colorama~=0.4.3
 lxml~=4.5.2
+PyQt5~=5.15.1

@@ -17,6 +17,17 @@ class Joint:
     def get_inv_transform_matrix(self):
         return np.linalg.inv(self.matrix)
 
+    def get_bone_parent(self):
+        raise NotImplementedError()
+
+    @staticmethod
+    def get_world_position(bone):
+        matrix = bone.get_inv_transform_matrix()
+        parent = bone.get_bone_parent()
+        if parent is not None:
+            return np.dot(matrix, Joint.get_world_position(parent))
+        return matrix
+
 
 class Influence:
     """
@@ -26,9 +37,9 @@ class Influence:
     which is applied to the vertices.
     """
 
-    def __init__(self, bone_weights=None, influence_id=None):
+    def __init__(self, bone_weights=None, influence_id=None, matrix=None):
         self.bone_weights = {} if bone_weights is None else bone_weights
-        self.rotation_matrix = self.matrix = self.inv_matrix = None
+        self.world_matrix = self.matrix = self.inv_matrix = matrix
         self.influence_id = influence_id
 
     def __str__(self):
@@ -64,8 +75,8 @@ class Influence:
             self.matrix = matrix
         return self.matrix
 
-    def get_rotation_matrix(self):
-        return self.rotation_matrix
+    # def get_rotation_matrix(self):
+    #     return self.rotation_matrix
 
     def get_inv_matrix(self):
         if self.inv_matrix is None:
@@ -86,6 +97,25 @@ class Influence:
         matrix = self.get_matrix() if decode else self.get_inv_matrix()
         vertices = apply_matrix(matrix, vertices)
         return vertices
+
+    def __get_world_position_matrix(self):
+        if self.world_matrix is None:
+            matrix = None
+            for bone in self.bone_weights:
+                bone_weight = self.bone_weights[bone]
+                bw_matrix = Joint.get_world_position(bone_weight.bone) * bone_weight.weight
+                if matrix is None:
+                    matrix = bw_matrix
+                else:
+                    matrix = np.dot(matrix, bw_matrix)
+            self.world_matrix = matrix
+        return self.world_matrix
+
+    def apply_world_position(self, vertex):
+        return apply_matrix_single(self.__get_world_position_matrix(), vertex)
+
+    def apply_world_position_all(self, vertices):
+        return apply_matrix(self.__get_world_position_matrix(), vertices)
 
     def is_mixed(self):
         return len(self.bone_weights) > 1
@@ -152,6 +182,15 @@ class InfluenceCollection:
     def get_single_bone_bind(self):
         for weight in self.influences[0]:
             return weight.bone
+
+    def apply_world_position(self, vertices):
+        if len(self.influences) < len(vertices):
+            influence = self.influences[0]
+            influence.apply_world_position_all(vertices)
+        else:
+            for i in range(len(vertices)):
+                influence = self.influences[i]
+                influence.apply_world_position(vertices[i])
 
     def get_weighted_tri_groups(self, tri_face_points):
         """

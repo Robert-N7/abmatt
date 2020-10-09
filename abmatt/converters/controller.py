@@ -1,6 +1,7 @@
 import numpy as np
 
-from converters.influence import Influence, Weight, InfluenceCollection
+from converters.influence import Influence, Weight, InfluenceCollection, Joint
+from converters.matrix import combine_matrices, apply_matrix
 
 
 class Controller:
@@ -16,25 +17,39 @@ class Controller:
         self.vertex_weight_indices = vertex_weight_indices
         self.geometry = geometry
 
+    def __order_bones(self, bone_map):
+        bones = self.bones
+        controller_matrices = self.inv_bind_matrix.reshape((-1, 4, 4))
+        bone_matrices = [Joint.get_world_position(bone_map[bone]) for bone in bones]
+        new_bone_map = []
+        for i in range(len(controller_matrices)):
+            test_matrix = controller_matrices[i]
+            if not np.allclose(bone_matrices[i], test_matrix, 0.0001):
+                raise ValueError(f'Controller {self.name} matrix does not match bone matrix\n{test_matrix}')
+            new_bone_map.append(bone_map[bones[i]])
+        return new_bone_map, controller_matrices
+
     def get_influences(self, bone_map, all_influences):
         """
         :param bone_map: map of bone names to bones
         :returns influence collection
         """
         # construct my own bone map
-        my_bone_map = [bone_map[name] for name in self.bones]
+        # my_bone_map = [bone_map[name] for name in self.bones]
         weights = self.weights
-        if len(self.bones) == 1 and np.allclose(weights, 1.0):     # single bind
+        my_bone_map, matrices = self.__order_bones(bone_map)
+        if len(self.bones) == 1 and np.allclose(weights, 1.0):     # No influence needed
             influence = Influence()
-            name = self.bones[0]
-            influence[name] = Weight(bone_map[name], 1.0)
+            influence[my_bone_map[0].name] = Weight(my_bone_map[0], 1.0)
             influence = all_influences.create_or_find(influence)
+            self.geometry.apply_matrix(matrices[0])
             return InfluenceCollection({0: influence})
         influences = {}
         indices = self.vertex_weight_indices
         vertex_weight_counts = self.vertex_weight_counts
         j = 0
         # Now construct influences
+        vertices = self.geometry.vertices
         for vertex_index in range(len(vertex_weight_counts)):
             weight_count = vertex_weight_counts[vertex_index]
             influence = Influence()
@@ -43,13 +58,14 @@ class Controller:
                 influence[bone.name] = Weight(bone, weights[indices[j, 1]])
                 j += 1
             influences[vertex_index] = all_influences.create_or_find(influence)
+            # apply_matrix(matrices[] vertices[vertex_index]
         return InfluenceCollection(influences)
 
     def has_multiple_weights(self):
         return not np.min(self.vertex_weight_counts) == np.max(self.vertex_weight_counts) == 1.0
 
     def get_bound_geometry(self, bone_map, all_influences, matrix=None):
-        # matrix = combine_matrices(matrix, self.bind_shape_matrix)
+        matrix = combine_matrices(matrix, self.bind_shape_matrix)
         self.geometry.apply_matrix(matrix)
         self.geometry.influences = influences = self.get_influences(bone_map, all_influences)
         return self.geometry, influences

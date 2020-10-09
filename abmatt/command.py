@@ -720,9 +720,9 @@ class Command:
         self.destination = None
         self.run_convert()
 
-    def import_texture(self, file, tex_format=None, num_mips=-1):
+    def import_texture(self, brres, file, tex_format=None, num_mips=-1):
         try:
-            return ImgConverter().encode(file, tex_format, num_mips)
+            return ImgConverter().encode(brres, file, tex_format, num_mips)
         except EncodeError as e:
             print(e)
 
@@ -943,7 +943,7 @@ class Command:
                     pass
                 files = self.getFiles(type_id)
                 for file in files:
-                    tex = self.import_texture(file, convert_fmt, num_mips)
+                    tex = self.import_texture(file, None, convert_fmt, num_mips)
                     if tex:
                         if resize:
                             tex.set_str(self.key, self.value)

@@ -63,6 +63,10 @@ class AutoFix:
     def __init__(self, fix_level=3, loudness=3):
         self.loudness = loudness
         self.fix_level = fix_level
+        self.pipe = None        # if set, output is sent to the pipe, must implement info warn and error.
+
+    def set_pipe(self, obj):
+        self.pipe = obj
 
     def set_fix_level(self, fix_level):
         try:
@@ -80,17 +84,26 @@ class AutoFix:
     def log(self, message):
         if self.loudness >= 5:
             print(f'{bcolors.OKBLUE}{message}{bcolors.ENDC}')
+            if self.pipe is not None:
+                self.pipe.info(message)
 
     def info(self, message, loudness=2):
         if self.loudness >= loudness:
             print(message)
+            if self.pipe is not None:
+                self.pipe.info(message)
 
     def warn(self, message, loudness=2):
         if self.loudness >= loudness:
             print(f'{bcolors.FAIL}WARN: {message}{bcolors.ENDC}')
+            if self.pipe is not None:
+                self.pipe.warn(message)
 
     def error(self, message, loudness=1):
-        print(f'{bcolors.FAIL}ERROR: {message}{bcolors.ENDC}')
+        if self.loudness >= loudness:
+            print(f'{bcolors.FAIL}ERROR: {message}{bcolors.ENDC}')
+            if self.pipe is not None:
+                self.pipe.error(message)
 
     # def should_fix(self, bug):
     #     """Determines if a bug should be fixed"""
@@ -122,14 +135,15 @@ class AutoFix:
     def display_result(self, bug, result_level=4, result_message=None):
         if self.loudness >= bug.notify_level:
             if result_message:
-                print('(' + self.RESULTS[result_level] + ') ' + result_message)
+                result_message = '(' + self.RESULTS[result_level] + ') ' + result_message
             else:
-                print('(' + self.RESULTS[result_level] + ') ' + bug.fix_des)
+                result_message = '(' + self.RESULTS[result_level] + ') ' + bug.fix_des
+            self.info(result_message, 0)
 
     def notify(self, bug):
         """Notifies of a bug check"""
         if self.loudness >= bug.notify_level:
-            print(f'{self.ERROR_LEVELS[bug.notify_level]}{bug.description}{bcolors.ENDC}')
+            self.info(f'{self.ERROR_LEVELS[bug.notify_level]}{bug.description}{bcolors.ENDC}', 0)
 
     def get_level(self, level_str):
         """Expects level to be a string, as a number or one of the Error levels"""

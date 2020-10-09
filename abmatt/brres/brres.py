@@ -37,6 +37,7 @@ class Brres(Clipable):
     DESTINATION = None
     OPEN_FILES = None  # reference to active files
     REMOVE_UNUSED_TEXTURES = False
+    MATERIAL_LIBRARY = None
 
     def __init__(self, name, parent=None, readFile=True):
         """
@@ -50,6 +51,20 @@ class Brres(Clipable):
         self.texture_map = {}
         binfile = BinFile(name) if readFile else None
         super(Brres, self).__init__(name, parent, binfile)
+
+    @staticmethod
+    def get_material_library():
+        lib = Brres.MATERIAL_LIBRARY
+        if lib is None:
+            Brres.MATERIAL_LIBRARY = {}
+        elif type(lib) == str:
+            b = Brres(lib)
+            materials = {}
+            for model in b.models:
+                for material in model.materials:
+                    materials[material.name] = material
+            Brres.MATERIAL_LIBRARY = materials
+        return Brres.MATERIAL_LIBRARY
 
     def begin(self):
         folders = self.folders
@@ -212,6 +227,7 @@ class Brres(Clipable):
             AUTO_FIXER.info('Replaced tex0 {}'.format(tex0.name))
         self.textures.append(tex0)
         self.texture_map[tex0.name] = tex0
+        tex0.parent = self      # this may be redundant
 
     def paste_tex0s(self, brres):
         tex_map = brres.texture_map

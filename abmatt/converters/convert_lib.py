@@ -1,14 +1,14 @@
 import os
 import time
 
-from PIL import Image
 import numpy as np
 
-from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
-from abmatt.brres.mdl0 import material
-from abmatt.brres.tex0 import EncodeError, Tex0, ImgConverterI, NoImgConverterError, ImgConverter
-from abmatt.converters.matrix import matrix_to_srt
+from abmatt.brres.lib.autofix import AUTO_FIXER
 from abmatt.brres.mdl0 import Mdl0
+from abmatt.brres.mdl0 import material
+from abmatt.brres.tex0 import EncodeError, NoImgConverterError, ImgConverter
+from abmatt.converters.matrix import matrix_to_srt
+from brres import Brres
 from converters import matrix
 from converters.influence import decode_mdl0_influences
 
@@ -48,6 +48,7 @@ class Converter:
         self.start = time.time()
         self.cwd = os.getcwd()
         self.mdl_file = os.path.abspath(self.mdl_file)
+        self.material_library = Brres.get_material_library()
         brres_dir, brres_name = os.path.split(self.brres.name)
         base_name = os.path.splitext(brres_name)[0]
         self.is_map = True if 'map' in base_name else False
@@ -101,8 +102,6 @@ class Converter:
         bone.translation = translation
         bone.fixed_translation = np.allclose(translation, 0)
 
-
-
     @staticmethod
     def is_identity_matrix(mtx):
         return np.allclose(mtx, matrix.IDENTITY)
@@ -110,7 +109,9 @@ class Converter:
     def _encode_material(self, generic_mat):
         if self.replacement_model:
             m = self.replacement_model.getMaterialByName(generic_mat.name)
-            if m:
+            if m is None:
+                m = self.material_library.get(generic_mat)
+            if m is not None:
                 mat = material.Material.get_unique_material(generic_mat.name, self.mdl0)
                 self.mdl0.add_material(mat)
                 mat.paste(m)
