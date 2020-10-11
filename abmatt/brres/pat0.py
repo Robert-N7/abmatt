@@ -2,10 +2,10 @@
 from copy import deepcopy
 
 from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
-from abmatt.brres.lib.binfile import Folder, printCollectionHex
+from abmatt.brres.lib.binfile import Folder
 from abmatt.brres.lib.matching import validBool, validInt, validFloat, splitKeyVal, fuzzy_strings
 from abmatt.brres.lib.node import Clipable, Node
-from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
+from autofix import AutoFix, Bug
 
 
 class Pat0Collection(Node):
@@ -197,7 +197,7 @@ class Pat0MatAnimation(Clipable):
 
     def check_name(self, name):
         if self.brres_textures and name not in self.brres_textures:
-            AUTO_FIXER.warn('No texture found matching frame {}'.format(name), 3)
+            AutoFix.get().warn('No texture found matching frame {}'.format(name), 3)
 
     def set_frame(self, key_frame_id, tex_name):
         if not 0 <= key_frame_id <= self.framecount:
@@ -246,7 +246,7 @@ class Pat0MatAnimation(Clipable):
         for i in range(size):
             frame_id, tex_id, plt_id = binfile.read('f2H', 8)
             if frame_id > self.framecount:
-                AUTO_FIXER.warn('Unpacked Pat0 {} frame index out of range'.format(self.name), 1)
+                AutoFix.get().warn('Unpacked Pat0 {} frame index out of range'.format(self.name), 1)
                 break
             frames.append(self.Frame(frame_id, tex_id, plt_id))
 
@@ -255,7 +255,7 @@ class Pat0MatAnimation(Clipable):
         for x in self.frames:
             if x.tex >= m:
                 x.tex = textures[0]
-                AUTO_FIXER.warn('Unpacked Pat0 {} tex_id out of range'.format(self.name), 1)
+                AutoFix.get().warn('Unpacked Pat0 {} tex_id out of range'.format(self.name), 1)
             else:
                 x.tex = textures[x.tex]
 

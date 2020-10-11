@@ -2,7 +2,7 @@ from struct import unpack_from, pack
 
 import numpy as np
 
-from brres.lib.autofix import AUTO_FIXER
+from autofix import AutoFix
 from brres.mdl0.color import Color
 from brres.mdl0.normal import Normal
 from brres.mdl0.polygon import Polygon
@@ -160,6 +160,7 @@ class Geometry:
         linked_bone = self.linked_bone
         points = vertices.points
         if polygon.has_pos_matrix:
+            AutoFix.get().warn(f'Polygon weighting is experimental, {polygon.name} will likely be incorrect.')
             for i in range(len(vertices)):
                 influence = self.influences[i]
                 points[i] = influence.apply_to(points[i], decode=False)
@@ -214,7 +215,8 @@ class Geometry:
         fmt_str = ''
         if texcoords:
             uv_i = len(mdl0.texCoords)
-            for i in range(len(texcoords)):
+            polygon.num_tex = len(texcoords)
+            for i in range(polygon.num_tex):
                 x = texcoords[i]
                 tex = TexCoord(self.name + '#{}'.format(i), mdl0)
                 # convert xy to st
@@ -389,7 +391,7 @@ def decode_pos_mtx_indices(all_influences, weight_groups, vertices, pos_mtx_indi
                 influences[vertex_index] = influence = all_influences[weight_indices[i]]
                 points[vertex_index] = influence.apply_to(points[vertex_index], decode=True)
             elif influences[vertex_index].influence_id != weight_indices[i]:
-                AUTO_FIXER.warn(f'vertex {vertex_index} has multiple different influences!')
+                AutoFix.get().warn(f'vertex {vertex_index} has multiple different influences!')
                 influences[vertex_index] = all_influences[weight_indices[i]]
 
     assert len(influences) == len(points)

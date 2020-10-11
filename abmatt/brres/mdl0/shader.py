@@ -6,7 +6,7 @@ from copy import deepcopy, copy
 from abmatt.brres.lib.binfile import Folder
 from abmatt.brres.lib.matching import *
 from abmatt.brres.mdl0.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
-from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
+from autofix import AutoFix, Bug
 from abmatt.brres.lib.node import Clipable
 
 
@@ -73,7 +73,7 @@ class ShaderList:
                     material = x
                     break
             if not material:
-                AUTO_FIXER.info('Removing unlinked shader {}'.format(name))
+                AutoFix.get().info('Removing unlinked shader {}'.format(name))
                 continue
             if binfile.offset not in offsets:
                 offset_ref = binfile.offset
@@ -853,7 +853,7 @@ class Shader(Clipable):
                         tex_usage[x] += 1
                         ind_stage_count += 1
                     except IndexError:
-                        AUTO_FIXER.warn('Ind coord {} set but unused'.format(x), 3)
+                        AutoFix.get().warn('Ind coord {} set but unused'.format(x), 3)
         # now check usage count
         removal_index = 0
         for i in range(len(tex_usage)):

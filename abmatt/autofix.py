@@ -28,15 +28,14 @@ class Bug:
         self.description = description
         self.fix_des = fix_des
         self.is_resolved = False
-        AUTO_FIXER.notify(self)
+        AutoFix.get().notify(self)
 
     # def should_fix(self):
-    #     return not self.is_resolved and AUTO_FIXER.should_fix(self)
+    #     return not self.is_resolved and AutoFix.get().should_fix(self)
 
     def resolve(self):
         self.is_resolved = True
-        if AUTO_FIXER.loudness >= self.notify_level:
-            print(f'(FIXED): {self.fix_des}')
+        AutoFix.get().info(f'(FIXED): {self.fix_des}', self.notify_level)
 
 
 class AutoFixAbort(BaseException):
@@ -54,6 +53,7 @@ class AutoFix:
     # Suggest 4
     # Prompt 5
     FIX_PROMPT = 5
+    __AUTO_FIXER = None
 
     # Loudness levels, 0 silent, 1 quiet, 2 mid, 3 loud, 4 max, 5 debug
     LOUD_LEVELS = ('SILENT', 'QUIET', 'MID', 'LOUD', 'MAX', 'DEBUG')
@@ -61,9 +61,16 @@ class AutoFix:
     RESULTS = ('NONE', 'ERROR', 'WARN', 'CHECK', 'SUCCESS')
 
     def __init__(self, fix_level=3, loudness=3):
+        if(self.__AUTO_FIXER): raise RuntimeError('Autofixer already initialized')
         self.loudness = loudness
         self.fix_level = fix_level
         self.pipe = None        # if set, output is sent to the pipe, must implement info warn and error.
+
+    @staticmethod
+    def get(fixe_level=3, loudness=3):
+        if AutoFix.__AUTO_FIXER is None:
+            AutoFix.__AUTO_FIXER = AutoFix(fixe_level, loudness)
+        return AutoFix.__AUTO_FIXER
 
     def set_pipe(self, obj):
         self.pipe = obj
@@ -143,7 +150,7 @@ class AutoFix:
     def notify(self, bug):
         """Notifies of a bug check"""
         if self.loudness >= bug.notify_level:
-            self.info(f'{self.ERROR_LEVELS[bug.notify_level]}{bug.description}{bcolors.ENDC}', 0)
+            self.info(bug.description, 0)
 
     def get_level(self, level_str):
         """Expects level to be a string, as a number or one of the Error levels"""
@@ -161,5 +168,3 @@ class AutoFix:
     def set_loudness(self, level_str):
         self.loudness = self.get_level(level_str)
 
-
-AUTO_FIXER = AutoFix()

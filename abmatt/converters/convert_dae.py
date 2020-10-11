@@ -1,16 +1,13 @@
 import os
 import sys
-import time
 
 import numpy as np
 
-from abmatt.brres.lib.autofix import AUTO_FIXER
-from abmatt.brres.tex0 import ImgConverter, NoImgConverterError
 from abmatt.converters.arg_parse import cmdline_convert
-from converters.controller import Controller, get_controller
+from converters.controller import get_controller
 from abmatt.converters.convert_lib import Converter
 from converters.geometry import decode_polygon
-from converters.influence import InfluenceCollection, decode_mdl0_influences, InfluenceManager
+from converters.influence import InfluenceManager
 from converters.material import Material
 from abmatt.converters.dae import Dae, ColladaNode
 from converters.matrix import combine_matrices, srt_to_matrix
@@ -43,7 +40,7 @@ class DaeConverter2(Converter):
         return self._end_loading()
 
     def save_model(self, mdl0=None):
-        base_name = self._start_saving(mdl0)
+        base_name, mdl0 = self._start_saving(mdl0)
         mesh = Dae(initial_scene_name=base_name)
         decoded_mats = [self.__decode_material(x, mesh) for x in mdl0.materials]
         # polygons

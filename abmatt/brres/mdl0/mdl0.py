@@ -2,13 +2,13 @@
 # ----------------- Model sub files --------------------------------------------
 import math
 
-from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
+from autofix import AutoFix, Bug
 from abmatt.brres.lib.binfile import Folder, PackingError
 from abmatt.brres.lib.matching import fuzzy_match, MATCHING
 from abmatt.brres.lib.node import Node
 from abmatt.brres.mdl0.bone import Bone, BoneTable
 from abmatt.brres.mdl0.color import Color
-from abmatt.brres.mdl0.definition import DrawList, NodeTree, get_definition
+from abmatt.brres.mdl0.definition import DrawList, get_definition
 from abmatt.brres.mdl0.material import Material
 from abmatt.brres.mdl0.normal import Normal
 from abmatt.brres.mdl0.polygon import Polygon
@@ -406,7 +406,7 @@ class Mdl0(SubFile):
             notify = 'Adding reference to unknown texture "{}"'.format(name)
             if tex:
                 notify += ', did you mean ' + tex.name + '?'
-            AUTO_FIXER.info(notify, 4)
+            AutoFix.get().info(notify, 4)
 
     def remove_texture_link(self, name):
         pass    # No longer applicable since tex links are rebuilt
@@ -419,7 +419,7 @@ class Mdl0(SubFile):
             notify = 'Adding reference to unknown texture "{}"'.format(name)
             if tex:
                 notify += ', did you mean ' + tex.name + '?'
-            AUTO_FIXER.info(notify, 4)
+            AutoFix.get().info(notify, 4)
         return name
 
     def getTrace(self):

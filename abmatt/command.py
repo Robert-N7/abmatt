@@ -5,7 +5,7 @@ import fnmatch
 import os
 
 from abmatt.brres import Brres
-from abmatt.brres.lib.autofix import AUTO_FIXER
+from autofix import AutoFix
 from abmatt.brres.lib.matching import validInt, MATCHING
 from abmatt.brres.mdl0 import Mdl0
 from abmatt.brres.mdl0.layer import Layer
@@ -228,7 +228,7 @@ class Command:
                 ext = None
             if ext is None or ext.lower() != '.brres':
                 if ext:
-                    AUTO_FIXER.warn('Unsupported target extension {}, using .brres'.format(ext))
+                    AutoFix.get().warn('Unsupported target extension {}, using .brres'.format(ext))
                 self.destination += '.brres'
         if not self.is_import:
             if not self.destination:
@@ -402,7 +402,7 @@ class Command:
         # first pass, mark non-modified files for closing, and appending active
         for x in opened:
             if x not in exclude:
-                if not opened[x].isModified:
+                if not opened[x].is_modified:
                     to_close.append(x)
                     amount -= 1
                 else:
@@ -439,7 +439,7 @@ class Command:
             opened[f] = brres
             active.append(brres)
         # except UnpackingError as e:
-        #     AUTO_FIXER.error(e)
+        #     AutoFix.get().error(e)
         Brres.OPEN_FILES = opened.values()
         return active
 
@@ -466,7 +466,7 @@ class Command:
             try:
                 lines = f.readlines()
             except UnicodeDecodeError:
-                AUTO_FIXER.error('Not a text file {}'.format(filename))
+                AutoFix.get().error('Not a text file {}'.format(filename))
                 return
             preset_begin = False
             preset = []
@@ -480,7 +480,7 @@ class Command:
                         try:
                             preset.append(Command(line))
                         except ParsingException as e:
-                            AUTO_FIXER.error('Preset {} : {}'.format(name, e), 1)
+                            AutoFix.get().error('Preset {} : {}'.format(name, e), 1)
                             Command.PRESETS[name] = None
                     else:
                         commands.append(Command(line))
@@ -671,7 +671,7 @@ class Command:
         marked = Command.FILES_MARKED
         for f in Command.ACTIVE_FILES:
             if f not in marked:
-                f.isModified = True
+                f.is_modified = True
                 Command.FILES_MARKED.add(f)
 
     # ---------------------------------------------- RUN CMD ---------------------------------------------------
@@ -686,7 +686,7 @@ class Command:
                     cmd.run_cmd()
             except (ValueError, SaveError, PasteError, MaxFileLimit, NoSuchFile, FileNotFoundError, ParsingException,
                     OSError, UnpackingError, PackingError, NotImplementedError, NoImgConverterError, RuntimeError) as e:
-                AUTO_FIXER.error(e)
+                AutoFix.get().error(e)
                 return False
         return True
 
@@ -729,7 +729,7 @@ class Command:
     def run_cmd(self):
         if self.hasSelection:
             if not self.updateSelection(self.file, self.model, self.name):
-                AUTO_FIXER.warn('No selection found for "{}"'.format(self.txt))
+                AutoFix.get().warn('No selection found for "{}"'.format(self.txt))
                 return False
             elif self.cmd == 'select':
                 return True
@@ -752,7 +752,7 @@ class Command:
         self.updateTypeSelection()
         if not self.SELECTED:
             if self.cmd == 'info':
-                AUTO_FIXER.info('No items in selection.')
+                AutoFix.get().info('No items in selection.')
                 return True
             raise RuntimeError('No items found in selection! ({})'.format(self.txt))
         if self.cmd == 'set':
@@ -1027,7 +1027,7 @@ def load_presets(app_dir):
     if app_dir != cwd:
         loaded_cwd = load_preset_file(cwd)
     if loaded or loaded_cwd:
-        AUTO_FIXER.info('Presets loaded...', 5)
+        AutoFix.get().info('Presets loaded...', 5)
     else:
-        AUTO_FIXER.info('No presets file detected', 3)
+        AutoFix.get().info('No presets file detected', 3)
     return loaded

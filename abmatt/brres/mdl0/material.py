@@ -11,7 +11,7 @@ from abmatt.brres.lib.node import Clipable
 from abmatt.brres.mdl0.layer import Layer
 from abmatt.brres.mdl0.shader import Shader
 from abmatt.brres.mdl0.wiigraphics.matgx import MatGX
-from abmatt.brres.lib.autofix import AUTO_FIXER
+from autofix import AutoFix
 
 
 class Material(Clipable):
@@ -507,7 +507,7 @@ class Material(Clipable):
     def set_srt0(self, anim):
         """This is called by model to set up the srt0 reference"""
         if self.srt0:
-            AUTO_FIXER.error('Multiple Srt0 for {}'.format(self.name), 1)
+            AutoFix.get().error('Multiple Srt0 for {}'.format(self.name), 1)
             return False
         self.srt0 = anim
         anim.setMaterial(self)
@@ -541,7 +541,7 @@ class Material(Clipable):
 
     def set_pat0(self, anim):
         if self.pat0:
-            AUTO_FIXER.error('Multiple Pat0 for {}!'.format(self.name), 1)
+            AutoFix.get().error('Multiple Pat0 for {}!'.format(self.name), 1)
             return False
         self.pat0 = anim
         return True
@@ -589,9 +589,9 @@ class Material(Clipable):
             matrix = self.matGX.getIndMatrix(i)
             if matrix.enabled:
                 if not matrices_used[i]:
-                    AUTO_FIXER.warn('{} indirect matrix {} enabled but unused in shader'.format(self.name, i), 3)
+                    AutoFix.get().warn('{} indirect matrix {} enabled but unused in shader'.format(self.name, i), 3)
             elif not matrix.enabled and matrices_used[i]:
-                AUTO_FIXER.warn('{} indirect matrix {} disabled but used in shader'.format(self.name, i), 3)
+                AutoFix.get().warn('{} indirect matrix {} disabled but used in shader'.format(self.name, i), 3)
         if direct_count != self.shaderStages:
             self.shaderStages = direct_count
         if ind_count != self.indirectStages:

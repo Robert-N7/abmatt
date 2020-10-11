@@ -1,4 +1,4 @@
-from abmatt.brres.lib.autofix import AUTO_FIXER
+from autofix import AutoFix
 from abmatt.brres.lib.node import Node
 
 
@@ -14,13 +14,13 @@ class Point(Node):
 
     def check(self):
         if self.comp_count > 2:
-            AUTO_FIXER.error('Geometry {} comp_count {} out of range'.format(self.name, self.comp_count))
+            AutoFix.get().error('Geometry {} comp_count {} out of range'.format(self.name, self.comp_count))
             self.comp_count = 0
         if self.divisor >= 16:
-            AUTO_FIXER.error('Geometry {} divisor {} out of range'.format(self.name, self.divisor))
+            AutoFix.get().error('Geometry {} divisor {} out of range'.format(self.name, self.divisor))
             self.divisor = 0
         if self.format > 5:
-            AUTO_FIXER.error('Geometry {} format {} out of range'.format(self.name, self.format))
+            AutoFix.get().error('Geometry {} format {} out of range'.format(self.name, self.format))
             self.format = 4
 
     def __len__(self):

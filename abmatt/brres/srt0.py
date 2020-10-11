@@ -6,7 +6,7 @@ from abmatt.brres.lib.binfile import Folder
 from abmatt.brres.lib.matching import validInt, validBool, validFloat, splitKeyVal, MATCHING
 from abmatt.brres.lib.node import Clipable, Node
 from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
-from abmatt.brres.lib.autofix import Bug
+from autofix import Bug
 
 
 # ---------------------------------------------------------

@@ -1,6 +1,6 @@
 """Objects (Polygons)"""
 
-from abmatt.brres.lib.autofix import AUTO_FIXER
+from autofix import AutoFix
 from abmatt.brres.lib.node import Node, get_item_by_index
 
 
@@ -15,6 +15,7 @@ class Polygon(Node):
         self.tex_format = [0] * 8
         self.tex_divisor = [0] * 8
         self.tex_e = [1] * 8
+        self.material = None
         super(Polygon, self).__init__(name, parent, binfile)
 
     @staticmethod
@@ -77,6 +78,9 @@ class Polygon(Node):
         if self.normal_index_format >= self.INDEX_FORMAT_BYTE:
             return self.parent.normals[self.normal_group_index]
 
+    def has_normals(self):
+        return self.normal_index_format != self.INDEX_FORMAT_NONE
+
     def get_tex_group(self, tex_i=0):
         if self.tex_index_format[tex_i] >= self.INDEX_FORMAT_BYTE:
             return self.parent.texCoords[self.tex_coord_group_indices[tex_i]]
@@ -90,8 +94,10 @@ class Polygon(Node):
                 return self.parent.colors[self.color_group_indices[1]]
 
     def get_material(self):
-        definition = self.parent.get_definition_by_object_id(self.index)
-        return get_item_by_index(self.parent.materials, definition.matIndex)
+        if self.material is None:
+            definition = self.parent.get_definition_by_object_id(self.index)
+            self.material = get_item_by_index(self.parent.materials, definition.matIndex)
+        return self.material
 
     def get_bone(self):
         return self.parent.bones[self.get_linked_bone_id()]
@@ -100,24 +106,24 @@ class Polygon(Node):
         vertices = self.get_vertex_group()
         if vertices:
             if self.vertex_format != vertices.format:
-                AUTO_FIXER.warn('Mismatching format for vertices {}'.format(self.name))
+                AutoFix.get().warn('Mismatching format for vertices {}'.format(self.name))
                 self.vertex_format = vertices.format
             if self.vertex_divisor != vertices.divisor:
-                AUTO_FIXER.warn('Mismatching divisor for vertices {}'.format(self.name))
+                AutoFix.get().warn('Mismatching divisor for vertices {}'.format(self.name))
                 self.vertex_divisor = vertices.divisor
         normals = self.get_normal_group()
         if normals:
             if self.normal_format != normals.format:
-                AUTO_FIXER.warn('Mismatching format for normals {}'.format(self.name))
+                AutoFix.get().warn('Mismatching format for normals {}'.format(self.name))
                 self.normal_format = normals.format
         for i in range(8):
             tex = self.get_tex_group(i)
             if tex:
                 if self.tex_format[i] != tex.format:
-                    AUTO_FIXER.warn('Mismatching format for uv group {} {} '.format(i, self.name))
+                    AutoFix.get().warn('Mismatching format for uv group {} {} '.format(i, self.name))
                     self.tex_format[i] = tex.format
                 if self.tex_divisor[i] != tex.divisor:
-                    AUTO_FIXER.warn('Mismatching divisor for uv group {} {}'.format(i, self.name))
+                    AutoFix.get().warn('Mismatching divisor for uv group {} {}'.format(i, self.name))
                     self.tex_divisor[i] = tex.divisor
             else:
                 break

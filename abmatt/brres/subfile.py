@@ -9,7 +9,7 @@ import os
 from abmatt.brres.lib.binfile import UnpackingError, BinFile
 from abmatt.brres.lib.matching import validInt, validBool
 from abmatt.brres.lib.node import Clipable
-from abmatt.brres.lib.autofix import Bug, AUTO_FIXER
+from autofix import Bug, AutoFix
 
 
 def set_anim_str(animation, key, value):
@@ -86,7 +86,7 @@ class SubFile(Clipable):
             if self.FORCE_VERSION:
                 self.version = self.EXPECTED_VERSION
                 b.resolve()
-                self.parent.isModified = True
+                self.parent.is_modified = True
 
     def _unpack(self, binfile):
         """ unpacks the sub file, subclass must use binfile.end() """
@@ -122,7 +122,7 @@ class SubFile(Clipable):
         if not dest.endswith(ext):
             dest += ext
         if os.path.exists(dest) and not overwrite and not self.OVERWRITE_MODE:
-            AUTO_FIXER.error('{} already exists!'.format(dest))
+            AutoFix.get().error('{} already exists!'.format(dest))
             return
         bin = BinFile(dest, 'w')
         self.pack(bin)

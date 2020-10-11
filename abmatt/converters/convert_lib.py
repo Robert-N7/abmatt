@@ -3,7 +3,7 @@ import time
 
 import numpy as np
 
-from abmatt.brres.lib.autofix import AUTO_FIXER
+from autofix import AutoFix
 from abmatt.brres.mdl0 import Mdl0
 from abmatt.brres.mdl0 import material
 from abmatt.brres.tex0 import EncodeError, NoImgConverterError, ImgConverter
@@ -23,10 +23,10 @@ class Converter:
         pass
 
     def _start_saving(self, mdl0):
-        AUTO_FIXER.info('Exporting to {}...'.format(self.mdl_file))
+        AutoFix.get().info('Exporting to {}...'.format(self.mdl_file))
         self.start = time.time()
         if not mdl0:
-            mdl0 = self.brres.models[0]
+            self.mdl0 = mdl0 = self.brres.models[0]
         self.cwd = os.getcwd()
         dir, name = os.path.split(self.mdl_file)
         if dir:
@@ -35,16 +35,16 @@ class Converter:
         self.image_dir = base_name + '_maps'
         self.influences = decode_mdl0_influences(mdl0)
         self.tex0_map = {}
-        return base_name
+        return base_name, mdl0
 
     def _end_saving(self, writer):
         self._create_image_library(self.tex0_map.values())
         os.chdir(self.cwd)
         writer.write(self.mdl_file)
-        AUTO_FIXER.info('\t...finished in {} seconds.'.format(round(time.time() - self.start, 2)))
+        AutoFix.get().info('\t...finished in {} seconds.'.format(round(time.time() - self.start, 2)))
 
     def _start_loading(self, model_name):
-        AUTO_FIXER.info('Converting {}... '.format(self.mdl_file))
+        AutoFix.get().info('Converting {}... '.format(self.mdl_file))
         self.start = time.time()
         self.cwd = os.getcwd()
         self.mdl_file = os.path.abspath(self.mdl_file)
@@ -66,7 +66,7 @@ class Converter:
             mdl0.add_map_bones()
         os.chdir(self.cwd)
         material.Material.WARNINGS_ON = True
-        AUTO_FIXER.info('\t... finished in {} secs'.format(round(time.time() - self.start, 2)))
+        AutoFix.get().info('\t... finished in {} secs'.format(round(time.time() - self.start, 2)))
         return mdl0
 
     def _init_mdl0(self, brres_name, mdl_name, mdl0_name):
@@ -128,7 +128,7 @@ class Converter:
             return True
         converter = ImgConverter()
         if not converter:
-            AUTO_FIXER.error('No image converter found!')
+            AutoFix.get().error('No image converter found!')
             return False
         converter.batch_decode(tex0s, self.image_dir)
         return True
@@ -158,7 +158,7 @@ class Converter:
         try:
             return self._try_import_textures(self.brres, image_paths)
         except NoImgConverterError as e:
-            AUTO_FIXER.error(e)
+            AutoFix.get().error(e)
 
     @staticmethod
     def _try_import_textures(brres, image_paths):
@@ -167,10 +167,13 @@ class Converter:
                 converter = ImgConverter()
                 converter.batch_encode(image_paths.values(), brres, overwrite=converter.OVERWRITE_IMAGES)
             except EncodeError:
-                AUTO_FIXER.warn('Failed to encode images')
+                AutoFix.get().warn('Failed to encode images')
         return image_paths
 
     def __init__(self, brres, mdl_file, flags=0):
+        if brres is None:
+            filename = Brres.getExpectedBrresFileName(mdl_file)
+            brres = Brres(filename, readFile=os.path.exists(filename))
         self.brres = brres
         self.texture_library = brres.get_texture_map()
         self.mdl_file = mdl_file

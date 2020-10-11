@@ -24,8 +24,8 @@ class Controller:
         new_bone_map = []
         for i in range(len(controller_matrices)):
             test_matrix = controller_matrices[i]
-            if not np.allclose(bone_matrices[i], test_matrix, 0.0001):
-                raise ValueError(f'Controller {self.name} matrix does not match bone matrix\n{test_matrix}')
+            # if not np.allclose(bone_matrices[i], test_matrix, 0.0001):
+            #     raise ValueError(f'Controller {self.name} matrix does not match bone matrix\n{test_matrix}')
             new_bone_map.append(bone_map[bones[i]])
         return new_bone_map, controller_matrices
 

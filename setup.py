@@ -7,7 +7,7 @@ with open('README.md') as file:
     long_description = file.read()
 
 
-REQUIREMENTS = ['fuzzywuzzy', 'python-Levenshtein', 'numpy', 'pillow', 'colorama']
+REQUIREMENTS = ['fuzzywuzzy', 'python-Levenshtein', 'numpy', 'pillow', 'colorama', 'PyQt5']
 
 # some more details
 CLASSIFIERS = [
@@ -23,6 +23,9 @@ setup(name='abmatt',
       entry_points={
           'console_scripts': [
               'abmatt = abmatt.__main__:main'
+          ],
+          'gui_scripts': [
+              'abmatt-gui = abmatt.gui.main_window:main'
           ]
       },
       description='Brres file material editor',

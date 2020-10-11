@@ -1,6 +1,6 @@
 import time
 
-from abmatt.brres.lib.autofix import AUTO_FIXER
+from autofix import AutoFix
 
 
 class XML:
@@ -80,7 +80,7 @@ class XML:
                     node.attributes[attrib_name] = attrib_value
                     if attrib_name == 'id':
                         if attrib_value in self.elements_by_id:
-                            AUTO_FIXER.warn('xml id {} used multiple times'.format(attrib_value), 5)
+                            AutoFix.get().warn('xml id {} used multiple times'.format(attrib_value), 5)
                         self.elements_by_id[attrib_value] = node
                     offset += 1
                     break

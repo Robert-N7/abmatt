@@ -5,7 +5,7 @@
 import os
 import string
 
-from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
+from autofix import AutoFix, Bug
 from abmatt.brres.lib.binfile import BinFile, Folder, UnpackingError
 from abmatt.brres.chr0 import Chr0
 from abmatt.brres.clr0 import Clr0
@@ -47,7 +47,7 @@ class Brres(Clipable):
             readfile - optional start reading and unpacking file
         """
         self.folders = {}
-        self.isModified = False
+        self.is_modified = False
         self.texture_map = {}
         binfile = BinFile(name) if readFile else None
         super(Brres, self).__init__(name, parent, binfile)
@@ -58,12 +58,16 @@ class Brres(Clipable):
         if lib is None:
             Brres.MATERIAL_LIBRARY = {}
         elif type(lib) == str:
-            b = Brres(lib)
-            materials = {}
-            for model in b.models:
-                for material in model.materials:
-                    materials[material.name] = material
-            Brres.MATERIAL_LIBRARY = materials
+            try:
+                b = Brres(lib)
+                materials = {}
+                for model in b.models:
+                    for material in model.materials:
+                        materials[material.name] = material
+                Brres.MATERIAL_LIBRARY = materials
+            except FileNotFoundError as e:
+                AutoFix.get().warn(f'Material library "{lib}" not found.')
+                Brres.MATERIAL_LIBRARY = {}
         return Brres.MATERIAL_LIBRARY
 
     def begin(self):
@@ -72,7 +76,7 @@ class Brres(Clipable):
         self.textures = folders[self.ORDERED[1]] = []
         self.pat0 = folders[self.ANIM_COLLECTIONS[0]] = []
         self.srt0 = folders[self.ANIM_COLLECTIONS[1]] = []
-        self.isModified = True
+        self.is_modified = True
 
     def get_str(self, key):
         if key == 'name':
@@ -123,14 +127,15 @@ class Brres(Clipable):
             tex = t1.get(x)
             if tex:
                 tex.paste(t2[x])
+        self.mark_modified()
         # todo chr0 paste
 
     def mark_modified(self):
-        self.isModified = True
+        self.is_modified = True
 
     # -------------------------- SAVE/ CLOSE --------------------------------------------
     def close(self):
-        if self.isModified or self.DESTINATION and self.DESTINATION != self.name:
+        if self.is_modified or self.DESTINATION and self.DESTINATION != self.name:
             return self.save(self.DESTINATION, self.OVERWRITE)
         return True
 
@@ -142,15 +147,15 @@ class Brres(Clipable):
             # if not self.isChanged():
             #     return
         if not overwrite and os.path.exists(filename):
-            AUTO_FIXER.error('File {} already exists!'.format(filename), 1)
+            AutoFix.get().error('File {} already exists!'.format(filename), 1)
             return False
         else:
             f = BinFile(filename, mode="w")
             self.pack(f)
             if f.commitWrite():
-                AUTO_FIXER.info("Wrote file '{}'".format(filename), 2)
+                AutoFix.get().info("Wrote file '{}'".format(filename), 2)
                 self.name = filename
-                self.isModified = False
+                self.is_modified = False
             return True
 
     def getTrace(self):
@@ -173,7 +178,7 @@ class Brres(Clipable):
                     x.info(key, indentation_level)
 
     def isChanged(self):
-        return self.isModified
+        return self.is_modified
 
     # ------------------------------ Models ---------------------------------
 
@@ -188,6 +193,16 @@ class Brres(Clipable):
         except IndexError:
             pass
 
+    @staticmethod
+    def getExpectedBrresFileName(filename):
+        dir, name = os.path.split(filename)
+        name = os.path.splitext(name)[0]
+        for item in ('course', 'map', 'vrcorn'):
+            if item in filename:
+                name = item + '_model'
+                break
+        return os.path.join(dir, name + '.brres')
+
     def getExpectedMdl(self):
         filename = self.name
         for item in ('course', 'map', 'vrcorn'):
@@ -197,7 +212,7 @@ class Brres(Clipable):
     def renameModel(self, old_name, new_name):
         for x in self.models:
             if x.name == new_name:
-                AUTO_FIXER.warn('Unable to rename {}, the model {} already exists!'.format(old_name, new_name))
+                AutoFix.get().warn('Unable to rename {}, the model {} already exists!'.format(old_name, new_name))
                 return None
         folders = self.folders
         for n in folders:
@@ -224,7 +239,7 @@ class Brres(Clipable):
     def add_tex0(self, tex0):
         if tex0.name in self.texture_map:
             self.remove_tex0(tex0.name)
-            AUTO_FIXER.info('Replaced tex0 {}'.format(tex0.name))
+            AutoFix.get().info('Replaced tex0 {}'.format(tex0.name))
         self.textures.append(tex0)
         self.texture_map[tex0.name] = tex0
         tex0.parent = self      # this may be redundant
@@ -271,7 +286,7 @@ class Brres(Clipable):
             tex = self.texture_map.pop(name)
             self.textures.remove(tex)
         except KeyError:
-            AUTO_FIXER.warn('No texture {} in {}'.format(name, self.name))
+            AutoFix.get().warn('No texture {} in {}'.format(name, self.name))
 
     def remove_tex0_i(self, i):
         tex = self.textures.pop(i)
@@ -325,7 +340,7 @@ class Brres(Clipable):
             anim_collections.append(collection)
             mdl = self.getModel(key)
             if not mdl:
-                AUTO_FIXER.info('No model found matching srt0 animation {}'.format(key), 3)
+                AutoFix.get().info('No model found matching srt0 animation {}'.format(key), 3)
             else:
                 mdl.set_srt0(collection)
         return anim_collections
@@ -339,7 +354,7 @@ class Brres(Clipable):
             anim_collections.append(collection)
             mdl = self.getModel(key)
             if not mdl:
-                AUTO_FIXER.info('No model found matching pat0 animation {}'.format(key), 3)
+                AutoFix.get().info('No model found matching pat0 animation {}'.format(key), 3)
             else:
                 mdl.set_pat0(collection)
         return anim_collections
@@ -492,7 +507,7 @@ class Brres(Clipable):
 
     # --------------------------------------------------------------------------
     def check(self):
-        AUTO_FIXER.info('checking file {}'.format(self.name), 4)
+        AutoFix.get().info('checking file {}'.format(self.name), 4)
         expected = self.getExpectedMdl()
         for mdl in self.models:
             mdl.check(expected)

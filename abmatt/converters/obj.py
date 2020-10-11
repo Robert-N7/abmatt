@@ -5,6 +5,7 @@ import re
 import numpy as np
 
 from abmatt.converters.convert_lib import float_to_str
+from autofix import AutoFix
 from converters.points import PointCollection
 
 
@@ -74,19 +75,20 @@ class ObjGeometry():
 
     @staticmethod
     def normalize_indices_group(indices, data):
-        minimum = math.inf
-        maximum = -math.inf
-        for x in indices:
-            for ele in x:
-                if ele < minimum:
-                    minimum = ele
-                if ele > maximum:
-                    maximum = ele
+        minimum = indices.min()
+        maximum = indices.max()
+        # for x in indices:
+        #     for ele in x:
+        #         if ele < minimum:
+        #             minimum = ele
+        #         if ele > maximum:
+        #             maximum = ele
         ret = np.array(data[minimum:maximum + 1], np.float)
         return PointCollection(ret, indices - minimum)
 
     def normalize(self, vertices, normals, tex_coords):
-        triangles = np.array(self.triangles)
+        width = 1 + self.has_normals + self.has_texcoords
+        triangles = np.array(self.triangles).reshape((-1, 3, width))
         triangles = triangles - 1
         self.triangles = triangles
         self.vertices = self.normalize_indices_group(triangles[:, :, 0], vertices)
@@ -109,8 +111,15 @@ class Obj():
         if read_file:
             self.mtllib = None
             self.parse_file(filename)
+            to_remove = []
             for geo in self.geometries:
-                geo.normalize(self.vertices, self.normals, self.texcoords)
+                try:
+                    geo.normalize(self.vertices, self.normals, self.texcoords)
+                except ValueError:
+                    to_remove.append(geo)
+                    AutoFix.get().warn('No geometry found for {}'.format(geo.name))
+            if to_remove:
+                self.geometries = [x for x in self.geometries if x not in to_remove]
         else:
             dir, name = os.path.split(filename)
             base_name = os.path.splitext(name)[0]
@@ -287,4 +296,8 @@ class Obj():
                         self.geometries.append(geometry)
                         self.start_new_geo = True
         if self.mtllib:
-            self.parse_mat_lib(self.mtllib)
+            try:
+                self.parse_mat_lib(self.mtllib)
+            except FileNotFoundError as e:
+                AutoFix.get().error(str(e))
+

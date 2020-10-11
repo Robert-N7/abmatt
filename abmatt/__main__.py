@@ -10,7 +10,7 @@ from cmd import Cmd
 
 from abmatt.brres import Brres
 from abmatt.command import Command, ParsingException, NoSuchFile
-from abmatt.brres.lib.autofix import AUTO_FIXER
+from autofix import AutoFix
 from load_config import load_config
 
 VERSION = '0.8.0'
@@ -91,7 +91,7 @@ class Shell(Cmd, object):
         try:
             Command.run_commands([Command(line)])
         except (ParsingException, NoSuchFile) as e:
-            AUTO_FIXER.error(e)
+            AutoFix.get().error(e)
 
     @staticmethod
     def complete_material_name(match_text):
@@ -360,7 +360,7 @@ class Shell(Cmd, object):
             file = words.pop(0)
             overwrite = True if 'overwrite' in words or Command.OVERWRITE else False
             if os.path.exists(file) and not overwrite:
-                AUTO_FIXER.error('File {} already exists!'.format(file))
+                AutoFix.get().error('File {} already exists!'.format(file))
             else:
                 with open(file, 'w') as f:
                     f.write('\n'.join(self.cmd_queue))
@@ -506,7 +506,7 @@ def main():
         try:
             Command.updateSelection(brres_file)
         except NoSuchFile as e:
-            AUTO_FIXER.error(e)
+            AutoFix.get().error(e)
             sys.exit(2)
     # elif command and (command != 'info' or key != 'keys' and type != 'keys'):
     #     print('File is required to run commands')
@@ -519,7 +519,7 @@ def main():
             if filecmds:
                 cmds = cmds + filecmds
         except NoSuchFile as err:
-            AUTO_FIXER.error(err)
+            AutoFix.get().error(err)
 
     # Run Commands
     if cmds:

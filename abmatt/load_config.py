@@ -1,7 +1,7 @@
 import os
 
 from brres import Brres
-from brres.lib.autofix import AUTO_FIXER
+from autofix import AutoFix
 from brres.lib.matching import validBool, MATCHING, parse_color, validInt
 from brres.mdl0 import Mdl0
 from brres.mdl0.layer import Layer
@@ -43,11 +43,11 @@ def load_config(app_dir, loudness=None, autofix_level=None):
         loudness = conf['loudness']
     if loudness:
         try:
-            AUTO_FIXER.set_loudness(loudness)
+            AutoFix.get().set_loudness(loudness)
         except ValueError:
-            AUTO_FIXER.warn('Invalid loudness level {}'.format(loudness))
+            AutoFix.get().warn('Invalid loudness level {}'.format(loudness))
     if not len(conf):
-        AUTO_FIXER.warn('No configuration detected (etc/abmatt/config.conf).')
+        AutoFix.get().warn('No configuration detected (etc/abmatt/config.conf).')
         return
     Command.set_max_brres_files(conf)
     # Matching stuff

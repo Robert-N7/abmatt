@@ -4,7 +4,7 @@ import shutil
 import subprocess
 from math import log
 
-from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
+from autofix import AutoFix, Bug
 from abmatt.brres.lib.binfile import BinFile
 from abmatt.brres.lib.matching import parseValStr, validInt
 from abmatt.brres.subfile import SubFile
@@ -239,7 +239,7 @@ class ImgConverterI:
             sampler_index = filters.index(sample)
             ImgConverterI.RESAMPLE = sampler_index
         except (ValueError, IndexError):
-            AUTO_FIXER.warn('Invalid config value {} for "img_resample", using {}'.format(sample,
+            AutoFix.get().warn('Invalid config value {} for "img_resample", using {}'.format(sample,
                                                                                       filters[ImgConverterI.RESAMPLE]))
 
     @staticmethod
@@ -322,7 +322,7 @@ class ImgConverter:
                 overwrite = self.OVERWRITE_IMAGES
             img_file, name = self.convert_png(self.find_file(img_file))
             if not overwrite and brres is not None and name in brres.get_texture_map():
-                AUTO_FIXER.warn(f'Tex0 {name} already exists!')
+                AutoFix.get().warn(f'Tex0 {name} already exists!')
                 return None
             if check:
                 self.check_image_dimensions(img_file)
@@ -348,7 +348,12 @@ class ImgConverter:
             mips = '--n-mm=' + str(num_mips) if num_mips >= 0 else ''
             if not tex_format:
                 tex_format = self.IMG_FORMAT
-            t_files = [self.find_file(x) for x in files]
+            t_files = []
+            for x in files:
+                try:
+                    t_files.append(self.find_file(x))
+                except EncodeError:
+                    AutoFix.get().warn('Failed to find image {}'.format(x))
             # tmp = 'abmatt-tmp'
             # create a new dir to work in
             tmp = self._move_to_temp_dir(t_files)
@@ -392,7 +397,7 @@ class ImgConverter:
             elif os.path.splitext(os.path.basename(dest_file))[1].lower() != '.png':
                 dest_file += '.png'
             if not overwrite and os.path.exists(dest_file):
-                AUTO_FIXER.warn('File {} already exists!'.format(dest_file))
+                AutoFix.get().warn('File {} already exists!'.format(dest_file))
                 return None
             f = BinFile(self.temp_dest, 'w')
             tex0.pack(f)

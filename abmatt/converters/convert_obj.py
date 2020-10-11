@@ -6,6 +6,7 @@ import numpy as np
 from abmatt.converters.arg_parse import cmdline_convert
 from abmatt.converters.convert_lib import Converter
 from abmatt.converters.obj import Obj, ObjGeometry, ObjMaterial
+from autofix import AutoFix
 from converters.geometry import Geometry, decode_polygon
 from converters.material import Material
 
@@ -34,13 +35,16 @@ class ObjConverter(Converter):
         obj = Obj(self.mdl_file)
         material_geometry_map = self.__collect_geometries(obj.geometries, bone)
         for material in material_geometry_map:
-            self.__encode_material(obj.materials[material])
+            try:
+                self.__encode_material(obj.materials[material])
+            except KeyError:
+                self._encode_material(Material(material))
             material_geometry_map[material].encode(mdl)
         self._import_images(self.__convert_set_to_map(obj.images))
         return self._end_loading()
 
     def save_model(self, mdl0=None):
-        self._start_saving(mdl0)
+        base_name, mdl0 = self._start_saving(mdl0)
         polygons = mdl0.objects
         obj = Obj(self.mdl_file, False)
         obj_materials = obj.materials
