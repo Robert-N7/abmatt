@@ -36,9 +36,10 @@ class Brres(Clipable):
     ROOTMAGIC = "root"
     OVERWRITE = False
     DESTINATION = None
-    OPEN_FILES = None  # reference to active files
+    OPEN_FILES = []  # reference to active files
     REMOVE_UNUSED_TEXTURES = False
     MATERIAL_LIBRARY = None
+    TEMP_DIR = None
 
     def __init__(self, name, parent=None, readFile=True):
         """
@@ -52,10 +53,23 @@ class Brres(Clipable):
         self.texture_map = {}
         self.has_new_model = False
         binfile = BinFile(name) if readFile else None
+        self.add_open_file(self)
         super(Brres, self).__init__(name, parent, binfile)
 
     def get_full_path(self):
         return os.path.abspath(self.name)
+
+    @staticmethod
+    def add_open_file(file):
+        Brres.OPEN_FILES.append(file)
+
+    @staticmethod
+    def get_temp_dir():
+        dir = Brres.TEMP_DIR
+        if dir:
+            if not os.path.exists(dir):
+                os.mkdir(dir)
+        return dir
 
     @staticmethod
     def get_material_library():
@@ -140,6 +154,7 @@ class Brres(Clipable):
 
     # -------------------------- SAVE/ CLOSE --------------------------------------------
     def close(self):
+        Brres.OPEN_FILES.remove(self)
         if self.is_modified or self.DESTINATION and self.DESTINATION != self.name:
             return self.save(self.DESTINATION, self.OVERWRITE)
         return True

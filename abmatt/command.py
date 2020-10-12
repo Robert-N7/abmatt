@@ -440,7 +440,6 @@ class Command:
             active.append(brres)
         # except UnpackingError as e:
         #     AutoFix.get().error(e)
-        Brres.OPEN_FILES = opened.values()
         return active
 
     @staticmethod

@@ -7,8 +7,10 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QAction, qApp, QFileDialo
 
 from brres import Brres
 from autofix import AutoFix
+from converters.arg_parse import arg_parse
 from converters.convert_dae import DaeConverter2
 from converters.convert_obj import ObjConverter
+from gui.brres_path import BrresPath
 from gui.brres_treeview import BrresTreeView
 from gui.material_browser import MaterialBrowser, MaterialTabs
 from gui.poly_editor import PolyEditor
@@ -16,13 +18,15 @@ from load_config import load_config, parse_args
 
 
 class Window(QMainWindow):
-    def __init__(self):
+    def __init__(self, brres_files=[]):
         super().__init__()
         self.open_files = []
         self.brres = None
         self.cwd = os.getcwd()
         AutoFix.get().set_pipe(self)
         self.__init_UI()
+        for file in brres_files:
+            self.set_brres(file)
         self.show()
 
     def __init_menus(self):
@@ -210,7 +214,9 @@ class Window(QMainWindow):
             if m.exec_():
                 brres.save(overwrite=True)
         self.open_files.remove(brres)
+        brres.close()
         self.brres = None
+        self.treeview
 
     def shouldExitAnyway(self, result):
         return result == QMessageBox.Ok

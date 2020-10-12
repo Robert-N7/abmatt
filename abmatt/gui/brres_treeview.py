@@ -95,13 +95,13 @@ class BrresTreeView(QTreeView):
 
     def dragEnterEvent(self, event):
         m = event.mimeData()
-        if m.hasUrls():
+        if m.hasUrls() and self.check_urls(event.mimeData().urls()):
             event.accept()
         else:
             event.ignore()
 
     def dragMoveEvent(self, event):
-        if event.mimeData().hasUrls():
+        if event.mimeData().hasUrls() and self.check_urls(event.mimeData().urls()):
             event.setDropAction(Qt.CopyAction)
             event.accept()
         else:
@@ -110,14 +110,24 @@ class BrresTreeView(QTreeView):
     def dropEvent(self, event):
         m = event.mimeData()
         if m.hasUrls():
-            event.setDropAction(Qt.CopyAction)
-            event.accept()
-            links = []
-            for url in m.urls():
-                links.append(str(url.toLocalFile()))
-            self.add_files(links)
+            strings = self.check_urls(m.urls())
+            if strings:
+                event.accept()
+                self.add_files(strings)
         else:
             event.ignore()
+
+    def check_urls(self, urls):
+        strings = [str(url.toLocalFile()) for url in urls]
+        if self.check_ext(strings):
+            return strings
+
+    def check_ext(self, files):
+        valid_exts = ('.dae', '.obj', '.brres')
+        for file in files:
+            if os.path.splitext(os.path.basename(file))[1] not in valid_exts:
+                return False
+        return True
 
     def add_files(self, files):
         for fname in files:
@@ -127,8 +137,8 @@ class BrresTreeView(QTreeView):
                 self.handler.import_file(fname)
             elif ext == '.brres':
                 self.handler.open(fname)
-            elif ext in ('.png', '.jpg', '.bmp', '.tga'):
-                self.handler.import_texture(fname)
+            # elif ext in ('.png', '.jpg', '.bmp', '.tga'):
+            #     self.handler.import_texture(fname)
             else:
                 AutoFix.get().warn(f'{fname} has unknown extension')
 
@@ -141,6 +151,9 @@ class BrresTreeView(QTreeView):
         brres_tree = self.__create_tree_item(brres, self.mdl)
         for model in brres.models:
             self.add_mdl0_item(brres_tree, model)
+
+    def remove_brres_tree(self, brres):
+        pass
 
 
 class QLinkedItem(QStandardItem):

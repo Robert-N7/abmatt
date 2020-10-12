@@ -230,6 +230,17 @@ class Mdl0(SubFile):
         #     self.add_texture_link(x.name)
         return material
 
+    def remove_material(self, material):
+        polys = self.get_polys_using_material(material)
+        if polys:
+            AutoFix.error('Unable to remove linked material, used by {}'.format(polys))
+            return False
+        self.materials.remove(material)
+        return True
+
+    def get_polys_using_material(self, material):
+        return [x for x in self.objects if x.get_material() == material]
+
     def add_bone(self, name, parent_bone=None, has_geometry=False,
                  scale_equal=True, fixed_scale=True,
                  fixed_rotation=True, fixed_translation=True):

@@ -7,6 +7,13 @@ from PyQt5.QtWidgets import QWidget, QGroupBox, QGridLayout, QScrollArea, QSizeP
 from brres import Brres
 from brres.lib.node import ClipableObserver
 from brres.mdl0.material import Material
+from PyQt5.QtCore import Qt, QMimeData, QUrl
+from PyQt5.QtGui import QDrag, QPixmap, QPainter
+from PyQt5.QtWidgets import QWidget, QGridLayout, QScrollArea, QVBoxLayout, QLabel, QHBoxLayout, QTabWidget, QCheckBox, \
+    QFrame
+
+from brres import Brres
+from gui.brres_path import BrresPath, get_materials_by_url
 
 
 class MaterialTabs(QWidget):
@@ -16,29 +23,44 @@ class MaterialTabs(QWidget):
         # Material selection tabs
         tab_widget = QTabWidget(self)
         layout.addWidget(tab_widget)
-        self.material_library = MaterialBrowser(self)
+        self.material_library = MaterialLibrary(self, Brres.get_material_library())
         tab_widget.addTab(self.material_library, 'Library Materials')
-        self.scene_library = MaterialBrowser(self, True)
+        self.scene_library = MaterialBrowser(self)
         tab_widget.addTab(self.scene_library, 'Scene Materials')
+        self.setAcceptDrops(True)
         self.editor = MaterialSmallEditor(self)
         layout.addWidget(self.editor)
         self.setLayout(layout)
-        self.load_material_library()
 
-    def load_material_library(self):
-        lib = Brres.get_material_library()
-        self.add_materials_to_library(lib.values())
+    def __init_material_editor(self, layout):
+        # Material edit tab
+        widget = QWidget()
+        layout.addWidget(widget)
+        grid = QGridLayout()
+        widget.setLayout(grid)
+        # Left
+        name_label = QLabel('Material:')
+        cull_label = QLabel('Cull:')
+        trans_label = QLabel('Transparency threshold:')
+        color_label = QLabel('Color:')
+        self.blend = QCheckBox('Blend')
+        maps = QLabel('Maps:')
+        grid.addWidget(name_label)
+        grid.addWidget(cull_label)
+        grid.addWidget(trans_label)
+        grid.addWidget(color_label)
+        grid.addWidget(self.blend)
+        grid.addWidget(maps)
+        # Right
 
     def add_brres_materials_to_scene(self, brres):
         self.scene_library.add_brres_materials(brres)
 
     def add_materials_to_library(self, materials):
-        library = self.material_library.materials
-        for x in materials:
-            self.material_library.add_material(x, library)
+        self.material_library.add_materials(materials)
 
     def add_material_to_library(self, material):
-        self.material_library.add_material(material, self.material_library.materials)
+        self.material_library.add_material(material)
 
     def on_material_select(self, material):
         """Handles material selection event"""
@@ -46,10 +68,9 @@ class MaterialTabs(QWidget):
 
 
 class MaterialBrowser(QWidget):
-    def __init__(self, parent, use_absolute_path=False):
+    def __init__(self, parent):
         super().__init__(parent)
         self.handler = parent
-        self.use_absolute_path = use_absolute_path
         self.init_UI()
         self.grid_col_max = 4
         self.materials = {}
@@ -69,15 +90,10 @@ class MaterialBrowser(QWidget):
         self.setLayout(self.horz_layout)
 
     def add_brres_materials(self, brres):
-        if self.use_absolute_path:
-            materials = self.materials.get(brres.name)
-            if materials is None:
-                self.materials[brres.name] = materials = {}
-        else:
-            materials = self.materials
+        materials = self.materials
         for model in brres.models:
             for material in model.materials:
-                self.add_material(material, materials)
+                self.add_material(material)
 
     def increment_grid(self):
         row = self.grid_row
@@ -89,26 +105,102 @@ class MaterialBrowser(QWidget):
             self.grid_col += 1
         return row, col
 
-    def add_material(self, material, materials):
-        # name = material.name
-        # if name not in materials:
-        #     materials[name] = material
-        #     label = QPushButton(material.name)
-        #     label.click.connect(self.on_material_select)
-        # label.setFixedWidth(120)
-        self.grid.addWidget(MaterialWidget(self, material, self.handler), *self.increment_grid())
+    def add_materials(self, materials):
+        for x in materials:
+            self.add_material(x)
+
+    def add_material(self, material):
+        mat_path = BrresPath(material=material)
+        name = mat_path.get_path()
+        if name not in self.materials:
+            self.materials[name] = material
+            label = MaterialWidget(self, self.handler, material, mat_path)
+            # label.setFixedWidth(120)
+            self.grid.addWidget(label, *self.increment_grid())
+            return True
+        return False
+
+
+class MaterialLibrary(MaterialBrowser):
+    """
+    Material Browser that can also add and remove materials and be saved
+    """
+    def __init__(self, parent, material_library):
+        super().__init__(parent)
+        self.brres = None
+        self.add_materials(material_library.values())
+        for x in material_library:
+            self.brres = material_library[x].parent.parent
+            break
+
+    def add_material(self, material):
+        if super().add_material(material) and self.brres is not None:
+            self.brres.models[0].add_material(material)
+            self.brres.save(overwrite=True)
+
+    def remove_material(self, material):
+        b_path = BrresPath(material=material).get_path()
+        if b_path in self.materials:
+            if self.brres.models[0].remove_material(material):
+                widget = self.materials.pop(b_path)
+                self.grid.removeWidget(widget)
+                self.brres.save()
+
+    def dropEvent(self, a0):
+        data = a0.mimeData()
+        if data.hasUrls():
+            for x in data.urls():
+                for material in get_materials_by_url(x):
+                    self.add_material(material)
+            a0.accept()
+        else:
+            a0.ignore()
+
+    def dragEnterEvent(self, a0):
+        if a0.mimeData().hasUrls():
+            a0.accept()
+        else:
+            a0.ignore()
+
+    def dragMoveEvent(self, a0):
+        if a0.mimeData().hasUrls():
+            a0.accept()
+        else:
+            a0.ignore()
+
 
 
 class MaterialWidget(QLabel):
-    def __init__(self, parent, material, handler):
-        super().__init__(parent)
-        self.handler = handler
+    def __init__(self, parent, handler, material, brres_path=None):
+        super().__init__(material.name, parent)
         self.material = material
-        self.setText(material.name)
+        self.handler = handler
+        # todo make observer
+        if brres_path is None:
+            self.brres_path = BrresPath(material=material)
+        else:
+            self.brres_path = brres_path
 
-    def mousePressEvent(self, event):
-        super().mousePressEvent(event)
+
+    def mousePressEvent(self, ev):
         self.handler.on_material_select(self.material)
+        if ev.button() == Qt.LeftButton:
+            self.drag_start_position = ev.pos()
+
+    def mouseMoveEvent(self, ev):
+        if not ev.buttons() & Qt.LeftButton:
+            return
+        drag = QDrag(self)
+        mimedata = QMimeData()
+        mimedata.setUrls([QUrl(self.brres_path.get_path())])
+        drag.setMimeData(mimedata)
+        pixmap = QPixmap(self.size())
+        painter = QPainter(pixmap)
+        painter.drawPixmap(self.rect(), self.grab())
+        painter.end()
+        drag.setPixmap(pixmap)
+        drag.setHotSpot(ev.pos())
+        drag.exec_(Qt.CopyAction | Qt.MoveAction)
 
 
 class MaterialSmallEditor(QFrame, ClipableObserver):

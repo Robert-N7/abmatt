@@ -101,6 +101,7 @@ def load_config(app_dir, loudness=None, autofix_level=None):
     if resample is not None:
         ImgConverterI.set_resample(resample)
     Brres.MATERIAL_LIBRARY = conf['material_library']
+    Brres.TEMP_DIR = conf['temp_dir']
     return conf
 
 
