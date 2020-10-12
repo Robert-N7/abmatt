@@ -318,20 +318,31 @@ class AlphaFunction(BPCommand):
         data = 0x1eff80 if xlu else 0x3f0000
         super(AlphaFunction, self).__init__(BPCommand.BPMEM_ALPHACOMPARE, data)
 
-    def isXlu(self):
-        return not (self.data >> 16 & 0x3f)  # just checks comparison functions
+    def get_alpha_value(self):
+        if not self.is_enabled():
+            return 0
+        return self.getRef0()
 
-    def setXlu(self, enable):
+    def set_alpha_value(self, value):
+        self.enable(True, value)
+
+    def is_enabled(self):
+        return self.getComp0() < 7
+
+    def enable(self, enable, value=0x80):
+        assert 0 <= value < 256
         if enable:
-            if not self.getRef0():
-                self.setRef0(0x80)
+            if self.getRef0() != value:
+                self.setRef0(value)
             if not self.getRef1():
                 self.setRef1(0xff)
             self.setComp0(6)
             self.setComp1(3)
         else:
             self.setComp0(7)
+            self.setRef0(0)
             self.setComp1(7)
+            self.setRef1(0)
 
     def getRef0(self):
         return self.data & 0xff

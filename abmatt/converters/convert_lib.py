@@ -53,7 +53,6 @@ class Converter:
         base_name = os.path.splitext(brres_name)[0]
         self.is_map = True if 'map' in base_name else False
         dir, name = os.path.split(self.mdl_file)
-        material.Material.WARNINGS_ON = False
         if dir:
             os.chdir(dir)  # change to the dir to help find relative paths
         return self._init_mdl0(brres_name, os.path.splitext(name)[0], model_name)
@@ -65,7 +64,6 @@ class Converter:
         if self.is_map:
             mdl0.add_map_bones()
         os.chdir(self.cwd)
-        material.Material.WARNINGS_ON = True
         AutoFix.get().info('\t... finished in {} secs'.format(round(time.time() - self.start, 2)))
         return mdl0
 

@@ -280,6 +280,7 @@ class SRTTexAnim(Clipable):
     # ---------------------- CLIPABLE -------------------------------------------------------------
     def paste(self, item):
         self.animations = deepcopy(item.animations)
+        self.mark_modified()
 
     # -------------------------------------------------------------------------
     # interfacing
@@ -296,6 +297,7 @@ class SRTTexAnim(Clipable):
             for x in keyframes:
                 key2, value = splitKeyVal(x)
                 anim[key2] = value
+        self.mark_modified()
 
     def __deepcopy__(self, memodict={}):
         ret = SRTTexAnim(self.name, self.parent.framecount, None)
@@ -318,26 +320,33 @@ class SRTTexAnim(Clipable):
         """ Adds a key frame to the animation
             animType: xscale|yscale|rotation|xtranslation|ytranslation
         """
-        return self.animations[animType].setKeyFrame(value, index)
+        val = self.animations[animType].setKeyFrame(value, index)
+        self.mark_modified()
+        return val
 
     def removeFrame(self, animType, index):
         """ Removes a key frame from the animation
             animType: xscale|yscale|rotation|xtranslation|ytranslation
         """
-        return self.animations[animType].removeKeyFrame(index)
+        val = self.animations[animType].removeKeyFrame(index)
+        self.mark_modified()
+        return val
 
     def clearFrames(self, animType):
         """ clears frames for an animation type
             animType: xscale|yscale|rotation|xtranslation|ytranslation
         """
         is_scale = True if 'scale' in animType else False
-        return self.animations[animType].clearFrames(is_scale)
+        val = self.animations[animType].clearFrames(is_scale)
+        self.mark_modified()
+        return val
 
     def setFrameCount(self, frameCount):
         """ Sets the frame count """
         animations = self.animations
         for x in animations:
             animations[x].setFrameCount(frameCount)
+        self.mark_modified()
 
     # ----------------------------------------------------------------------
 
@@ -526,6 +535,10 @@ class SRTMatAnim(Clipable):
         self.loop = looping
         super(SRTMatAnim, self).__init__(name, parent, binfile)
 
+    def mark_unmodified(self):
+        self.is_modified = False
+        self._mark_unmodified_group(self.tex_animations)
+
     def get_str(self, key):
         if key == 'framecount':
             return self.framecount
@@ -537,19 +550,23 @@ class SRTMatAnim(Clipable):
     def set_str(self, key, value):
         if key == 'framecount':
             i = validInt(value, 1, 0x7FFFFFFF)
-            self.framecount = i
-            for x in self.tex_animations:
-                x.setFrameCount(i)
+            if i != self.framecount:
+                self.framecount = i
+                for x in self.tex_animations:
+                    x.setFrameCount(i)
+                self.mark_modified()
         elif key == 'loop':
-            self.loop = validBool(value)
+            loop = validBool(value)
+            if self.loop != loop:
+                self.loop = loop
+                self.mark_modified()
         elif key == 'layerenable':
             key, value = splitKeyVal(value)
             key = validInt(key, 0, 8)
             value = validBool(value)
-            self.texEnable(key) if value else self.texDisable(key)
-
-    def rename(self, name):
-        self.name = name
+            if value != self.texIsEnabled(key):
+                self.texEnable(key) if value else self.texDisable(key)
+                self.mark_modified()
 
     # ------------------ PASTE ---------------------------
     def paste(self, item):
@@ -561,6 +578,7 @@ class SRTMatAnim(Clipable):
         for x in self.tex_animations:
             x.parent = self
         self.updateLayerNames(self.parent)
+        self.mark_modified()
 
     def setFrameCount(self, count):
         self.framecount = count
@@ -579,6 +597,7 @@ class SRTMatAnim(Clipable):
             layer = self.parent.getLayerI(i)
             if layer:
                 anim.real_name = layer.name
+            self.mark_modified()
 
     def texDisable(self, i):
         if self.texEnabled[i]:
@@ -586,6 +605,7 @@ class SRTMatAnim(Clipable):
             for x in self.tex_animations:
                 if x.name == i:
                     self.tex_animations.remove(x)
+                    self.mark_modified()
                     break
 
     def texIsEnabled(self, i):
@@ -608,7 +628,9 @@ class SRTMatAnim(Clipable):
         """Adds layer at first available location"""
         for i in range(len(self.texEnabled)):
             if not self.texEnabled[i]:
-                return self.texEnable(i)
+                self.texEnable(i)
+                self.mark_modified()
+                return
         raise ValueError('{} Unable to add animation layer, maxed reached'.format(self.name))
 
     def addLayerByName(self, name):
@@ -616,6 +638,7 @@ class SRTMatAnim(Clipable):
         i = self.parent.getLayerByName(name)
         if i > 0:
             self.texEnable(i)
+            self.mark_modified()
         raise ValueError('{} Unknown layer {}'.format(self.name, name))
 
     # -------------------------------- Remove -------------------------------------------
@@ -623,7 +646,9 @@ class SRTMatAnim(Clipable):
         """Removes last layer found"""
         for i in range(len(self.texEnabled) - 1, -1, -1):
             if self.texEnabled[i]:
-                return self.texDisable(i)
+                self.texDisable(i)
+                self.mark_modified()
+                return
         raise ValueError('{} No layers left to remove'.format(self.name))
 
     def removeLayerI(self, i):
@@ -632,6 +657,7 @@ class SRTMatAnim(Clipable):
             self.tex_animations.remove(self.getTexAnimationByID(i))
             for j in range(i + 1, len(self.texEnabled)):
                 self.texEnabled[j-1] = self.texEnabled[j]
+            self.mark_modified()
 
     def removeLayerByName(self, name):
         """Removes the layer if found, (for removing only the animation)"""
@@ -642,14 +668,12 @@ class SRTMatAnim(Clipable):
                 if self.tex_animations[j] in matches:
                     self.texEnabled[i] = False
                     self.tex_animations.pop(j)
+                    self.mark_modified()
                     return
                 j += 1
         raise ValueError('{} No layer matching {}'.format(self.name, name))
 
     # -------------------------------- Name updates -------------------------------------
-    def updateName(self, name):
-        self.name = name
-
     def updateLayerNameI(self, i, name):
         """updates layer i name"""
         tex = self.getTexAnimationByID(i)

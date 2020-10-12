@@ -20,6 +20,7 @@ from abmatt.brres.tex0 import Tex0, ImgConverter
 
 
 class Brres(Clipable):
+
     FOLDERS = {"3DModels(NW4R)": Mdl0,
                "Textures(NW4R)": Tex0,
                "AnmTexPat(NW4R)": Pat0,
@@ -49,8 +50,12 @@ class Brres(Clipable):
         self.folders = {}
         self.is_modified = False
         self.texture_map = {}
+        self.has_new_model = False
         binfile = BinFile(name) if readFile else None
         super(Brres, self).__init__(name, parent, binfile)
+
+    def get_full_path(self):
+        return os.path.abspath(self.name)
 
     @staticmethod
     def get_material_library():
@@ -94,14 +99,15 @@ class Brres(Clipable):
         from abmatt.converters.convert_dae import DaeConverter2
         converter = DaeConverter2(self, file_path)
         converter.load_model()
+        self.mark_modified()
 
     def add_mdl0(self, mdl0):
-        self.mark_modified()
         prev = self.getModel(mdl0.name)
         if prev:
             self.remove_mdl0(mdl0.name)
         self.models.append(mdl0)
         mdl0.link_parent(self)
+        self.mark_modified()
         return mdl0
 
     def remove_mdl0(self, name):
@@ -112,10 +118,12 @@ class Brres(Clipable):
                     self.srt0.remove(x.srt0_collection)
                 if x.pat0_collection:
                     self.pat0.remove(x.pat0_collection)
+                self.mark_modified()
                 break
 
     def remove_mdl0_i(self, i):
         self.models.pop(i)
+        self.mark_modified()
 
     # ---------------------------------------------- CLIPBOARD ------------------------------------------
     def paste(self, brres):
@@ -129,9 +137,6 @@ class Brres(Clipable):
                 tex.paste(t2[x])
         self.mark_modified()
         # todo chr0 paste
-
-    def mark_modified(self):
-        self.is_modified = True
 
     # -------------------------- SAVE/ CLOSE --------------------------------------------
     def close(self):
@@ -155,7 +160,8 @@ class Brres(Clipable):
             if f.commitWrite():
                 AutoFix.get().info("Wrote file '{}'".format(filename), 2)
                 self.name = filename
-                self.is_modified = False
+                self.has_new_model = False
+                self.mark_unmodified()
             return True
 
     def getTrace(self):
@@ -260,9 +266,9 @@ class Brres(Clipable):
         return ImgConverter().batch_encode(paths, tex0_format, num_mips, check)
 
     def rename_texture(self, tex0, name):
-        self.texture_map[tex0.name] = None
-        tex0.name = name
-        self.texture_map[tex0.name] = tex0
+        if tex0.rename(name):
+            self.texture_map[tex0.name] = None
+            self.texture_map[tex0.name] = tex0
 
     def get_texture_map(self):
         return self.texture_map
@@ -529,3 +535,8 @@ class Brres(Clipable):
         tex_map = self.texture_map
         for x in unused_textures:
             tex.remove(tex_map.pop(x))
+
+    def mark_unmodified(self):
+        self.is_modified = False
+        self._mark_unmodified_group(self.models)
+        self._mark_unmodified_group(self.textures)

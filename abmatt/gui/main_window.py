@@ -12,7 +12,7 @@ from converters.convert_obj import ObjConverter
 from gui.brres_treeview import BrresTreeView
 from gui.material_browser import MaterialBrowser, MaterialTabs
 from gui.poly_editor import PolyEditor
-from load_config import load_config
+from load_config import load_config, parse_args
 
 
 class Window(QMainWindow):
@@ -20,9 +20,9 @@ class Window(QMainWindow):
         super().__init__()
         self.open_files = []
         self.brres = None
-        self.__init_UI()
         self.cwd = os.getcwd()
         AutoFix.get().set_pipe(self)
+        self.__init_UI()
         self.show()
 
     def __init_menus(self):
@@ -30,12 +30,12 @@ class Window(QMainWindow):
         exit_act = QAction('&Exit', self)
         exit_act.setShortcut('Ctrl+q')
         exit_act.setStatusTip('Exit Application')
-        exit_act.triggered.connect(self.closeEvent)
+        exit_act.triggered.connect(self.close)
         # Open
         open_act = QAction('&Open', self)
         open_act.setShortcut('Ctrl+o')
         open_act.setStatusTip('Open a Brres file')
-        open_act.triggered.connect(self.open)
+        open_act.triggered.connect(self.open_dialog)
         # Save
         save_act = QAction('&Save', self)
         save_act.setShortcut('Ctrl+s')
@@ -44,17 +44,17 @@ class Window(QMainWindow):
         # Save as
         save_as = QAction('Save &As', self)
         save_as.setStatusTip('Save file as')
-        save_as.triggered.connect(self.save_as)
+        save_as.triggered.connect(self.save_as_dialog)
         # import
         import_act = QAction('&Import', self)
         import_act.setShortcut('Ctrl+i')
         import_act.setStatusTip('Import file')
-        import_act.triggered.connect(self.import_file)
+        import_act.triggered.connect(self.import_file_dialog)
         # export
         export_act = QAction('&Export', self)
         export_act.setShortcut('Ctrl+e')
         export_act.setStatusTip('Export file')
-        export_act.triggered.connect(self.export_file)
+        export_act.triggered.connect(self.export_file_dialog)
         # File Menu
         menu = self.menuBar()
         fileMenu = menu.addMenu('&File')
@@ -82,17 +82,17 @@ class Window(QMainWindow):
         self.logger.setFixedHeight(100)
         vert_layout.addWidget(self.logger)
 
-        self.treeview = BrresTreeView(self, poly_updater=self)
+        self.treeview = BrresTreeView(self)
         center_layout.addWidget(self.treeview)
         self.poly_editor = PolyEditor(self)
         center_layout.addWidget(self.poly_editor)
         # center_widget.setGeometry(0, 0, 300, 300)
 
         # right
-        top_layout.addSpacing(30)
+        # top_layout.addSpacing(30)
         self.material_browser = MaterialTabs(self)
         top_layout.addWidget(self.material_browser)
-        self.material_browser.setFixedWidth(300)
+        # self.material_browser.setFixedWidth(300)
 
     def __init_UI(self):
         self.setWindowTitle('ANoobs Brres Material Tool')
@@ -111,25 +111,42 @@ class Window(QMainWindow):
     def emit(self, message):
         self.logger.appendHtml(message)
 
-    def set_brres(self, brres):
-        self.brres = brres
-        if brres not in self.open_files:
-            self.open_files.append(brres)
-            self.treeview.add_brres_tree(brres)
-            self.material_browser.add_brres_materials_to_scene(brres)
+    def get_brres_by_fname(self, fname):
+        path = os.path.abspath(fname)
+        for x in self.open_files:
+            if os.path.abspath(x.name) == path:
+                return x
 
-    def open(self):
+    def set_brres(self, brres):
+        if brres != self.brres:
+            self.brres = brres
+            if brres not in self.open_files:
+                self.open_files.append(brres)
+                self.treeview.add_brres_tree(brres)
+                self.material_browser.add_brres_materials_to_scene(brres)
+
+    def open_dialog(self):
         fname, filter = QFileDialog.getOpenFileName(self, 'Open file',
                                             self.cwd, "Brres files (*.brres)")
         if fname:
-            self.cwd = os.path.dirname(fname)
-            self.set_brres(Brres(fname))
+            self.open(fname)
+
+    def open(self, fname):
+        self.cwd = os.path.dirname(fname)
+        opened = self.get_brres_by_fname(fname)
+        if opened:
+            self.set_brres(opened)
+        else:
+            brres = Brres(fname)
+            self.set_brres(brres)
 
     def save(self):
-        if self.brres is not None:
-            self.brres.save()
+        for x in self.open_files:
+            # A precaution against overwriting old models
+            overwrite = True if not x.has_new_model else Brres.OVERWRITE
+            x.save(overwrite=overwrite)
 
-    def save_as(self):
+    def save_as_dialog(self):
         fname, filter = QFileDialog.getSaveFileName(self, 'Save as', self.cwd, 'Brres files (*.brres)')
         if fname:
             self.cwd = os.path.dirname(fname)
@@ -139,38 +156,61 @@ class Window(QMainWindow):
     def import_texture(self, filename):
         raise NotImplementedError()
 
-    def import_file(self):
+    def import_file(self, fname, brres_name=None, brres=None):
+        if brres is None:
+            if brres_name is not None:
+                brres = self.get_brres_by_fname(brres_name)
+            elif self.brres and os.path.splitext(os.path.basename(self.brres.name))[0] == \
+                os.path.splitext(os.path.basename(fname))[0]:
+                brres = self.brres
+        self.cwd, name = os.path.split(fname)
+        base_name, ext = os.path.splitext(name)
+        lower = ext.lower()
+        if lower == '.dae':
+            converter = DaeConverter2(brres, fname)
+        elif lower == '.obj':
+            converter = ObjConverter(brres, fname)
+        # elif lower in ('.png', '.jpg', '.bmp', '.tga'):
+        #     return self.import_texture(fname)
+        else:
+            self.statusBar().showMessage('Unknown extension {}'.format(ext))
+            return
+        converter.load_model()
+        self.set_brres(converter.brres)
+
+    def import_file_dialog(self, brres=None):
         fname, filter = QFileDialog.getOpenFileName(self, 'Import model', self.cwd, '(*.dae *.obj)')
         if fname:
-            self.cwd, name = os.path.split(fname)
-            base_name, ext = os.path.splitext(name)
-            lower = ext.lower()
-            if lower == '.dae':
-                converter = DaeConverter2(self.brres, fname)
-            elif lower == '.obj':
-                converter = ObjConverter(self.brres, fname)
-            # elif lower in ('.png', '.jpg', '.bmp', '.tga'):
-            #     return self.import_texture(fname)
-            else:
-                self.statusBar().showMessage('Unknown extension {}'.format(ext))
-                return
-            converter.load_model()
-            self.set_brres(converter.brres)
+            self.import_file(fname, brres)
 
-    def export_file(self):
+    def export_file_dialog(self, brres=None):
+        if brres is None:
+            brres = self.brres
         fname, fil = QFileDialog.getSaveFileName(self, 'Export model', self.cwd, 'Model files (*.dae *.obj)')
         if fname:
             self.cwd, name = os.path.split(fname)
             base_name, ext = os.path.splitext(name)
             lower = ext.lower()
             if lower == '.obj':
-                converter = ObjConverter(self.brres, fname)
+                converter = ObjConverter(brres, fname)
             elif lower == '.dae':
-                converter = DaeConverter2(self.brres, fname)
+                converter = DaeConverter2(brres, fname)
             else:
                 self.statusBar().showMessage('Unknown extension {}'.format(ext))
                 return
             converter.save_model()
+
+    def close_file(self, brres=None):
+        if brres is None:
+            brres = self.brres
+        if brres.is_modified:
+            m = QMessageBox(QMessageBox.Warning, 'Save Before Closing',
+                            f'Save {brres.name} before closing?',
+                            buttons=QMessageBox.Ok | QMessageBox.Cancel, parent=self)
+            if m.exec_():
+                brres.save(overwrite=True)
+        self.open_files.remove(brres)
+        self.brres = None
 
     def shouldExitAnyway(self, result):
         return result == QMessageBox.Ok
@@ -218,9 +258,9 @@ def main():
         base_path = sys.executable
     else:
         base_path = os.path.dirname(__file__)
-    app_dir = os.path.join(os.path.join(os.path.dirname(os.path.dirname(base_path)), 'etc'), 'abmatt')
-    load_config(app_dir)
+    parse_args(argv, base_path)
     exe = QApplication(argv)
+    exe.setStyle('Fusion')
     d = Window()
     sys.exit(exe.exec_())
 

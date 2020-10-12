@@ -1,10 +1,23 @@
 """Objects (Polygons)"""
 
-from autofix import AutoFix
-from abmatt.brres.lib.node import Node, get_item_by_index
+from autofix import AutoFix, Bug
+from abmatt.brres.lib.node import Node, get_item_by_index, Clipable
 
 
-class Polygon(Node):
+class Polygon(Clipable):
+    @property
+    def SETTINGS(self):
+        raise NotImplementedError()
+
+    def set_str(self, key, value):
+        raise NotImplementedError()
+
+    def get_str(self, key):
+        raise NotImplementedError()
+
+    def paste(self, item):
+        raise NotImplementedError()
+
     INDEX_FORMAT_NONE = 0
     INDEX_FORMAT_DIRECT = 1
     INDEX_FORMAT_BYTE = 2
@@ -15,7 +28,7 @@ class Polygon(Node):
         self.tex_format = [0] * 8
         self.tex_divisor = [0] * 8
         self.tex_e = [1] * 8
-        self.material = None
+        self.material = self.definition = None
         super(Polygon, self).__init__(name, parent, binfile)
 
     @staticmethod
@@ -69,7 +82,6 @@ class Polygon(Node):
             return self.parent.get_weights_by_ids(weight_indices)
         return [[(self.get_linked_bone_id(), 1)]]
 
-
     def get_vertex_group(self):
         if self.vertex_index_format >= self.INDEX_FORMAT_BYTE:
             return self.parent.vertices[self.vertex_group_index]
@@ -93,40 +105,97 @@ class Polygon(Node):
             if self.color1_index_format >= self.INDEX_FORMAT_BYTE:
                 return self.parent.colors[self.color_group_indices[1]]
 
+    def get_draw_definition(self):
+        if self.definition is None:
+            self.definition = self.parent.get_definition_by_object_id(self.index)
+        return self.definition
+
     def get_material(self):
         if self.material is None:
-            definition = self.parent.get_definition_by_object_id(self.index)
-            self.material = get_item_by_index(self.parent.materials, definition.matIndex)
+            self.material = get_item_by_index(self.parent.materials, self.get_draw_definition().matIndex)
         return self.material
 
     def get_bone(self):
         return self.parent.bones[self.get_linked_bone_id()]
 
-    def check(self):
+    def check(self, verts, norms, uvs, colors):  # as we go along, gather verts norms uvs colors
+        modified = False
         vertices = self.get_vertex_group()
         if vertices:
+            verts.add(vertices)
             if self.vertex_format != vertices.format:
                 AutoFix.get().warn('Mismatching format for vertices {}'.format(self.name))
                 self.vertex_format = vertices.format
+                modified = True
             if self.vertex_divisor != vertices.divisor:
                 AutoFix.get().warn('Mismatching divisor for vertices {}'.format(self.name))
                 self.vertex_divisor = vertices.divisor
+                modified = True
         normals = self.get_normal_group()
         if normals:
+            norms.add(normals)
             if self.normal_format != normals.format:
                 AutoFix.get().warn('Mismatching format for normals {}'.format(self.name))
                 self.normal_format = normals.format
+                modified = True
+        material = self.get_material()
+        # correct draw definition?
+        if material.is_xlu() != self.get_draw_definition().is_xlu():
+            change = 'opaque' if material.is_xlu() else 'xlu'
+            b = Bug(1, 4, '{} incorrect draw pass'.format(material.name), 'Change draw pass to {}'.format(change))
+            if self.parent.DRAW_PASS_AUTO:
+                if material.is_xlu():
+                    self.parent.setMaterialDrawXlu(self.get_draw_definition())
+                else:
+                    self.parent.setMaterialDrawOpa(self.get_draw_definition())
+                b.resolve()
+            modified = True
+
+        # Colors
+        my_colors = self.get_color_group()
+        uses_vertex_colors = material.is_vertex_color_enabled()
+        if my_colors:
+            colors.add(my_colors)
+            if my_colors.format != self.color0_format:
+                AutoFix.get().warn('Mismatching format for colors {}'.format(my_colors.name))
+                self.color0_format = my_colors.format
+                modified = True
+            if not uses_vertex_colors:
+                AutoFix.get().info(f'{self.name} has unused vertex colors', 4)
+        elif uses_vertex_colors:
+            b = Bug(2, 2, f'{material.name} uses vertex colors but {self.name} has no colors!',
+                    'Disable vertex colors')
+            material.enable_vertex_color(False)
+            b.resolve()
+            modified = True
+
+        # UVs
+        uvs_used = material.get_uv_channels()
+        uv_count = 0
         for i in range(8):
             tex = self.get_tex_group(i)
             if tex:
+                uv_count += 1
+                uvs.add(tex)
+                if i in uvs_used:
+                    uvs_used.remove(i)
+                else:
+                    AutoFix.get().info(f'{self.name} UV Channel {i} is not used by material.', 3)
                 if self.tex_format[i] != tex.format:
                     AutoFix.get().warn('Mismatching format for uv group {} {} '.format(i, self.name))
                     self.tex_format[i] = tex.format
+                    modified = True
                 if self.tex_divisor[i] != tex.divisor:
                     AutoFix.get().warn('Mismatching divisor for uv group {} {}'.format(i, self.name))
                     self.tex_divisor[i] = tex.divisor
+                    modified = True
             else:
                 break
+        if uv_count != self.num_tex:
+            AutoFix.get().warn(f'{self.name} has {uv_count} uvs enabled, but {self.num_tex} in description')
+        if uvs_used:
+            AutoFix.get().warn(f'{self.name} does not have UV channel(s) {uvs_used} but the material uses them!')
+        return modified
 
     # --------------------------------------------------
     # PACKING
@@ -241,7 +310,7 @@ class Polygon(Node):
         for i in range(8):
             lo |= self.has_tex_matrix[i] << i + 1
         lo |= (self.vertex_index_format | self.normal_index_format << 2
-              | self.color0_index_format << 4 | self.color1_index_format << 6) << 9
+               | self.color0_index_format << 4 | self.color1_index_format << 6) << 9
         shifter = hi = 0
         for x in self.tex_index_format:
             hi |= x << shifter

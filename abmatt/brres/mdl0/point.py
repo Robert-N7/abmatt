@@ -13,15 +13,20 @@ class Point(Node):
         self.data = []
 
     def check(self):
+        result = False
         if self.comp_count > 2:
             AutoFix.get().error('Geometry {} comp_count {} out of range'.format(self.name, self.comp_count))
             self.comp_count = 0
+            result = True
         if self.divisor >= 16:
             AutoFix.get().error('Geometry {} divisor {} out of range'.format(self.name, self.divisor))
             self.divisor = 0
+            result = True
         if self.format > 5:
             AutoFix.get().error('Geometry {} format {} out of range'.format(self.name, self.format))
             self.format = 4
+            result = True
+        return result
 
     def __len__(self):
         return self.count

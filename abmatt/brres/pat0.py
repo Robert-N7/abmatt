@@ -104,6 +104,7 @@ class Pat0MatAnimation(Clipable):
         self.frames = deepcopy(item.frames)
         self.framecount = item.framecount
         self.loop = item.loop
+        self.mark_modified()
 
     def create_brres_tex_ref(self, brres_textures):
         self.brres_textures = brres_textures
@@ -113,9 +114,15 @@ class Pat0MatAnimation(Clipable):
 
     def set_str(self, key, value):
         if key == 'loop':
-            self.loop = validBool(value)
+            loop = validBool(value)
+            if loop != self.loop:
+                self.loop = loop
+                self.mark_modified()
         elif key == 'framecount':
-            self.framecount = validInt(value, 0, 0x7FFFFFFF)
+            framecount = validInt(value, 0, 0x7FFFFFFF)
+            if framecount != self.framecount:
+                self.framecount = framecount
+                self.mark_modified()
         elif key == 'keyframe':
             frame_ids = []
             names = []
@@ -128,6 +135,7 @@ class Pat0MatAnimation(Clipable):
                 names.append(tex_name)
             for i in range(len(frame_ids)):
                 self.set_frame(frame_ids[i], names[i])
+            self.mark_modified()
 
     def get_str(self, item):
         if item == 'loop':
@@ -148,7 +156,9 @@ class Pat0MatAnimation(Clipable):
             return str(self.frame_id) + ':' + self.tex
 
     def updateName(self, new_name):
-        self.name = new_name
+        if new_name != self.name:
+            self.name = new_name
+            self.mark_modified()
 
     def set_frame_count(self, val):
         self.framecount = val
@@ -187,6 +197,7 @@ class Pat0MatAnimation(Clipable):
                         b.fix_des = 'Rename to {}'.format(result)
                         f.tex = result
                         b.resolve()
+                        self.mark_modified()
                 if not result:
                     b.fix_des = 'Remove ref'
                     if self.REMOVE_UNKNOWN_REFS:
@@ -194,6 +205,7 @@ class Pat0MatAnimation(Clipable):
                         b.resolve()
         if mark_for_removal:
             self.frames = [x for x in self.frames if x.tex not in mark_for_removal]
+            self.mark_modified()
 
     def check_name(self, name):
         if self.brres_textures and name not in self.brres_textures:

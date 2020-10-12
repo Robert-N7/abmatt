@@ -150,21 +150,13 @@ class Mdl0(SubFile):
         self.facepoint_count = 0
         self.scaling_rule = 0
         self.texture_matrix_mode = 0
+        self.parent.has_new_model = True
         for definition in ('DrawOpa', 'DrawXlu', 'NodeTree', 'NodeMix'):
             self.__setattr__(definition, get_definition(definition, self))
 
-    def create_or_find_influence(self, influence):
-        if self.NodeMix is None:
-            self.NodeMix = get_definition('NodeMix', self)
-        if len(influence) == 1:  # single?
-            bone_table = self.boneTable
-            for i in range(len(bone_table)):
-                if bone_table[i] == influence[0]:
-                    return i
-            return bone_table.add_entry(influence[0])
-        # multiple influences
-
-        return self.NodeMix.create_or_find_influence(influence)
+    def mark_unmodified(self):
+        self.is_modified = False
+        self._mark_unmodified_group(self.materials)
 
     def get_weights_by_ids(self, indices):
         weights_by_id = self.weights_by_id
@@ -234,8 +226,8 @@ class Mdl0(SubFile):
 
     def add_material(self, material):
         self.add_to_group(self.materials, material)
-        for x in material.layers:
-            self.add_texture_link(x.name)
+        # for x in material.layers:
+        #     self.add_texture_link(x.name)
         return material
 
     def add_bone(self, name, parent_bone=None, has_geometry=False,
@@ -333,10 +325,13 @@ class Mdl0(SubFile):
 
     # ------------------ Name --------------------------------------
     def rename(self, name):
-        result = self.parent.renameModel(self.name, name)
-        if result:
-            self.name = result
-            self.is_map_model = True if 'map' in name else False
+        result = None
+        if name != self.name:
+            result = self.parent.renameModel(self.name, name)
+            if result:
+                self.name = result
+                self.is_map_model = True if 'map' in name else False
+            self.mark_modified()
         return result
 
     # ------------------------------------ Materials ------------------------------
@@ -360,14 +355,14 @@ class Mdl0(SubFile):
             return True
         return False
 
-    def setMaterialDrawXlu(self, material_id):
-        x = self.DrawOpa.pop(material_id)
+    def setMaterialDrawXlu(self, draw_entry):
+        x = self.DrawOpa.pop(draw_entry)
         if x is not None:
-            self.DrawXlu.insert(x)
+            self.DrawXlu.insert(draw_entry)
         return x
 
-    def setMaterialDrawOpa(self, material_id):
-        x = self.DrawXlu.pop(material_id)
+    def setMaterialDrawOpa(self, draw_entry):
+        x = self.DrawXlu.pop(draw_entry)
         if x is not None:
             self.DrawOpa.insert(x)
         return x
@@ -526,46 +521,40 @@ class Mdl0(SubFile):
                     self.add_map_bones()
                     b.resolve()
                     self.mark_modified()
-        self.checkDrawXLU()
+        uvs = set()
+        normals = set()
+        vertices = set()
+        colors = set()
+        for x in self.objects:
+            if x.check(vertices, normals, uvs, colors):
+                self.mark_modified()
         for x in self.texCoords:
-            x.check()
+            if x.check():
+                self.mark_modified()
         for x in self.vertices:
-            x.check()
-
-    def checkDrawXLU(self):
-        count = 0
-        for x in self.materials:
-            is_draw_xlu = self.isMaterialDrawXlu(x.name)
-            if x.xlu != is_draw_xlu:
-                change = 'opa' if x.xlu else 'xlu'
-                b = Bug(1, 4, '{} incorrect draw pass'.format(x.name), 'Change draw pass to {}'.format(change))
-                if self.DRAW_PASS_AUTO:
-                    if count == 0:
-                        self.mark_modified()
-                    count += 1
-                    if x.xlu:
-                        self.setMaterialDrawXlu(x.name)
-                    else:
-                        self.setMaterialDrawOpa(x.name)
-                    b.resolve()
-        return count
+            if x.check():
+                self.mark_modified()
+        for x in self.normals:
+            if x.check():
+                self.mark_modified()
 
     def add_map_bones(self):
         current_names = [bone.name for bone in self.bones]
         parent = self.bones[0]
         minimum = self.minimum
         maximum = self.maximum
-        if not 'posLD' in current_names:
+        if 'posLD' not in current_names:
             b = self.add_bone('posLD', parent, fixed_translation=False, has_geometry=False)
             left = round(minimum[0] - 8000)
             down = round(maximum[2] + 8000)
             b.set_translation((left, 0, down))
-        if not 'posRU' in current_names:
+            self.mark_modified()
+        if 'posRU' not in current_names:
             b = self.add_bone('posRU', parent, fixed_translation=False, has_geometry=False)
             right = round(maximum[0] + 8000)
             up = round(minimum[2] - 8000)
             b.set_translation((right, 0, up))
-
+            self.mark_modified()
 
     def get_used_textures(self):
         textures = set()

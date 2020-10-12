@@ -129,6 +129,10 @@ class Layer(Clipable):
     def getCoordinates(self):
         return self.COORDINATES[self.xfTexMatrix["coordinates"]]
 
+    def get_uv_channel(self):
+        val = self.xfTexMatrix['coordinates'] - 5
+        return val if val >= 0 else None
+
     def getEmbossLight(self):
         return self.xfTexMatrix["embosslight"]
 
@@ -167,28 +171,35 @@ class Layer(Clipable):
         fun = self.getSetter(key)
         return fun(self, value)
 
+    def set_scale(self, scale):
+        if self.scale != scale:
+            self.scale = scale
+            self.mark_modified()
+
     def setScaleStr(self, value):
         values = parseValStr(value)
         if len(values) < 2:
             raise ValueError("Scale requires 2 floats")
-        i1 = float(values[0])
-        i2 = float(values[1])
-        if self.scale[0] != i1 or self.scale[1] != i2:
-            self.scale = (i1, i2)
+        self.set_scale((float(values[0]), float(values[1])))
+
+    def set_rotation(self, rotation):
+        if self.rotation != rotation:
+            self.rotation = rotation
+            self.mark_modified()
 
     def setRotationStr(self, value):
-        f = float(value)
-        if f != self.rotation:
-            self.rotation = f
+        self.set_rotation(float(value))
+
+    def set_translation(self, translation):
+        if self.translation != translation:
+            self.translation = translation
+            self.mark_modified()
 
     def setTranslationStr(self, value):
         values = parseValStr(value)
         if len(values) < 2:
             raise ValueError("Translation requires 2 floats")
-        i1 = float(values[0])
-        i2 = float(values[1])
-        if self.translation[0] != i1 or self.translation[1] != i2:
-            self.translation = (i1, i2)
+        self.set_translation((float(values[0]), float(values[1])))
 
     def setCameraRefStr(self, value):
         i = int(value)
@@ -196,6 +207,7 @@ class Layer(Clipable):
             raise ValueError("Expected -1 or 0 for camera reference")
         if self.scn0CameraRef != i:
             self.scn0CameraRef = i
+            self.mark_modified()
 
     def setLightRefStr(self, value):
         i = int(value)
@@ -203,27 +215,32 @@ class Layer(Clipable):
             raise ValueError("Expected -1 for light reference")
         if self.scn0LightRef != i:
             self.scn0LightRef = i
+            self.mark_modified()
 
     def setMapmodeStr(self, value):
         i = indexListItem(self.MAPMODE, value, self.mapMode)
         if i >= 0:
             self.mapMode = i
+            self.mark_modified()
 
     def setUWrapStr(self, value):
         i = indexListItem(self.WRAP, value, self.uwrap)
         if i >= 0:
             self.uwrap = i
+            self.mark_modified()
 
     def setVWrapStr(self, value):
         i = indexListItem(self.WRAP, value, self.vwrap)
         if i >= 0:
             self.vwrap = i
+            self.mark_modified()
 
     def setMinFilterStr(self, value):
         value = value.replace('_', '')
         i = indexListItem(self.FILTER, value, self.minfilter)
         if i >= 0:
             self.minfilter = i
+            self.mark_modified()
 
     def setMagFilterStr(self, value):
         i = indexListItem(self.FILTER, value, self.magfilter)
@@ -231,11 +248,13 @@ class Layer(Clipable):
             raise ValueError("MagFilter out of range (0-1)")
         elif i >= 0:
             self.minfilter = i
+            self.mark_modified()
 
     def setLodBiasStr(self, value):
         f = float(value)
         if f != self.LODBias:
             self.LODBias = f
+            self.mark_modified()
 
     def setAnisotrophyStr(self, value):
         invalidI = False
@@ -253,36 +272,43 @@ class Layer(Clipable):
             raise ValueError("Invalid: '" + value + "', Anisotrophy expects 1|2|4")
         if i >= 0 and i != self.maxAnisotrophy:
             self.maxAnisotrophy = i
+            self.mark_modified()
 
     def setClampBiasStr(self, value):
         val = validBool(value)
         if val != self.clampBias:
             self.clampBias = val
+            self.mark_modified()
 
     def setTexelInterpolateStr(self, value):
         val = validBool(value)
         if val != self.texelInterpolate:
             self.texelInterpolate = val
+            self.mark_modified()
 
     def setProjectionStr(self, value):
         i = indexListItem(self.PROJECTION, value, self.xfTexMatrix["projection"])
         if i >= 0:
             self.xfTexMatrix["projection"] = i
+            self.mark_modified()
 
     def setInputFormStr(self, value):
         i = indexListItem(self.INPUTFORM, value, self.xfTexMatrix["inputform"])
         if i >= 0:
             self.xfTexMatrix["inputform"] = i
+            self.mark_modified()
 
     def setTypeStr(self, value):
         i = indexListItem(self.TYPE, value, self.xfTexMatrix["type"])
         if i >= 0:
             self.xfTexMatrix["type"] = i
+            self.mark_modified()
 
     def setCoordinatesStr(self, value):
         i = indexListItem(self.COORDINATES, value, self.xfTexMatrix["coordinates"])
         if i >= 0:
             self.xfTexMatrix["coordinates"] = i
+            self.mark_modified()
 
     def setEmbossSourceStr(self, value):
         i = int(value)
@@ -290,6 +316,7 @@ class Layer(Clipable):
             raise ValueError("Value '" + value + "' out of range for emboss source")
         if self.xfTexMatrix["embosssource"] != i:
             self.xfTexMatrix["embosssource"] = i
+            self.mark_modified()
 
     def setEmbossLightStr(self, value):
         i = int(value)
@@ -297,11 +324,13 @@ class Layer(Clipable):
             raise ValueError("Value '" + value + "' out of range for emboss light")
         if self.xfTexMatrix["embosslight"] != i:
             self.xfTexMatrix["embosslight"] = i
+            self.mark_modified()
 
     def setNormalizeStr(self, value):
         val = validBool(value)
         if val != self.xfDualTex.normalize:
             self.xfDualTex.normalize = val
+            self.mark_modified()
 
     def setLayerFlags(self, nibble):
         """ from lsb, enable, scaledefault, rotationdefault, transdefault """
@@ -315,7 +344,9 @@ class Layer(Clipable):
         return self.enable
 
     def setName(self, value):
-        self.name = self.parent.renameLayer(self, value)
+        if value != self.name:
+            self.name = self.parent.renameLayer(self, value)
+            self.mark_modified()
 
     SET_SETTING = (setScaleStr, setRotationStr, setTranslationStr, setCameraRefStr,
                    setLightRefStr, setMapmodeStr, setUWrapStr, setVWrapStr, setMinFilterStr, setMagFilterStr,
@@ -348,6 +379,7 @@ class Layer(Clipable):
         self.texMatrix = copy(item.texMatrix)
         self.xfTexMatrix = deepcopy(item.xfTexMatrix)
         self.xfDualTex = deepcopy(item.xfDualTex)
+        self.mark_modified()
 
     # -------------------------------------------------------------------------
     # Packing things
@@ -426,6 +458,11 @@ class Layer(Clipable):
     def uses_mipmaps(self):
         return self.minfilter > 1
 
+    def set_minfilter(self, value):
+        if self.minfilter != value:
+            self.minfilter = value
+            self.mark_modified()
+
     def check(self, texture_map=None):
         if texture_map is None:
             texture_map = self.parent.get_texture_map()
@@ -447,13 +484,14 @@ class Layer(Clipable):
                     b.fix_des = 'Remove reference'
                     self.parent.removeLayer(self.name)
                     b.resolve()
+                    self.mark_modified()
                     return
         if tex:
             if self.uses_mipmaps():
                 if tex.num_mips == 0:
                     b = Bug(4, 4, '{} no mipmaps in tex0'.format(self.name), 'Set minfilter to linear')
                     if self.MINFILTER_AUTO:
-                        self.minfilter = 1  # linear
+                        self.set_minfilter(1)  # linear
                         b.resolve()
                         self.mark_modified()
             else:
@@ -461,6 +499,6 @@ class Layer(Clipable):
                     b = Bug(4, 4, '{} mipmaps disabled but TEX0 has {}'.format(
                         self.name, tex.num_mips), 'Set minfilter to LinearMipmapLinear')
                     if self.MINFILTER_AUTO:
-                        self.minfilter = 5  # linearmipmaplinear
+                        self.set_minfilter(5) # linearmipmaplinear
                         b.resolve()
                         self.mark_modified()

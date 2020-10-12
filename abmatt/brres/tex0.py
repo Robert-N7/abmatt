@@ -53,26 +53,25 @@ class Tex0(SubFile):
             width, height = parseValStr(value)
             width = validInt(width, 1, self.MAX_IMG_SIZE + 1)
             height = validInt(height, 1, self.MAX_IMG_SIZE + 1)
-            ImgConverter().set_dimensions(self, width, height)
+            self.set_dimensions(width, height)
         elif key == 'format':
             return self.set_format(value)
         elif key == 'mipmapcount':
             return self.set_mipmap_count(validInt(value, 0, 20))
         elif key == 'name':
-            return self.set_name(value)
+            return self.parent.rename_texture(value)
 
     def set_format(self, fmt):
         if fmt != self.format:
             if fmt.upper() not in self.FORMATS.values():
                 raise ValueError('Invalid tex0 format {}'.format(fmt))
             ImgConverter().convert(self, fmt)
+            self.mark_modified()
 
     def set_mipmap_count(self, count):
         if count != self.num_mips:
             ImgConverter().set_mipmap_count(self, count)
-
-    def set_name(self, name):
-        return self.parent.rename_texture(self, name)
+            self.mark_modified()
 
     @staticmethod
     def is_power_of_two(n):
@@ -90,6 +89,7 @@ class Tex0(SubFile):
         width = self.width if self.is_power_of_two(self.width) else self.nearest_power_of_two(self.width)
         height = self.height if self.is_power_of_two(self.height) else self.nearest_power_of_two(self.height)
         ImgConverter().set_dimensions(self, width, height)
+        self.mark_modified()
 
     def paste(self, item):
         self.width = item.width
@@ -98,6 +98,7 @@ class Tex0(SubFile):
         self.num_images = item.num_images
         self.num_mips = item.num_mips
         self.data = item.data
+        self.mark_modified()
 
     def should_resize_pow_two(self):
         return self.RESIZE_TO_POW_TWO
@@ -117,6 +118,11 @@ class Tex0(SubFile):
             width = Tex0.MAX_IMG_SIZE
         return width, height
 
+    def set_dimensions(self, width, height):
+        if width != self.width or height != self.height:
+            ImgConverter().set_dimensions(self, width, height)
+            self.mark_modified()
+
     def check(self):
         super(Tex0, self).check()
         if not self.is_power_of_two(self.width) or not self.is_power_of_two(self.height):
@@ -128,7 +134,7 @@ class Tex0(SubFile):
         if self.width > self.MAX_IMG_SIZE or self.height > self.MAX_IMG_SIZE:
             width, height = self.get_scaled_size(self.width, self.height)
             b = Bug(2, 2, str(self) + ' is too large', f'resize to {width}x{height}')
-            ImgConverter().set_dimensions(self, width, height)
+            self.set_dimensions(width, height)
             b.resolve()
 
 

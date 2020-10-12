@@ -146,7 +146,8 @@ class DrawList(Node):
     """List exclusively with drawing definitions such as opacity"""
 
     class DrawEntry:
-        def __init__(self, binfile=None):  # unpacks immediately
+        def __init__(self, is_xlu, binfile=None):  # unpacks immediately
+            self.xlu = is_xlu
             if binfile:
                 self.matIndex, self.objIndex, self.boneIndex, self.priority = binfile.read("3HB", 7)
 
@@ -156,6 +157,9 @@ class DrawList(Node):
             self.boneIndex = bone_id
             self.priority = priority
             return self
+
+        def is_xlu(self):
+            return self.xlu
 
         def pack(self, binfile):
             binfile.write("3HB", self.matIndex, self.objIndex, self.boneIndex, self.priority)
@@ -168,6 +172,7 @@ class DrawList(Node):
 
     def __init__(self, name, parent, binfile=None):
         self.list = []
+        self.is_xlu = ('Xlu' in name)
         super().__init__(name, parent, binfile)
 
     def __len__(self):
@@ -176,14 +181,14 @@ class DrawList(Node):
     def __bool__(self):
         return len(self.list) > 0
 
-    def pop(self, materialID):
+    def pop(self, draw_entry):
         li = self.list
         for i in range(len(li)):
-            if li[i].matIndex == materialID:
+            if li[i] is draw_entry:
                 return li.pop(i)
 
     def add_entry(self, material_id, polygon_id, bone_id=0, priority=0):
-        self.list.append(self.DrawEntry().begin(material_id, polygon_id, bone_id, priority))
+        self.list.append(self.DrawEntry(self.is_xlu).begin(material_id, polygon_id, bone_id, priority))
 
     def insert(self, drawEntry):
         priority = drawEntry.priority
@@ -219,7 +224,7 @@ class DrawList(Node):
             if byte == 0x1:
                 break
             assert (byte == 0x4)
-            li.append(self.DrawEntry(binfile))
+            li.append(self.DrawEntry(self.is_xlu, binfile))
 
     def pack(self, binfile):
         for x in self.list:

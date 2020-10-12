@@ -1,8 +1,8 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QCheckBox, QLineEdit, QComboBox, QGridLayout, \
+from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QComboBox, QGridLayout, \
     QFrame, QDockWidget
 
 
-class PolyEditor(QWidget):
+class PolyEditor(QFrame):
     def __init__(self, parent, poly=None):
         super().__init__(parent)
         self.__init_ui()
@@ -20,6 +20,8 @@ class PolyEditor(QWidget):
         self.normals.setChecked(poly.has_normals())
 
     def __init_ui(self):
+        self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        self.setLineWidth(2)
         layout = QGridLayout()
         self.setLayout(layout)
         # Left side
@@ -37,23 +39,23 @@ class PolyEditor(QWidget):
         layout.addWidget(uv_label)
         layout.addWidget(facepoint_label)
         layout.addWidget(face_label)
-        layout.addWidget(self.vertex_colors)
-        layout.addWidget(self.normals)
 
         # Right side
-        self.name_label = QLineEdit(self)
-        self.name_label.setReadOnly(True)
-        self.material_box = QLineEdit(self)
-        self.material_box.setReadOnly(True)
-        self.uv_count = QLineEdit(self)
-        self.uv_count.setReadOnly(True)
-        self.face_point_count = QLineEdit()
-        self.face_point_count.setReadOnly(True)
-        self.face_count = QLineEdit()
-        self.face_count.setReadOnly(True)
+        self.name_label = QLabel(self)
+        # self.name_label.setReadOnly(True)
+        self.material_box = QLabel(self)
+        # self.material_box.setReadOnly(True)
+        self.uv_count = QLabel(self)
+        # self.uv_count.setReadOnly(True)
+        self.face_point_count = QLabel()
+        # self.face_point_count.setReadOnly(True)
+        self.face_count = QLabel()
+        # self.face_count.setReadOnly(True)
         layout.addWidget(self.name_label, 0, 1)
         layout.addWidget(self.material_box, 1, 1)
         layout.addWidget(self.uv_count, 2, 1)
         layout.addWidget(self.face_point_count, 3, 1)
         layout.addWidget(self.face_count, 4, 1)
+        layout.addWidget(self.vertex_colors, 5, 1)
+        layout.addWidget(self.normals, 6, 1)
 

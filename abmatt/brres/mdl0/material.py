@@ -19,7 +19,6 @@ class Material(Clipable):
     #   CONSTANTS
     # -----------------------------------------------------------------------
     EXT = 'matl'
-    WARNINGS_ON = True
     SETTINGS = ("xlu", "ref0", "ref1",
                 "comp0", "comp1", "comparebeforetexture", "blend",
                 "blendsrc", "blendlogic", "blenddest", "constantalpha",
@@ -121,6 +120,9 @@ class Material(Clipable):
                 func = self.GET_SETTING[i]
                 return func(self)
         return None
+
+    def is_xlu(self):
+        return self.xlu
 
     def getXlu(self):
         return self.xlu
@@ -263,12 +265,14 @@ class Material(Clipable):
         if value == self.name:
             return True
         self.name = self.parent.rename_material(self, value)
+        self.mark_modified()
 
     def setXluStr(self, str_value):
         val = validBool(str_value)
         if self.xlu != val:
             self.xlu = val
             self.setDrawXLU(val)
+            self.mark_modified()
 
     # def setShader(self, shader):
     #     if shader.offset != self.shaderOffset + self.offset:
@@ -296,15 +300,18 @@ class Material(Clipable):
             raise ValueError(self.SHADERCOLOR_ERROR.format(str))
         list = self.matGX.cctevRegs if isConstant else self.matGX.tevRegs
         list[index].setColor(intVals)
+        self.mark_modified()
 
     def set_color(self, color, color_num=0):
         self.matGX.tevRegs[color_num].setColor(color)
+        self.mark_modified()
 
     def setCullModeStr(self, cullstr):
         cullstr = cullstr.replace('cull', '')
         i = indexListItem(self.CULL_STRINGS, cullstr, self.cullmode)
-        if i >= 0:
+        if i >= 0 and self.cullmode != i:
             self.cullmode = i
+            self.mark_modified()
 
     def setLightChannelStr(self, lcStr):
         i = lcStr.find(':')
@@ -313,6 +320,7 @@ class Material(Clipable):
         key = lcStr[:i]
         value = lcStr[i + 1:]
         self.lightChannels[0][key] = value
+        self.mark_modified()
 
     def setLightsetStr(self, str):
         val = int(str)
@@ -320,6 +328,7 @@ class Material(Clipable):
             raise ValueError("Invalid lightset " + str + ", expected -1")
         if self.lightset != -1:
             self.lightset = -1
+            self.mark_modified()
 
     def setFogsetStr(self, str):
         val = int(str)
@@ -327,6 +336,7 @@ class Material(Clipable):
             raise ValueError("Invalid fogset " + str + ", expected 0")
         if self.fogset != 0:
             self.fogset = 0
+            self.mark_modified()
 
     def setConstantAlphaStr(self, str):
         if "disable" in str:
@@ -342,13 +352,16 @@ class Material(Clipable):
         if val == -1:
             if enabled:
                 ca.setEnabled(False)
+                self.mark_modified()
         elif val == -2:
             if not enabled:
                 ca.setEnabled(True)
+                self.mark_modified()
         else:
             if not enabled or ca.get() != val:
                 ca.setEnabled(True)
                 ca.set(val)
+                self.mark_modified()
 
     def setMatrixModeStr(self, str):
         if "maya" in str:
@@ -362,6 +375,7 @@ class Material(Clipable):
                 self.textureMatrixMode = 2
         else:
             raise ValueError("Invalid Matrix Mode " + str + ", Expected Maya|XSI|3DSMax")
+        self.mark_modified()
 
     def setRef0Str(self, str):
         val = int(str)
@@ -370,6 +384,7 @@ class Material(Clipable):
         af = self.matGX.alphafunction
         if af.getRef0() != val:
             af.setRef0(val)
+            self.mark_modified()
 
     def setRef1Str(self, str):
         val = int(str)
@@ -378,73 +393,86 @@ class Material(Clipable):
         af = self.matGX.alphafunction
         if af.getRef1() != val:
             af.setRef1(val)
+            self.mark_modified()
 
     def setComp0Str(self, str):
         i = indexListItem(self.COMP_STRINGS, str, self.matGX.alphafunction.getComp0())
         if i >= 0:
             self.matGX.alphafunction.setComp0(i)
+            self.mark_modified()
 
     def setComp1Str(self, str):
         i = indexListItem(self.COMP_STRINGS, str, self.matGX.alphafunction.getComp1())
         if i >= 0:
             self.matGX.alphafunction.setComp1(i)
+            self.mark_modified()
 
     def setCompareBeforeTexStr(self, str):
         val = validBool(str)
         if val != self.compareBeforeTexture:
             self.compareBeforeTexture = val
+            self.mark_modified()
 
     def setBlendStr(self, str):
         val = validBool(str)
         b = self.matGX.blendmode
         if val != b.isEnabled():
             b.setEnabled(val)
+            self.mark_modified()
 
     def setBlendSrcStr(self, str):
         b = self.matGX.blendmode
         i = indexListItem(self.BLFACTOR_STRINGS, str, b.getSrcFactor())
         if i >= 0:
             b.setSrcFactor(i)
+            self.mark_modified()
 
     def setBlendDestStr(self, str):
         b = self.matGX.blendmode
         i = indexListItem(self.BLFACTOR_STRINGS, str, b.getDstFactor())
         if i >= 0:
             b.setDstFactor(i)
+            self.mark_modified()
 
     def setBlendLogicStr(self, str):
         b = self.matGX.blendmode
         i = indexListItem(self.BLLOGIC_STRINGS, str, b.getBlendLogic())
         if i >= 0:
             b.setBlendLogic(i)
+            self.mark_modified()
 
     def setEnableDepthTestStr(self, str):
         val = validBool(str)
         d = self.matGX.zmode
         if val != d.getDepthTest():
             d.setDepthTest(val)
+            self.mark_modified()
 
     def setEnableDepthUpdateStr(self, str):
         val = validBool(str)
         d = self.matGX.zmode
         if val != d.getDepthUpdate():
             d.setDepthUpdate(val)
+            self.mark_modified()
 
     def setDepthFunctionStr(self, str):
         i = indexListItem(self.COMP_STRINGS, str, self.matGX.zmode.getDepthFunction())
         d = self.matGX.zmode
         if i >= 0:
             d.setDepthFunction(i)
+            self.mark_modified()
 
     def setDrawPriorityStr(self, str):
         i = validInt(str, 0, 255)
         self.parent.setDrawPriority(self.index, i)
+        self.mark_modified()
 
     def setDrawXLU(self, enabled):
         if enabled:
             self.parent.setMaterialDrawXlu(self.index)
         else:
             self.parent.setMaterialDrawOpa(self.index)
+        self.mark_modified()
 
     MATRIX_ERR = 'Error parsing "{}", Usage: IndirectMatrix:[<i>:]<scale>,<r1c1>,<r1c2>,<r1c3>,<r2c1>,<r2c2>,<r2c3>'
 
@@ -467,6 +495,7 @@ class Material(Clipable):
         scale = validInt(str_values.pop(0).strip(':'), -17, 47)
         matrix = [validFloat(x.strip('()'), -1, 1) for x in str_values]
         self.matGX.setIndMatrix(matrix_index, scale, matrix)
+        self.mark_modified()
 
     def setLayerCountStr(self, str_value):
         self.setLayerCount(validInt(str_value, 0, 8))
@@ -476,9 +505,11 @@ class Material(Clipable):
         if val > current_len:
             while val > current_len:
                 current_len = self.addEmptyLayer()
+            self.mark_modified()
         elif val < current_len:
             while val < current_len:
                 current_len = self.removeLayerI()
+            self.mark_modified()
 
     # Set functions
     SET_SETTING = (setXluStr, setRef0Str, setRef1Str,
@@ -489,6 +520,39 @@ class Material(Clipable):
                    setEnableDepthUpdateStr, setDepthFunctionStr, setDrawPriorityStr,
                    setIndirectMatrix, setName, setLayerCountStr)
 
+    # --------------------- threshold transparency -------------------------------
+    def get_transparency_threshold(self):
+        return self.matGX.alphafunction.get_alpha_value()
+
+    def set_transparency_threshold(self, value):
+        if self.matGX.alphafunction.get_alpha_value() != value:
+            self.matGX.alphafunction.set_alpha_value(value)
+            self.compareBeforeTexture = (value <= 0)
+            self.mark_modified()
+
+    # ----------------------- color ------------------------------------------------
+    def get_colors_used(self):
+        """Check shader and finds colors used (vertex colors, light colors, shader colors)"""
+        raise NotImplementedError()
+
+    def get_tex0s(self):
+        tex0s = []
+        if len(self.layers) <= 0:
+            return tex0s
+        tex_map = self.get_texture_map()
+        for x in self.layers:
+            map = tex_map.get(x.name)
+            if map is not None:
+                tex0s.append(map)
+        return tex0s
+
+    def get_uv_channels(self):
+        channels = {x.get_uv_channel() for x in self.layers}
+        if None in channels:
+            channels.remove(None)
+        return channels
+
+
     # ------------------------- SRT0 --------------------------------------------------
     def add_srt0(self):
         """Adds a new srt0 with one layer reference"""
@@ -497,11 +561,13 @@ class Material(Clipable):
         anim = self.parent.add_srt0(self)
         self.set_srt0(anim)
         anim.addLayer()
+        self.mark_modified()
         return anim
 
     def remove_srt0(self):
         if self.srt0:
             self.parent.remove_srt0(self.srt0)
+            self.mark_modified()
             self.srt0 = None
 
     def set_srt0(self, anim):
@@ -532,12 +598,14 @@ class Material(Clipable):
             return self.pat0
         anim = self.parent.add_pat0(self)
         self.set_pat0(anim)
+        self.mark_modified()
         return anim
 
     def remove_pat0(self):
         if self.pat0:
             self.parent.remove_pat0(self.pat0)
             self.pat0 = None
+            self.mark_modified()
 
     def set_pat0(self, anim):
         if self.pat0:
@@ -549,13 +617,29 @@ class Material(Clipable):
     def get_pat0(self):
         return self.pat0
 
-    def enable_blend(self):
-        self.compareBeforeTexture = True
-        self.matGX.blendmode.setEnabled(True)
-        self.setXluStr('true')
-        self.matGX.alphafunction.setXlu(False)
-        self.matGX.zmode.setDepthUpdate(False)
-        self.setDrawPriorityStr('1')
+    def disable_blend(self):
+        if self.is_blend_enabled():
+            self.matGX.blendmode.setEnabled(False)
+            self.setXluStr('false')
+            self.matGX.zmode.setDepthUpdate(True)
+            self.setDrawPriorityStr('0')
+            self.mark_modified()
+
+    def enable_blend(self, enabled=True):
+        if enabled:
+            if not self.is_blend_enabled():
+                self.compareBeforeTexture = True
+                self.matGX.blendmode.setEnabled(True)
+                self.setXluStr('true')
+                self.matGX.alphafunction.enable(False)
+                self.matGX.zmode.setDepthUpdate(False)
+                self.setDrawPriorityStr('1')
+                self.mark_modified()
+        else:
+            self.disable_blend()
+
+    def is_blend_enabled(self):
+        return self.matGX.blendmode.isEnabled()
 
     # ----------------------------INFO ------------------------------------------
     def info(self, key=None, indentation_level=0):
@@ -594,8 +678,10 @@ class Material(Clipable):
                 AutoFix.get().warn('{} indirect matrix {} disabled but used in shader'.format(self.name, i), 3)
         if direct_count != self.shaderStages:
             self.shaderStages = direct_count
+            self.mark_modified()
         if ind_count != self.indirectStages:
             self.indirectStages = ind_count
+            self.mark_modified()
 
     # -------------------------------- Layer removing/adding --------------------------
     def removeLayerI(self, index=-1):
@@ -605,6 +691,7 @@ class Material(Clipable):
         self.layers.pop(index)
         if self.srt0:
             self.srt0.removeLayerI(index)
+        self.mark_modified()
         return len(self.layers)
 
     def removeLayer(self, name):
@@ -612,36 +699,45 @@ class Material(Clipable):
         for i, x in enumerate(self.layers):
             if x.name == name:
                 self.removeLayerI(i)
+                self.mark_modified()
                 return
         raise ValueError('Material "{}" has no layer "{}" to remove'.format(self.name, name))
 
     def addEmptyLayer(self):
         """Adds 1 layer"""
-        name = 'Null'
-        self.parent.add_texture_link(name)
-        self.layers.append(Layer(len(self.layers), name, self))
+        self.addLayer('Null')
         return len(self.layers)
 
     def addLayer(self, name):
         """ Creates and returns new layer """
-        if self.WARNINGS_ON:
-            self.parent.add_texture_link(name)  # update model texture link/check that exists
         i = len(self.layers)
         l = Layer(i, name, self)
         self.layers.append(l)
         if self.srt0:
             self.srt0.updateLayerNameI(i, name)
+        self.mark_modified()
         return l
 
+    def mark_unmodified(self):
+        self.is_modified = False
+        self._mark_unmodified_group(self.layers)
+        self.shader.mark_unmodified()
+        if self.pat0:
+            self.pat0.mark_unmodified()
+        if self.srt0:
+            self.srt0.mark_unmodified()
+
     def renameLayer(self, layer, name):
-        if name == self.name:
-            return name
         if self.srt0:
             self.srt0.updateLayerNameI(layer.layer_index, name)
         return self.parent.rename_texture_link(layer, name)
 
+    def is_vertex_color_enabled(self):
+        return self.lightChannels[0].is_vertex_color_enabled()
+
     def enable_vertex_color(self, enable=True):
-        self.lightChannels[0].enable_vertex_color(enable)
+        if self.lightChannels[0].enable_vertex_color(enable):
+            self.mark_modified()
 
     # ---------------------------------PASTE------------------------------------------
     def paste(self, item):
@@ -659,6 +755,7 @@ class Material(Clipable):
         else:
             self.remove_pat0()
         self.paste_data(item)
+        self.mark_modified()
 
     def paste_data(self, item):
         self.xlu = item.xlu
@@ -854,8 +951,12 @@ class LightChannel:
                                                                                            self.alphaLightControl)
 
     def enable_vertex_color(self, enabled=True):
-        self.colorLightControl.enable_vertex_color(enabled)
-        self.alphaLightControl.enable_vertex_color(enabled)
+        return self.colorLightControl.enable_vertex_color(enabled) or \
+            self.alphaLightControl.enable_vertex_color(enabled)
+
+    def is_vertex_color_enabled(self):
+        return self.colorLightControl.is_vertex_color_enabled() and \
+            self.alphaLightControl.is_vertex_color_enabled()
 
     def __getitem__(self, item):
         is_color = True if "color" in item else False
@@ -938,8 +1039,14 @@ class LightChannel:
             self.attenuationFunction = flags >> 10 & 1
             self.light4567 = flags >> 11 & 0xf
 
+        def is_vertex_color_enabled(self):
+            return self.materialSourceVertex
+
         def enable_vertex_color(self, enable):
-            self.materialSourceVertex = enable
+            if self.materialSourceVertex != enable:
+                self.materialSourceVertex = enable
+                return True
+            return False
 
         def __str__(self):
             return 'enabled:{} material:{} ambient:{} diffuse:{} attenuation:{}'.format(self['enable'],

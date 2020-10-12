@@ -33,9 +33,11 @@ class ShaderList:
         self.list[key] = value
 
     def updateName(self, old_name, new_name):
-        shader = self.list.pop(old_name)
-        shader.name = new_name
-        self.list[new_name] = shader
+        if new_name != old_name:
+            shader = self.list.pop(old_name)
+            shader.name = new_name
+            shader.mark_modified()
+            self.list[new_name] = shader
 
     def getShaders(self, material_list, for_modification=True):
         """Gets the shaders, previously this was used to split shaders but is no longer applicable"""
@@ -77,13 +79,14 @@ class ShaderList:
                 continue
             if binfile.offset not in offsets:
                 offset_ref = binfile.offset
-                d = Shader(name, self, binfile)
+                d = Shader(name, material, binfile)
                 offsets[offset_ref] = d
             else:
-                d = Shader(name, self)
-                d.paste(offsets[binfile.offset])
+                d = deepcopy(offsets[binfile.offset])
+                d.name = name
+                # d.paste(offsets[binfile.offset], False)
             list[name] = material.shader = d
-            d.material = material
+            # d.material = material
         return offsets
 
     def pack(self, binfile, folder):
@@ -218,6 +221,7 @@ class Stage(Clipable):
         # ignores name and parent, since it's shader's job to track names
         for key in item.map:
             self.map[key] = item.map[key]
+        self.mark_modified()
 
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level if indentation_level else '>' + str(self.parent.getMaterialName())
@@ -233,10 +237,13 @@ class Stage(Clipable):
             i += 3
         return i
 
-    def setRasterColorI(self, i):
+    def setRasterColorI(self, i, mark_modified=True):
         if i > 1:
             i -= 3
-        self.map["rastercolor"] = self.RASTER_COLORS[i]
+        if self.map['rastercolor'] != self.RASTER_COLORS[i]:
+            self.map["rastercolor"] = self.RASTER_COLORS[i]
+            if mark_modified:
+                self.mark_modified()
 
     def getConstantAlphaI(self):
         i = self.ALPHA_CONSTANTS.index(self.map["alphaconstantselection"])
@@ -244,10 +251,13 @@ class Stage(Clipable):
             return i + 8
         return i
 
-    def setConstantAlphaI(self, i):
+    def setConstantAlphaI(self, i, mark_modified=True):
         if i > 7:
             i -= 8
-        self.map["alphaconstantselection"] = self.ALPHA_CONSTANTS[i]
+        if self.map["alphaconstantselection"] != self.ALPHA_CONSTANTS[i]:
+            self.map["alphaconstantselection"] = self.ALPHA_CONSTANTS[i]
+            if mark_modified:
+                self.mark_modified()
 
     def getIndMtxI(self):
         i = self.IND_MATRIX.index(self.map["indirectmatrixselection"])
@@ -257,12 +267,15 @@ class Stage(Clipable):
             i += 1
         return i
 
-    def setIndTexMtxI(self, i):
+    def setIndTexMtxI(self, i, mark_modified=True):
         if i > 8:
             i -= 1
         if i > 4:
             i -= 1
-        self.map["indirectmatrixselection"] = self.IND_MATRIX[i]
+        if self.map["indirectmatrixselection"] != self.IND_MATRIX[i]:
+            self.map["indirectmatrixselection"] = self.IND_MATRIX[i]
+            if mark_modified:
+                self.mark_modified()
 
     def getConstantColorI(self):
         i = self.COLOR_CONSTANTS.index(self.map["colorconstantselection"])
@@ -270,10 +283,13 @@ class Stage(Clipable):
             return i + 4
         return i
 
-    def setConstantColorI(self, index):
+    def setConstantColorI(self, index, mark_modified=True):
         if index >= 0xc:
             index -= 4
-        self.map["colorconstantselection"] = self.COLOR_CONSTANTS[index]
+        if self.map["colorconstantselection"] != self.COLOR_CONSTANTS[index]:
+            self.map["colorconstantselection"] = self.COLOR_CONSTANTS[index]
+            if mark_modified:
+                self.mark_modified()
 
     def set_str(self, key, value):
         i = key.find('constant')
@@ -288,20 +304,29 @@ class Stage(Clipable):
         # bools
         if key == "enabled" or "clamp" in key or key == "indirectuseprevstage" \
                 or key == "indirectunmodifiedlod":
-            self.map[key] = validBool(value)
+            b = validBool(value)
+            if self.map[key] != b:
+                self.map[key] = b
         # ints
         elif "swap" in key or "stage" in key:
-            self.map[key] = validInt(value, 0, 4)
+            i = validInt(value, 0, 4)
+            if i != self.map[key]:
+                self.map[key] = i
+                self.mark_modified()
         elif "id" in key:
             i = validInt(value, 0, 7)
-            self.map[key] = i
+            if self.map[key] != i:
+                self.map[key] = i
+                self.mark_modified()
         else:  # list indexing ones
             value = value.replace('constant', '')
             if "scale" in key:
                 try:
                     f = validFloat(value, 0.5, 4)
                     pos = indexListItem(self.SCALEN, f)
-                    value = self.SCALE[pos]
+                    if value != self.SCALE[pos]:
+                        value = self.SCALE[pos]
+                        self.mark_modified()
                 except ValueError:
                     indexListItem(self.SCALE, value)
             elif "color" in key:
@@ -356,7 +381,9 @@ class Stage(Clipable):
                     indexListItem(self.IND_BIAS, value)
                 elif "wrap" in key:
                     indexListItem(self.WRAP, value)
-            self.map[key] = value
+            if self.map[key] != value:
+                self.map[key] = value
+                self.mark_modified()
 
     def unpackColorEnv(self, binfile):
         """ Unpacks the color env """
@@ -394,7 +421,7 @@ class Stage(Clipable):
         self.map["indirectstage"] = c.getStage()
         self.map["indirectformat"] = self.TEX_FORMAT[c.getFormat()]
         self.map["indirectbias"] = self.IND_BIAS[c.getBias()]
-        self.setIndTexMtxI(c.getMtx())
+        self.setIndTexMtxI(c.getMtx(), False)
         self.map["indirectswrap"] = self.WRAP[c.getSWrap()]
         self.map["indirecttwrap"] = self.WRAP[c.getTWrap()]
         self.map["indirectalpha"] = self.IND_ALPHA[c.getAlpha()]
@@ -446,7 +473,6 @@ class Stage(Clipable):
 
 class Shader(Clipable):
     BYTESIZE = 512
-    # Uses a constant swap table - todo track swap table?
     SWAP_MASK = BPCommand(0xFE, 0xF)
     SWAP_TABLE = (BPCommand(0xF6, 0x4), BPCommand(0xF7, 0xE), BPCommand(0xF8, 0x0),
                   BPCommand(0xF9, 0xC), BPCommand(0xFA, 0x5), BPCommand(0xFB, 0xD),
@@ -459,7 +485,7 @@ class Shader(Clipable):
     def __init__(self, name, parent, binfile=None):
         self.stages = []
         self.swap_table = deepcopy(self.SWAP_TABLE)
-        self.material = None  # material to be hooked
+        self.material = parent  # material
         self.indTexMaps = [7] * 4
         self.indTexCoords = [7] * 4
         super(Shader, self).__init__(name, parent, binfile)
@@ -499,6 +525,7 @@ class Shader(Clipable):
             self.stages[i].paste(item.stages[i])
         self.indTexCoords = [x for x in item.indTexCoords]
         self.indTexMaps = [x for x in item.indTexMaps]
+        self.mark_modified()
 
     def getIndirectMatricesUsed(self):
         matrices_used = [False] * 3
@@ -548,10 +575,14 @@ class Shader(Clipable):
                 raise ValueError('Argument required after ":"')
         value = validInt(value, 0, 8)
         if self.SETTINGS[0] in key:  # indirect map
-            self.indTexMaps[key2] = value
+            if self.indTexMaps[key2] != value:
+                self.indTexMaps[key2] = value
+                self.mark_modified()
         elif self.SETTINGS[1] in key:  # indirect coord
-            self.indTexCoords[key2] = value
-            self.onUpdateIndirectStages(self.countIndirectStages())
+            if self.indTexCoords[key2] != value:
+                self.indTexCoords[key2] = value
+                self.onUpdateIndirectStages(self.countIndirectStages())
+                self.mark_modified()
         elif self.SETTINGS[2] == key:  # stage count
             self.set_stage_count(value)
         else:
@@ -561,12 +592,16 @@ class Shader(Clipable):
         current_len = len(self.stages)
         if current_len < value:
             while current_len < value:
-                self.addStage()
+                self.addStage(False)
                 current_len += 1
         elif current_len > value:
             while current_len > value:
-                self.removeStage()
+                self.removeStage(False)
                 current_len -= 1
+        else:
+            return
+        self.mark_modified()
+        self.onUpdateActiveStages(value)
 
     def getMaterialName(self):
         return self.material.name
@@ -598,8 +633,9 @@ class Shader(Clipable):
         stage['alphac'] = 'zero'
         stage['alphad'] = 'zero'
         stage['enabled'] = 'false'
+        self.mark_modified()
 
-    def addStage(self):
+    def addStage(self, send_updates=True):
         """Adds stage to shader"""
         stages = self.stages
         s = Stage(len(stages), self)
@@ -607,7 +643,9 @@ class Shader(Clipable):
         s['mapid'] = mapid
         s['coordinateid'] = mapid
         stages.append(s)
-        self.onUpdateActiveStages(len(stages))
+        if send_updates:
+            self.onUpdateActiveStages(len(stages))
+            self.mark_modified()
         return s
 
     def onUpdateActiveStages(self, num_stages):
@@ -617,9 +655,11 @@ class Shader(Clipable):
     def onUpdateIndirectStages(self, num_stages):
         self.material.indirectStages = num_stages
 
-    def removeStage(self, id=-1):
+    def removeStage(self, id=-1, send_updates=True):
         self.stages.pop(id)
-        self.onUpdateActiveStages(len(self.stages))
+        if send_updates:
+            self.onUpdateActiveStages(len(self.stages))
+            self.mark_modified()
 
     def __deepcopy__(self, memodict=None):
         ret = Shader(self.name, self.parent)
@@ -672,17 +712,17 @@ class Shader(Clipable):
             stage0.map["enabled"] = tref.getTexEnabled0()
             stage0.map["mapid"] = tref.getTexMapID0()
             stage0.map["coordinateid"] = tref.getTexCoordID0()
-            stage0.setConstantColorI(kcel.getCSel0())
-            stage0.setConstantAlphaI(kcel.getASel0())
-            stage0.setRasterColorI(tref.getColorChannel0())
+            stage0.setConstantColorI(kcel.getCSel0(), False)
+            stage0.setConstantAlphaI(kcel.getASel0(), False)
+            stage0.setRasterColorI(tref.getColorChannel0(), False)
             stage0.unpackColorEnv(binfile)
             if stage1:
                 stage1.map["enabled"] = tref.getTexEnabled1()
                 stage1.map["mapid"] = tref.getTexMapID1()
                 stage1.map["coordinateid"] = tref.getTexCoordID1()
-                stage1.setConstantColorI(kcel.getCSel1())
-                stage1.setConstantAlphaI(kcel.getASel1())
-                stage1.setRasterColorI(tref.getColorChannel1())
+                stage1.setConstantColorI(kcel.getCSel1(), False)
+                stage1.setConstantAlphaI(kcel.getASel1(), False)
+                stage1.setRasterColorI(tref.getColorChannel1(), False)
                 stage1.unpackColorEnv(binfile)
             else:
                 binfile.advance(5)  # skip unpack color env
@@ -809,6 +849,7 @@ class Shader(Clipable):
         tex_usage = [0] * texRefCount
         ind_stage_count = 0
         mark_to_remove = []
+        resolved_bug = False
         # direct check
         for x in self.stages:
             if x.get_str('enabled'):
@@ -821,10 +862,12 @@ class Shader(Clipable):
                         if id < texRefCount:
                             x['mapid'] = x['coordinateid'] = id
                             b.resolve()
+                            resolved_bug = True
                         else:
                             b.fix_des = 'Remove stage'
                             mark_to_remove.append(x)
                             b.resolve()
+                            resolved_bug = True
                 else:
                     tex_usage[id] += 1
         for x in mark_to_remove:
@@ -842,6 +885,7 @@ class Shader(Clipable):
                 b.fix_des = 'Set solid color {}'.format(self.material.getColor(0))
                 self.material.set_default_color()
             b.resolve()
+            resolved_bug = True
         # indirect check
         ind_stages = self.getIndCoords()
         for stage_id in range(len(self.indTexCoords)):
@@ -863,9 +907,12 @@ class Shader(Clipable):
                 if self.REMOVE_UNUSED_LAYERS:
                     self.material.removeLayerI(removal_index)
                     b.resolve()
+                    resolved_bug = True
                     continue    # don't increment removal index (shift)
             elif x > 1:
                 b = Bug(4, 4, '{} Layer {} used {} times by shader.'.format(prefix, i, x), 'check shader')
             removal_index += 1
         ind_matrices_used = self.getIndirectMatricesUsed()
+        if resolved_bug:
+            self.mark_modified()
         self.material.check_shader(len(self.stages), ind_stage_count, ind_matrices_used)
