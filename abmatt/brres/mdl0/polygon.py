@@ -28,7 +28,9 @@ class Polygon(Clipable):
         self.tex_format = [0] * 8
         self.tex_divisor = [0] * 8
         self.tex_e = [1] * 8
-        self.material = self.definition = None
+        self.material = None
+        self.priority = 0
+        self.visible_bone = None
         super(Polygon, self).__init__(name, parent, binfile)
 
     @staticmethod
@@ -61,6 +63,7 @@ class Polygon(Clipable):
         self.flags = 0
         self.index = 0
         self.bone = 0
+        self.visible_bone = self.parent.bones[0]
         self.bone_table = None
         self.vertex_group_index = 0
         self.normal_group_index = 0
@@ -75,12 +78,6 @@ class Polygon(Clipable):
     def add_bone_table(self, table):
         self.bone_table = table
         self.bone = -1
-
-    def get_influences(self, weight_indices=None):
-        if weight_indices is not None:
-            # indices = {x for x in weight_indices.flatten()}
-            return self.parent.get_weights_by_ids(weight_indices)
-        return [[(self.get_linked_bone_id(), 1)]]
 
     def get_vertex_group(self):
         if self.vertex_index_format >= self.INDEX_FORMAT_BYTE:
@@ -105,18 +102,26 @@ class Polygon(Clipable):
             if self.color1_index_format >= self.INDEX_FORMAT_BYTE:
                 return self.parent.colors[self.color_group_indices[1]]
 
-    def get_draw_definition(self):
-        if self.definition is None:
-            self.definition = self.parent.get_definition_by_object_id(self.index)
-        return self.definition
+    def set_draw_priority(self, priority):
+        if self.priority != priority:
+            self.priority = priority
+            self.mark_modified()
+            return True
+        return False
+
+    def get_draw_priority(self):
+        return self.priority
 
     def get_material(self):
-        if self.material is None:
-            self.material = get_item_by_index(self.parent.materials, self.get_draw_definition().matIndex)
         return self.material
 
+    def set_material(self, material):
+        my_material = self.get_material()
+        if material != my_material:
+            self.material = self.parent.update_polygon_material(self, my_material, material)
+
     def get_bone(self):
-        return self.parent.bones[self.get_linked_bone_id()]
+        return self.visible_bone
 
     def check(self, verts, norms, uvs, colors):  # as we go along, gather verts norms uvs colors
         modified = False
@@ -139,17 +144,6 @@ class Polygon(Clipable):
                 self.normal_format = normals.format
                 modified = True
         material = self.get_material()
-        # correct draw definition?
-        if material.is_xlu() != self.get_draw_definition().is_xlu():
-            change = 'opaque' if material.is_xlu() else 'xlu'
-            b = Bug(1, 4, '{} incorrect draw pass'.format(material.name), 'Change draw pass to {}'.format(change))
-            if self.parent.DRAW_PASS_AUTO:
-                if material.is_xlu():
-                    self.parent.setMaterialDrawXlu(self.get_draw_definition())
-                else:
-                    self.parent.setMaterialDrawOpa(self.get_draw_definition())
-                b.resolve()
-            modified = True
 
         # Colors
         my_colors = self.get_color_group()
@@ -285,10 +279,6 @@ class Polygon(Clipable):
 
     def get_bone_table(self):
         return self.bone_table
-
-    def get_linked_bone_id(self):
-        definition = self.parent.get_definition_by_object_id(self.index)
-        return definition.boneIndex
 
     def parse_cp_vertex_format(self, hi, lo):
         self.has_pos_matrix = bool(lo & 0x1)

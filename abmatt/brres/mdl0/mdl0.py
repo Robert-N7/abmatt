@@ -15,9 +15,12 @@ from abmatt.brres.mdl0.polygon import Polygon
 from abmatt.brres.mdl0.shader import Shader, ShaderList
 from abmatt.brres.mdl0.texcoord import TexCoord
 from abmatt.brres.mdl0.vertex import Vertex
-from abmatt.brres.pat0 import Pat0MatAnimation, Pat0Collection
-from abmatt.brres.srt0 import SRTMatAnim, SRTCollection
 from abmatt.brres.subfile import SubFile
+from brres.lib.unpacking.unpack_mdl0.unpack_mdl0 import UnpackMdl0
+from brres.pat0.pat0 import Pat0Collection
+from brres.pat0.pat0_material import Pat0MatAnimation
+from brres.srt0.srt0 import SRTCollection
+from brres.srt0.srt0_animation import SRTMatAnim
 
 
 class ModelGeneric(Node):
@@ -224,6 +227,22 @@ class Mdl0(SubFile):
         item.index = i
         group.append(item)
 
+    # @staticmethod
+    # def remove_from_group(group, item):
+    #     group.remove(item)
+    #     for i in range(len(group)):
+    #         group[i].index = i
+
+    def update_polygon_material(self, polygon, old_mat, new_mat):
+        polys = self.get_polys_using_material(old_mat)
+        m = Material(new_mat.name, self)
+        m.polygons.append(polygon)
+        if len(polys) == 1:
+            self.materials.remove(old_mat)
+        self.add_material(m)
+        m.paste(new_mat)
+        return m
+
     def add_material(self, material):
         self.add_to_group(self.materials, material)
         # for x in material.layers:
@@ -259,10 +278,14 @@ class Mdl0(SubFile):
         return b
 
     def add_definition(self, material, polygon, bone=None, priority=0):
-        if bone is None:
-            bone = self.bones[0]
-        definitions = self.DrawOpa if not material.xlu else self.DrawXlu
-        definitions.add_entry(material.index, polygon.index, bone.index, priority)
+        material.polygons.append(polygon)
+        polygon.material = material
+        polygon.visible_bone = bone
+        polygon.draw_priority = priority
+        # if bone is None:
+        #     bone = self.bones[0]
+        # definitions = self.DrawOpa if not material.xlu else self.DrawXlu
+        # definitions.add_entry(material.index, polygon.index, bone.index, priority)
 
     # ---------------------------------- SRT0 ------------------------------------------
     def set_srt0(self, srt0_collection):
@@ -360,41 +383,6 @@ class Mdl0(SubFile):
 
     def getMaterialsByName(self, name):
         return MATCHING.findAll(name, self.materials)
-
-    def isMaterialDrawXlu(self, material_id):
-        if self.DrawXlu.getByMaterialID(material_id):
-            return True
-        return False
-
-    def setMaterialDrawXlu(self, draw_entry):
-        x = self.DrawOpa.pop(draw_entry)
-        if x is not None:
-            self.DrawXlu.insert(draw_entry)
-        return x
-
-    def setMaterialDrawOpa(self, draw_entry):
-        x = self.DrawXlu.pop(draw_entry)
-        if x is not None:
-            self.DrawOpa.insert(x)
-        return x
-
-    def setDrawPriority(self, material_id, priority):
-        return self.DrawXlu.setPriority(material_id, priority) or self.DrawOpa.setPriority(material_id, priority)
-
-    def getDrawPriority(self, material_id):
-        return self.get_definition_by_material_id(material_id).getPriority()
-
-    def get_definition_by_material_id(self, material_id):
-        definition = self.DrawOpa.getByMaterialID(material_id)
-        if not definition:
-            definition = self.DrawXlu.getByMaterialID(material_id)
-        return definition
-
-    def get_definition_by_object_id(self, object_id):
-        definition = self.DrawOpa.getByObjectID(object_id)
-        if not definition:
-            definition = self.DrawXlu.getByObjectID(object_id)
-        return definition
 
     # ------------------------------- Shaders -------------------------------------------
     def getShaders(self, material_list, for_modification=True):
@@ -577,6 +565,8 @@ class Mdl0(SubFile):
     # ---------------START PACKING STUFF -------------------------------------
     def pre_pack(self):
         """Cleans up references in preparation for packing"""
+        self.rebuild_indexes(self.materials)
+        self.build_definitions()
         defs = [self.NodeTree, self.NodeMix, self.DrawOpa, self.DrawXlu]
         defs = [x for x in defs if x]
         self.sections[0] = defs
@@ -593,72 +583,28 @@ class Mdl0(SubFile):
         if self.find_min_max:
             self.search_for_min_and_max()
 
-    def post_unpack(self):
-        Bone.post_unpack(self.bones)
+    @staticmethod
+    def rebuild_indexes(group):
+        for i in range(len(group)):
+            group[i].index = i
 
-
-    def unpackSection(self, binfile, section_index):
-        """ unpacks section by creating items  of type section_klass
-            and adding them to section list index
-        """
-        # ignore fur sections for v8 mdl0s
-        if section_index == 0:
-            self.unpackDefinitions(binfile)
-        elif section_index == 9:
-            # assumes materials are unpacked..
-            self.shaders.unpack(binfile, self.materials)
-        elif binfile.recall():  # from offset header
-            section_klass = self.SECTION_CLASSES[section_index]
-            folder = Folder(binfile, self.SECTION_NAMES[section_index])
-            folder.unpack(binfile)
-            section = self.sections[section_index]
-            while len(folder.entries):
-                name = folder.recallEntryI()
-                section.append(section_klass(name, self, binfile))
-            return len(section)
-
-    def unpackDefinitions(self, binfile):
-        binfile.recall()
-        folder = Folder(binfile, self.SECTION_NAMES[0])
-        folder.unpack(binfile)
-        found_xlu = found_opa = False
-        while len(folder.entries):
-            name = folder.recallEntryI()
-            self.__setattr__(name, get_definition(name, self, binfile))
-        if not self.DrawOpa:
-            self.DrawOpa = DrawList('DrawOpa', self)
-        if not self.DrawXlu:
-            self.DrawXlu = DrawList('DrawXlu', self)
+    def build_definitions(self):
+        opa = []
+        xlu = []
+        for poly in self.objects:
+            mat = poly.material
+            bone = poly.visible_bone
+            is_xlu = mat.is_xlu()
+            entry = DrawList.DrawEntry(is_xlu).begin(mat.index, poly.index, bone.index, poly.priority)
+            if not is_xlu:
+                opa.append(entry)
+            else:
+                xlu.append(entry)
+        self.DrawOpa.list = sorted(opa, key=lambda x: x.priority)
+        self.DrawXlu.list = sorted(xlu, key=lambda x: x.priority)
 
     def unpack(self, binfile):
-        """ unpacks model data """
-        self._unpack(binfile)
-        offset = binfile.start()  # Header
-        ln = binfile.readLen()
-        fh, self.scaling_rule, self.texture_matrix_mode, self.facepoint_count, \
-        self.faceCount, _, self.boneMatrixCount, _ = binfile.read("i7I", 32)
-        binfile.store()  # bone table offset
-        if binfile.offset - offset < ln:
-            self.minimum = binfile.read("3f", 12)
-            self.maximum = binfile.read("3f", 12)
-        else:
-            self.find_min_max = True
-        binfile.end()  # end header
-        binfile.recallOffset(offset)
-        self.boneTable = BoneTable()
-        self.boneTable.unpack(binfile)
-        # unpack sections
-        i = 0
-        while i < 14:
-            if self.version < 10:
-                if i == 6:
-                    i += 2
-                elif i == 13:
-                    break
-            self.unpackSection(binfile, i)
-            i += 1
-        binfile.end()  # end file
-        self.post_unpack()
+        UnpackMdl0(self, binfile)
 
     def packTextureLinks(self, binfile, folder):
         """Packs texture link section, returning map of names:offsets be filled in by mat/layer refs"""
@@ -676,9 +622,10 @@ class Mdl0(SubFile):
 
     def pack_materials(self, binfile, folder, texture_link_map):
         """packs materials, requires texture link map to offsets that need to be filled"""
-        for x in self.sections[8]:
+        section = self.sections[8]
+        for i in range(len(section)):
             folder.createEntryRefI()
-            x.pack(binfile, texture_link_map)
+            section[i].pack(binfile, texture_link_map)
         for x in texture_link_map:
             if binfile.references[texture_link_map[x]]:
                 raise PackingError(binfile, 'Unused texture link {}!'.format(x))

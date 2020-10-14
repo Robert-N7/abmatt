@@ -8,6 +8,8 @@ from autofix import AutoFix, Bug
 from abmatt.brres.lib.binfile import BinFile
 from abmatt.brres.lib.matching import parseValStr, validInt
 from abmatt.brres.subfile import SubFile
+from brres.lib.packing.pack_tex0 import PackTex0
+from brres.lib.unpacking.unpack_tex0 import UnpackTex0
 
 
 class Tex0(SubFile):
@@ -137,21 +139,11 @@ class Tex0(SubFile):
             self.set_dimensions(width, height)
             b.resolve()
 
-
     def unpack(self, binfile):
-        self._unpack(binfile)
-        _, self.width, self.height, self.format, self.num_images, _, self.num_mips, _ = binfile.read('I2H3IfI', 0x1c)
-        binfile.recall()
-        self.data = binfile.readRemaining()
-        binfile.end()
+        UnpackTex0(self, binfile)
 
     def pack(self, binfile):
-        self._pack(binfile)
-        binfile.write('I2H3IfI', 0, self.width, self.height, self.format, self.num_images, 0, self.num_mips, 0)
-        binfile.align()
-        binfile.createRef()
-        binfile.writeRemaining(self.data)
-        binfile.end()
+        PackTex0(self, binfile)
 
     def info(self, key=None, indentation=0):
         print('{} {}: {} {}x{} mips:{}'.format(self.MAGIC, self.name, self.FORMATS[self.format],

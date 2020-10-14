@@ -12,11 +12,14 @@ from abmatt.brres.clr0 import Clr0
 from abmatt.brres.lib.matching import MATCHING
 from abmatt.brres.lib.node import Clipable
 from abmatt.brres.mdl0 import Mdl0
-from abmatt.brres.pat0 import Pat0, Pat0Collection
 from abmatt.brres.scn0 import Scn0
 from abmatt.brres.shp0 import Shp0
-from abmatt.brres.srt0 import Srt0, SRTCollection
 from abmatt.brres.tex0 import Tex0, ImgConverter
+from brres.lib.packing import pack_brres
+from brres.lib.packing.pack_brres import PackBrres
+from brres.lib.unpacking.unpack_brres import UnpackBrres
+from brres.pat0.pat0 import Pat0
+from brres.srt0.srt0 import Srt0
 
 
 class Brres(Clipable):
@@ -49,6 +52,7 @@ class Brres(Clipable):
             readfile - optional start reading and unpacking file
         """
         self.folders = {}
+        name = os.path.abspath(name)
         self.is_modified = False
         self.texture_map = {}
         self.has_new_model = False
@@ -57,11 +61,22 @@ class Brres(Clipable):
         super(Brres, self).__init__(name, parent, binfile)
 
     def get_full_path(self):
-        return os.path.abspath(self.name)
+        return self.name
 
     @staticmethod
     def add_open_file(file):
         Brres.OPEN_FILES.append(file)
+
+    @staticmethod
+    def get_brres(filename, create_if_not_exists=False):
+        filename = os.path.abspath(filename)
+        for x in Brres.OPEN_FILES:
+            if filename == x.name:
+                return x
+        if os.path.exists(filename):
+            return Brres(filename, readFile=True)
+        elif create_if_not_exists:
+            return Brres(filename, readFile=False)
 
     @staticmethod
     def get_temp_dir():
@@ -323,17 +338,7 @@ class Brres(Clipable):
         return ret
 
     # --------------------- Animations ----------------------------------------------
-    @staticmethod
-    def create_model_animation_map(animations):
-        model_anim_map = {}  # dictionary of model names to animations
-        if animations:
-            for x in animations:
-                name = x.name.rstrip(string.digits)
-                if not model_anim_map.get(name):
-                    model_anim_map[name] = [x]
-                else:
-                    model_anim_map[name].append(x)
-        return model_anim_map
+
 
     @staticmethod
     def get_anim_for_packing(anim_collection):
@@ -351,180 +356,15 @@ class Brres(Clipable):
         self.pat0.append(collection)
         return collection
 
-    def generate_srt_collections(self, srt0_anims):
-        # srt animation processing
-        model_anim_map = self.create_model_animation_map(srt0_anims)
-        # now create SRT Collection
-        anim_collections = []
-        for key in model_anim_map:
-            collection = SRTCollection(key, self, model_anim_map[key])
-            anim_collections.append(collection)
-            mdl = self.getModel(key)
-            if not mdl:
-                AutoFix.get().info('No model found matching srt0 animation {}'.format(key), 3)
-            else:
-                mdl.set_srt0(collection)
-        return anim_collections
-
-    def generate_pat0_collections(self, pat0_anims):
-        model_anim_map = self.create_model_animation_map(pat0_anims)
-        # now create PAT0 Collection
-        anim_collections = []
-        for key in model_anim_map:
-            collection = Pat0Collection(key, self, model_anim_map[key])
-            anim_collections.append(collection)
-            mdl = self.getModel(key)
-            if not mdl:
-                AutoFix.get().info('No model found matching pat0 animation {}'.format(key), 3)
-            else:
-                mdl.set_pat0(collection)
-        return anim_collections
-
     # -------------------------------------------------------------------------
     #   PACKING / UNPACKING
     # -------------------------------------------------------------------------
-    def post_unpacking(self):
-        mdl_name = self.ORDERED[0]
-        x = self.folders.get(mdl_name)
-        self.folders[mdl_name] = self.models = x if x else []
-        tex_name = self.ORDERED[1]
-        x = self.folders.get(tex_name)
-        self.folders[tex_name] = self.textures = x if x else []
-        for x in self.textures:
-            self.texture_map[x.name] = x
-        x = self.folders.get("AnmTexPat(NW4R)")
-        self.folders["AnmTexPat(NW4R)"] = self.pat0 = self.generate_pat0_collections(x) if x else []
-        x = self.folders.get("AnmTexSrt(NW4R)")
-        self.folders["AnmTexSrt(NW4R)"] = self.srt0 = self.generate_srt_collections(x) if x else []
-
-    def pre_packing(self):
-        self.check()
-        folders = self.folders
-        ret = []
-        ordered = self.ORDERED
-        anim_collect = self.ANIM_COLLECTIONS
-        added = set()
-        for folder in ordered:
-            x = folders.get(folder)
-            if x:
-                ret.append((folder, x))
-                added.add(folder)
-        for folder in anim_collect:
-            x = folders.get(folder)
-            if x:
-                ret.append((folder, self.get_anim_for_packing(x)))
-                added.add(folder)
-        for x in folders:
-            if x not in added:
-                ret.append((x, folders[x]))
-        return ret
 
     def unpack(self, binfile):
-        """ Unpacks the brres """
-        binfile.start()
-        magic = binfile.readMagic()
-        if magic != self.MAGIC:
-            raise UnpackingError(self, '"{}" not a brres file'.format(self.name))
-        bom = binfile.read("H", 2)
-        binfile.bom = "<" if bom == 0xfffe else ">"
-        binfile.advance(2)
-        binfile.readLen()
-        rootoffset, numSections = binfile.read("2h", 4)
-        binfile.offset = rootoffset
-        root = binfile.readMagic()
-        assert (root == self.ROOTMAGIC)
-        section_length = binfile.read("I", 4)
-        root = Folder(binfile, root)
-        root.unpack(binfile)
-        # open all the folders
-        while len(root):
-            container = []
-            folder_name = root.recallEntryI()
-            klass = self.FOLDERS[folder_name]
-            subFolder = Folder(binfile, folder_name)
-            subFolder.unpack(binfile)
-            while len(subFolder):
-                name = subFolder.recallEntryI()
-                container.append(klass(name, self, binfile))
-            self.folders[folder_name] = container
-        binfile.end()
-        self.post_unpacking()
-
-    @staticmethod
-    def getNumSections(folders):
-        """ gets the number of sections, including root"""
-        count = 1  # root
-        for x in folders[count:]:
-            if x:
-                count += len(x)
-                # print('Length of folder {} is {}'.format(x.name, len(x)))
-        return count
-
-    def generateRoot(self, binfile, subfiles):
-        """ Generates the root folders
-            Does not hook up data pointers except the head group,
-            returns (rootFolders, bytesize)
-        """
-        rootFolders = []  # for storing Index Groups
-        byteSize = 0
-        # Create folder indexing folders
-        rootFolder = Folder(binfile, self.ROOTMAGIC)
-        rootFolders.append(rootFolder)
-        offsets = []  # for tracking offsets from first group to others
-        # Create folder for each section the brres has
-        for i in range(len(subfiles)):
-            folder_name, folder = subfiles[i]
-            size = len(folder)
-            if size:
-                f = Folder(binfile, folder_name)
-                for j in range(size):
-                    f.addEntry(folder[j].name)  # might not have name?
-                rootFolder.addEntry(f.name)
-                rootFolders.append(f)
-                offsets.append(byteSize)
-                byteSize += f.byteSize()
-        # now update the dataptrs
-        rtsize = rootFolder.byteSize()
-        entries = rootFolder.entries
-        for i in range(len(offsets)):
-            entries[i].dataPtr = offsets[i] + rtsize
-        return rootFolders
-
-    @staticmethod
-    def packRoot(binfile, rt_folders):
-        """ Packs the root section, returns root folders that need data ptrs"""
-        binfile.start()
-        binfile.writeMagic("root")
-        binfile.markLen()
-        for f in rt_folders:
-            f.pack(binfile)
-        binfile.end()
-        binfile.align()
-        return rt_folders[1:]
+        UnpackBrres(self, binfile)
 
     def pack(self, binfile):
-        """ packs the brres """
-        sub_files = self.pre_packing()
-        binfile.start()
-        rt_folders = self.generateRoot(binfile, sub_files)
-        binfile.writeMagic(self.MAGIC)
-        binfile.write("H", 0xfeff)  # BOM
-        binfile.advance(2)
-        binfile.markLen()
-        num_sections = self.getNumSections(rt_folders)
-        binfile.write("2H", 0x10, num_sections)
-        folders = self.packRoot(binfile, rt_folders)
-        # now pack the folders
-        folder_index = 0
-        for name, file_group in sub_files:
-            if len(file_group):
-                index_group = folders[folder_index]
-                for file in file_group:
-                    index_group.createEntryRefI()  # create the dataptr
-                    file.pack(binfile)
-                folder_index += 1
-        binfile.packNames()
-        binfile.end()
+        PackBrres(self, binfile)
 
     # --------------------------------------------------------------------------
     def check(self):

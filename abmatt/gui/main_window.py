@@ -12,21 +12,25 @@ from converters.convert_dae import DaeConverter2
 from converters.convert_obj import ObjConverter
 from gui.brres_path import BrresPath
 from gui.brres_treeview import BrresTreeView
+from gui.converter import ConvertObserver, ConvertManager
+from gui.image_manager import ImageManager
 from gui.material_browser import MaterialBrowser, MaterialTabs
 from gui.poly_editor import PolyEditor
 from load_config import load_config, parse_args
 
 
-class Window(QMainWindow):
+class Window(QMainWindow, ConvertObserver):
+
     def __init__(self, brres_files=[]):
         super().__init__()
         self.open_files = []
         self.brres = None
+        ConvertManager.get().subscribe(self)
         self.cwd = os.getcwd()
         AutoFix.get().set_pipe(self)
         self.__init_UI()
         for file in brres_files:
-            self.set_brres(file)
+            self.open(file.name)
         self.show()
 
     def __init_menus(self):
@@ -124,10 +128,6 @@ class Window(QMainWindow):
     def set_brres(self, brres):
         if brres != self.brres:
             self.brres = brres
-            if brres not in self.open_files:
-                self.open_files.append(brres)
-                self.treeview.add_brres_tree(brres)
-                self.material_browser.add_brres_materials_to_scene(brres)
 
     def open_dialog(self):
         fname, filter = QFileDialog.getOpenFileName(self, 'Open file',
@@ -141,8 +141,11 @@ class Window(QMainWindow):
         if opened:
             self.set_brres(opened)
         else:
-            brres = Brres(fname)
+            brres = Brres.get_brres(fname)
             self.set_brres(brres)
+            self.open_files.append(brres)
+            self.treeview.add_brres_tree(brres)
+            self.material_browser.add_brres_materials_to_scene(brres)
 
     def save(self):
         for x in self.open_files:
@@ -180,7 +183,11 @@ class Window(QMainWindow):
             self.statusBar().showMessage('Unknown extension {}'.format(ext))
             return
         converter.load_model()
-        self.set_brres(converter.brres)
+        self.on_conversion_finish(converter)
+        # ConvertManager.get().enqueue(converter)
+
+    def on_conversion_finish(self, converter):
+        self.open(converter.brres.name)
 
     def import_file_dialog(self, brres=None):
         fname, filter = QFileDialog.getOpenFileName(self, 'Import model', self.cwd, '(*.dae *.obj)')
@@ -196,13 +203,14 @@ class Window(QMainWindow):
             base_name, ext = os.path.splitext(name)
             lower = ext.lower()
             if lower == '.obj':
-                converter = ObjConverter(brres, fname)
+                converter = ObjConverter(brres, fname, encode=False)
             elif lower == '.dae':
-                converter = DaeConverter2(brres, fname)
+                converter = DaeConverter2(brres, fname, encode=False)
             else:
                 self.statusBar().showMessage('Unknown extension {}'.format(ext))
                 return
-            converter.save_model()
+            self.update_status('Added {} to queue'.format(brres.name))
+            ConvertManager.enqueue(converter)
 
     def close_file(self, brres=None):
         if brres is None:
@@ -216,7 +224,7 @@ class Window(QMainWindow):
         self.open_files.remove(brres)
         brres.close()
         self.brres = None
-        self.treeview
+        self.treeview.on_file_close()
 
     def shouldExitAnyway(self, result):
         return result == QMessageBox.Ok
@@ -243,19 +251,16 @@ class Window(QMainWindow):
             event.accept()
 
     def info(self, message):
-        self.statusBar().showMessage(message)
         self.emit('<p style="color:Blue;">' + message + '</p>')
 
     def warn(self, message):
-        self.statusBar().showMessage(message)
-        self.emit('<p style="color:Orange;">' + message + '</p>')
-
-    def error(self, message):
-        self.statusBar().showMessage(message)
         self.emit('<p style="color:Red;">' + message + '</p>')
 
-    # def update_status(self, message):
-    #     self.statusBar().showMessage(message)
+    def error(self, message):
+        self.emit('<p style="color:Red;">' + message + '</p>')
+
+    def update_status(self, message):
+        self.statusBar().showMessage(message)
 
 
 def main():
@@ -268,7 +273,10 @@ def main():
     exe = QApplication(argv)
     exe.setStyle('Fusion')
     d = Window()
-    sys.exit(exe.exec_())
+    result = exe.exec_()
+    ImageManager.stop()
+    ConvertManager.stop()
+    sys.exit(result)
 
 
 if __name__ == '__main__':

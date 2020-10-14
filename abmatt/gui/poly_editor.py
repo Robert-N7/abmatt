@@ -1,6 +1,8 @@
 from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QComboBox, QGridLayout, \
     QFrame, QDockWidget
 
+from gui.brres_path import BrresPath, NotABrresError
+
 
 class PolyEditor(QFrame):
     def __init__(self, parent, poly=None):
@@ -8,6 +10,8 @@ class PolyEditor(QFrame):
         self.__init_ui()
         if poly is not None:
             self.on_update_poly(poly)
+        else:
+            self.poly = None
 
     def on_update_polygon(self, poly):
         self.poly = poly
@@ -58,4 +62,40 @@ class PolyEditor(QFrame):
         layout.addWidget(self.face_count, 4, 1)
         layout.addWidget(self.vertex_colors, 5, 1)
         layout.addWidget(self.normals, 6, 1)
+        self.setAcceptDrops(True)
 
+    @staticmethod
+    def get_material_from_text(text, trace_path=False):
+        try:
+            bp = BrresPath(path=text)
+            b, m, mat = bp.split_path()
+            return mat if not mat or not trace_path else bp.trace_path(b, m, mat)[2]
+        except NotABrresError as e:
+            return False
+
+    def dragEnterEvent(self, a0):
+        data = a0.mimeData()
+        if self.poly and data.hasText() \
+                and self.get_material_from_text(data.text()):
+            a0.accept()
+        else:
+            a0.ignore()
+
+    def dragMoveEvent(self, a0):
+        data = a0.mimeData()
+        if self.poly and data.hasText() \
+                and self.get_material_from_text(data.text()):
+            a0.accept()
+        else:
+            a0.ignore()
+
+    def dropEvent(self, a0):
+        data = a0.mimeData()
+        if self.poly and data.hasText():
+            mat = self.get_material_from_text(data.text(), trace_path=True)
+            if mat:
+                a0.accept()
+                self.poly.set_material(mat)
+                self.material_box.setText(mat.name)
+                return
+        a0.ignore()

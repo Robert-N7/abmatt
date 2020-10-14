@@ -3,7 +3,7 @@
 # ------------------------------------------------------------------------
 from copy import deepcopy, copy
 
-from abmatt.brres.lib.binfile import Folder
+from abmatt.brres.lib.binfile import Folder, PackingError
 from abmatt.brres.lib.matching import *
 from abmatt.brres.mdl0.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
 from autofix import AutoFix, Bug
@@ -98,7 +98,11 @@ class ShaderList:
             names = names_arr[i]
             for name in names:
                 folder.createEntryRef(name)  # create index group reference
-                binfile.createRefFrom(li[name].material.offset)  # create the material shader reference
+                try:
+                    binfile.createRefFrom(li[name].material.offset)  # create the material shader reference
+                except PackingError as e:
+                    AutoFix.get().error('Failed to create reference for material {}'.format(name))
+                    # raise PackingError(binfile, str(e))
             shader.pack(binfile, i)
 
 

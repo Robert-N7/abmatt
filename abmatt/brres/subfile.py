@@ -10,6 +10,7 @@ from abmatt.brres.lib.binfile import UnpackingError, BinFile
 from abmatt.brres.lib.matching import validInt, validBool
 from abmatt.brres.lib.node import Clipable
 from autofix import Bug, AutoFix
+from brres.lib.packing.pack_subfile import PackSubfile
 
 
 def set_anim_str(animation, key, value):
@@ -57,25 +58,6 @@ class SubFile(Clipable):
         super(SubFile, self).__init__(name, parent, binfile)
         self.version = self.EXPECTED_VERSION
 
-    def _unpackData(self, binfile):
-        """ should be overriden if modifying or has changeable offsets, unpacks the data after header """
-        self.data = binfile.readRemaining()
-        offsets = []
-        for i in range(self._getNumSections()):
-            offsets.append(binfile.recall())
-        self.offsets = offsets
-        binfile.end()
-
-    def _packData(self, binfile):
-        """ should be overriden if modifying or has changeable offsets, packs the data after header
-            must handle packing the marked offset sections in binfile file
-        """
-        binfile.writeRemaining(self.data)
-        # create the offsets
-        for i in self.offsets:
-            binfile.writeOffset("I", binfile.unmark(), i)
-        binfile.end()
-
     def _getNumSections(self):
         return self.VERSION_SECTIONCOUNT[self.version]
 
@@ -87,33 +69,6 @@ class SubFile(Clipable):
                 self.version = self.EXPECTED_VERSION
                 b.resolve()
                 self.parent.is_modified = True
-
-    def _unpack(self, binfile):
-        """ unpacks the sub file, subclass must use binfile.end() """
-        offset = binfile.start()
-        # print('{} {} at {}'.format(self.MAGIC, self.name, offset))
-        magic = binfile.readMagic()
-        if magic != self.MAGIC:
-            raise UnpackingError(binfile, 'Magic {} does not match expected {}'.format(magic, self.MAGIC))
-        binfile.readLen()
-        self.version, outerOffset = binfile.read("Ii", 8)
-        try:
-            self.numSections = self._getNumSections()
-        except ValueError:
-            raise UnpackingError(binfile, "{} {} unsupported version {}".format(self.MAGIC, self.name, self.version))
-        binfile.store(self.numSections)  # store section offsets
-        self.name = binfile.unpack_name()
-
-    def _pack(self, binfile):
-        """ packs sub file into binfile, subclass must use binfile.end() """
-        binfile.start()
-        binfile.writeMagic(self.MAGIC)
-        binfile.markLen()
-        binfile.write("Ii", self.version, binfile.getOuterOffset())
-        # mark section offsets to be added later
-        binfile.mark(self._getNumSections())
-        # name offset to be packed separately
-        binfile.storeNameRef(self.name)
 
     def save(self, dest, overwrite):
         if dest is None:

@@ -1,19 +1,16 @@
-from PyQt5 import QtCore
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QWidget, QGroupBox, QGridLayout, QScrollArea, QSizePolicy, QPushButton, QTableWidget, \
-    QVBoxLayout, QLabel, QHBoxLayout, QTabWidget, QCheckBox, QLineEdit, QComboBox, QSlider, QStackedLayout, QFrame
+import os
 
-from brres import Brres
-from brres.lib.node import ClipableObserver
-from brres.mdl0.material import Material
 from PyQt5.QtCore import Qt, QMimeData, QUrl
 from PyQt5.QtGui import QDrag, QPixmap, QPainter
+from PyQt5.QtWidgets import QComboBox, QSlider, QStackedLayout
 from PyQt5.QtWidgets import QWidget, QGridLayout, QScrollArea, QVBoxLayout, QLabel, QHBoxLayout, QTabWidget, QCheckBox, \
     QFrame
 
 from brres import Brres
+from brres.lib.node import ClipableObserver
+from brres.mdl0.material import Material
 from gui.brres_path import BrresPath, get_materials_by_url
+from gui.image_manager import ImageObserver, ImageManager
 
 
 class MaterialTabs(QWidget):
@@ -125,6 +122,7 @@ class MaterialLibrary(MaterialBrowser):
     """
     Material Browser that can also add and remove materials and be saved
     """
+
     def __init__(self, parent, material_library):
         super().__init__(parent)
         self.brres = None
@@ -169,18 +167,41 @@ class MaterialLibrary(MaterialBrowser):
             a0.ignore()
 
 
+class MaterialWidget(QLabel, ClipableObserver, ImageObserver):
+    def on_image_update(self, dir):
+        self.layer_name = name = self.material.get_first_layer_name()
+        if name:
+            self.__update_image(dir, name)
 
-class MaterialWidget(QLabel):
+    def on_node_update(self, node):
+        self.on_child_update(node)  # redirect
+
+    def on_child_update(self, child):
+        name = self.material.get_first_layer_name()
+        if name != self.layer_name:
+            self.__update_image(ImageManager.get().get_image_dir(self.material.parent.parent), name)
+
+    def __update_image(self, dir, name):
+        update_image(self, dir, name)
+        # img_file = os.path.join(dir, name + '.png')
+        # if os.path.exists(img_file):
+        #     pixelmap = QPixmap(img_file).scaledToWidth(64)
+        #     self.setPixmap(pixelmap)
+        #     self.setMask(pixelmap.mask())
+
     def __init__(self, parent, handler, material, brres_path=None):
         super().__init__(material.name, parent)
+        self.setToolTip(material.name)
+        self.is_text = True
         self.material = material
         self.handler = handler
-        # todo make observer
+        self.layer_name = None
+        self.material.register_observer(self)
+        ImageManager.get().subscribe(self, material.parent.parent)
         if brres_path is None:
             self.brres_path = BrresPath(material=material)
         else:
             self.brres_path = brres_path
-
 
     def mousePressEvent(self, ev):
         self.handler.on_material_select(self.material)
@@ -192,7 +213,7 @@ class MaterialWidget(QLabel):
             return
         drag = QDrag(self)
         mimedata = QMimeData()
-        mimedata.setUrls([QUrl(self.brres_path.get_path())])
+        mimedata.setText(self.brres_path.get_path())
         drag.setMimeData(mimedata)
         pixmap = QPixmap(self.size())
         painter = QPainter(pixmap)
@@ -323,27 +344,45 @@ class Tex0WidgetGroup(QWidget):
     def add_tex0s(self, tex0s):
         for x in tex0s:
             if x not in self.tex0s:
-                widget = MapWidget(self, x.name)
+                widget = MapWidget(self, x)
                 self.tex0s.append(x)
                 self.add_map_widget(widget)
-
-    def queue_images(self, tex0s):
-        """Todo, in a separate thread convert tex0s and then load the images"""
-        raise NotImplementedError()
 
     def add_map_widget(self, map_widget):
         self.stack.addWidget(map_widget)
         self.map_box.addItem(map_widget.name)
 
 
-class MapWidget(QLabel):
-    def __init__(self, parent, name, image_path=None):
-        super().__init__(name, parent)
-        self.name = name
-        # self.label = QLabel(name, self)
-        if image_path:
-            self.set_image_path(image_path)
+class MapWidget(QLabel, ClipableObserver, ImageObserver):
+    def on_node_update(self, node):
+        self.tex0 = node
+        self.setToolTip(node.name)
 
-    def set_image_path(self, path):
-        pixmap = QPixmap(path)
-        self.label.setPixmap(pixmap)
+    def on_child_update(self, child):
+        pass
+
+    def on_image_update(self, directory):
+        update_image(self, directory, self.tex0.name, 128)
+
+    def __init__(self, parent, tex0):
+        self.name = tex0.name
+        super().__init__(self.name, parent)
+        tex0.register_observer(self)
+        self.on_node_update(tex0)
+        ImageManager.get().subscribe(self, tex0.parent)
+        # if image_path:
+        #     self.set_image_path(image_path)
+
+
+def update_image(widget, dir, name, scale_width=64):
+    img_file = os.path.join(dir, name + '.png')
+    if os.path.exists(img_file):
+        pixelmap = QPixmap(img_file)
+        width = pixelmap.width()
+        height = pixelmap.height()
+        if width > height:
+            pixelmap = pixelmap.scaledToWidth(scale_width)
+        else:
+            pixelmap = pixelmap.scaledToHeight(scale_width)
+        widget.setPixmap(pixelmap)
+        widget.setMask(pixelmap.mask())

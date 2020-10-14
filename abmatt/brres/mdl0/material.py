@@ -51,6 +51,7 @@ class Material(Clipable):
         self.shader = None  # to be hooked up
         self.srt0 = None  # to be hooked up
         self.pat0 = None  # to be hooked up
+        self.polygons = []
         self.matGX = MatGX()
         super(Material, self).__init__(name, parent, binfile)
 
@@ -206,7 +207,7 @@ class Material(Clipable):
         return self.COMP_STRINGS[self.matGX.zmode.getDepthFunction()]
 
     def getDrawPriority(self):
-        return self.parent.getDrawPriority(self.index)
+        return {x.get_draw_priority() for x in self.polygons}
 
     def getName(self):
         return self.name
@@ -228,7 +229,8 @@ class Material(Clipable):
         return self.addLayer(key)
 
     def getDrawXLU(self):
-        return self.parent.isMaterialDrawXlu(self.index)
+        return self.xlu
+        # return self.parent.isMaterialDrawXlu(self.index)
 
     def getIndMatrix(self):
         ret = ''
@@ -261,7 +263,7 @@ class Material(Clipable):
                 func = self.SET_SETTING[i]
                 return func(self, value)
 
-    def setName(self, value):
+    def rename(self, value):
         if value == self.name:
             return True
         self.name = self.parent.rename_material(self, value)
@@ -464,15 +466,13 @@ class Material(Clipable):
 
     def setDrawPriorityStr(self, str):
         i = validInt(str, 0, 255)
-        self.parent.setDrawPriority(self.index, i)
-        self.mark_modified()
+        for x in self.polygons:
+            x.set_draw_priority(i)
 
     def setDrawXLU(self, enabled):
-        if enabled:
-            self.parent.setMaterialDrawXlu(self.index)
-        else:
-            self.parent.setMaterialDrawOpa(self.index)
-        self.mark_modified()
+        if enabled != self.xlu:
+            self.xlu = enabled
+            self.mark_modified()
 
     MATRIX_ERR = 'Error parsing "{}", Usage: IndirectMatrix:[<i>:]<scale>,<r1c1>,<r1c2>,<r1c3>,<r2c1>,<r2c2>,<r2c3>'
 
@@ -518,7 +518,7 @@ class Material(Clipable):
                    setShaderColorStr, setLightChannelStr, setLightsetStr,
                    setFogsetStr, setMatrixModeStr, setEnableDepthTestStr,
                    setEnableDepthUpdateStr, setDepthFunctionStr, setDrawPriorityStr,
-                   setIndirectMatrix, setName, setLayerCountStr)
+                   setIndirectMatrix, rename, setLayerCountStr)
 
     # --------------------- threshold transparency -------------------------------
     def get_transparency_threshold(self):
@@ -731,6 +731,10 @@ class Material(Clipable):
         if self.srt0:
             self.srt0.updateLayerNameI(layer.layer_index, name)
         return self.parent.rename_texture_link(layer, name)
+
+    def get_first_layer_name(self):
+        if self.layers:
+            return self.layers[0].name
 
     def is_vertex_color_enabled(self):
         return self.lightChannels[0].is_vertex_color_enabled()

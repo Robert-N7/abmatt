@@ -73,7 +73,6 @@ class BrresTreeView(QTreeView):
         self.handler.export_file_dialog()
 
     def close_file(self):
-        self.currentIndex()
         self.handler.close_file(self.get_indexed_item(self.clicked_index))
 
     def start_context_menu(self, position, level):
@@ -125,7 +124,7 @@ class BrresTreeView(QTreeView):
     def check_ext(self, files):
         valid_exts = ('.dae', '.obj', '.brres')
         for file in files:
-            if os.path.splitext(os.path.basename(file))[1] not in valid_exts:
+            if os.path.splitext(os.path.basename(file))[1].lower() not in valid_exts:
                 return False
         return True
 
@@ -152,8 +151,12 @@ class BrresTreeView(QTreeView):
         for model in brres.models:
             self.add_mdl0_item(brres_tree, model)
 
-    def remove_brres_tree(self, brres):
-        pass
+    def on_file_close(self):
+        """This is called when closing file"""
+        # this needs to be changed if it's anything other than the clicked index
+        # item = self.get_indexed_item(self.clicked_index)
+        self.mdl.removeRow(self.clicked_index.row(), self.clicked_index.parent())
+        # self.invisibleRootItem().removeChild(item)
 
 
 class QLinkedItem(QStandardItem):

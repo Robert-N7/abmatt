@@ -168,10 +168,10 @@ class Converter:
                 AutoFix.get().warn('Failed to encode images')
         return image_paths
 
-    def __init__(self, brres, mdl_file, flags=0):
+    def __init__(self, brres, mdl_file, flags=0, encode=True):
         if brres is None:
             filename = Brres.getExpectedBrresFileName(mdl_file)
-            brres = Brres(filename, readFile=os.path.exists(filename))
+            brres = Brres.get_brres(filename, True)
         self.brres = brres
         self.texture_library = brres.get_texture_map()
         self.mdl_file = mdl_file
@@ -179,6 +179,23 @@ class Converter:
         self.flags = flags
         self.image_library = set()
         self.replacement_model = None
+        self.encode = encode
+
+    def convert(self):
+        if self.encode:
+            self.load_model()
+        else:
+            self.save_model()
+
+    def __eq__(self, other):
+        if other is None:
+            return False
+        if self.encode != other.encode:
+            return False
+        if self.encode:
+            return self.mdl_file == other.mdl_file
+        else:
+            return self.brres == other.brres
 
     def load_model(self, model_name):
         raise NotImplementedError()

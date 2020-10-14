@@ -1,4 +1,7 @@
 """Debugging and fixing"""
+from threading import Thread
+from time import sleep
+
 from colorama import init
 init()
 
@@ -43,6 +46,13 @@ class AutoFixAbort(BaseException):
     def __init__(self):
         super(AutoFixAbort, self).__init__('Operation aborted')
 
+class Message:
+    def __init__(self, message):
+        self.message = message
+
+    def send(self, pipe):
+        raise NotImplementedError()
+
 
 class AutoFix:
     # Fix Level
@@ -60,11 +70,47 @@ class AutoFix:
     ERROR_LEVELS = (bcolors.ENDC, bcolors.FAIL, bcolors.FAIL, bcolors.OKBLUE, bcolors.OKBLUE, bcolors.BOLD)
     RESULTS = ('NONE', 'ERROR', 'WARN', 'CHECK', 'SUCCESS')
 
+    class Info(Message):
+        def send(self, pipe):
+            message = self.message
+            print(message)
+            if pipe:
+                pipe.info(message)
+
+    class Warn(Message):
+        def send(self, pipe):
+            message = self.message
+            print(f'{bcolors.FAIL}WARN: {message}{bcolors.ENDC}')
+            if pipe:
+                pipe.warn(message)
+
+    class Error(Message):
+        def send(self, pipe):
+            message = self.message
+            print(f'{bcolors.FAIL}ERROR: {message}{bcolors.ENDC}')
+            if pipe:
+                pipe.error(message)
+
+
     def __init__(self, fix_level=3, loudness=3):
         if(self.__AUTO_FIXER): raise RuntimeError('Autofixer already initialized')
         self.loudness = loudness
         self.fix_level = fix_level
+        self.queue = []
+        self.is_running=True
         self.pipe = None        # if set, output is sent to the pipe, must implement info warn and error.
+        self.thread = Thread(target=self.run)
+        self.thread.start()
+
+    def run(self):
+        while self.is_running:
+            while len(self.queue):
+                message = self.queue.pop(0)
+                message.send(self.pipe)
+            sleep(0.1)
+
+    def enqueue(self, message):
+        self.queue.append(message)
 
     @staticmethod
     def get(fixe_level=3, loudness=3):
@@ -90,27 +136,19 @@ class AutoFix:
 
     def log(self, message):
         if self.loudness >= 5:
-            print(f'{bcolors.OKBLUE}{message}{bcolors.ENDC}')
-            if self.pipe is not None:
-                self.pipe.info(message)
+            self.enqueue(self.Info(message))
 
     def info(self, message, loudness=2):
         if self.loudness >= loudness:
-            print(message)
-            if self.pipe is not None:
-                self.pipe.info(message)
+            self.enqueue(self.Info(message))
 
     def warn(self, message, loudness=2):
         if self.loudness >= loudness:
-            print(f'{bcolors.FAIL}WARN: {message}{bcolors.ENDC}')
-            if self.pipe is not None:
-                self.pipe.warn(message)
+            self.enqueue(self.Warn(message))
 
     def error(self, message, loudness=1):
         if self.loudness >= loudness:
-            print(f'{bcolors.FAIL}ERROR: {message}{bcolors.ENDC}')
-            if self.pipe is not None:
-                self.pipe.error(message)
+            self.enqueue(self.Error(message))
 
     # def should_fix(self, bug):
     #     """Determines if a bug should be fixed"""
