@@ -178,6 +178,7 @@ class Geometry:
             inv_matrix = np.array(linked_bone.get_inv_transform_matrix(), dtype=float)
             vertices.points = apply_matrix(inv_matrix, vertices.points)
             polygon.vertex_format, polygon.vertex_divisor = vertices.encode_data(vert, False)
+        # todo, refactor to remove indexes, use direct references instead
         polygon.vertex_group_index = vert.index
         polygon.vertex_index_format, fmt_str = get_index_format(vert)
         return fmt_str

@@ -91,57 +91,11 @@ class Bone(Node):
                 else:
                     return bone
 
-    def __parse_flags(self, flags):
-        self.no_transform = flags & 1 != 0
-        self.fixed_translation = flags & 0x2 != 0
-        self.fixed_rotation = flags & 0x4 != 0
-        self.fixed_scale = flags & 0x8 != 0
-        self.scale_equal = flags & 0x10 != 0
-        self.seg_scale_comp_apply = flags & 0x20 != 0
-        self.seg_scale_comp_parent = flags & 0x40 != 0
-        self.classic_scale_off = flags & 0x80 != 0
-        self.visible = flags & 0x100 != 0
-        self.has_geometry = flags & 0x200 != 0
-        self.has_billboard_parent = flags & 0x400 != 0
-
     def __get_flags(self):
         return self.no_transform | self.fixed_translation << 1 | self.fixed_rotation << 2 \
             | self.fixed_scale << 3 | self.scale_equal << 4 | self.seg_scale_comp_apply << 5 \
             | self.seg_scale_comp_parent << 6 | self.classic_scale_off << 7 | self.visible << 8 \
             | self.has_geometry << 9 | self.has_billboard_parent << 10
-
-    def unpack(self, binfile):
-        self.offset = binfile.start()
-        binfile.readLen()
-        binfile.advance(8)
-        self.index, self.weight_id, flags, self.billboard = binfile.read('4I', 20)
-        self.__parse_flags(flags)
-        self.scale = binfile.read('3f', 12)
-        self.rotation = binfile.read('3f', 12)
-        self.translation = binfile.read('3f', 12)
-        self.minimum = binfile.read('3f', 12)
-        self.maximum = binfile.read('3f', 12)
-        self.b_parent, self.child, self.next, self.prev, self.part2 = binfile.read('5i', 20)
-        self.transform_matrix = binfile.readMatrix(4, 3)
-        self.inverse_matrix = binfile.readMatrix(4, 3)
-        binfile.end()
-
-    def find_bone_at(self, offset, bones):
-        if offset:
-            offset += self.offset
-            for x in bones:
-                if x.offset == offset:
-                    return x
-            raise ValueError('Failed to find bone link to {}'.format(offset))
-
-    @staticmethod
-    def post_unpack(bones):
-        for b in bones:
-            b.b_parent = b.find_bone_at(b.b_parent, bones)
-            b.child = b.find_bone_at(b.child, bones)
-            b.next = b.find_bone_at(b.next, bones)
-            b.prev = b.find_bone_at(b.prev, bones)
-
 
     def pack(self, binfile):
         self.offset = binfile.start()
@@ -168,30 +122,26 @@ class Bone(Node):
         binfile.end()
 
 
-class BoneTable:
-    """ Bonetable class """
-    def __init__(self, binfile=None):
-        if binfile:
-            self.unpack(binfile)
-        else:
-            self.entries = []
-
-    def __getitem__(self, item):
-        return self.entries[item]
-
-    def __len__(self):
-        return len(self.entries)
-
-    def add_entry(self, entry):
-        self.entries.append(entry)
-        return len(self.entries) - 1
-
-    def unpack(self, binfile):
-        """ unpacks bonetable """
-        [length] = binfile.read("I", 4)
-        self.entries = binfile.read("{}i".format(length), length * 4)
-
-    def pack(self, binfile):
-        length = len(self.entries)
-        binfile.write("I", length)
-        binfile.write("{}i".format(length), *self.entries)
+# class BoneTable:
+#     """ Bonetable class """
+#     def __init__(self, binfile=None):
+#         if binfile:
+#             self.unpack(binfile)
+#         else:
+#             self.entries = []
+#
+#     def __getitem__(self, item):
+#         return self.entries[item]
+#
+#     def __len__(self):
+#         return len(self.entries)
+#
+#     def add_entry(self, entry):
+#         self.entries.append(entry)
+#         return len(self.entries) - 1
+#
+#
+#     def pack(self, binfile):
+#         length = len(self.entries)
+#         binfile.write("I", length)
+#         binfile.write("{}i".format(length), *self.entries)

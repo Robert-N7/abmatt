@@ -2,13 +2,12 @@ from abmatt.brres.mdl0.point import Point
 
 
 class TexCoord(Point):
-    COMP_COUNT = (1, 2)
+    @property
+    def DEFAULT_WIDTH(self):
+        return 2
 
-    def unpack(self, binfile):
-        super(TexCoord, self).unpack(binfile)
-        self.minimum = binfile.read('2f', 8)
-        self.maximum = binfile.read('2f', 8)
-        self.unpack_data(binfile)
+    def begin(self):
+        super(TexCoord, self).begin()
 
     def pack(self, binfile):
         super(TexCoord, self).pack(binfile)

@@ -63,14 +63,6 @@ class TextureLink(Node):
     def begin(self):
         self.num_references = 1
 
-    def unpack(self, binfile):
-        # offset = binfile.start()
-        [self.num_references] = binfile.read("I", 4)
-        # for i in range(self.num_references):  # ignore this?
-        #     link = binfile.read("2i", 8)
-        # print('{} at {}'.format(self, offset))
-        # binfile.end()
-
     def pack(self, binfile):
         offset = binfile.start()
         # print('{} at {}'.format(self, offset))
@@ -103,14 +95,7 @@ class Mdl0(SubFile):
     EXT = 'mdl0'
     VERSION_SECTIONCOUNT = {8: 11, 9:11, 10:14, 11:14}
     EXPECTED_VERSION = 11
-    SECTION_NAMES = ("Definitions", "Bones", "Vertices", "Normals", "Colors",
-                     "UVs", "FurVectors", "FurLayers",
-                     "Materials", "Shaders", "Objects", "Textures", "Palettes")
-
     SECTION_ORDER = (11, 0, 1, 6, 7, 8, 9, 10, 2, 3, 4, 5)
-
-    SECTION_CLASSES = (DrawList, Bone, Vertex, Normal, Color, TexCoord, FurVector,
-                       FurLayer, Material, Shader, Polygon, TextureLink, TextureLink)
 
     SETTINGS = ('name')  # todo, more settings
     DETECT_MODEL_NAME = True
@@ -140,10 +125,6 @@ class Mdl0(SubFile):
         self.version = 11
         self.find_min_max = False
         self.is_map_model = True if 'map' in name else False
-        self.sections = [self.definitions, self.bones, self.vertices, self.normals,
-                         self.colors, self.texCoords, self.furVectors, self.furLayers,
-                         self.materials, self.shaders, self.objects,
-                         self.textureLinks, self.paletteLinks]
         super(Mdl0, self).__init__(name, parent, binfile)
 
     def begin(self):
@@ -267,7 +248,8 @@ class Mdl0(SubFile):
                  scale_equal=scale_equal, fixed_scale=fixed_scale,
                  fixed_rotation=fixed_rotation, fixed_translation=fixed_translation)
         self.add_to_group(self.bones, b)
-        b.weight_id = self.boneTable.add_entry(self.boneMatrixCount)
+        b.weight_id = len(self.boneTable)
+        self.boneTable.append(self.boneMatrixCount)
         if parent_bone:
             parent_index = parent_bone.index    # todo check this
             parent_bone.link_child(b)

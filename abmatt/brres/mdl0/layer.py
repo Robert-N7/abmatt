@@ -41,6 +41,7 @@ class Layer(Clipable):
         self.xfTexMatrix = XFTexMatrix(layer_index)
         self.xfDualTex = XFDualTex(layer_index)
         self.enableIdentityMatrix = True
+        self.tex0 = None
         self.texMatrix = [1.0, 0, 0, 0,
                           0, 1.0, 0, 0,
                           0, 0, 1.0, 0]

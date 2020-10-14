@@ -24,12 +24,12 @@ class Polygon(Clipable):
     INDEX_FORMAT_SHORT = 3
 
     def __init__(self, name, parent, binfile=None):
-        self.tex_index_format = [0] * 8
-        self.tex_format = [0] * 8
+        # todo, refactor formats to be letters
         self.tex_divisor = [0] * 8
         self.tex_e = [1] * 8
         self.material = None
         self.priority = 0
+        self.tri_groups = None
         self.visible_bone = None
         super(Polygon, self).__init__(name, parent, binfile)
 
@@ -44,33 +44,27 @@ class Polygon(Clipable):
         return ''
 
     def begin(self):
-        self.vertex_index_format = self.INDEX_FORMAT_BYTE
-        self.normal_index_format = self.INDEX_FORMAT_BYTE
-        self.color0_index_format = self.INDEX_FORMAT_BYTE
-        self.color1_index_format = self.INDEX_FORMAT_NONE
-        self.vertex_format = 4
-        self.has_pos_matrix = False
-        self.has_tex_matrix = [False] * 8
-        self.vertex_divisor = 0
-        self.normal_format = 4
-        self.color0_format = 5
-        self.color1_format = 5
-        self.num_colors = 0
-        self.normal_type = 0
-        self.num_tex = 1
+        self.vertex_index = -1
+        self.normal_index = -1
+        self.color0_index = -1
+        self.color1_index = -1
+        self.tex_indices = [-1] * 8
+        self.weight_index = -1
+        self.tex_mtx_indices = [-1] * 8
+        self.vertices = None
         self.facepoint_count = 0
         self.face_count = 0
+        self.colors = [None, None]
+        self.normals = None
+        self.encode_str = ''
+        self.uvs = [None] * 8
+        self.data = bytearray()
         self.flags = 0
-        self.index = 0
-        self.bone = 0
+        self.bone = None
         self.visible_bone = self.parent.bones[0]
         self.bone_table = None
-        self.vertex_group_index = 0
-        self.normal_group_index = 0
-        self.color_group_indices = [0, -1]
-        self.tex_coord_group_indices = [0] + [-1] * 7
-        self.fur_vector_id = -1
-        self.fur_coord_id = -1
+        self.fur_vector = None
+        self.fur_coord = None
         self.vertex_e = 1
         self.normal_index3 = self.normal_e = 0
         self.color0_e = self.color1_e = 1
@@ -80,27 +74,19 @@ class Polygon(Clipable):
         self.bone = -1
 
     def get_vertex_group(self):
-        if self.vertex_index_format >= self.INDEX_FORMAT_BYTE:
-            return self.parent.vertices[self.vertex_group_index]
+        return self.vertices
 
     def get_normal_group(self):
-        if self.normal_index_format >= self.INDEX_FORMAT_BYTE:
-            return self.parent.normals[self.normal_group_index]
+        return self.normals
 
     def has_normals(self):
-        return self.normal_index_format != self.INDEX_FORMAT_NONE
+        return self.normals is not None
 
     def get_tex_group(self, tex_i=0):
-        if self.tex_index_format[tex_i] >= self.INDEX_FORMAT_BYTE:
-            return self.parent.texCoords[self.tex_coord_group_indices[tex_i]]
+        return self.uvs[tex_i]
 
     def get_color_group(self, i=0):
-        if i == 0:
-            if self.color0_index_format >= self.INDEX_FORMAT_BYTE:
-                return self.parent.colors[self.color_group_indices[0]]
-        elif i == 1:
-            if self.color1_index_format >= self.INDEX_FORMAT_BYTE:
-                return self.parent.colors[self.color_group_indices[1]]
+        return self.colors[i]
 
     def set_draw_priority(self, priority):
         if self.priority != priority:
@@ -128,21 +114,9 @@ class Polygon(Clipable):
         vertices = self.get_vertex_group()
         if vertices:
             verts.add(vertices)
-            if self.vertex_format != vertices.format:
-                AutoFix.get().warn('Mismatching format for vertices {}'.format(self.name))
-                self.vertex_format = vertices.format
-                modified = True
-            if self.vertex_divisor != vertices.divisor:
-                AutoFix.get().warn('Mismatching divisor for vertices {}'.format(self.name))
-                self.vertex_divisor = vertices.divisor
-                modified = True
         normals = self.get_normal_group()
         if normals:
             norms.add(normals)
-            if self.normal_format != normals.format:
-                AutoFix.get().warn('Mismatching format for normals {}'.format(self.name))
-                self.normal_format = normals.format
-                modified = True
         material = self.get_material()
 
         # Colors
@@ -150,10 +124,6 @@ class Polygon(Clipable):
         uses_vertex_colors = material.is_vertex_color_enabled()
         if my_colors:
             colors.add(my_colors)
-            if my_colors.format != self.color0_format:
-                AutoFix.get().warn('Mismatching format for colors {}'.format(my_colors.name))
-                self.color0_format = my_colors.format
-                modified = True
             if not uses_vertex_colors:
                 AutoFix.get().info(f'{self.name} has unused vertex colors', 4)
         elif uses_vertex_colors:
@@ -175,18 +145,8 @@ class Polygon(Clipable):
                     uvs_used.remove(i)
                 else:
                     AutoFix.get().info(f'{self.name} UV Channel {i} is not used by material.', 3)
-                if self.tex_format[i] != tex.format:
-                    AutoFix.get().warn('Mismatching format for uv group {} {} '.format(i, self.name))
-                    self.tex_format[i] = tex.format
-                    modified = True
-                if self.tex_divisor[i] != tex.divisor:
-                    AutoFix.get().warn('Mismatching divisor for uv group {} {}'.format(i, self.name))
-                    self.tex_divisor[i] = tex.divisor
-                    modified = True
             else:
                 break
-        if uv_count != self.num_tex:
-            AutoFix.get().warn(f'{self.name} has {uv_count} uvs enabled, but {self.num_tex} in description')
         if uvs_used:
             AutoFix.get().warn(f'{self.name} does not have UV channel(s) {uvs_used} but the material uses them!')
         return modified
@@ -239,61 +199,9 @@ class Polygon(Clipable):
         binfile.writeRemaining(self.vt_data)
         binfile.alignAndEnd()
 
-    def unpack(self, binfile):
-        binfile.start()
-        binfile.readLen()
-        mdl0_offset, self.bone, cp_vert_lo, cp_vert_hi, xf_vert = binfile.read('2i3I', 20)
-        self.parse_cp_vertex_format(cp_vert_hi, cp_vert_lo)
-        self.parse_xf_vertex_specs(xf_vert)
-        offset = binfile.offset
-        vt_dec_size, vt_dec_actual, vt_dec_offset = binfile.read('3I', 12)
-        vt_dec_offset += offset
-        offset = binfile.offset
-        vt_size, vt_actual, vt_offset = binfile.read('3I', 12)
-        vt_offset += offset
-        xf_arry_flags, self.flags = binfile.read('2I', 8)
-        binfile.advance(4)
-        self.index, self.facepoint_count, self.face_count, \
-        self.vertex_group_index, self.normal_group_index = binfile.read('3I2h', 16)
-        self.color_group_indices = binfile.read('2h', 4)
-        self.tex_coord_group_indices = binfile.read('8h', 16)
-        if self.parent.version >= 10:
-            self.fur_vector_id, self.fur_coord_id = binfile.read('2h', 4)
-        else:
-            self.fur_vector_id = self.fur_coord_id = -1
-            # binfile.advance(4)  # ignore
-        binfile.store()  # bt offset
-        binfile.recall()  # bt
-        [bt_length] = binfile.read('I', 4)
-        self.bone_table = binfile.read('{}H'.format(bt_length), bt_length * 2) if bt_length > 0 else None
-        binfile.offset = vt_dec_offset + 32  # ignores most of the beginning since we already have it
-        uvat = binfile.read('HIHIHI', 18)
-        # self.uvat = uvat
-        self.parse_uvat(uvat[1], uvat[3], uvat[5])
-        binfile.offset = vt_offset
-        self.vt_data = binfile.readRemaining()
-        # print('\n\n{}\tfacecount:{} data length:{} '.format(self.name, self.face_count, len(self.vt_data)))
-        # if self.face_count < 30:
-        #     printCollectionHex(self.vt_data)
-        binfile.end()
 
     def get_bone_table(self):
         return self.bone_table
-
-    def parse_cp_vertex_format(self, hi, lo):
-        self.has_pos_matrix = bool(lo & 0x1)
-        lo >>= 1
-        self.has_tex_matrix = has_tex_matrix = []
-        for i in range(8):
-            has_tex_matrix.append(bool(lo & 1))
-            lo >>= 1
-        self.vertex_index_format = lo & 0x3
-        self.normal_index_format = lo >> 2 & 0x3
-        self.color0_index_format = lo >> 4 & 0x3
-        self.color1_index_format = lo >> 6 & 0x3
-        for i in range(8):
-            self.tex_index_format[i] = hi & 3
-            hi >>= 2
 
     def get_cp_vertex_format(self):
         lo = self.has_pos_matrix
@@ -306,35 +214,6 @@ class Polygon(Clipable):
             hi |= x << shifter
             shifter += 2
         return hi, lo
-
-    def parse_uvat(self, uvata, uvatb, uvatc):
-        self.vertex_e = uvata & 0x1
-        self.vertex_format = uvata >> 1 & 0x7
-        self.vertex_divisor = uvata >> 4 & 0x1f
-        self.normal_e = uvata >> 9 & 1
-        self.normal_format = uvata >> 10 & 7
-        self.color0_e = uvata >> 13 & 1
-        self.color0_format = uvata >> 14 & 7
-        self.color1_e = uvata >> 17 & 1
-        self.color1_format = uvata >> 18 & 7
-        self.tex_e[0] = uvata >> 21 & 1
-        self.tex_format[0] = uvata >> 22 & 7
-        self.tex_divisor[0] = uvata >> 25 & 0x1f
-        self.normal_index3 = uvata >> 31
-        for i in range(1, 4):
-            self.tex_e[i] = uvatb & 1
-            self.tex_format[i] = uvatb >> 1 & 0x7
-            self.tex_divisor[i] = uvatb >> 4 & 0x1f
-            uvatb >>= 9
-        self.tex_e[4] = uvatb & 1
-        self.tex_format[4] = uvatb >> 1 & 0x7
-        self.tex_divisor[4] = uvatc & 0x1f
-        uvatc >>= 5
-        for i in range(5, 8):
-            self.tex_e[i] = uvatc & 0x1
-            self.tex_format[i] = uvatc >> 1 & 0x7
-            self.tex_divisor[i] = uvatc >> 4 & 0x1f
-            uvatc >>= 9
 
     def has_vertex_data(self):
         return self.vertex_index_format > 0
@@ -373,11 +252,6 @@ class Polygon(Clipable):
             uvatc |= (tex_e[i] | tex_format[i] << 1 | tex_divisor[i] << 3) << shifter
             shifter += 9
         return uvata, uvatb, uvatc
-
-    def parse_xf_vertex_specs(self, vt_specs):
-        self.num_colors = vt_specs & 0x3
-        self.normal_type = vt_specs >> 2 & 0x3
-        self.num_tex = vt_specs >> 4 & 0xf
 
     def get_xf_vertex_specs(self):
         return self.num_colors | self.normal_type << 2 | self.num_tex << 4

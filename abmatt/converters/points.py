@@ -76,10 +76,13 @@ class PointCollection:
         point_max = max(point_max, abs(point_min))
         max_shift = 16 - math.frexp(point_max)[1] - is_signed
         if max_shift <= 6:  # guarantee 6 decimals of precision
-            return 4, 0  # float
-        elif max_shift < 15:
-            return 0x2 + is_signed, max_shift  # short
-        return is_signed, max_shift - 8
+            return 'f', 0  # float
+        elif max_shift >= 15:
+            max_shift -= 8
+            format = 'b' if is_signed else 'B'
+        else:
+            format = 'h' if is_signed else 'H'
+        return format, max_shift
 
     def flip_points(self):
         self.points[:, -1] = self.points[:, -1] * -1 + 1
@@ -96,25 +99,25 @@ class PointCollection:
         form, divisor = self.get_format_divisor(self.minimum, self.maximum)
         points = self.points
         point_width = len(points[0])
-        if form == 4:
+        if form == 'f':
             mdl0_points.stride = point_width * 4
-        elif form > 1:
+        elif form.lower() == 'h':
             mdl0_points.stride = point_width * 2
         else:
             mdl0_points.stride = point_width
-        mdl0_points.comp_count = mdl0_points.COMP_COUNT.index(point_width)
+        mdl0_points.comp_count = point_width
         mdl0_points.format = form
         mdl0_points.divisor = divisor
         multiplyBy = 2 ** divisor
         data = mdl0_points.data
         if divisor:
-            if form == 3:
+            if form == 'h':
                 dtype = np.int16
-            elif form == 2:
+            elif form == 'H':
                 dtype = np.uint16
-            elif form == 1:
+            elif form == 'b':
                 dtype = np.int8
-            elif form == 0:
+            elif form == 'B':
                 dtype = np.uint8
             else:
                 raise ValueError(f'Unexpected format {form} for divisor {divisor}')
