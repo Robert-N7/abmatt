@@ -4,11 +4,11 @@ import time
 import numpy as np
 
 from autofix import AutoFix
-from abmatt.brres.mdl0 import Mdl0
 from abmatt.brres.mdl0 import material
 from abmatt.brres.tex0 import EncodeError, NoImgConverterError, ImgConverter
 from abmatt.converters.matrix import matrix_to_srt
 from brres import Brres
+from brres.mdl0.mdl0 import Mdl0
 from converters import matrix
 from converters.influence import decode_mdl0_influences
 

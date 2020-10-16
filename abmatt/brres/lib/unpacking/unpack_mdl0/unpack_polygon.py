@@ -1,13 +1,15 @@
 from brres.lib.binfile import UnpackingError
 from brres.lib.unpacking.interface import Unpacker
 from brres.lib.unpacking.unpack_mdl0.unpack_bone import unpack_bonetable
+from brres.mdl0.polygon import Polygon
 
 
 class UnpackPolygon(Unpacker):
-    def __init__(self, node, binfile):
+    def __init__(self, name, node, binfile):
+        poly = Polygon(name, node)
         self.encode_string = '>'
         self.indexer = 0
-        super(UnpackPolygon, self).__init__(node, binfile)
+        super(UnpackPolygon, self).__init__(poly, binfile)
 
     def unpack(self, polygon, binfile):
         binfile.start()

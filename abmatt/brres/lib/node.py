@@ -1,6 +1,8 @@
 import os
 from copy import deepcopy
 
+from brres.lib.binfile import BinFile
+
 
 def get_item_by_index(group, index):
     try:
@@ -20,7 +22,9 @@ class Node:
         self.parent = parent
         self.name = name
         if binfile is not None:
-            self.unpack(binfile)
+            # this provides a way to handle unpacking elsewhere
+            if type(binfile) == BinFile:
+                self.unpack(binfile)
         else:
             self.begin()
 

@@ -1,7 +1,12 @@
 from brres.lib.unpacking.interface import Unpacker
+from brres.mdl0.color import Color
 
 
 class UnpackColor(Unpacker):
+    def __init__(self, name, node, binfile):
+        color = Color(name, node)
+        super().__init__(color, binfile)
+
     def unpack(self, color, binfile):
         binfile.start()
         binfile.readLen()

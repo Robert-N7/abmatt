@@ -1,4 +1,7 @@
 from brres.lib.unpacking.interface import Unpacker
+from brres.mdl0.normal import Normal
+from brres.mdl0.texcoord import TexCoord
+from brres.mdl0.vertex import Vertex
 
 
 class UnpackPoint(Unpacker):
@@ -53,6 +56,10 @@ class UnpackVertex(UnpackPoint):
     def COMP_COUNT(self):
         return 2, 3
 
+    def __init__(self, name, node, binfile):
+        v = Vertex(name, node)
+        super().__init__(v, binfile)
+
     def unpack(self, vertex, binfile):
         super(UnpackVertex, self).unpack(vertex, binfile)
         vertex.minimum = binfile.read('3f', 12)
@@ -64,6 +71,10 @@ class UnpackNormal(UnpackPoint):
     @property
     def COMP_COUNT(self):
         return 3, 9, 32
+
+    def __init__(self, name, node, binfile):
+        n = Normal(name, node)
+        super().__init__(n, binfile)
 
     def unpack(self, normal, binfile):
         super(UnpackNormal, self).unpack(normal, binfile)
@@ -79,6 +90,10 @@ class UnpackUV(UnpackPoint):
     @property
     def COMP_COUNT(self):
         return 1, 2
+
+    def __init__(self, name, node, binfile):
+        uv = TexCoord(name, node)
+        super().__init__(uv, binfile)
 
     def unpack(self, uv, binfile):
         super(UnpackUV, self).unpack(uv, binfile)

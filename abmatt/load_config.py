@@ -6,16 +6,16 @@ from cmd import Cmd
 from brres import Brres
 from autofix import AutoFix
 from brres.lib.matching import validBool, MATCHING, parse_color, validInt
-from brres.mdl0 import Mdl0
 from brres.mdl0.layer import Layer
-from brres.mdl0.material import Material
+from brres.mdl0.mdl0 import Mdl0
 from brres.mdl0.shader import Shader, Stage
-from brres.pat0 import Pat0
-from brres.srt0 import Srt0
+from brres.pat0.pat0 import Pat0
+from brres.srt0.srt0 import Srt0
 from brres.subfile import SubFile
 from brres.tex0 import Tex0, ImgConverterI
 from command import Command, ParsingException, NoSuchFile
 from config import Config
+from converters.material import Material
 
 
 def set_rename_unknown(val):

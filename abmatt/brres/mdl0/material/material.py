@@ -6,12 +6,65 @@
 import re
 from copy import deepcopy
 
-from abmatt.brres.lib.matching import validBool, indexListItem, validInt, validFloat, splitKeyVal, MATCHING, parse_color
+from abmatt.brres.lib.matching import validBool, indexListItem, validInt, validFloat, MATCHING, parse_color
 from abmatt.brres.lib.node import Clipable
 from abmatt.brres.mdl0.layer import Layer
 from abmatt.brres.mdl0.shader import Shader
-from abmatt.brres.mdl0.wiigraphics.matgx import MatGX
 from autofix import AutoFix
+from brres.mdl0.material.light import LightChannel
+
+# Constants
+from brres.mdl0.wiigraphics.bp import IndMatrix
+
+ALPHA_LOGIC_AND = 0
+ALPHA_LOGIC_OR = 1
+ALPHA_LOGIC_XOR = 2
+ALPHA_LOGIC_IXOR = 3
+
+COMP_NEVER = 0
+COMP_LESS_THAN = 1
+COMP_EQUAL = 2
+COMP_LESS_THAN_OR_EQUAL = 3
+COMP_GREATER_THAN = 4
+COMP_NOT_EQUAL = 5
+COMP_GREATER_OR_EQUAL = 6
+COMP_ALWAYS = 7
+
+BLEND_MODE_NONE = 0
+BLEND_MODE_BLEND = 1
+BLEND_MODE_LOGIC = 2
+BLEND_MODE_SUBTRACT = 3
+
+BLEND_LOGIC_CLEAR = 0
+BLEND_LOGIC_AND = 1
+BLEND_LOGIC_REVERSE_AND = 2
+BLEND_LOGIC_COPY = 3
+BLEND_LOGIC_INVERSE_AND = 4
+BLEND_LOGIC_NO_OP = 5
+BLEND_LOGIX_XOR = 6
+BLEND_LOGIC_OR = 7
+BLEND_LOGIC_NOR = 8
+BLEND_LOGIC_EQUIVALENT = 9
+BLEND_LOGIC_INVERSE = 10
+BLEND_LOGIC_REVERSE_OR = 11
+BLEND_LOGIC_INVERSE_COPY = 12
+BLEND_LOGIC_INVERSE_OR = 13
+BLEND_LOGIC_NAND = 14
+BLEND_LOGIC_SET = 15
+
+BLEND_FACTOR_ZERO = 0
+BLEND_FACTOR_ONE = 1
+BLEND_FACTOR_SOURCE_COLOR = 2
+BLEND_FACTOR_INVERSE_SOURCE_COLOR = 3
+BLEND_FACTOR_SOURCE_ALPHA = 4
+BLEND_FACTOR_INVERSE_SOURCE_ALPHA = 5
+BLEND_FACTOR_DEST_ALPHA = 6
+BLEND_FACTOR_INVERSE_DEST_ALPHA = 7
+
+CULL_NONE = 0
+CULL_OUTSIDE = 1
+CULL_INSIDE = 2
+CULL_ALL = 3
 
 
 class Material(Clipable):
@@ -52,21 +105,25 @@ class Material(Clipable):
         self.srt0 = None  # to be hooked up
         self.pat0 = None  # to be hooked up
         self.polygons = []
-        self.matGX = MatGX()
         super(Material, self).__init__(name, parent, binfile)
 
     def __deepcopy__(self, memodict={}):
         # don't copy references copied elsewhere
-        srt0 = self.srt0
-        self.srt0 = None
-        pat0 = self.pat0
-        self.pat0 = None
-        shader = self.shader
-        self.shader = None
-        copy = super().__deepcopy__(memodict)
-        self.srt0 = srt0
-        self.pat0 = pat0
-        self.shader = shader
+        # srt0 = self.srt0
+        # self.srt0 = None
+        # pat0 = self.pat0
+        # self.pat0 = None
+        # shader = self.shader
+        # self.shader = None
+        # polygons = self.polygons
+        # self.polygons = None
+        # copy = super().__deepcopy__(memodict)
+        # self.srt0 = srt0
+        # self.pat0 = pat0
+        # self.shader = shader
+        # self.polygons = polygons
+        copy = Material(self.name, self.parent)
+        copy.paste(self)
         return copy
 
     def set_default_color(self):
@@ -88,16 +145,34 @@ class Material(Clipable):
     def begin(self):
         self.shaderStages = 0
         self.indirectStages = 0
-        self.cullmode = 2
+        self.cullmode = CULL_INSIDE
         self.compareBeforeTexture = True
         self.lightset = -1
         self.fogset = 0
-        self.xlu = 0
+        self.xlu = False
         self.textureMatrixMode = 0
+        self.indirect_matrices = [IndMatrix() for i in range(3)]
         self.lightChannels.append(LightChannel())
         self.shader = Shader(self.name, self.parent)
         self.parent.shaders[self.name] = self.shader
         self.shader.material = self
+        self.ref0 = 0
+        self.ref1 = 0
+        self.comp0 = COMP_ALWAYS
+        self.comp1 = COMP_ALWAYS
+        self.logic = ALPHA_LOGIC_AND
+        self.depth_test = True
+        self.depth_update = True
+        self.depth_function = COMP_LESS_THAN_OR_EQUAL
+        self.blend_enabled = False
+        self.blend_logic_enabled = False
+        self.blend_dither = False
+        self.blend_update_color = False
+        self.blend_update_alpha = False
+        self.blend_subtract = False
+        self.blend_logic = BLEND_LOGIC_COPY
+        self.blend_source = BLEND_FACTOR_SOURCE_ALPHA
+        self.blend_dest = BLEND_FACTOR_INVERSE_SOURCE_ALPHA
 
     def auto_detect_layer(self):
         if not self.layers:
@@ -105,7 +180,7 @@ class Material(Clipable):
                 self.addLayer(self.name)
 
     def __str__(self):
-        return "Mt{} {}: xlu {} layers {} culling {} blend {}".format(self.index, self.name,
+        return "{}: xlu {} layers {} culling {} blend {}".format(self.name,
                                                                       self.xlu, len(self.layers),
                                                                       self.CULL_STRINGS[self.cullmode], self.getBlend())
 
@@ -129,37 +204,36 @@ class Material(Clipable):
         return self.xlu
 
     def getRef0(self):
-        return self.matGX.alphafunction.getRef0()
+        return self.ref0
 
     def getRef1(self):
-        return self.matGX.alphafunction.getRef1()
+        return self.ref1
 
     def getComp0(self):
-        return self.COMP_STRINGS[self.matGX.alphafunction.getComp0()]
+        return self.COMP_STRINGS[self.comp0]
 
     def getComp1(self):
-        return self.COMP_STRINGS[self.matGX.alphafunction.getComp1()]
+        return self.COMP_STRINGS[self.comp1]
 
     def getCompareBeforeTexture(self):
         return self.compareBeforeTexture
 
     def getBlend(self):
-        return self.matGX.blendmode.isEnabled()
+        return self.blend_enabled
 
     def getBlendSrc(self):
-        return self.BLFACTOR_STRINGS[self.matGX.blendmode.getSrcFactor()]
+        return self.BLFACTOR_STRINGS[self.blend_source]
 
     def getBlendLogic(self):
-        return self.BLLOGIC_STRINGS[self.matGX.blendmode.getBlendLogic()]
+        return self.BLLOGIC_STRINGS[self.blend_logic]
 
     def getBlendDest(self):
-        return self.BLFACTOR_STRINGS[self.matGX.blendmode.getDstFactor()]
+        return self.BLFACTOR_STRINGS[self.blend_dest]
 
     def getConstantAlpha(self):
-        ca = self.matGX.constantalpha
-        if not ca.isEnabled():
+        if not self.constant_alpha_enabled:
             return -1
-        return ca.get()
+        return self.constant_alpha
 
     def getCullMode(self):
         return self.CULL_STRINGS[self.cullmode]
@@ -177,10 +251,10 @@ class Material(Clipable):
         return self.fogset
 
     def getColor(self, i):
-        return self.matGX.tevRegs[i].getColor()
+        return self.colors[i]
 
     def getConstantColor(self, i):
-        return self.matGX.cctevRegs[i].getColor()
+        return self.constant_colors[i]
 
     def getBrres(self):
         return self.parent.parent
@@ -188,23 +262,23 @@ class Material(Clipable):
     def getShaderColor(self):
         ret = ""
         for i in range(3):
-            ret += "Color{}: {}\t".format(i, self.matGX.tevRegs[i].getColor())
+            ret += "Color{}: {}\t".format(i, self.getColor(i))
         ret += "\n\t"
         for i in range(4):
-            ret += "Const{}: {}\t".format(i, self.matGX.cctevRegs[i].getColor())
+            ret += "Const{}: {}\t".format(i, self.getConstantColor(i))
         return ret
 
     def getMatrixMode(self):
         return self.MATRIXMODE[self.textureMatrixMode]
 
     def getEnableDepthTest(self):
-        return self.matGX.zmode.getDepthTest()
+        return self.depth_test
 
     def getEnableDepthUpdate(self):
-        return self.matGX.zmode.getDepthUpdate()
+        return self.depth_update
 
     def getDepthFunction(self):
-        return self.COMP_STRINGS[self.matGX.zmode.getDepthFunction()]
+        return self.COMP_STRINGS[self.depth_function]
 
     def getDrawPriority(self):
         return {x.get_draw_priority() for x in self.polygons}
@@ -235,7 +309,7 @@ class Material(Clipable):
     def getIndMatrix(self):
         ret = ''
         for i in range(3):
-            matrix = self.matGX.getIndMatrix(i)
+            matrix = self.indirect_matrices[i]
             ret += '\n\t{}: Scale {}, {}'.format(i, matrix.scale, matrix.matrix)
         return ret
 
@@ -300,12 +374,12 @@ class Material(Clipable):
         intVals = parse_color(value)
         if not intVals:
             raise ValueError(self.SHADERCOLOR_ERROR.format(str))
-        list = self.matGX.cctevRegs if isConstant else self.matGX.tevRegs
-        list[index].setColor(intVals)
+        list = self.constant_colors if isConstant else self.colors
+        list[index] = intVals
         self.mark_modified()
 
     def set_color(self, color, color_num=0):
-        self.matGX.tevRegs[color_num].setColor(color)
+        self.colors[color_num] = color
         self.mark_modified()
 
     def setCullModeStr(self, cullstr):
@@ -349,20 +423,19 @@ class Material(Clipable):
             val = int(str)
         if val > 255 or val < -2:
             raise ValueError("Invalid alpha " + str + ", expected 0-255|enable|disable")
-        ca = self.matGX.constantalpha
-        enabled = ca.isEnabled()
+        enabled = self.constant_alpha_enabled
         if val == -1:
             if enabled:
-                ca.setEnabled(False)
+                self.constant_alpha_enabled = False
                 self.mark_modified()
         elif val == -2:
             if not enabled:
-                ca.setEnabled(True)
+                self.constant_alpha_enabled = True
                 self.mark_modified()
         else:
-            if not enabled or ca.get() != val:
-                ca.setEnabled(True)
-                ca.set(val)
+            if not enabled or self.constant_alpha != val:
+                self.constant_alpha_enabled = True
+                self.constant_alpha = val
                 self.mark_modified()
 
     def setMatrixModeStr(self, str):
@@ -383,30 +456,28 @@ class Material(Clipable):
         val = int(str)
         if not 0 <= val < 256:
             raise ValueError("Ref0 must be 0-255")
-        af = self.matGX.alphafunction
-        if af.getRef0() != val:
-            af.setRef0(val)
+        if self.ref0 != val:
+            self.ref0 = val
             self.mark_modified()
 
     def setRef1Str(self, str):
         val = int(str)
         if not 0 <= val < 256:
             raise ValueError("Ref1 must be 0-255")
-        af = self.matGX.alphafunction
-        if af.getRef1() != val:
-            af.setRef1(val)
+        if self.ref1 != val:
+            self.ref1 = val
             self.mark_modified()
 
     def setComp0Str(self, str):
-        i = indexListItem(self.COMP_STRINGS, str, self.matGX.alphafunction.getComp0())
+        i = indexListItem(self.COMP_STRINGS, str, self.comp0)
         if i >= 0:
-            self.matGX.alphafunction.setComp0(i)
+            self.comp0 = i
             self.mark_modified()
 
     def setComp1Str(self, str):
-        i = indexListItem(self.COMP_STRINGS, str, self.matGX.alphafunction.getComp1())
+        i = indexListItem(self.COMP_STRINGS, str, self.comp1)
         if i >= 0:
-            self.matGX.alphafunction.setComp1(i)
+            self.comp1 = i
             self.mark_modified()
 
     def setCompareBeforeTexStr(self, str):
@@ -417,51 +488,44 @@ class Material(Clipable):
 
     def setBlendStr(self, str):
         val = validBool(str)
-        b = self.matGX.blendmode
-        if val != b.isEnabled():
-            b.setEnabled(val)
+        if val != self.blend_enabled:
+            self.blend_enabled = val
             self.mark_modified()
 
     def setBlendSrcStr(self, str):
-        b = self.matGX.blendmode
-        i = indexListItem(self.BLFACTOR_STRINGS, str, b.getSrcFactor())
+        i = indexListItem(self.BLFACTOR_STRINGS, str, self.blend_source)
         if i >= 0:
-            b.setSrcFactor(i)
+            self.blend_source = i
             self.mark_modified()
 
     def setBlendDestStr(self, str):
-        b = self.matGX.blendmode
-        i = indexListItem(self.BLFACTOR_STRINGS, str, b.getDstFactor())
+        i = indexListItem(self.BLFACTOR_STRINGS, str, self.blend_dest)
         if i >= 0:
-            b.setDstFactor(i)
+            self.blend_dest = i
             self.mark_modified()
 
     def setBlendLogicStr(self, str):
-        b = self.matGX.blendmode
-        i = indexListItem(self.BLLOGIC_STRINGS, str, b.getBlendLogic())
+        i = indexListItem(self.BLLOGIC_STRINGS, str, self.blend_logic)
         if i >= 0:
-            b.setBlendLogic(i)
+            self.blend_logic = i
             self.mark_modified()
 
     def setEnableDepthTestStr(self, str):
         val = validBool(str)
-        d = self.matGX.zmode
-        if val != d.getDepthTest():
-            d.setDepthTest(val)
+        if val != self.depth_test:
+            self.depth_test = val
             self.mark_modified()
 
     def setEnableDepthUpdateStr(self, str):
         val = validBool(str)
-        d = self.matGX.zmode
-        if val != d.getDepthUpdate():
-            d.setDepthUpdate(val)
+        if val != self.depth_update:
+            self.depth_update = val
             self.mark_modified()
 
     def setDepthFunctionStr(self, str):
-        i = indexListItem(self.COMP_STRINGS, str, self.matGX.zmode.getDepthFunction())
-        d = self.matGX.zmode
+        i = indexListItem(self.COMP_STRINGS, str, self.depth_function)
         if i >= 0:
-            d.setDepthFunction(i)
+            self.depth_function = i
             self.mark_modified()
 
     def setDrawPriorityStr(self, str):
@@ -476,6 +540,15 @@ class Material(Clipable):
 
     MATRIX_ERR = 'Error parsing "{}", Usage: IndirectMatrix:[<i>:]<scale>,<r1c1>,<r1c2>,<r1c3>,<r2c1>,<r2c2>,<r2c3>'
 
+
+    def setIndMatrixEnable(self, id, enable=True):
+        x = self.indirect_matrices[id]
+        x.enabled = enable
+        if enable and not x.scale:
+            # set up a default
+            x.scale = 14
+            x.matrix = [[0.6396484375, 0, 0], [0, 0.639648375, 0]]
+
     def setIndirectMatrix(self, str_value):
         matrix_index = 0
         colon_index = str_value.find(':')
@@ -485,7 +558,7 @@ class Material(Clipable):
         if ',' not in str_value:
             try:
                 enable = validBool(str_value)
-                self.matGX.setIndMatrixEnable(matrix_index, enable)
+                self.setIndMatrixEnable(matrix_index, enable)
                 return
             except ValueError as e:
                 raise ValueError(self.MATRIX_ERR.format(str_value))
@@ -494,7 +567,10 @@ class Material(Clipable):
             raise ValueError(self.MATRIX_ERR.format(str_value))
         scale = validInt(str_values.pop(0).strip(':'), -17, 47)
         matrix = [validFloat(x.strip('()'), -1, 1) for x in str_values]
-        self.matGX.setIndMatrix(matrix_index, scale, matrix)
+        ind_matrix = self.indirect_matrices[matrix_index]
+        ind_matrix.matrix = matrix
+        ind_matrix.scale = scale
+        ind_matrix.enabled = True
         self.mark_modified()
 
     def setLayerCountStr(self, str_value):
@@ -522,12 +598,24 @@ class Material(Clipable):
 
     # --------------------- threshold transparency -------------------------------
     def get_transparency_threshold(self):
-        return self.matGX.alphafunction.get_alpha_value()
+        if self.comp0 == COMP_GREATER_OR_EQUAL and self.comp1 == COMP_LESS_THAN_OR_EQUAL:
+            return self.ref0
+        return 0
 
     def set_transparency_threshold(self, value):
-        if self.matGX.alphafunction.get_alpha_value() != value:
-            self.matGX.alphafunction.set_alpha_value(value)
-            self.compareBeforeTexture = (value <= 0)
+        if self.get_transparency_threshold() != value:
+            if value:
+                self.ref0 = value
+                self.comp0 = COMP_GREATER_OR_EQUAL
+                self.ref1 = 255
+                self.comp1 = COMP_LESS_THAN_OR_EQUAL
+                self.compareBeforeTexture = False
+            else:
+                self.ref0 = 0
+                self.comp0 = COMP_ALWAYS
+                self.ref1 = 0
+                self.comp1 = COMP_ALWAYS
+                self.compareBeforeTexture = True
             self.mark_modified()
 
     # ----------------------- color ------------------------------------------------
@@ -619,9 +707,9 @@ class Material(Clipable):
 
     def disable_blend(self):
         if self.is_blend_enabled():
-            self.matGX.blendmode.setEnabled(False)
-            self.setXluStr('false')
-            self.matGX.zmode.setDepthUpdate(True)
+            self.blend_enabled = False
+            self.xlu = False
+            self.depth_update = True
             self.setDrawPriorityStr('0')
             self.mark_modified()
 
@@ -629,17 +717,17 @@ class Material(Clipable):
         if enabled:
             if not self.is_blend_enabled():
                 self.compareBeforeTexture = True
-                self.matGX.blendmode.setEnabled(True)
-                self.setXluStr('true')
-                self.matGX.alphafunction.enable(False)
-                self.matGX.zmode.setDepthUpdate(False)
+                self.blend_enabled = True
+                self.xlu = True
+                self.set_transparency_threshold(0)
+                self.depth_update = False
                 self.setDrawPriorityStr('1')
                 self.mark_modified()
         else:
             self.disable_blend()
 
     def is_blend_enabled(self):
-        return self.matGX.blendmode.isEnabled()
+        return self.blend_enabled
 
     # ----------------------------INFO ------------------------------------------
     def info(self, key=None, indentation_level=0):
@@ -670,7 +758,7 @@ class Material(Clipable):
     def check_shader(self, direct_count, ind_count, matrices_used):
         # checks with shader
         for i in range(2):
-            matrix = self.matGX.getIndMatrix(i)
+            matrix = self.indirect_matrices[i]
             if matrix.enabled:
                 if not matrices_used[i]:
                     AutoFix.get().warn('{} indirect matrix {} enabled but unused in shader'.format(self.name, i), 3)
@@ -763,14 +851,35 @@ class Material(Clipable):
 
     def paste_data(self, item):
         self.xlu = item.xlu
-        self.setDrawXLU(self.xlu)
         self.shaderStages = item.shaderStages
         self.indirectStages = item.indirectStages
         self.cullmode = item.cullmode
         self.compareBeforeTexture = item.compareBeforeTexture
         self.lightset = item.lightset
         self.fogset = item.fogset
-        self.matGX = deepcopy(item.matGX)
+        self.ref0 = item.ref0
+        self.ref1 = item.ref1
+        self.comp0 = item.comp0
+        self.comp1 = item.comp1
+        self.logic = item.logic
+        self.depth_test = item.depth_test
+        self.depth_update = item.depth_update
+        self.depth_function = item.depth_function
+        self.blend_enabled = item.blend_enabled
+        self.blend_logic_enabled = item.blend_logic_enabled
+        self.blend_dither = item.blend_dither
+        self.blend_update_color = item.blend_update_color
+        self.blend_update_alpha = item.blend_update_alpha
+        self.blend_subtract = item.blend_subtract
+        self.blend_logic = item.blend_logic
+        self.blend_source = item.blend_source
+        self.blend_dest = item.blend_dest
+        self.constant_alpha_enabled = item.constant_alpha_enabled
+        self.constant_alpha = item.constant_alpha
+        self.colors = deepcopy(item.colors)
+        self.constant_colors = deepcopy(item.constant_colors)
+        self.ras1 = deepcopy(item.ras1)
+
         self.lightChannels = deepcopy(item.lightChannels)
 
     def paste_layers(self, item):
@@ -851,211 +960,3 @@ class Material(Clipable):
 
 
 # LIGHT CHANNEL ----------------------------------------------------
-class LightChannel:
-    LC_ERROR = 'Invalid Light "{}", Expected ((color|alpha)control:key:value|[material|ambient|raster]\
-(color|alpha)(enable|rgba))'
-
-    def __init__(self, binfile=None):
-        if binfile:
-            self.unpack(binfile)
-        else:
-            self.begin()
-
-    def begin(self):
-        self.materialColorEnabled = self.materialAlphaEnabled = True
-        self.ambientAlphaEnabled = self.ambientColorEnabled = True
-        self.rasterAlphaEnabled = self.rasterColorEnabled = True
-        self.materialColor = [128, 128, 128, 255]
-        self.ambientColor = [0, 0, 0, 255]
-        self.colorLightControl = self.LightChannelControl(0x700)
-        self.alphaLightControl = self.LightChannelControl(0x700)
-
-    def __str__(self):
-        return 'Flags:{:02X} Mat:{} Amb:{}\n\tColorControl: {}\n\tAlphaControl: {}'.format(self.flagsToInt(),
-                                                                                           self.materialColor,
-                                                                                           self.ambientColor,
-                                                                                           self.colorLightControl,
-                                                                                           self.alphaLightControl)
-
-    def enable_vertex_color(self, enabled=True):
-        return self.colorLightControl.enable_vertex_color(enabled) or \
-            self.alphaLightControl.enable_vertex_color(enabled)
-
-    def is_vertex_color_enabled(self):
-        return self.colorLightControl.is_vertex_color_enabled() and \
-            self.alphaLightControl.is_vertex_color_enabled()
-
-    def __getitem__(self, item):
-        is_color = True if "color" in item else False
-        if "control" in item:
-            return self.colorLightControl[item] if is_color else self.alphaLightControl[item]
-        elif 'enable' in item:
-            if "material" in item:
-                return self.materialColorEnabled if is_color else self.materialAlphaEnabled
-            elif "ambient" in item:
-                return self.ambientColorEnabled if is_color else self.ambientAlphaEnabled
-            elif "raster" in item:
-                return self.rasterColorEnabled if is_color else self.rasterAlphaEnabled
-        else:
-            if 'material' in item:
-                return self.materialColor
-            elif 'ambient' in item:
-                return self.ambientColor
-        raise ValueError(self.LC_ERROR.format(item))
-
-    def __setitem__(self, key, value):
-        is_color = True if "color" in key else False
-        if "control" in key:
-            key2, value = splitKeyVal(value)
-            if not key2:
-                raise ValueError(self.LC_ERROR.format(key))
-            if is_color:
-                self.colorLightControl[key2] = value
-            else:
-                self.alphaLightControl[key2] = value
-        elif 'enable' in key:
-            val = validBool(value)
-            if "material" in key:
-                if is_color:
-                    self.materialColorEnabled = val
-                else:
-                    self.materialAlphaEnabled = val
-            elif "ambient" in key:
-                if is_color:
-                    self.ambientColorEnabled = val
-                else:
-                    self.ambientAlphaEnabled = val
-            elif "raster" in key:
-                if is_color:
-                    self.rasterColorEnabled = val
-                else:
-                    self.rasterAlphaEnabled = val
-        else:
-            int_vals = parse_color(value)
-            if not int_vals:
-                raise ValueError(self.LC_ERROR.format(key))
-            if "material" in key:
-                self.materialColor = int_vals
-            elif "ambient" in key:
-                self.ambientColor = int_vals
-            else:
-                raise ValueError(self.LC_ERROR.format(key))
-
-    class LightChannelControl:
-        LIGHT_SOURCE = ("register", "vertex")
-        DIFFUSE_FUNCTION = ("disabled", "enabled", "clamped")
-        ATTENUATION = ("specular", "spotlight")
-
-        #   Channel control
-        #         //0000 0000 0000 0000 0000 0000 0000 0001   Material Source (GXColorSrc)
-        #         //0000 0000 0000 0000 0000 0000 0000 0010   Light Enabled
-        #         //0000 0000 0000 0000 0000 0000 0011 1100   Light 0123
-        #         //0000 0000 0000 0000 0000 0000 0100 0000   Ambient Source (GXColorSrc)
-        #         //0000 0000 0000 0000 0000 0001 1000 0000   Diffuse Func
-        #         //0000 0000 0000 0000 0000 0010 0000 0000   Attenuation Enable
-        #         //0000 0000 0000 0000 0000 0100 0000 0000   Attenuation Function (0 = Specular)
-        #         //0000 0000 0000 0000 0111 1000 0000 0000   Light 4567
-
-        def __init__(self, flags):
-            self.materialSourceVertex = flags & 1
-            self.enabled = flags >> 1 & 1
-            self.light0123 = flags >> 2 & 0xf
-            self.ambientSourceVertex = flags >> 6 & 1
-            self.diffuseFunction = flags >> 7 & 3
-            self.attenuationEnabled = flags >> 9 & 1
-            self.attenuationFunction = flags >> 10 & 1
-            self.light4567 = flags >> 11 & 0xf
-
-        def is_vertex_color_enabled(self):
-            return self.materialSourceVertex
-
-        def enable_vertex_color(self, enable):
-            if self.materialSourceVertex != enable:
-                self.materialSourceVertex = enable
-                return True
-            return False
-
-        def __str__(self):
-            return 'enabled:{} material:{} ambient:{} diffuse:{} attenuation:{}'.format(self['enable'],
-                                                                                        self['material'],
-                                                                                        self['ambient'],
-                                                                                        self['diffuse'],
-                                                                                        self['attenuation'])
-
-        def __getitem__(self, item):
-            if 'material' in item:
-                return self.LIGHT_SOURCE[self.materialSourceVertex]
-            elif 'enable' in item:
-                return self.enabled
-            elif 'ambient' in item:
-                return self.LIGHT_SOURCE[self.ambientSourceVertex]
-            elif 'diffuse' in item:
-                return self.DIFFUSE_FUNCTION[self.diffuseFunction]
-            elif 'attenuation' in item:
-                return 'None' if not self.attenuationEnabled else self.ATTENUATION[self.attenuationFunction]
-            else:
-                raise ValueError(LightChannel.LC_ERROR.format(item))
-
-        def __setitem__(self, key, value):
-            if 'material' in key:
-                i = indexListItem(self.LIGHT_SOURCE, value, self.materialSourceVertex)
-                if i >= 0:
-                    self.materialSourceVertex = i
-            elif 'enable' in key:
-                val = validBool(value)
-                self.enabled = val
-            elif 'ambient' in key:
-                i = indexListItem(self.LIGHT_SOURCE, value, self.ambientSourceVertex)
-                if i >= 0:
-                    self.ambientSourceVertex = i
-            elif 'diffuse' in key:
-                i = indexListItem(self.DIFFUSE_FUNCTION, value, self.diffuseFunction)
-                if i >= 0:
-                    self.diffuseFunction = i
-            elif 'attenuation' in key:
-                try:
-                    i = indexListItem(self.ATTENUATION, value, self.attenuationFunction)
-                    if i >= 0:
-                        self.attenuationFunction = i
-                    if not self.attenuationEnabled:
-                        self.attenuationEnabled = True
-                except ValueError:
-                    val = validBool(value)
-                    self.attenuationEnabled = val
-            else:
-                raise ValueError(LightChannel.LC_ERROR.format(key))
-
-        def getFlagsAsInt(self):
-            return self.materialSourceVertex | self.enabled << 1 | self.light0123 << 2 | self.ambientSourceVertex << 6 \
-                   | self.diffuseFunction << 7 | self.attenuationEnabled << 9 | self.attenuationFunction << 10 \
-                   | self.light4567
-
-    def unpack(self, binfile):
-        data = binfile.read("I8B2I", 20)
-        flags = data[0]
-        self.materialColorEnabled = flags & 1
-        self.materialAlphaEnabled = flags >> 1 & 1
-        self.ambientColorEnabled = flags >> 2 & 1
-        self.ambientAlphaEnabled = flags >> 3 & 1
-        self.rasterColorEnabled = flags >> 4 & 1
-        self.rasterAlphaEnabled = flags >> 5 & 1
-        self.materialColor = data[1:5]
-        self.ambientColor = data[5:9]
-        self.colorLightControl = self.LightChannelControl(data[9])
-        self.alphaLightControl = self.LightChannelControl(data[10])
-
-    def flagsToInt(self):
-        return self.materialColorEnabled | self.materialAlphaEnabled << 1 | self.ambientColorEnabled << 2 \
-               | self.ambientAlphaEnabled << 3 | self.rasterColorEnabled << 4 | self.rasterAlphaEnabled << 5
-
-    def pack(self, binfile):
-        flags = self.flagsToInt()
-        mc = self.materialColor
-        binfile.write('I4B', flags, mc[0], mc[1], mc[2], mc[3])
-        ac = self.ambientColor
-        binfile.write('4B2I', ac[0], ac[1], ac[2], ac[3],
-                      self.colorLightControl.getFlagsAsInt(), self.alphaLightControl.getFlagsAsInt())
-
-    @staticmethod
-    def pack_default(binfile):
-        binfile.write('5I', 0xf, 0xff, 0, 0, 0)

@@ -597,9 +597,9 @@ class IndMatrix():
         id: 0 -2
         scale: 6-bit value that controls outgoing coordinate scale (2^scale)
     """
-    SIZE = 15
+    BPMEM_IND_MTXA0 = 0x06
 
-    def __init__(self, id, scale=46, enable=False):
+    def __init__(self, scale=46, enable=False):
         """ Indirect 2x3 matrix that blit processor loads
             the matrix has two rows and three columns, and it appears on the
             left side of the multiply. On the right side is a column vector
@@ -617,8 +617,7 @@ class IndMatrix():
         """
         self.enabled = enable
         self.scale = scale
-        self.matrix = [0] * 6
-        self.id = id  # typically 0
+        self.matrix = [[0] * 3, [0] * 3]
 
     def getScale(self):
         return self.scale
@@ -633,27 +632,6 @@ class IndMatrix():
         if val > 1 or val < -1:
             print("Warning: Ind matrix {} value {} out of range! Should be between -1 and 1".format(self.id, val))
         self.matrix[key] = val
-
-    def force11bitFloat(self, val):
-        """Forces 11 bit to float
-            100 0000 0000 sign
-            011 1111 1111 mantissa
-        """
-        # There's probably a better way to do this
-        f = 0.0
-        bitn = 10
-        start = 1 << bitn
-        while bitn > 0:
-            # print("divisor {} bitn {}".format(start, bitn))
-            if val & 1:
-                f += 1.0 / start
-                # print(f)
-            val >>= 1
-            start >>= 1
-            bitn -= 1
-        if val & 1:  # sign
-            f *= -1
-        return f
 
     def encode11bitFloat(self, val):
         """Encodes the 10bit float as int
@@ -674,28 +652,10 @@ class IndMatrix():
             start <<= 1
         return e
 
-    def unpack(self, binfile):
-        """ unpacks ind matrix """
-        scale = 0
-        c = BPCommand(0)
-        for i in range(3):
-            self.enabled = c.unpack(binfile) > 0
-            if not self.enabled:
-                binfile.advance(10)  # skip ahead
-                self.scale = scale
-                return
-            # parse data
-            if i == 0:
-                self.id = (c.bpmem - BPCommand.BPMEM_IND_MTXA0) // 3
-            scale = scale | (c.data >> 22 & 3) << (2 * i)
-            self.matrix[i] = self.force11bitFloat(c.data & 0x7ff)   # row 0
-            self.matrix[i+3] = self.force11bitFloat(c.data >> 11 & 0x7ff)   # row 1
-        self.scale = scale - 17
-
     def pack(self, binfile):
         """Packs the ind matrix """
         if not self.enabled:
-            binfile.advance(self.SIZE)
+            binfile.advance(15)
             return
         c = BPCommand(BPCommand.BPMEM_IND_MTXA0 + self.id * 3)
         scale = self.scale + 17

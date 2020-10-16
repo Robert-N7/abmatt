@@ -8,30 +8,22 @@ import string
 from autofix import AutoFix, Bug
 from abmatt.brres.lib.binfile import BinFile, Folder, UnpackingError
 from abmatt.brres.chr0 import Chr0
-from abmatt.brres.clr0 import Clr0
 from abmatt.brres.lib.matching import MATCHING
 from abmatt.brres.lib.node import Clipable
-from abmatt.brres.mdl0 import Mdl0
-from abmatt.brres.scn0 import Scn0
-from abmatt.brres.shp0 import Shp0
 from abmatt.brres.tex0 import Tex0, ImgConverter
+from brres.clr0.clr0 import Clr0
 from brres.lib.packing import pack_brres
 from brres.lib.packing.pack_brres import PackBrres
 from brres.lib.unpacking.unpack_brres import UnpackBrres
+from brres.mdl0.mdl0 import Mdl0
 from brres.pat0.pat0 import Pat0
+from brres.scn0.scn0 import Scn0
+from brres.shp0.shp0 import Shp0
 from brres.srt0.srt0 import Srt0
 
 
 class Brres(Clipable):
 
-    FOLDERS = {"3DModels(NW4R)": Mdl0,
-               "Textures(NW4R)": Tex0,
-               "AnmTexPat(NW4R)": Pat0,
-               "AnmTexSrt(NW4R)": Srt0,
-               "AnmChr(NW4R)": Chr0,
-               "AnmScn(NW4R)": Scn0,
-               "AnmShp(NW4R)": Shp0,
-               "AnmClr(NW4R)": Clr0}
     ANIM_COLLECTIONS = ("AnmTexPat(NW4R)", "AnmTexSrt(NW4R)")
     ORDERED = ("3DModels(NW4R)", "Textures(NW4R)")
     SETTINGS = ('name')
@@ -51,7 +43,7 @@ class Brres(Clipable):
             parent - optional for supporting containing files in future
             readfile - optional start reading and unpacking file
         """
-        self.folders = {}
+        # self.folders = {}
         name = os.path.abspath(name)
         self.is_modified = False
         self.texture_map = {}

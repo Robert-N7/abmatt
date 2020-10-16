@@ -1,13 +1,21 @@
 import string
 
 from autofix import AutoFix
+from brres.chr0 import Chr0
+from brres.clr0.clr0 import Clr0
 from brres.lib.binfile import Folder, UnpackingError
 from brres.lib.unpacking.interface import Unpacker
-from brres.pat0.pat0 import Pat0Collection
-from brres.srt0.srt0 import SRTCollection
+from brres.mdl0.mdl0 import Mdl0
+from brres.pat0.pat0 import Pat0Collection, Pat0
+from brres.scn0.scn0 import Scn0
+from brres.shp0.shp0 import Shp0
+from brres.srt0.srt0 import SRTCollection, Srt0
+from brres.tex0 import Tex0
 
 
 class UnpackBrres(Unpacker):
+    FOLDERS = {}
+
     @staticmethod
     def create_model_animation_map(animations):
         model_anim_map = {}  # dictionary of model names to animations
@@ -83,15 +91,56 @@ class UnpackBrres(Unpacker):
         root = Folder(binfile, root)
         root.unpack(binfile)
         # open all the folders
-        while len(root):
-            container = []
-            folder_name = root.recallEntryI()
-            klass = brres.FOLDERS[folder_name]
-            subFolder = Folder(binfile, folder_name)
-            subFolder.unpack(binfile)
-            while len(subFolder):
-                name = subFolder.recallEntryI()
-                container.append(klass(name, brres, binfile))
-            brres.folders[folder_name] = container
+        for i in range(len(root)):
+            self.unpack_folder(root.recallEntryI())
         binfile.end()
         self.post_unpacking(brres)
+
+    def unpack_subfiles(self, klass):
+        subfolder = Folder(self.binfile, self.folder_name)
+        subfolder.unpack(self.binfile)
+        return [klass(subfolder.recallEntryI(), self.node, self.binfile) for i in range(len(subfolder))]
+
+
+    def unpack_models(self):
+        self.node.models = self.unpack_subfiles(Mdl0)
+
+    def unpack_textures(self):
+        self.node.textures = self.unpack_subfiles(Tex0)
+
+    def unpack_pat0(self):
+        self.node.pat0 = self.unpack_subfiles(Pat0)
+
+    def unpack_srt0(self):
+        self.node.srt0 = self.unpack_subfiles(Srt0)
+
+    def unpack_chr0(self):
+        self.node.chr0 = self.unpack_subfiles(Chr0)
+
+    def unpack_scn0(self):
+        self.node.scn0 = self.unpack_subfiles(Scn0)
+
+    def unpack_shp0(self):
+        self.node.shp0 = self.unpack_subfiles(Shp0)
+
+    def unpack_clr0(self):
+        self.node.clr0 = self.unpack_subfiles(Clr0)
+
+    def unpack_folder(self, folder_name):
+        self.folder_name = folder_name
+        if folder_name == "3DModels(NW4R)":
+            self.unpack_models()
+        elif folder_name == "Textures(NW4R)":
+            self.unpack_textures()
+        elif folder_name == "AnmTexPat(NW4R)":
+            self.unpack_pat0()
+        elif folder_name == "AnmTexSrt(NW4R)":
+            self.unpack_srt0()
+        elif folder_name == "AnmChr(NW4R)":
+            self.unpack_chr0()
+        elif folder_name == "AnmScn(NW4R)":
+            self.unpack_scn0()
+        elif folder_name == "AnmShp(NW4R)":
+            self.unpack_shp0()
+        elif folder_name == "AnmClr(NW4R)":
+            self.unpack_clr0()

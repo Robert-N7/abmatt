@@ -6,10 +6,8 @@ from autofix import AutoFix, Bug
 from abmatt.brres.lib.binfile import Folder, PackingError
 from abmatt.brres.lib.matching import fuzzy_match, MATCHING
 from abmatt.brres.lib.node import Node
-from abmatt.brres.mdl0.bone import Bone, BoneTable
 from abmatt.brres.mdl0.color import Color
 from abmatt.brres.mdl0.definition import DrawList, get_definition
-from abmatt.brres.mdl0.material import Material
 from abmatt.brres.mdl0.normal import Normal
 from abmatt.brres.mdl0.polygon import Polygon
 from abmatt.brres.mdl0.shader import Shader, ShaderList
@@ -21,6 +19,7 @@ from brres.pat0.pat0 import Pat0Collection
 from brres.pat0.pat0_material import Pat0MatAnimation
 from brres.srt0.srt0 import SRTCollection
 from brres.srt0.srt0_animation import SRTMatAnim
+from converters.material import Material
 
 
 class ModelGeneric(Node):
@@ -128,7 +127,7 @@ class Mdl0(SubFile):
         super(Mdl0, self).__init__(name, parent, binfile)
 
     def begin(self):
-        self.boneTable = BoneTable()
+        self.boneTable = []
         self.boneMatrixCount = 0
         self.faceCount = 0
         self.facepoint_count = 0

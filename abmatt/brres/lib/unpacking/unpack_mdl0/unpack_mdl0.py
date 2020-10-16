@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from brres.lib.binfile import Folder, UnpackingError
 from brres.lib.unpacking.interface import Unpacker
 from brres.lib.unpacking.unpack_mdl0.unpack_bone import UnpackBone, unpack_bonetable
@@ -42,11 +44,12 @@ class UnpackMdl0(UnpackSubfile):
                 raise UnpackingError(binfile, 'Furs are not supported!')
             # mdl0.fur_vectors = self.unpackSection(binfile, UnpackFurVectors, 'FurVectors')
             # mdl0.fur_layers = self.unpackSection(binfile, UnpackFurLayers, 'FurLayers')
-        mdl0.materials = self.unpackSection(binfile, UnpackMaterial, 'Materials')
-        mdl0.shaders = self.unpackSection(binfile, UnpackShader, 'Shaders')
+        self.mat_unpackers = self.unpackSection(binfile, UnpackMaterial, 'Materials', return_nodes=False)
+        self.shader_offsets_map = self.unpack_shaders(binfile)
         self.poly_unpackers = self.unpackSection(binfile, UnpackPolygon, 'Objects', return_nodes=False)
-        self.texture_links = self.unpackSection(binfile, self.UnpackTexLink, 'Textures', return_nodes=False)
-        if binfile.recall():
+
+        # self.texture_links = self.unpackSection(binfile, self.UnpackTexLink, 'Textures', return_nodes=False)
+        if binfile.recall() and binfile.recall():
             raise UnpackingError(binfile, 'Palettes are not supported!')
         binfile.end()  # end file
         self.post_unpack(mdl0)
@@ -77,7 +80,7 @@ class UnpackMdl0(UnpackSubfile):
 
     def __init__(self, node, binfile):
         self.definitions = []
-        self.texture_links = []
+        # self.texture_links = []
         super(UnpackMdl0, self).__init__(node, binfile)
 
     def parse_definition_list(self, li):
@@ -92,8 +95,20 @@ class UnpackMdl0(UnpackSubfile):
             poly.priority = x.priority
 
     def post_unpack(self, mdl0):
+        # set up mdl0 nodes left
         mdl0.bones = [x.node for x in self.bone_unpackers]
         mdl0.objects = [x.node for x in self.poly_unpackers]
+        mdl0.materials = [x.node for x in self.mat_unpackers]
+        # hook references
+        for x in self.mat_unpackers:
+            try:
+                shader = self.shader_offsets_map[x.shaderOffset]
+                if shader.parent is not None:   # only use one shader per material
+                    shader = deepcopy(shader)
+                shader.parent = x.node
+                x.node.shader = shader
+            except ValueError:
+                raise UnpackingError(self.binfile, 'Material {} shader not found!'.format(x.node.name))
         for x in self.bone_unpackers:
             x.post_unpack(self.bone_unpackers)
         for x in self.definitions:
@@ -108,11 +123,6 @@ class UnpackMdl0(UnpackSubfile):
         """
         # ignore fur sections for v8 mdl0s
         group = []
-        # if section_index == 0:
-        #     self.unpackDefinitions(mdl0, binfile)
-        # elif section_index == 9:
-        #     # assumes materials are unpacked..
-        #     mdl0.shaders.unpack(binfile, mdl0.materials)
         if binfile.recall():  # from offset header
             # section_klass = mdl0.SECTION_CLASSES[section_index]
             folder = Folder(binfile, name)
@@ -124,3 +134,16 @@ class UnpackMdl0(UnpackSubfile):
                 group.append(k) if not return_nodes else group.append(k.node)
         return group
 
+    def unpack_shaders(self, binfile):
+        # special treatment for shader unpacking, track offsets so as to unpack once only
+        shader_offset_map = {}
+        if binfile.recall():  # from offset header
+            folder = Folder(binfile, 'Shaders')
+            folder.unpack(binfile)
+            while len(folder.entries):
+                name = folder.recallEntryI()
+                offset = binfile.offset
+                if offset in shader_offset_map:
+                    continue
+                shader_offset_map[offset] = UnpackShader(name, self.node, binfile=binfile).node
+        return shader_offset_map
