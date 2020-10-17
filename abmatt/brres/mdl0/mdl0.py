@@ -14,7 +14,9 @@ from abmatt.brres.mdl0.shader import Shader, ShaderList
 from abmatt.brres.mdl0.texcoord import TexCoord
 from abmatt.brres.mdl0.vertex import Vertex
 from abmatt.brres.subfile import SubFile
+from brres.lib.packing.pack_mdl0.pack_mdl0 import PackMdl0
 from brres.lib.unpacking.unpack_mdl0.unpack_mdl0 import UnpackMdl0
+from brres.mdl0.bone import Bone
 from brres.pat0.pat0 import Pat0Collection
 from brres.pat0.pat0_material import Pat0MatAnimation
 from brres.srt0.srt0 import SRTCollection
@@ -49,29 +51,6 @@ class ModelGeneric(Node):
         binfile.end()
 
 
-class TextureLink(Node):
-    """ Links from textures to materials and layers """
-
-    def __init__(self, name, parent=None, binfile=None):
-        """Only tracks number of references, which serve as placeholders to be filled in by the layers"""
-        super(TextureLink, self).__init__(name, parent, binfile)
-
-    def __str__(self):
-        return self.name + ' ' + str(self.num_references)
-
-    def begin(self):
-        self.num_references = 1
-
-    def pack(self, binfile):
-        offset = binfile.start()
-        # print('{} at {}'.format(self, offset))
-        binfile.write("I", self.num_references)
-        for i in range(self.num_references):
-            binfile.mark(2)  # marks 2 references
-        binfile.end()
-        return offset
-
-
 class FurLayer(ModelGeneric):
     """ Fur Layer model data """
     pass
@@ -83,8 +62,6 @@ class FurVector(ModelGeneric):
 
 
 # ---------------------------------------------------------------------
-
-# ---------------------------------------------------------------------
 #   Model class
 # ---------------------------------------------------------------------
 class Mdl0(SubFile):
@@ -94,7 +71,6 @@ class Mdl0(SubFile):
     EXT = 'mdl0'
     VERSION_SECTIONCOUNT = {8: 11, 9:11, 10:14, 11:14}
     EXPECTED_VERSION = 11
-    SECTION_ORDER = (11, 0, 1, 6, 7, 8, 9, 10, 2, 3, 4, 5)
 
     SETTINGS = ('name')  # todo, more settings
     DETECT_MODEL_NAME = True
@@ -544,143 +520,10 @@ class Mdl0(SubFile):
         return textures
 
     # ---------------START PACKING STUFF -------------------------------------
-    def pre_pack(self):
-        """Cleans up references in preparation for packing"""
-        self.rebuild_indexes(self.materials)
-        self.build_definitions()
-        defs = [self.NodeTree, self.NodeMix, self.DrawOpa, self.DrawXlu]
-        defs = [x for x in defs if x]
-        self.sections[0] = defs
-        # rebuild texture links
-        texture_links = {}
-        for x in self.materials:
-            for y in x.layers:
-                name = y.name
-                if name not in texture_links:
-                    texture_links[name] = TextureLink(name, self)
-                else:
-                    texture_links[name].num_references += 1
-        self.sections[11] = self.textureLinks = texture_links.values()
-        if self.find_min_max:
-            self.search_for_min_and_max()
-
-    @staticmethod
-    def rebuild_indexes(group):
-        for i in range(len(group)):
-            group[i].index = i
-
-    def build_definitions(self):
-        opa = []
-        xlu = []
-        for poly in self.objects:
-            mat = poly.material
-            bone = poly.visible_bone
-            is_xlu = mat.is_xlu()
-            entry = DrawList.DrawEntry(is_xlu).begin(mat.index, poly.index, bone.index, poly.priority)
-            if not is_xlu:
-                opa.append(entry)
-            else:
-                xlu.append(entry)
-        self.DrawOpa.list = sorted(opa, key=lambda x: x.priority)
-        self.DrawXlu.list = sorted(xlu, key=lambda x: x.priority)
-
     def unpack(self, binfile):
         UnpackMdl0(self, binfile)
 
-    def packTextureLinks(self, binfile, folder):
-        """Packs texture link section, returning map of names:offsets be filled in by mat/layer refs"""
-        tex_map = {}
-        for x in self.textureLinks:
-            folder.createEntryRefI()
-            tex_map[x.name] = x.pack(binfile)
-        return tex_map
-
-    def pack_definitions(self, binfile, folder):
-        for x in self.sections[0]:
-            folder.createEntryRefI()
-            x.pack(binfile)
-        binfile.align(4)
-
-    def pack_materials(self, binfile, folder, texture_link_map):
-        """packs materials, requires texture link map to offsets that need to be filled"""
-        section = self.sections[8]
-        for i in range(len(section)):
-            folder.createEntryRefI()
-            section[i].pack(binfile, texture_link_map)
-        for x in texture_link_map:
-            if binfile.references[texture_link_map[x]]:
-                raise PackingError(binfile, 'Unused texture link {}!'.format(x))
-
-    def pack_shaders(self, binfile, folder):
-        self.sections[9].pack(binfile, folder)
-
-    def pack_section(self, binfile, section_index, folder):
-        """ Packs a model section (generic) """
-        section = self.sections[section_index]
-        if section:
-            # now pack the data
-            for x in section:
-                 if x:
-                    folder.createEntryRefI()  # create reference to current data location
-                    x.pack(binfile)
-
-    def packFolders(self, binfile):
-        """ Generates the root folders
-            Does not hook up data pointers except the head group,
-            returns rootFolders
-        """
-        root_folders = []  # for storing Index Groups
-        sections = self.sections
-        # Create folder for each section the MDL0 has
-        i = j = 0
-        while i < len(sections):
-            section = sections[i]
-            if i == 9:  # special case for shaders: must add entry for each material
-                section = sections[i - 1]
-            if section:
-                f = Folder(binfile, self.SECTION_NAMES[i])
-                for x in section:
-                    if x:
-                        f.addEntry(x.name)
-                root_folders.append(f)
-                binfile.createRef(j, False)  # create the ref from stored offsets
-                f.pack(binfile)
-            else:
-                root_folders.append(None)  # create placeholder
-            i += 1
-            j += 1
-        return root_folders
-
     def pack(self, binfile):
-        """ Packs the model data """
-        if self.sections[6] or self.sections[7] or self.sections[12]:
-            raise PackingError(binfile, 'Packing Fur/palettes not supported')
-        self.pre_pack()
-        self._pack(binfile)
-        binfile.start()  # header
-        binfile.write("Ii7I", 0x40, binfile.getOuterOffset(), self.scaling_rule, self.texture_matrix_mode,
-                      self.facepoint_count, self.faceCount, 0, self.boneMatrixCount, 0x01000000)
-        binfile.mark()  # bone table offset
-        if self.version >= 10:
-            binfile.write("6f", self.minimum[0], self.minimum[1], self.minimum[2],
-                          self.maximum[0], self.maximum[1], self.maximum[2])
-        binfile.createRef()  # bone table
-        self.boneTable.pack(binfile)
-        binfile.end()  # end header
-        # sections
-        folders = self.packFolders(binfile)
+        PackMdl0(self, binfile)
 
-        # texture links
-        texture_link_map = self.packTextureLinks(binfile, folders[11])
-        self.pack_definitions(binfile, folders[0])
-        self.pack_section(binfile, 1, folders[1])  # bones
-        i = 8
-        self.pack_materials(binfile, folders[i], texture_link_map)
-        i += 1
-        self.pack_shaders(binfile, folders[i])
-        i += 1
-        self.pack_section(binfile, 10, folders[i])  # objects
-        for i in range(2, 6):  # vertices, normals, colors, uvs
-            self.pack_section(binfile, i, folders[i])
-        binfile.alignAndEnd()  # end file
     # -------------- END PACKING STUFF ---------------------------------------

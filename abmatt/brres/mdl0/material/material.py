@@ -8,7 +8,7 @@ from copy import deepcopy
 
 from abmatt.brres.lib.matching import validBool, indexListItem, validInt, validFloat, MATCHING, parse_color
 from abmatt.brres.lib.node import Clipable
-from abmatt.brres.mdl0.layer import Layer
+from brres.mdl0.material.layer import Layer
 from abmatt.brres.mdl0.shader import Shader
 from autofix import AutoFix
 from brres.mdl0.material.light import LightChannel
@@ -891,72 +891,3 @@ class Material(Clipable):
             my_layers[i].paste(item_layers[i])
             my_layers[i].setName(item_layers[i].name)
 
-    # -----------------------------------------------------------------------------
-    # PACKING
-    # -----------------------------------------------------------------------------
-    def pack(self, binfile, texture_link_map=None):
-        """ Packs the material """
-        self.offset = binfile.start()
-        binfile.markLen()
-        binfile.write("i", binfile.getOuterOffset())
-        binfile.storeNameRef(self.name)
-        binfile.write("2I4BI3b", self.index, self.xlu << 31, len(self.layers), len(self.lightChannels),
-                      self.shaderStages, self.indirectStages, self.cullmode,
-                      self.compareBeforeTexture, self.lightset, self.fogset)
-        binfile.write("BI4B", 0, 0, 0xff, 0xff, 0xff, 0xff)  # padding, indirect method, light normal map
-        binfile.mark()  # shader offset, to be filled
-        binfile.write("I", len(self.layers))
-        binfile.mark()  # layer offset
-        binfile.write("I", 0)  # fur not supported
-        if self.parent.version >= 10:
-            binfile.advance(4)
-            binfile.mark()  # matgx
-        else:
-            binfile.mark()  # matgx
-            binfile.advance(4)
-        # ignore precompiled code space
-        binfile.advance(360)
-        # layer flags
-        x = layerI = bitshift = 0
-        layers = self.layers
-        empty_layer_count = 8 - len(layers)
-        while layerI < len(self.layers):
-            x |= layers[layerI].getFlagNibble() << bitshift
-            layerI += 1
-            bitshift += 4
-        binfile.write("2I", x, self.textureMatrixMode)
-        for l in layers:
-            l.pack_srt(binfile)
-        # fill in defaults
-        Layer.pack_default_srt(binfile, empty_layer_count)
-        for l in layers:
-            l.pack_textureMatrix(binfile)
-        Layer.pack_default_textureMatrix(binfile, empty_layer_count)
-        channels = self.lightChannels
-        for i in range(2):
-            if i < len(channels):
-                channels[i].pack(binfile)
-            else:
-                LightChannel.pack_default(binfile)
-        binfile.createRef(1)
-        for l in layers:
-            # Write Texture linker offsets
-            start_offset = texture_link_map[l.name]
-            tex_link_offsets = binfile.references[start_offset]
-            binfile.writeOffset('i', tex_link_offsets.pop(0), self.offset - start_offset)  # material offset
-            binfile.writeOffset('i', tex_link_offsets.pop(0), binfile.offset - start_offset)  # layer offset
-            l.pack(binfile)
-
-        binfile.alignToParent()
-        binfile.createRef(1)
-        binfile.start()  # MatGX section
-        self.matGX.pack(binfile)
-        offset = binfile.offset
-        for l in layers:
-            l.pack_xf(binfile)
-        binfile.advance(0xa0 - (binfile.offset - offset))
-        binfile.end()
-        binfile.end()
-
-
-# LIGHT CHANNEL ----------------------------------------------------

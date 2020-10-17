@@ -91,35 +91,6 @@ class Bone(Node):
                 else:
                     return bone
 
-    def __get_flags(self):
-        return self.no_transform | self.fixed_translation << 1 | self.fixed_rotation << 2 \
-            | self.fixed_scale << 3 | self.scale_equal << 4 | self.seg_scale_comp_apply << 5 \
-            | self.seg_scale_comp_parent << 6 | self.classic_scale_off << 7 | self.visible << 8 \
-            | self.has_geometry << 9 | self.has_billboard_parent << 10
-
-    def pack(self, binfile):
-        self.offset = binfile.start()
-        # take care of marked references
-        if self.prev:
-            binfile.createRefFrom(self.prev.offset, 1)
-        elif self.b_parent:     # first child
-            binfile.createRefFrom(self.b_parent.offset, 0, False)
-        binfile.markLen()
-        binfile.write('i', binfile.getOuterOffset())
-        binfile.storeNameRef(self.name)
-        binfile.write('5I', self.index, self.weight_id, self.__get_flags(), self.billboard, 0)
-        binfile.write('3f', *self.scale)
-        binfile.write('3f', *self.rotation)
-        binfile.write('3f', *self.translation)
-        binfile.write('3f', *self.minimum)
-        binfile.write('3f', *self.maximum)
-        binfile.write('i', self.b_parent.offset - self.offset) if self.b_parent else binfile.advance(4)
-        binfile.mark(2)     # mark child and next
-        binfile.write('i', self.prev.offset - self.offset) if self.prev else binfile.advance(4)
-        binfile.write('i', self.part2)
-        binfile.writeMatrix(self.transform_matrix)
-        binfile.writeMatrix(self.inverse_matrix)
-        binfile.end()
 
 
 # class BoneTable:

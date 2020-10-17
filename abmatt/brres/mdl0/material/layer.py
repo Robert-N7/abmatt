@@ -147,13 +147,6 @@ class Layer(Clipable):
     def getNormalize(self):
         return self.normalize
 
-    def getFlagNibble(self):
-        scale_default = self.scale[0] == 1 and self.scale[1] == 1
-        rotation_default = self.rotation == 0
-        translation_default = self.translation[0] == 0 and self.translation[1] == 0
-        return self.enable | scale_default << 1 \
-               | rotation_default << 2 | translation_default << 3
-
     def getName(self):
         return self.name
 
@@ -391,46 +384,6 @@ class Layer(Clipable):
         self.dual_matrix = item.dual_matrix
         self.normalize = item.normalize
         self.mark_modified()
-
-    # -------------------------------------------------------------------------
-    # Packing things
-    # -------------------------------------------------------------------------
-
-    def pack(self, binfile):
-        binfile.start()
-        binfile.storeNameRef(self.name)
-        binfile.advance(12)  # ignoring pallete name / offsets
-        binfile.write("6IfI2BH", self.layer_index, self.layer_index,
-                      self.uwrap, self.vwrap, self.minfilter, self.magfilter,
-                      self.lod_bias, self.max_anisotrophy, self.clamp_bias,
-                      self.texel_interpolate, 0)
-        binfile.end()
-
-    def pack_srt(self, binfile):
-        """ packs scale rotation translation data """
-        binfile.write("5f", self.scale[0], self.scale[1], self.rotation, self.translation[0], self.translation[1])
-
-    @staticmethod
-    def pack_default_srt(binfile, ntimes):
-        for i in range(ntimes):
-            binfile.write('5f', 1, 1, 0, 0, 0)
-
-    def pack_textureMatrix(self, binfile):
-        """ packs texture matrix """
-        binfile.write("4b12f", self.scn0_camera_ref, self.scn0_light_ref, self.map_mode,
-                      self.enable_identity_matrix, *self.texture_matrix)
-
-    @staticmethod
-    def pack_default_textureMatrix(binfile, ntimes):
-        for i in range(ntimes):
-            binfile.write("4B12f", 0xff, 0xff, 0, 1,
-                          1, 0, 0, 0,
-                          0, 1, 0, 0,
-                          0, 0, 1, 0)
-
-    def pack_xf(self, binfile):
-        self.xfTexMatrix.pack(binfile)
-        self.xfDualTex.pack(binfile)
 
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + self.name if indentation_level else '>' + self.parent.name + "->" + self.name

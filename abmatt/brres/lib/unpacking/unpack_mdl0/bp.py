@@ -56,6 +56,8 @@ def unpack_tref(binfile):
 
 def unpack_kcel(binfile):
     data = unpack_bp(binfile)
+    # xrgb = data & 3
+    # xga = data >> 2 & 3
     constant0 = data >> 4 & 0x1f
     constant_a0 = data >> 9 & 0x1f
     constant1 = data >> 14 & 0x1f
@@ -81,17 +83,12 @@ def unpack_zmode(binfile):
     return depth_test, depth_update, depth_function
 
 
-def unpack_blend_mode(mat, binfile):
+def unpack_blend_mode(binfile):
     data = unpack_bp(binfile)
-    mat.blend_enabled = data & 1
-    mat.blend_logic_enabled = data >> 1 & 1
-    mat.blend_dither = data >> 2 & 1
-    mat.blend_update_color = data >> 1 & 1
-    mat.blend_update_alpha = data >> 1 & 1
-    mat.blend_subtract = data >> 11 & 1
-    mat.blend_logic = data >> 12 & 0xf
-    mat.blend_source = data >> 8 & 0x7
-    mat.blend_dest = data >> 5 & 0x7
+    # enabled logic, dither, color, alpha
+    # subtract, logic_op, source, dest
+    return data & 1, data >> 1 & 1, data >> 2 & 1, data >> 3 & 1, data >> 4 & 1, \
+        data >> 11 & 1, data >> 12 & 0xf, data >> 8 & 7, data >> 5 & 7
 
 
 def unpack_constant_alpha(binfile):
@@ -152,8 +149,8 @@ def unpack_color_reg(binfile):
 def unpack_bp(binfile, return_enabled=False):
     bp, data = binfile.read('BI', 5)
     assert bp == 0 or bp == 0x61
-    bp_mem = data >> 16
-    data = data & 0xffff
+    bp_mem = data >> 24
+    data = data & 0xffffff
     if return_enabled:
         return bp, bp_mem, data
     return data

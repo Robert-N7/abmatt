@@ -217,6 +217,9 @@ class DrawList(Node):
         self.list.sort(key=lambda x: x.priority)
         return True
 
+    def sort(self):
+        self.list = sorted(self.list, key=lambda x: x.priority)
+
     def unpack(self, binfile):
         li = self.list
         while True:

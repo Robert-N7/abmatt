@@ -24,7 +24,6 @@ class Polygon(Clipable):
     INDEX_FORMAT_SHORT = 3
 
     def __init__(self, name, parent, binfile=None):
-        # todo, refactor formats to be letters
         self.tex_divisor = [0] * 8
         self.tex_e = [1] * 8
         self.material = None

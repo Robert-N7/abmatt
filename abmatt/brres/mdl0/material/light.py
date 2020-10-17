@@ -16,11 +16,11 @@ class LightChannel:
         return self
 
     def __str__(self):
-        return 'Flags:{:02X} Mat:{} Amb:{}\n\tColorControl: {}\n\tAlphaControl: {}'.format(self.flagsToInt(),
-                                                                                           self.materialColor,
-                                                                                           self.ambientColor,
-                                                                                           self.colorLightControl,
-                                                                                           self.alphaLightControl)
+        return 'Mat:{} Amb:{}\n\tColorControl: {}\n\tAlphaControl: {}'.format(
+                                                                               self.materialColor,
+                                                                               self.ambientColor,
+                                                                               self.colorLightControl,
+                                                                               self.alphaLightControl)
 
     def enable_vertex_color(self, enabled=True):
         return self.colorLightControl.enable_vertex_color(enabled) or \
@@ -169,24 +169,3 @@ class LightChannel:
                     self.attenuationEnabled = val
             else:
                 raise ValueError(LightChannel.LC_ERROR.format(key))
-
-        def getFlagsAsInt(self):
-            return self.materialSourceVertex | self.enabled << 1 | self.light0123 << 2 | self.ambientSourceVertex << 6 \
-                   | self.diffuseFunction << 7 | self.attenuationEnabled << 9 | self.attenuationFunction << 10 \
-                   | self.light4567
-
-    def flagsToInt(self):
-        return self.materialColorEnabled | self.materialAlphaEnabled << 1 | self.ambientColorEnabled << 2 \
-               | self.ambientAlphaEnabled << 3 | self.rasterColorEnabled << 4 | self.rasterAlphaEnabled << 5
-
-    def pack(self, binfile):
-        flags = self.flagsToInt()
-        mc = self.materialColor
-        binfile.write('I4B', flags, mc[0], mc[1], mc[2], mc[3])
-        ac = self.ambientColor
-        binfile.write('4B2I', ac[0], ac[1], ac[2], ac[3],
-                      self.colorLightControl.getFlagsAsInt(), self.alphaLightControl.getFlagsAsInt())
-
-    @staticmethod
-    def pack_default(binfile):
-        binfile.write('5I', 0xf, 0xff, 0, 0, 0)

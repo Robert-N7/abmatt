@@ -14,7 +14,6 @@ from brres.tex0 import Tex0
 
 
 class UnpackBrres(Unpacker):
-    FOLDERS = {}
 
     @staticmethod
     def create_model_animation_map(animations):
@@ -60,24 +59,16 @@ class UnpackBrres(Unpacker):
         return anim_collections
 
     def post_unpacking(self, brres):
-        mdl_name = brres.ORDERED[0]
-        x = brres.folders.get(mdl_name)
-        brres.folders[mdl_name] = brres.models = x if x else []
-        tex_name = brres.ORDERED[1]
-        x = brres.folders.get(tex_name)
-        brres.folders[tex_name] = brres.textures = x if x else []
         for x in brres.textures:
             brres.texture_map[x.name] = x
-        x = brres.folders.get("AnmTexPat(NW4R)")
-        brres.folders["AnmTexPat(NW4R)"] = brres.pat0 = self.generate_pat0_collections(x) if x else []
-        x = brres.folders.get("AnmTexSrt(NW4R)")
-        brres.folders["AnmTexSrt(NW4R)"] = brres.srt0 = self.generate_srt_collections(x) if x else []
+        brres.pat0 = self.generate_pat0_collections(brres.pat0) if brres.pat0 else []
+        brres.srt0 = self.generate_srt_collections(brres.srt0) if brres.srt0 else []
 
     def unpack(self, brres, binfile):
         """ Unpacks the brres """
         binfile.start()
         magic = binfile.readMagic()
-        if magic != brres.MAGIC:
+        if magic != 'bres':
             raise UnpackingError(brres, '"{}" not a brres file'.format(brres.name))
         bom = binfile.read("H", 2)
         binfile.bom = "<" if bom == 0xfffe else ">"
@@ -86,7 +77,7 @@ class UnpackBrres(Unpacker):
         rootoffset, numSections = binfile.read("2h", 4)
         binfile.offset = rootoffset
         root = binfile.readMagic()
-        assert (root == brres.ROOTMAGIC)
+        assert (root == 'root')
         section_length = binfile.read("I", 4)
         root = Folder(binfile, root)
         root.unpack(binfile)
@@ -144,3 +135,5 @@ class UnpackBrres(Unpacker):
             self.unpack_shp0()
         elif folder_name == "AnmClr(NW4R)":
             self.unpack_clr0()
+        else:
+            raise UnpackingError(self.binfile, 'Unkown folder {}'.format(folder_name))

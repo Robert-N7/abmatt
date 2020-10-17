@@ -3,32 +3,19 @@
 #   Brres Class
 # --------------------------------------------------------
 import os
-import string
 
-from autofix import AutoFix, Bug
-from abmatt.brres.lib.binfile import BinFile, Folder, UnpackingError
-from abmatt.brres.chr0 import Chr0
+from abmatt.brres.lib.binfile import BinFile
 from abmatt.brres.lib.matching import MATCHING
 from abmatt.brres.lib.node import Clipable
-from abmatt.brres.tex0 import Tex0, ImgConverter
-from brres.clr0.clr0 import Clr0
-from brres.lib.packing import pack_brres
+from abmatt.brres.tex0 import ImgConverter
+from autofix import AutoFix, Bug
 from brres.lib.packing.pack_brres import PackBrres
 from brres.lib.unpacking.unpack_brres import UnpackBrres
-from brres.mdl0.mdl0 import Mdl0
-from brres.pat0.pat0 import Pat0
-from brres.scn0.scn0 import Scn0
-from brres.shp0.shp0 import Shp0
-from brres.srt0.srt0 import Srt0
 
 
 class Brres(Clipable):
 
-    ANIM_COLLECTIONS = ("AnmTexPat(NW4R)", "AnmTexSrt(NW4R)")
-    ORDERED = ("3DModels(NW4R)", "Textures(NW4R)")
     SETTINGS = ('name')
-    MAGIC = "bres"
-    ROOTMAGIC = "root"
     OVERWRITE = False
     DESTINATION = None
     OPEN_FILES = []  # reference to active files
@@ -48,6 +35,14 @@ class Brres(Clipable):
         self.is_modified = False
         self.texture_map = {}
         self.has_new_model = False
+        self.models = []
+        self.textures = []
+        self.srt0 = []
+        self.pat0 = []
+        self.chr0 = []
+        self.scn0 = []
+        self.shp0 = []
+        self.clr0 = []
         binfile = BinFile(name) if readFile else None
         self.add_open_file(self)
         super(Brres, self).__init__(name, parent, binfile)
@@ -97,11 +92,6 @@ class Brres(Clipable):
         return Brres.MATERIAL_LIBRARY
 
     def begin(self):
-        folders = self.folders
-        self.models = folders[self.ORDERED[0]] = []
-        self.textures = folders[self.ORDERED[1]] = []
-        self.pat0 = folders[self.ANIM_COLLECTIONS[0]] = []
-        self.srt0 = folders[self.ANIM_COLLECTIONS[1]] = []
         self.is_modified = True
 
     def get_str(self, key):
@@ -166,7 +156,7 @@ class Brres(Clipable):
             return self.save(self.DESTINATION, self.OVERWRITE)
         return True
 
-    def save(self, filename=None, overwrite=None):
+    def save(self, filename=None, overwrite=None, check=True):
         if not filename:
             filename = self.name
         if overwrite is None:
@@ -177,6 +167,8 @@ class Brres(Clipable):
             AutoFix.get().error('File {} already exists!'.format(filename), 1)
             return False
         else:
+            if check:
+                self.check()
             f = BinFile(filename, mode="w")
             self.pack(f)
             if f.commitWrite():
@@ -196,6 +188,7 @@ class Brres(Clipable):
                                                          len(self.models), len(self.textures)))
         folder_indent = indentation_level + 1
         indentation_level += 2
+        # todo, remove folders references
         folders = self.folders
         for folder_name in folders:
             folder = folders[folder_name]
@@ -330,15 +323,6 @@ class Brres(Clipable):
         return ret
 
     # --------------------- Animations ----------------------------------------------
-
-
-    @staticmethod
-    def get_anim_for_packing(anim_collection):
-        # srt animation processing
-        animations = []
-        for x in anim_collection:
-            animations.extend(x.consolidate())
-        return animations
 
     def add_srt_collection(self, collection):
         self.srt0.append(collection)

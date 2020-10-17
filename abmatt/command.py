@@ -7,7 +7,7 @@ import os
 from abmatt.brres import Brres
 from autofix import AutoFix
 from abmatt.brres.lib.matching import validInt, MATCHING
-from abmatt.brres.mdl0.layer import Layer
+from brres.mdl0.material.layer import Layer
 from abmatt.brres.mdl0.shader import Shader, Stage
 from abmatt.brres.tex0 import Tex0, ImgConverter, EncodeError, NoImgConverterError
 from abmatt.brres.lib.binfile import UnpackingError, PackingError

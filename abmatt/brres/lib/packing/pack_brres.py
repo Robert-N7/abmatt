@@ -3,26 +3,32 @@ from brres.lib.packing.interface import Packer
 
 
 class PackBrres(Packer):
+    @staticmethod
+    def get_anim_for_packing(anim_collection):
+        # srt animation processing
+        animations = []
+        for x in anim_collection:
+            animations.extend(x.consolidate())
+        return animations
+
     def pre_packing(self, brres):
-        brres.check()
-        folders = brres.folders
         ret = []
-        ordered = brres.ORDERED
-        anim_collect = brres.ANIM_COLLECTIONS
-        added = set()
-        for folder in ordered:
-            x = folders.get(folder)
-            if x:
-                ret.append((folder, x))
-                added.add(folder)
-        for folder in anim_collect:
-            x = folders.get(folder)
-            if x:
-                ret.append((folder, brres.get_anim_for_packing(x)))
-                added.add(folder)
-        for x in folders:
-            if x not in added:
-                ret.append((x, folders[x]))
+        if brres.models:
+            ret.append(('3DModels(NW4R)', brres.models))
+        if brres.textures:
+            ret.append(('Textures(NW4R)', brres.textures))
+        if brres.pat0:
+            ret.append(('AnmTexPat(NW4R)', self.get_anim_for_packing(brres.pat0)))
+        if brres.srt0:
+            ret.append(('AnmTexSrt(NW4R)', self.get_anim_for_packing(brres.srt0)))
+        if brres.chr0:
+            ret.append(('AnmChr(NW4R)', brres.chr0))
+        if brres.scn0:
+            ret.append(('AnmScn(NW4R)', brres.scn0))
+        if brres.shp0:
+            ret.append(('AnmShp(NW4R)', brres.shp0))
+        if brres.clr0:
+            ret.append(('AnmClr(NW4R)', brres.clr0))
         return ret
 
     def generateRoot(self, subfiles):
@@ -33,7 +39,7 @@ class PackBrres(Packer):
         rootFolders = []  # for storing Index Groups
         byteSize = 0
         # Create folder indexing folders
-        rootFolder = Folder(self.binfile, self.node.ROOTMAGIC)
+        rootFolder = Folder(self.binfile, 'root')
         rootFolders.append(rootFolder)
         offsets = []  # for tracking offsets from first group to others
         # Create folder for each section the brres has
@@ -92,11 +98,11 @@ class PackBrres(Packer):
         # now pack the folders
         folder_index = 0
         for name, file_group in sub_files:
-            if len(file_group):
-                index_group = folders[folder_index]
-                for file in file_group:
-                    index_group.createEntryRefI()  # create the dataptr
-                    file.pack(binfile)
-                folder_index += 1
+            assert len(file_group)
+            index_group = folders[folder_index]
+            for file in file_group:
+                index_group.createEntryRefI()  # create the dataptr
+                file.pack(binfile)
+            folder_index += 1
         binfile.packNames()
         binfile.end()
