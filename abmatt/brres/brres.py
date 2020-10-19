@@ -6,16 +6,17 @@ import os
 
 from abmatt.brres.lib.binfile import BinFile
 from abmatt.brres.lib.matching import MATCHING
-from abmatt.brres.lib.node import Clipable
+from abmatt.brres.lib.node import Clipable, Packable
 from abmatt.brres.tex0 import ImgConverter
 from autofix import AutoFix, Bug
 from brres.lib.packing.pack_brres import PackBrres
 from brres.lib.unpacking.unpack_brres import UnpackBrres
 
 
-class Brres(Clipable):
+class Brres(Clipable, Packable):
 
     SETTINGS = ('name')
+    MAGIC = 'bres'
     OVERWRITE = False
     DESTINATION = None
     OPEN_FILES = []  # reference to active files
@@ -44,8 +45,10 @@ class Brres(Clipable):
         self.shp0 = []
         self.clr0 = []
         binfile = BinFile(name) if readFile else None
-        self.add_open_file(self)
         super(Brres, self).__init__(name, parent, binfile)
+        self.add_open_file(self)
+        if binfile:
+            self.unpack(binfile)
 
     def get_full_path(self):
         return self.name

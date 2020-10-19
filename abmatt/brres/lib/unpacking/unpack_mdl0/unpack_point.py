@@ -1,48 +1,44 @@
 from brres.lib.unpacking.interface import Unpacker
+from brres.mdl0 import point
 from brres.mdl0.normal import Normal
 from brres.mdl0.texcoord import TexCoord
 from brres.mdl0.vertex import Vertex
 
 
+def is_valid_format(format):
+    return 0 <= format < 5
+
+
 class UnpackPoint(Unpacker):
-    @property
-    def FMT(self):
-        return 'B', 'b', 'H', 'h', 'f'
+    def is_valid_comp_count(self, comp_count):
+        return 0 <= comp_count < 2
 
-    @property
-    def COMP_COUNT(self):
-        raise NotImplementedError()
-
-    def unpack(self, point, binfile):
+    def unpack(self, pt, binfile):
         start = binfile.start()
         l = binfile.readLen()
         binfile.advance(4)
         binfile.store()
         binfile.advance(4)
-        point.index, comp_count, format, point.divisor, point.stride, point.count = binfile.read('3I2BH', 16)
-        try:
-            point.comp_count = self.COMP_COUNT[comp_count]
-        except IndexError:
-            point.comp_count = point.DEFAULT_WIDTH
-        try:
-            point.format = self.FMT[format]
-        except IndexError:
+        pt.index, pt.comp_count, pt.format, pt.divisor, pt.stride, pt.count = binfile.read('3I2BH', 16)
+        if not self.is_valid_comp_count(pt.comp_count):
+            pt.comp_count = pt.default_comp_count
+        if not is_valid_format(pt.format):
             # determine the format using the file length
             t = binfile.offset
             binfile.recall(pop=False)
             bytes_remaining = start + l - binfile.offset
-            width = bytes_remaining // (point.count * point.comp_count)
+            width = bytes_remaining // (pt.count * pt.comp_count)
             if width >= 4:
-                point.format = 'f'
+                pt.format = point.FMT_FLOAT
             elif width >= 2:        # assumes unsigned
-                point.format = 'h'
+                pt.format = point.FMT_INT16
             else:
-                point.format = 'b'
+                pt.format = point.FMT_INT8
         # print(self)
 
     def unpack_data(self, point, binfile):
         binfile.recall()
-        fmt = '{}{}'.format(point.comp_count, point.format)
+        fmt = '{}{}'.format(point.point_width, point.format_str)
         stride = point.stride
         data = []
         for i in range(point.count):
@@ -52,12 +48,9 @@ class UnpackPoint(Unpacker):
 
 
 class UnpackVertex(UnpackPoint):
-    @property
-    def COMP_COUNT(self):
-        return 2, 3
 
     def __init__(self, name, node, binfile):
-        v = Vertex(name, node)
+        v = Vertex(name, node, binfile)
         super().__init__(v, binfile)
 
     def unpack(self, vertex, binfile):
@@ -68,12 +61,11 @@ class UnpackVertex(UnpackPoint):
 
 
 class UnpackNormal(UnpackPoint):
-    @property
-    def COMP_COUNT(self):
-        return 3, 9, 32
+    def is_valid_comp_count(self, comp_count):
+        return 0 <= comp_count < 3
 
     def __init__(self, name, node, binfile):
-        n = Normal(name, node)
+        n = Normal(name, node, binfile)
         super().__init__(n, binfile)
 
     def unpack(self, normal, binfile):
@@ -87,16 +79,12 @@ class UnpackNormal(UnpackPoint):
 
 
 class UnpackUV(UnpackPoint):
-    @property
-    def COMP_COUNT(self):
-        return 1, 2
-
     def __init__(self, name, node, binfile):
-        uv = TexCoord(name, node)
+        uv = TexCoord(name, node, binfile)
         super().__init__(uv, binfile)
 
     def unpack(self, uv, binfile):
         super(UnpackUV, self).unpack(uv, binfile)
-        self.minimum = binfile.read('2f', 8)
-        self.maximum = binfile.read('2f', 8)
+        uv.minimum = binfile.read('2f', 8)
+        uv.maximum = binfile.read('2f', 8)
         self.unpack_data(uv, binfile)

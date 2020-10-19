@@ -4,7 +4,7 @@ from brres.mdl0.color import Color
 
 class UnpackColor(Unpacker):
     def __init__(self, name, node, binfile):
-        color = Color(name, node)
+        color = Color(name, node, binfile)
         super().__init__(color, binfile)
 
     def unpack(self, color, binfile):
@@ -13,7 +13,7 @@ class UnpackColor(Unpacker):
         binfile.advance(4)
         binfile.store()
         binfile.advance(4)
-        self.index, color.has_alpha, color.format, color.stride, color.flags, color.count = binfile.read('3I2BH', 16)
+        color.index, color.has_alpha, color.format, color.stride, color.flags, color.count = binfile.read('3I2BH', 16)
         binfile.recall()
         color.data = binfile.readRemaining()
         # print('Color {} count {}'.format(self.name, self.count))

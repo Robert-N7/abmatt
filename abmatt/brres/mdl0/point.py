@@ -1,11 +1,31 @@
 from autofix import AutoFix
 from abmatt.brres.lib.node import Node
 
+FMT_UINT8 = 0
+FMT_INT8 = 1
+FMT_UINT16 = 2
+FMT_INT16 = 3
+FMT_FLOAT = 4
+FMT_STR = 'BbHhf'
+
 
 class Point(Node):
     @property
-    def DEFAULT_WIDTH(self):
-        return 3
+    def default_comp_count(self):
+        raise NotImplementedError()
+
+    @staticmethod
+    def comp_count_from_width(width):
+        """Gets comp count corresponding to width"""
+        raise NotImplementedError()
+
+    @property
+    def point_width(self):
+        raise NotImplementedError()
+
+    @property
+    def format_str(self):
+        return FMT_STR[self.format]
 
     def __str__(self):
         return self.name + ' component_count:' + str(self.comp_count) + ' divisor:' + str(self.divisor) + \
@@ -13,11 +33,23 @@ class Point(Node):
 
     def begin(self):
         self.data = []
-        self.comp_count = self.DEFAULT_WIDTH
+        self.comp_count = self.default_comp_count
         self.format = 4
         self.divisor = 0
         self.stride = 0
+        self.count = 0
 
+    def get_format(self):
+        return self.format
+
+    def get_divisor(self):
+        return self.divisor
+
+    def get_stride(self):
+        return self.stride
+
+    def get_comp_count(self):
+        return self.comp_count
 
     def check(self):
         result = False
@@ -37,21 +69,3 @@ class Point(Node):
 
     def __len__(self):
         return self.count
-
-    def pack_data(self, binfile):
-        binfile.align()
-        binfile.createRef()
-        fmt = '{}{}'.format(self.COMP_COUNT[self.comp_count], self.FMT[self.format])
-        data = self.data
-        for x in data:
-            binfile.write(fmt, *x)
-        binfile.alignAndEnd()
-
-
-    def pack(self, binfile):
-        binfile.start()
-        binfile.markLen()
-        binfile.write('i', binfile.getOuterOffset())
-        binfile.mark()
-        binfile.storeNameRef(self.name)
-        binfile.write('3I2BH', self.index, self.comp_count, self.format, self.divisor, self.stride, self.count)

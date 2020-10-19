@@ -3,13 +3,16 @@ from abmatt.brres.lib.node import Node
 
 def get_definition(name, parent, binfile=None):
     if name in ("DrawOpa", "DrawXlu"):
-        return DrawList(name, parent, binfile)
+        d = DrawList(name, parent, binfile)
     elif name == 'NodeTree':
-        return NodeTree(name, parent, binfile)
+        d = NodeTree(name, parent, binfile)
     elif name == 'NodeMix':
-        return NodeMix(name, parent, binfile)
+        d = NodeMix(name, parent, binfile)
     else:
         raise ValueError(f'Definition {name} unknown')
+    if binfile:
+        d.unpack(binfile)
+    return d
 
 
 class NodeMix(Node):

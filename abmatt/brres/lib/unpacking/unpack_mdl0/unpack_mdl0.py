@@ -21,7 +21,7 @@ class UnpackMdl0(UnpackSubfile):
         offset = binfile.start()  # Header
         ln = binfile.readLen()
         fh, mdl0.scaling_rule, mdl0.texture_matrix_mode, mdl0.facepoint_count, \
-        mdl0.faceCount, _, mdl0.boneMatrixCount, _ = binfile.read("i7I", 32)
+            mdl0.faceCount, _, mdl0.boneCount, _ = binfile.read("i7I", 32)
         binfile.store()  # bone table offset
         if binfile.offset - offset < ln:
             mdl0.minimum = binfile.read("3f", 12)
@@ -103,12 +103,12 @@ class UnpackMdl0(UnpackSubfile):
         for x in self.mat_unpackers:
             try:
                 shader = self.shader_offsets_map[x.shaderOffset]
-                if shader.parent is not None:   # only use one shader per material
-                    shader = deepcopy(shader)
-                shader.parent = x.node
-                x.node.shader = shader
             except ValueError:
                 raise UnpackingError(self.binfile, 'Material {} shader not found!'.format(x.node.name))
+            if shader.parent is not None:   # only use one shader per material
+                shader = deepcopy(shader)
+            shader.parent = x.node
+            x.node.shader = shader
         for x in self.bone_unpackers:
             x.post_unpack(self.bone_unpackers)
         for x in self.definitions:

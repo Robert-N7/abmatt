@@ -16,6 +16,14 @@ def get_item_by_index(group, index):
             return x
 
 
+class Packable:
+    def unpack(self, binfile):
+        raise NotImplementedError()
+
+    def pack(self, binfile):
+        raise NotImplementedError()
+
+
 class Node:
     """A node with name and parent"""
     def __init__(self, name, parent, binfile=None):
@@ -23,8 +31,7 @@ class Node:
         self.name = name
         if binfile is not None:
             # this provides a way to handle unpacking elsewhere
-            if type(binfile) == BinFile:
-                self.unpack(binfile)
+            pass
         else:
             self.begin()
 
@@ -43,12 +50,6 @@ class Node:
 
     def link_parent(self, parent):
         self.parent = parent
-
-    def unpack(self, binfile):
-        raise NotImplementedError()
-
-    def pack(self, binfile):
-        raise NotImplementedError()
 
 
 class ClipableObserver:

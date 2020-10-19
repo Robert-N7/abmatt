@@ -633,39 +633,6 @@ class IndMatrix():
             print("Warning: Ind matrix {} value {} out of range! Should be between -1 and 1".format(self.id, val))
         self.matrix[key] = val
 
-    def encode11bitFloat(self, val):
-        """Encodes the 10bit float as int
-            100 0000 0000 sign
-            011 1111 1111 mantissa
-        """
-        e = 1 if val < 0 else 0  # sign
-        start = 2
-        bitn = 1
-        val = abs(val)
-        while bitn <= 10:
-            e <<= 1     # make room
-            subtractee = 1 / start  # divide by exponent of 2
-            if val >= subtractee:   # can subtractee be taken out?
-                val -= subtractee
-                e |= 1          # then place a bit
-            bitn += 1           # increase the number of bits
-            start <<= 1
-        return e
-
-    def pack(self, binfile):
-        """Packs the ind matrix """
-        if not self.enabled:
-            binfile.advance(15)
-            return
-        c = BPCommand(BPCommand.BPMEM_IND_MTXA0 + self.id * 3)
-        scale = self.scale + 17
-        for i in range(3):
-            sbits = (scale >> (2 * i) & 3)
-            r0 = self.encode11bitFloat(self.matrix[i])
-            r1 = self.encode11bitFloat(self.matrix[i+3])
-            c.data = sbits << 22 | r1 << 11 | r0
-            c.pack(binfile)
-            c.bpmem += 1
 
 
 class ColorReg(BPCommand):

@@ -3,7 +3,9 @@ from threading import Thread
 from time import sleep
 
 from colorama import init
+
 init()
+
 
 class bcolors:
     HEADER = '\033[35m'
@@ -27,7 +29,7 @@ class Bug:
     # notify levels, 0 silent, 1 quiet, 2 mid, 3 loud, 4 max, 5 debug
     def __init__(self, bug_level, notify_level, description, fix_des=None):
         self.bug_level = bug_level
-        self.notify_level = notify_level        # lower numbers mean notify when quiet
+        self.notify_level = notify_level  # lower numbers mean notify when quiet
         self.description = description
         self.fix_des = fix_des
         self.is_resolved = False
@@ -43,8 +45,10 @@ class Bug:
 
 class AutoFixAbort(BaseException):
     """Raised by prompt"""
+
     def __init__(self):
         super(AutoFixAbort, self).__init__('Operation aborted')
+
 
 class Message:
     def __init__(self, message):
@@ -91,16 +95,19 @@ class AutoFix:
             if pipe:
                 pipe.error(message)
 
-
     def __init__(self, fix_level=3, loudness=3):
-        if(self.__AUTO_FIXER): raise RuntimeError('Autofixer already initialized')
+        if (self.__AUTO_FIXER): raise RuntimeError('Autofixer already initialized')
         self.loudness = loudness
         self.fix_level = fix_level
         self.queue = []
-        self.is_running=True
-        self.pipe = None        # if set, output is sent to the pipe, must implement info warn and error.
+        self.is_running = True
+        self.pipe = None  # if set, output is sent to the pipe, must implement info warn and error.
         self.thread = Thread(target=self.run)
         self.thread.start()
+
+    def quit(self):
+        self.is_running = False
+        self.thread.join()
 
     def run(self):
         while self.is_running:
@@ -205,4 +212,3 @@ class AutoFix:
 
     def set_loudness(self, level_str):
         self.loudness = self.get_level(level_str)
-

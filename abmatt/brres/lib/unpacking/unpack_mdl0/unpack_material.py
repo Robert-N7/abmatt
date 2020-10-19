@@ -1,6 +1,6 @@
 from brres.lib.binfile import UnpackingError
 from brres.lib.unpacking.interface import Unpacker
-from brres.lib.unpacking.unpack_mdl0 import bp
+from brres.lib.unpacking.unpack_mdl0 import bp, xf
 from brres.mdl0.material.layer import Layer
 from brres.mdl0.material.light import LightChannel
 from brres.mdl0.material.material import Material
@@ -34,29 +34,16 @@ class UnpackLayer(Unpacker):
         layer.enable_identity_matrix = self.binfile.read("4b", 4)
         layer.texture_matrix = self.binfile.read("12f", 48)
 
-    def unpack_xf_command(self, binfile):
-        enabled, tsize, address = binfile.read("B2H", 5)
-        size = tsize + 1
-        if not enabled:
-            binfile.advance(4)
-            return 0
-        return binfile.read("{}I".format(size), size * 4)
-
     def unpack_xf(self, binfile):
         """Unpacks Wii graphics """
         layer = self.node
-        [x] = self.unpack_xf_command(binfile)
-        if x:
-            layer.projection = x >> 1 & 1
-            layer.inputform = x >> 2 & 3
-            layer.type = x >> 4 & 7
-            layer.coordinates = x >> 7 & 0x1f
-            layer.enboss_source = x >> 0xc & 7
-            layer.emboss_light = x >> 0xf & 0xffff
-
-        [d] = self.unpack_xf_command(binfile)
-        if d:
-            layer.normalize = d >> 8 & 1
+        layer.projection, \
+        layer.inputform, \
+        layer.type, \
+        layer.coordinates, \
+        layer.enboss_source, \
+        layer.emboss_light = xf.unpack_tex_matrix(binfile)
+        layer.normalize = xf.unpack_dual_tex_matrix(binfile)
 
 
 class UnpackLightChannel(Unpacker):
@@ -77,7 +64,7 @@ class UnpackLightChannel(Unpacker):
 
 class UnpackMaterial(Unpacker):
     def __init__(self, name, node, binfile):
-        mat = Material(name, node)
+        mat = Material(name, node, binfile)
         self.layers = []
         super().__init__(mat, binfile)
 
@@ -89,7 +76,7 @@ class UnpackMaterial(Unpacker):
         for i in range(numlayers):
             binfile.start()
             scale_offset = startLayerInfo + 8 + i * 20
-            layer = Layer(binfile.unpack_name(), material)
+            layer = Layer(binfile.unpack_name(), material, binfile)
             layer_id = len(material.layers)
             material.layers.append(layer)
             self.layers.append(UnpackLayer(layer, binfile, scale_offset, layer_id))
@@ -115,32 +102,28 @@ class UnpackMaterial(Unpacker):
     def unpack_light_channels(self, binfile, nlights):
         """ Unpacks the light channels """
         for i in range(nlights):
-            lc = LightChannel()
+            lc = LightChannel(True)
             UnpackLightChannel(lc, binfile)
             self.node.lightChannels.append(lc)
-
-    def unpack_shader_color(self, binfile, is_constant):
-        red, alpha = bp.unpack_color_reg(binfile)
-        green, blue = bp.unpack_color_reg(binfile)
-        if is_constant:
-            binfile.advance(10)
-        return red, green, blue, alpha
 
     def unpack_matgx(self, mat, binfile):
         mat.ref0, mat.ref1, mat.comp0, mat.comp1, mat.logic = bp.unpack_alpha_function(binfile)
         mat.depth_test, mat.depth_update, mat.depth_function = bp.unpack_zmode(binfile)
         bp.unpack_bp(binfile)   # mask
-        bp.unpack_blend_mode(mat, binfile)
+        mat.blend_enabled, mat.blend_logic_enabled, mat.blend_dither, \
+            mat.blend_update_color, mat.blend_update_alpha, \
+            mat.blend_subtract, mat.blend_logic, \
+            mat.blend_source, mat.blend_dest = bp.unpack_blend_mode(binfile)
         mat.constant_alpha_enabled, mat.constant_alpha = bp.unpack_constant_alpha(binfile)
         binfile.advance(7)  # pad - unknown?
-        mat.colors = [self.unpack_shader_color(binfile, False) for i in range(3)]
+        mat.colors = [bp.unpack_color(binfile, False) for i in range(3)]
             # self.tevRegs[i].unpack(binfile)
         binfile.advance(4)  # pad - unknown?
-        mat.constant_colors = [self.unpack_shader_color(binfile, True) for i in range(4)]
+        mat.constant_colors = [bp.unpack_color(binfile, True) for i in range(4)]
         # for i in range(len(self.cctevRegs)):
         #     self.cctevRegs[i].unpack(binfile)
         binfile.advance(24)
-        mat.ras1 = [bp.unpack_bp(binfile) for i in range(2)]
+        mat.ras1_ss = [bp.unpack_bp(binfile) for i in range(2)]
         mat.indirect_matrices = [bp.UnpackIndMtx(IndMatrix(), binfile).node for i in range(3)]
         binfile.advance(9)
 
@@ -163,7 +146,6 @@ class UnpackMaterial(Unpacker):
         self.shaderOffset += self.offset
         if nlayers != ntexgens:
             raise UnpackingError('Number of layers {} is different than number texgens {}'.format(nlayers, ntexgens))
-        material.shaderOffset += binfile.beginOffset
         binfile.store()  # layer offset
         if material.parent.version >= 10:
             binfile.advance(8)

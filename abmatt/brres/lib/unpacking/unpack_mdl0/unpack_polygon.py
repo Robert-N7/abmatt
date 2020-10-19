@@ -1,12 +1,12 @@
 from brres.lib.binfile import UnpackingError
 from brres.lib.unpacking.interface import Unpacker
 from brres.lib.unpacking.unpack_mdl0.unpack_bone import unpack_bonetable
-from brres.mdl0.polygon import Polygon
+from brres.mdl0 import polygon as ply
 
 
 class UnpackPolygon(Unpacker):
     def __init__(self, name, node, binfile):
-        poly = Polygon(name, node)
+        poly = ply.Polygon(name, node, binfile)
         self.encode_string = '>'
         self.indexer = 0
         super(UnpackPolygon, self).__init__(poly, binfile)
@@ -14,7 +14,7 @@ class UnpackPolygon(Unpacker):
     def unpack(self, polygon, binfile):
         binfile.start()
         binfile.readLen()
-        mdl0_offset, bone_id, cp_vert_lo, cp_vert_hi, xf_vert = binfile.read('2i3I', 20)
+        mdl0_offset, self.bone_id, cp_vert_lo, cp_vert_hi, xf_vert = binfile.read('2i3I', 20)
         self.parse_cp_vertex_format(polygon, cp_vert_hi, cp_vert_lo)
         self.parse_xf_vertex_specs(xf_vert)
         offset = binfile.offset
@@ -25,7 +25,7 @@ class UnpackPolygon(Unpacker):
         vt_offset += offset
         xf_arry_flags, polygon.flags = binfile.read('2I', 8)
         binfile.advance(4)
-        self.index, polygon.facepoint_count, polygon.face_count, \
+        polygon.index, polygon.facepoint_count, polygon.face_count, \
         self.vertex_group_index, self.normal_group_index = binfile.read('3I2h', 16)
         self.color_group_indices = binfile.read('2h', 4)
         self.tex_coord_group_indices = binfile.read('8h', 16)
@@ -36,7 +36,7 @@ class UnpackPolygon(Unpacker):
             # binfile.advance(4)  # ignore
         binfile.store()  # bt offset
         binfile.recall()  # bt
-        self.bone_table = unpack_bonetable(binfile, 'H')
+        polygon.bone_table = unpack_bonetable(binfile, 'H')
         binfile.offset = vt_dec_offset + 32  # ignores most of the beginning since we already have it
         uvat = binfile.read('HIHIHI', 18)
         # self.uvat = uvat
@@ -54,8 +54,12 @@ class UnpackPolygon(Unpacker):
         # hook up references
         if self.vertex_group_index >= 0:
             poly.vertices = mdl0.vertices[self.vertex_group_index]
+        else:
+            poly.vertices = None
         if self.normal_group_index >= 0:
             poly.normals = mdl0.normals[self.normal_group_index]
+        else:
+            poly.normals = None
         poly.colors = colors = []
         for x in self.color_group_indices:
             if x >= 0:
@@ -65,10 +69,14 @@ class UnpackPolygon(Unpacker):
         poly.uvs = uvs = []
         for x in self.tex_coord_group_indices:
             if x >= 0:
-                uvs.append(mdl0.texcoords[x])
+                uvs.append(mdl0.uvs[x])
             else:
                 uvs.append(None)
         poly.encode_str = self.encode_string
+        if self.bone_id >= 0:
+            poly.bone = mdl0.bones[self.bone_id]
+        else:
+            poly.bone = None
 
     def i_pp(self):
         i = self.indexer
@@ -76,14 +84,14 @@ class UnpackPolygon(Unpacker):
         return i
 
     def get_index_decoder(self, index):
-        if index == 2:
+        if index == ply.INDEX_FORMAT_NONE:
+            return None
+        elif index == ply.INDEX_FORMAT_BYTE:
             return 'B'
-        elif index == 3:
+        elif index == ply.INDEX_FORMAT_SHORT:
             return 'H'
         elif index == 1:
             raise UnpackingError(self.binfile, f'Polygon {self.node.name} has direct indices, which are not supported')
-        elif index == 0:
-            return None
         else:
             raise UnpackingError(self.binfile, f'Polygon {self.node.name} index format {index} out of range')
 
@@ -107,7 +115,7 @@ class UnpackPolygon(Unpacker):
             else:
                 tex_matrix.append(-1)
             lo >>= 1
-        polygon.tex_mtx_indices = tex_matrix
+        polygon.uv_mtx_indices = tex_matrix
         polygon.vertex_index = self.get_index_from_format(lo & 0x3)
         polygon.normal_index = self.get_index_from_format(lo >> 2 & 0x3)
         polygon.color0_index = self.get_index_from_format(lo >> 4 & 0x3)
@@ -116,7 +124,7 @@ class UnpackPolygon(Unpacker):
         for i in range(8):
             tex.append(self.get_index_from_format(hi & 3))
             hi >>= 2
-        polygon.tex_indices = tex
+        polygon.uv_indices = tex
 
     def parse_uvat(self, polygon, uvata, uvatb, uvatc):
         # Since we hook the references to their groups, we don't need the formats etc
@@ -151,7 +159,8 @@ class UnpackPolygon(Unpacker):
             uvatc >>= 9
 
     def parse_xf_vertex_specs(self, vt_specs):
-        self.num_colors = vt_specs & 0x3
-        self.node.normal_type = vt_specs >> 2 & 0x3
-        self.num_tex = vt_specs >> 4 & 0xf
+        poly = self.node
+        poly.color_count = vt_specs & 0x3
+        poly.normal_type = vt_specs >> 2 & 0x3
+        poly.uv_count = vt_specs >> 4 & 0xf
 

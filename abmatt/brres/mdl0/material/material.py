@@ -154,7 +154,6 @@ class Material(Clipable):
         self.indirect_matrices = [IndMatrix() for i in range(3)]
         self.lightChannels.append(LightChannel())
         self.shader = Shader(self.name, self.parent)
-        self.parent.shaders[self.name] = self.shader
         self.shader.material = self
         self.ref0 = 0
         self.ref1 = 0
@@ -173,6 +172,13 @@ class Material(Clipable):
         self.blend_logic = BLEND_LOGIC_COPY
         self.blend_source = BLEND_FACTOR_SOURCE_ALPHA
         self.blend_dest = BLEND_FACTOR_INVERSE_SOURCE_ALPHA
+        self.constant_alpha = 0
+        self.constant_alpha_enabled = False
+        self.colors = [(0, 0, 0, 0), (0, 0, 0, 0), (0, 0, 0, 0)]
+        self.constant_colors = [(0, 0, 0, 0), (0, 0, 0, 0), (0, 0, 0, 0), (0, 0, 0, 0)]
+        self.ras1_ss = [0] * 2
+        self.indirect_matrices = [IndMatrix(), IndMatrix(), IndMatrix()]
+
 
     def auto_detect_layer(self):
         if not self.layers:
@@ -775,7 +781,6 @@ class Material(Clipable):
     def removeLayerI(self, index=-1):
         """Removes layer at index"""
         layer = self.layers[index]
-        self.parent.remove_texture_link(layer.name)
         self.layers.pop(index)
         if self.srt0:
             self.srt0.removeLayerI(index)
@@ -799,7 +804,7 @@ class Material(Clipable):
     def addLayer(self, name):
         """ Creates and returns new layer """
         i = len(self.layers)
-        l = Layer(i, name, self)
+        l = Layer(name, self)
         self.layers.append(l)
         if self.srt0:
             self.srt0.updateLayerNameI(i, name)
@@ -878,7 +883,8 @@ class Material(Clipable):
         self.constant_alpha = item.constant_alpha
         self.colors = deepcopy(item.colors)
         self.constant_colors = deepcopy(item.constant_colors)
-        self.ras1 = deepcopy(item.ras1)
+        self.ras1_ss = deepcopy(item.ras1_ss)
+        self.indirect_matrices = deepcopy(item.indirect_matrices)
 
         self.lightChannels = deepcopy(item.lightChannels)
 

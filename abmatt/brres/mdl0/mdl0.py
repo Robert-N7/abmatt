@@ -2,18 +2,11 @@
 # ----------------- Model sub files --------------------------------------------
 import math
 
-from autofix import AutoFix, Bug
-from abmatt.brres.lib.binfile import Folder, PackingError
 from abmatt.brres.lib.matching import fuzzy_match, MATCHING
 from abmatt.brres.lib.node import Node
-from abmatt.brres.mdl0.color import Color
-from abmatt.brres.mdl0.definition import DrawList, get_definition
-from abmatt.brres.mdl0.normal import Normal
-from abmatt.brres.mdl0.polygon import Polygon
-from abmatt.brres.mdl0.shader import Shader, ShaderList
-from abmatt.brres.mdl0.texcoord import TexCoord
-from abmatt.brres.mdl0.vertex import Vertex
+from abmatt.brres.mdl0.definition import get_definition
 from abmatt.brres.subfile import SubFile
+from autofix import AutoFix, Bug
 from brres.lib.packing.pack_mdl0.pack_mdl0 import PackMdl0
 from brres.lib.unpacking.unpack_mdl0.unpack_mdl0 import UnpackMdl0
 from brres.mdl0.bone import Bone
@@ -74,7 +67,6 @@ class Mdl0(SubFile):
 
     SETTINGS = ('name')  # todo, more settings
     DETECT_MODEL_NAME = True
-    DRAW_PASS_AUTO = True
     RENAME_UNKNOWN_REFS = True
     REMOVE_UNKNOWN_REFS = True
 
@@ -89,14 +81,14 @@ class Mdl0(SubFile):
         self.vertices = []
         self.normals = []
         self.colors = []
-        self.texCoords = []
-        self.furVectors = []
-        self.furLayers = []
+        self.uvs = []
+        # self.furVectors = []
+        # self.furLayers = []
         self.materials = []
-        self.shaders = ShaderList()
+        # self.shaders = ShaderList()
         self.objects = []
-        self.paletteLinks = []
-        self.textureLinks = []
+        # self.paletteLinks = []
+        # self.textureLinks = []
         self.version = 11
         self.find_min_max = False
         self.is_map_model = True if 'map' in name else False
@@ -137,7 +129,7 @@ class Mdl0(SubFile):
         return weights
 
     def set_bonetable(self, bonetable):
-        self.boneTable.entries = bonetable
+        self.boneTable = bonetable
 
     def search_for_min_and_max(self):
         minimum = [math.inf] * 3
@@ -346,10 +338,10 @@ class Mdl0(SubFile):
         return self.shaders.getShaders(material_list, for_modification)
 
     # ----------------------------- Tex Links -------------------------------------
-    def get_texture_link(self, name):
-        for x in self.textureLinks:
-            if x.name == name:
-                return x
+    # def get_texture_link(self, name):
+    #     for x in self.textureLinks:
+    #         if x.name == name:
+    #             return x
 
     def add_texture_link(self, name):
         if name != 'Null' and not self.parent.getTexture(name):
@@ -358,9 +350,6 @@ class Mdl0(SubFile):
             if tex:
                 notify += ', did you mean ' + tex.name + '?'
             AutoFix.get().info(notify, 4)
-
-    def remove_texture_link(self, name):
-        pass    # No longer applicable since tex links are rebuilt
 
     def rename_texture_link(self, layer, name):
         """Attempts to rename a layer, raises value error if the texture can't be found"""
@@ -395,16 +384,13 @@ class Mdl0(SubFile):
         self.paste_group(self.materials, item.materials)
 
     def __deepcopy__(self, memodict={}):
-        sections = self.sections
-        self.sections = None
         copy = super().__deepcopy__(memodict)
-        self.sections = sections
-        # relink things
-        copy.sections = [copy.definitions, copy.bones, copy.vertices, copy.normals,
-                         copy.colors, copy.texCoords, copy.furVectors, copy.furLayers,
-                         copy.materials, copy.shaders, copy.objects,
-                         copy.textureLinks, copy.paletteLinks]
-        for x in copy.sections:
+        sections = [copy.definitions, copy.bones, copy.vertices, copy.normals,
+                    copy.colors, copy.uvs,
+                    # copy.furVectors, copy.furLayers,
+                    copy.materials, copy.shaders, copy.objects,
+                    ]
+        for x in sections:
             for y in x:
                 y.link_parent(copy)
         shaders = copy.shaders
@@ -448,7 +434,6 @@ class Mdl0(SubFile):
             anim = self.pat0_collection[new_name]
             if anim:
                 material.set_pat0(anim)
-        self.shaders.updateName(material.name, new_name)
         return new_name
 
     def getTextureMap(self):
@@ -484,7 +469,7 @@ class Mdl0(SubFile):
         for x in self.objects:
             if x.check(vertices, normals, uvs, colors):
                 self.mark_modified()
-        for x in self.texCoords:
+        for x in self.uvs:
             if x.check():
                 self.mark_modified()
         for x in self.vertices:

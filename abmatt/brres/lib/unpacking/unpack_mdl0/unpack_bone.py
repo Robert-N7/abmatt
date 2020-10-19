@@ -10,7 +10,7 @@ def unpack_bonetable(binfile, format):
 
 class UnpackBone(Unpacker):
     def __init__(self, name, parent, binfile):
-        super().__init__(Bone(name, parent), binfile)
+        super().__init__(Bone(name, parent, binfile), binfile)
 
     def find_bone_at(self, offset, bones):
         if offset:

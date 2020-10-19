@@ -5,6 +5,11 @@ class LightChannel:
     LC_ERROR = 'Invalid Light "{}", Expected ((color|alpha)control:key:value|[material|ambient|raster]\
 (color|alpha)(enable|rgba))'
 
+    def __init__(self, unpacking=False):
+        if not unpacking:
+            self.begin()
+
+
     def begin(self):
         self.materialColorEnabled = self.materialAlphaEnabled = True
         self.ambientAlphaEnabled = self.ambientColorEnabled = True

@@ -1,7 +1,9 @@
 import math
 
 import numpy as np
+from numpy.lib._iotools import ConverterError
 
+from brres.mdl0 import point
 from converters.convert_lib import Converter
 from converters.matrix import apply_matrix
 
@@ -99,28 +101,33 @@ class PointCollection:
         form, divisor = self.get_format_divisor(self.minimum, self.maximum)
         points = self.points
         point_width = len(points[0])
-        if form == 'f':
-            mdl0_points.stride = point_width * 4
-        elif form.lower() == 'h':
-            mdl0_points.stride = point_width * 2
-        else:
-            mdl0_points.stride = point_width
-        mdl0_points.comp_count = point_width
-        mdl0_points.format = form
+        mdl0_points.comp_count = mdl0_points.comp_count_from_width(point_width)
         mdl0_points.divisor = divisor
-        multiplyBy = 2 ** divisor
         data = mdl0_points.data
+        if form == 'h':
+            mdl0_points.format = point.FMT_INT16
+            dtype = np.int16
+            mdl0_points.stride = point_width * 2
+        elif form == 'H':
+            mdl0_points.format = point.FMT_UINT16
+            dtype = np.uint16
+            mdl0_points.stride = point_width * 2
+        elif form == 'b':
+            mdl0_points.format = point.FMT_INT8
+            dtype = np.int8
+            mdl0_points.stride = point_width
+        elif form == 'B':
+            mdl0_points.format = point.FMT_UINT8
+            dtype = np.uint8
+            mdl0_points.stride = point_width
+        elif form == 'f':
+            mdl0_points.format = point.FMT_FLOAT
+            dtype = np.float
+            mdl0_points.stride = point_width * 4
+        else:
+            raise ConverterError('Unknown format {}'.format(form))
         if divisor:
-            if form == 'h':
-                dtype = np.int16
-            elif form == 'H':
-                dtype = np.uint16
-            elif form == 'b':
-                dtype = np.int8
-            elif form == 'B':
-                dtype = np.uint8
-            else:
-                raise ValueError(f'Unexpected format {form} for divisor {divisor}')
+            multiplyBy = 2 ** divisor
             self.encode_points(multiplyBy, dtype)
         points, face_indices, index_remapper = self.__consolidate_points()
         self.points = points

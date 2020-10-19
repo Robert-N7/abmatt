@@ -1,5 +1,5 @@
-
 # Constants
+from brres.lib.matching import validBool, validInt, indexListItem, validFloat
 from brres.lib.node import Clipable
 
 RASTER_LIGHT0 = 0
@@ -136,14 +136,48 @@ IND_WRAP_128 = 2
 IND_WRAP_64 = 3
 IND_WRAP_16 = 4
 IND_WRAP_0 = 5
+SCALEN = (1, 2, 4, 1 / 2)
+
+# COLOR STRINGS
+RASTER_COLORS = ("lightchannel0", "lightchannel1", "bumpalpha", "normalizedbumpalpha", "zero")
+COLOR_CONSTANTS = ("1_1", "7_8", "3_4", "5_8", "1_2", "3_8", "1_4", "1_8",
+                   "color0_rgb", "color1_rgb", "color2_rgb", "color3_rgb",
+                   "color0_rrr", "color1_rrr", "color2_rrr", "color3_rrr",
+                   "color0_ggg", "color1_ggg", "color2_ggg", "color3_ggg",
+                   "color0_bbb", "color1_bbb", "color2_bbb", "color3_bbb",
+                   "color0_aaa", "color1_aaa", "color2_aaa", "color3_aaa")
+COLOR_SELS = ("outputcolor", "outputalpha", "color0", "alpha0", "color1",
+              "alpha1", "color2", "alpha2", "texturecolor", "texturealpha",
+              "rastercolor", "rasteralpha", "one", "half",
+              "colorselection", "zero")
+BIAS = ("zero", "addhalf", "subhalf")
+OPER = ("add", "subtract")
+SCALE = ("multiplyby1", "multiplyby2", "multiplyby4", "divideby2")
+COLOR_DEST = ("outputcolor", "color0", "color1", "color2")
+
+# ALPHA
+ALPHA_CONSTANTS = ("1_1", "7_8", "3_4", "5_8", "1_2", "3_8", "1_4", "1_8",
+                   "color0_red", "color1_red", "color2_red", "color3_red",
+                   "color0_green", "color1_green", "color2_green", "color3_green",
+                   "color0_blue", "color1_blue", "color2_blue", "color3_blue",
+                   "color0_alpha", "color1_alpha", "color2_alpha", "color3_alpha")
+ALPHA_SELS = ("outputalpha", "alpha0", "alpha1", "alpha2", "texturealpha",
+              "rasteralpha", "alphaselection", "zero")
+ALPHA_DEST = ("outputalpha", "alpha0", "alpha1", "alpha2")
+
+# INDIRECT TEVS
+TEX_FORMAT = ("f_8_bit_offsets", "f_5_bit_offsets", "f_4_bit_offsets", "f_3_bit_offsets")
+IND_BIAS = ("none", "s", "t", "st", "u", "su", "tu", "stu")
+IND_ALPHA = ("off", "s", "t", "u")
+IND_MATRIX = ("nomatrix", "matrix0", "matrix1", "matrix2", "matrixs0",
+              "matrixs1", "matrixs2", "matrixt0", "matrixt1", "matrixt2")
+WRAP = ("nowrap", "wrap256", "wrap128", "wrap64", "wrap16", "wrap0")
 
 
 class Stage(Clipable):
     """ Single shader stage """
     REMOVE_UNUSED_LAYERS = False
-    SCALEN = (1, 2, 4, 1 / 2)
 
-    # INDIRECT TEVS
     SETTINGS = ("enabled", "mapid", "coordinateid",
                 "textureswapselection", "rastercolor",
                 "rasterswapselection",
@@ -168,7 +202,7 @@ class Stage(Clipable):
 
     def __deepcopy__(self, memodict={}):
         ret = Stage(self.name, self.parent, False)
-        ret.paste(self)
+        ret.__copy_data_from(self)
         return ret
 
     def begin(self):
@@ -255,20 +289,6 @@ class Stage(Clipable):
     def __setitem__(self, key, value):
         return self.set_str(key, value)
 
-    def get_str(self, key):
-        raise NotImplementedError()
-        i = key.find('constant')
-        if 0 <= i < 5:  # out of order
-            is_alpha = True if 'alpha' in key else False
-            if is_alpha:
-                key = 'alphaconstantselection'
-            else:
-                key = 'colorconstantselection'
-        # todo fix this hot mess
-        if key not in self.map:
-            raise ValueError("Invalid setting {} possible keys are: \n\t{}".format(key, self.SETTINGS))
-        return self.map[key]
-
     def check(self):
         pass
 
@@ -279,8 +299,7 @@ class Stage(Clipable):
     def clip_find(self, clipboard):
         return clipboard[self.parent.getMaterialName() + str(self.name)]
 
-    def paste(self, stage):
-        # ignores name and parent, since it's shader's job to track names
+    def __copy_data_from(self, stage):
         self.enabled = stage.enabled
         self.coord_id = stage.coord_id
         self.map_id = stage.map_id
@@ -319,6 +338,9 @@ class Stage(Clipable):
         self.ind_t_wrap = stage.ind_t_wrap
         self.ind_use_prev = stage.ind_use_prev
         self.ind_unmodify_lod = stage.ind_unmodify_lod
+
+    def paste(self, stage):
+        self.__copy_data_from(stage)
         self.mark_modified()
 
     def info(self, key=None, indentation_level=0):
@@ -329,216 +351,487 @@ class Stage(Clipable):
             print('{}Stage:{}\tMapId:{} ColorScale:{}'.format(
                 trace, self.name, self['mapid'], self['colorscale']))
 
-    def getRasterColorI(self):
+    # --------------------------------------------------------------------
+    # GETTERS/SETTERS
+    # --------------------------------------------------------------------
+
+    def is_enabled(self):
+        return self.enabled
+
+    def set_enabled(self, enable):
+        if self.enabled != enable:
+            self.enabled = enable
+            self.mark_modified()
+
+    def get_map_id(self):
+        return self.map_id
+
+    def set_map_id(self, id):
+        if self.map_id != id:
+            self.map_id = id
+            self.mark_modified()
+
+    def get_coord_id(self):
+        return self.coord_id
+
+    def set_coord_id(self, id):
+        if self.coord_id != id:
+            self.coord_id = id
+            self.mark_modified()
+
+    def get_tex_swap_sel(self):
+        return self.texture_swap_sel
+
+    def set_tex_swap_sel(self, sel):
+        if self.texture_swap_sel != sel:
+            self.texture_swap_sel = sel
+            self.mark_modified()
+
+    def get_raster_swap_sel(self):
+        return self.raster_swap_sel
+
+    def set_raster_swap_sel(self, i):
+        if self.raster_swap_sel != i:
+            self.raster_swap_sel = i
+            self.mark_modified()
+
+    def get_raster_color(self):
         return self.raster_color
 
-    def setRasterColorI(self, i):
+    def set_raster_color(self, i):
         if i != self.raster_color:
             self.raster_color = i
             self.mark_modified()
 
-    def getConstantAlphaI(self):
-        return self.constant_a
-
-    def setConstantAlphaI(self, i):
-        if self.constant_a != i:
-            self.constant_a = i
-            self.mark_modified()
-
-    def getIndMtxI(self):
-        return self.ind_matrix
-
-    def setIndTexMtxI(self, i):
-        if i != self.ind_matrix:
-            self.ind_matrix = i
-            self.mark_modified()
-
-    def getConstantColorI(self):
+    def get_constant_color(self):
         return self.constant
 
-    def setConstantColorI(self, index):
+    def set_constant_color(self, index):
         if index != self.constant:
             self.constant = index
             self.mark_modified()
 
+    def get_color_a(self):
+        return self.sel_a
+
+    def set_color_a(self, i):
+        if i != self.sel_a:
+            self.sel_a = i
+            self.mark_modified()
+
+    def get_color_b(self):
+        return self.sel_b
+
+    def set_color_b(self, i):
+        if i != self.sel_b:
+            self.sel_b = i
+            self.mark_modified()
+
+    def get_color_c(self):
+        return self.sel_c
+
+    def set_color_c(self, i):
+        if i != self.sel_c:
+            self.sel_c = i
+            self.mark_modified()
+
+    def get_color_d(self):
+        return self.sel_d
+
+    def set_color_d(self, i):
+        if i != self.sel_d:
+            self.sel_d = i
+            self.mark_modified()
+
+    def get_color_bias(self):
+        return self.bias
+
+    def set_color_bias(self, i):
+        if i != self.bias:
+            self.bias = i
+            self.mark_modified()
+
+    def get_color_oper(self):
+        return self.oper
+
+    def set_color_oper(self, i):
+        if self.oper != i:
+            self.oper = i
+            self.mark_modified()
+
+    def get_color_clamp(self):
+        return self.clamp
+
+    def set_color_clamp(self, enabled):
+        if self.clamp != enabled:
+            self.clamp = enabled
+            self.mark_modified()
+
+    def get_color_scale(self):
+        return self.scale
+
+    def set_color_scale(self, i):
+        if self.scale != i:
+            self.scale = i
+            self.mark_modified()
+
+    def get_color_dest(self):
+        return self.dest
+
+    def set_color_dest(self, i):
+        if self.dest != i:
+            self.dest = i
+            self.mark_modified()
+
+    def get_constant_alpha(self):
+        return self.constant_a
+
+    def set_constant_alpha(self, i):
+        if self.constant_a != i:
+            self.constant_a = i
+            self.mark_modified()
+
+    def get_alpha_a(self):
+        return self.sel_a_a
+
+    def set_alpha_a(self, i):
+        if i != self.sel_a_a:
+            self.sel_a_a = i
+            self.mark_modified()
+
+    def get_alpha_b(self):
+        return self.sel_b_a
+
+    def set_alpha_b(self, i):
+        if i != self.sel_b_a:
+            self.sel_b_a = i
+            self.mark_modified()
+
+    def get_alpha_c(self):
+        return self.sel_c_a
+
+    def set_alpha_c(self, i):
+        if i != self.sel_c_a:
+            self.sel_c_a = i
+            self.mark_modified()
+
+    def get_alpha_d(self):
+        return self.sel_d_a
+
+    def set_alpha_d(self, i):
+        if i != self.sel_d_a:
+            self.sel_d_a = i
+            self.mark_modified()
+
+    def get_alpha_bias(self):
+        return self.bias_a
+
+    def set_alpha_bias(self, i):
+        if i != self.bias_a:
+            self.bias_a = i
+            self.mark_modified()
+
+    def get_alpha_oper(self):
+        return self.oper_a
+
+    def set_alpha_oper(self, i):
+        if self.oper_a != i:
+            self.oper_a = i
+            self.mark_modified()
+
+    def get_alpha_clamp(self):
+        return self.clamp_a
+
+    def set_alpha_clamp(self, enabled):
+        if self.clamp_a != enabled:
+            self.clamp_a = enabled
+            self.mark_modified()
+
+    def get_alpha_scale(self):
+        return self.scale_a
+
+    def set_alpha_scale(self, i):
+        if self.scale_a != i:
+            self.scale_a = i
+            self.mark_modified()
+
+    def get_alpha_dest(self):
+        return self.dest_a
+
+    def set_alpha_dest(self, i):
+        if self.dest_a != i:
+            self.dest_a = i
+            self.mark_modified()
+
+    def get_ind_stage(self):
+        return self.ind_stage
+
+    def set_ind_stage(self, i):
+        if self.ind_stage != i:
+            self.ind_stage = i
+            self.mark_modified()
+
+    def get_ind_format(self):
+        return self.ind_format
+
+    def set_ind_format(self, i):
+        if self.ind_format != i:
+            self.ind_format = i
+            self.mark_modified()
+
+    def get_ind_alpha(self):
+        return self.ind_alpha
+
+    def set_ind_alpha(self, i):
+        if self.ind_alpha != i:
+            self.ind_alpha = i
+            self.mark_modified()
+
+    def get_ind_bias(self):
+        return self.ind_bias
+
+    def set_ind_bias(self, i):
+        if self.ind_bias != i:
+            self.ind_bias = i
+            self.mark_modified()
+
+    def get_ind_matrix(self):
+        return self.ind_matrix
+
+    def set_ind_matrix(self, i):
+        if i != self.ind_matrix:
+            self.ind_matrix = i
+            self.mark_modified()
+
+    def get_s_wrap(self):
+        return self.ind_s_wrap
+
+    def set_s_wrap(self, i):
+        if self.ind_s_wrap != i:
+            self.ind_s_wrap = i
+            self.mark_modified()
+
+    def get_t_wrap(self):
+        return self.ind_t_wrap
+
+    def set_t_wrap(self, i):
+        if self.ind_t_wrap != i:
+            self.ind_t_wrap = i
+            self.mark_modified()
+
+    def get_ind_use_prev(self):
+        return self.ind_use_prev
+
+    def set_ind_use_prev(self, enabled):
+        if self.ind_use_prev != enabled:
+            self.ind_use_prev = enabled
+            self.mark_modified()
+
+    def get_ind_unmodified_lod(self):
+        return self.ind_unmodify_lod
+
+    def set_ind_unmodified_lod(self, enabled):
+        if self.ind_unmodify_lod != enabled:
+            self.ind_unmodify_lod = enabled
+            self.mark_modified()
+
     def set_str(self, key, value):
-        # todo fix this hot mess
-        raise NotImplementedError()
-        i = key.find('constant')
-        is_alpha = True if 'alpha' in key else False
-        if 0 <= i < 5:  # out of order
-            if is_alpha:
-                key = 'alphaconstantselection'
+        s = self.SETTINGS
+        if key == s[0]:
+            self.set_enabled(validBool(value))
+        elif key == s[1]:
+            self.set_map_id(validInt(value, 0, 7))
+        elif key == s[2]:
+            self.set_coord_id(validInt(value, 0, 7))
+        elif key == s[3]:
+            self.set_tex_swap_sel(validInt(value, 0, 4))
+        elif key == s[4]:
+            if value == '0':
+                self.set_raster_color(RASTER_ZERO)
             else:
-                key = 'colorconstantselection'
-        if not key in self.map:
-            raise ValueError("No such shader stage setting {} possible keys are: \n\t{}".format(key, self.map.keys()))
-        # bools
-        if key == "enabled" or "clamp" in key or key == "indirectuseprevstage" \
-                or key == "indirectunmodifiedlod":
-            b = validBool(value)
-            if self.map[key] != b:
-                self.map[key] = b
-        # ints
-        elif "swap" in key or "stage" in key:
-            i = validInt(value, 0, 4)
-            if i != self.map[key]:
-                self.map[key] = i
-                self.mark_modified()
-        elif "id" in key:
-            i = validInt(value, 0, 7)
-            if self.map[key] != i:
-                self.map[key] = i
-                self.mark_modified()
-        else:  # list indexing ones
+                i = indexListItem(RASTER_COLORS, value)
+                if i > 1:
+                    i += 3
+                self.set_raster_color(i)
+        elif key == s[5]:
+            self.set_raster_swap_sel(validInt(value, 0, 4))
+        elif key in s[6:8]:
             value = value.replace('constant', '')
-            if "scale" in key:
-                try:
-                    f = validFloat(value, 0.5, 4)
-                    pos = indexListItem(self.SCALEN, f)
-                    if value != self.SCALE[pos]:
-                        value = self.SCALE[pos]
-                        self.mark_modified()
-                except ValueError:
-                    indexListItem(self.SCALE, value)
-            elif "color" in key:
-                if len(key) < 7:  # abcd
-                    if value == '0':
-                        value = 'zero'
-                    elif value == '1':
-                        value = 'one'
-                    elif value == '0.5':
-                        value = 'half'
-                    else:
-                        indexListItem(self.COLOR_SELS, value)
-                elif key == "colorconstantselection":
-                    value = value.replace('constant', '')
-                    indexListItem(self.COLOR_CONSTANTS, value)
-                elif key == "colordestination":
-                    indexListItem(self.COLOR_DEST, value)
-                elif key == "colorbias":
-                    indexListItem(self.BIAS, value)
-                elif key == "coloroperation":
-                    indexListItem(self.OPER, value)
-                elif key == "rastercolor":
-                    if value == '0':
-                        value = 'zero'
-                    else:
-                        indexListItem(self.RASTER_COLORS, value)
-            elif is_alpha:
-                if len(key) < 7:  # abcd
-                    if value == '0':
-                        value = 'zero'
-                    else:
-                        indexListItem(self.ALPHA_SELS, value)
-                elif key == "alphaconstantselection":
-                    value = value.replace('constant', '')
-                    indexListItem(self.ALPHA_CONSTANTS, value)
-                elif key == "alphadestination":
-                    indexListItem(self.ALPHA_DEST, value)
-                elif key == "alphabias":
-                    indexListItem(self.BIAS, value)
-                elif key == "alphaoperation":
-                    indexListItem(self.OPER, value)
-            elif "indirect" in key:
-                if key == "indirectformat":
-                    indexListItem(self.TEX_FORMAT, value)
-                elif key == "indirectmatrixselection":
-                    if len(value) < 6:
-                        value = 'matrix' + value
-                    indexListItem(self.IND_MATRIX, value)
-                elif key == "indirectalpha":
-                    indexListItem(self.IND_ALPHA, value)
-                elif key == "indirectbias":
-                    indexListItem(self.IND_BIAS, value)
-                elif "wrap" in key:
-                    indexListItem(self.WRAP, value)
-            if self.map[key] != value:
-                self.map[key] = value
-                self.mark_modified()
+            i = indexListItem(COLOR_CONSTANTS, value)
+            if i > 7:
+                i += 4
+            self.set_constant_color(i)
+        elif key in s[8:12]:
+            if value == '0':
+                val = COLOR_SEL_NONE
+            elif value == '1':
+                val = COLOR_SEL_ONE
+            elif value in ('0.5', '1/2'):
+                val = COLOR_SEL_HALF
+            else:
+                val = indexListItem(COLOR_SELS, value)
+            if key == s[8]:
+                self.set_color_a(val)
+            elif key == s[9]:
+                self.set_color_b(val)
+            elif key == s[10]:
+                self.set_color_c(val)
+            elif key == s[11]:
+                self.set_color_d(val)
+        elif key == s[12]:
+            self.set_color_bias(indexListItem(BIAS, value))
+        elif key == s[13]:
+            self.set_color_oper(indexListItem(OPER, value))
+        elif key == s[14]:
+            self.set_color_clamp(validBool(value))
+        elif key in (s[15], s[26]):
+            try:
+                val = indexListItem(SCALE, value)
+            except ValueError:
+                f = validFloat(value, 0.5, 4)
+                val = indexListItem(SCALEN, f)
+            if key == s[15]:
+                self.set_color_scale(val)
+            elif key == s[26]:
+                self.set_alpha_scale(val)
+        elif key == s[16]:
+            self.set_color_dest(indexListItem(COLOR_DEST, value))
+        elif key in s[17:19]:
+            value = value.replace('constant', '')
+            i = indexListItem(ALPHA_CONSTANTS, value)
+            if i > 7:
+                i += 8
+            self.set_constant_alpha(i)
+        elif key in s[19:23]:
+            if value == '0':
+                val = ALPHA_SEL_NONE
+            else:
+                val = indexListItem(ALPHA_SELS, value)
+            if key == s[19]:
+                self.set_alpha_a(val)
+            elif key == s[20]:
+                self.set_alpha_b(val)
+            elif key == s[21]:
+                self.set_alpha_c(val)
+            elif key == s[22]:
+                self.set_alpha_d(val)
+        elif key == s[23]:
+            self.set_alpha_bias(indexListItem(BIAS, value))
+        elif key == s[24]:
+            self.set_alpha_oper(indexListItem(OPER, value))
+        elif key == s[25]:
+            self.set_alpha_clamp(validBool(value))
+        elif key == s[27]:
+            self.set_alpha_dest(indexListItem(ALPHA_DEST, value))
+        elif key == s[28]:
+            self.set_ind_stage(validInt(value, 0, 4))
+        elif key == s[29]:
+            self.set_ind_format(indexListItem(TEX_FORMAT, value))
+        elif key == s[30]:
+            self.set_ind_alpha(indexListItem(IND_ALPHA, value))
+        elif key == s[31]:
+            self.set_ind_bias(indexListItem(IND_BIAS, value))
+        elif key == s[32]:
+            if len(value) < 6:
+                value = 'matrix' + value
+            i = indexListItem(IND_MATRIX, value)
+            if i > 3:
+                i += 1
+            if i > 7:
+                i += 1
+            self.set_ind_matrix(i)
+        elif key == s[33]:
+            self.set_s_wrap(indexListItem(WRAP, value))
+        elif key == s[34]:
+            self.set_t_wrap(indexListItem(WRAP, value))
+        elif key == s[35]:
+            self.set_ind_use_prev(validBool(value))
+        elif key == s[36]:
+            self.set_ind_unmodified_lod(validBool(value))
 
-    def unpackColorEnv(self, binfile):
-        """ Unpacks the color env """
-        ce = ColorEnv(self.name)
-        ce.unpack(binfile)
-        self.map["colora"] = self.COLOR_SELS[ce.getSelA()]
-        self.map["colorb"] = self.COLOR_SELS[ce.getSelB()]
-        self.map["colorc"] = self.COLOR_SELS[ce.getSelC()]
-        self.map["colord"] = self.COLOR_SELS[ce.getSelD()]
-        self.map["colorbias"] = self.BIAS[ce.getBias()]
-        self.map["coloroperation"] = self.OPER[ce.getSub()]
-        self.map["colorclamp"] = ce.getClamp()
-        self.map["colorscale"] = self.SCALE[ce.getShift()]
-        self.map["colordestination"] = self.COLOR_DEST[ce.getDest()]
-
-    def unpackAlphaEnv(self, binfile):
-        """ Unpacks alpha env """
-        ae = AlphaEnv(self.name)
-        ae.unpack(binfile)
-        self.map["alphaa"] = self.ALPHA_SELS[ae.getSelA()]
-        self.map["alphab"] = self.ALPHA_SELS[ae.getSelB()]
-        self.map["alphac"] = self.ALPHA_SELS[ae.getSelC()]
-        self.map["alphad"] = self.ALPHA_SELS[ae.getSelD()]
-        self.map["alphabias"] = self.BIAS[ae.getBias()]
-        self.map["alphaoperation"] = self.OPER[ae.getSub()]
-        self.map["alphaclamp"] = ae.getClamp()
-        self.map["alphascale"] = self.SCALE[ae.getShift()]
-        self.map["alphadestination"] = self.ALPHA_DEST[ae.getDest()]
-        self.map["textureswapselection"] = ae.getTSwap()
-        self.map["rasterswapselection"] = ae.getRSwap()
-
-    def unpackIndirect(self, binfile):
-        c = IndCmd(self.name)
-        c.unpack(binfile)
-        self.map["indirectstage"] = c.getStage()
-        self.map["indirectformat"] = self.TEX_FORMAT[c.getFormat()]
-        self.map["indirectbias"] = self.IND_BIAS[c.getBias()]
-        self.setIndTexMtxI(c.getMtx(), False)
-        self.map["indirectswrap"] = self.WRAP[c.getSWrap()]
-        self.map["indirecttwrap"] = self.WRAP[c.getTWrap()]
-        self.map["indirectalpha"] = self.IND_ALPHA[c.getAlpha()]
-        self.map["indirectuseprevstage"] = c.getUsePrevStage()
-        self.map["indirectunmodifiedlod"] = c.getUnmodifiedLOD()
-
-    def packColorEnv(self, binfile):
-        ce = ColorEnv(self.name)
-        a = self.COLOR_SELS.index(self["colora"])
-        b = self.COLOR_SELS.index(self["colorb"])
-        c = self.COLOR_SELS.index(self["colorc"])
-        d = self.COLOR_SELS.index(self["colord"])
-        bi = self.BIAS.index(self["colorbias"])
-        op = self.OPER.index(self["coloroperation"])
-        sc = self.SCALE.index(self["colorscale"])
-        dest = self.COLOR_DEST.index(self["colordestination"])
-        ce.data = dest << 22 | sc << 20 | self["colorclamp"] << 19 | op << 18 \
-                  | bi << 16 | a << 12 | b << 8 | c << 4 | d
-        ce.pack(binfile)
-
-    def packAlphaEnv(self, binfile):
-        ae = AlphaEnv(self.name)
-        a = self.ALPHA_SELS.index(self["alphaa"])
-        b = self.ALPHA_SELS.index(self["alphab"])
-        c = self.ALPHA_SELS.index(self["alphac"])
-        d = self.ALPHA_SELS.index(self["alphad"])
-        bi = self.BIAS.index(self["alphabias"])
-        op = self.OPER.index(self["alphaoperation"])
-        sc = self.SCALE.index(self["alphascale"])
-        dest = self.ALPHA_DEST.index(self["alphadestination"])
-        ae.data = dest << 22 | sc << 20 | self["alphaclamp"] << 19 | op << 18 \
-                  | bi << 16 | a << 13 | b << 10 | c << 7 | d << 4 \
-                  | self["textureswapselection"] << 2 | self["rasterswapselection"]
-        ae.pack(binfile)
-
-    def packIndirect(self, binfile):
-        c = IndCmd(self.name)
-        f = self.TEX_FORMAT.index(self["indirectformat"])
-        b = self.IND_BIAS.index(self["indirectbias"])
-        a = self.IND_ALPHA.index(self["indirectalpha"])
-        m = self.getIndMtxI()
-        sw = self.WRAP.index(self["indirectswrap"])
-        tw = self.WRAP.index(self["indirecttwrap"])
-        c.data = self["indirectunmodifiedlod"] << 20 | self["indirectuseprevstage"] << 19 \
-                 | tw << 16 | sw << 13 | m << 9 | a << 7 | b << 4 | f << 2 \
-                 | self["indirectstage"]
-        c.pack(binfile)
-
+    def get_str(self, key):
+        s = self.SETTINGS
+        if key == s[0]:
+            return self.enabled
+        elif key == s[1]:
+            return self.map_id
+        elif key == s[2]:
+            return self.coord_id
+        elif key == s[3]:
+            return self.texture_swap_sel
+        elif key == s[4]:
+            x = self.raster_color
+            if x > 1:
+                x -= 3
+            return RASTER_COLORS[x]
+        elif key == s[5]:
+            return self.raster_swap_sel
+        elif key in s[6:8]:
+            x = self.constant
+            if x > 7:
+                x += 4
+            return COLOR_CONSTANTS[x]
+        elif key == s[8]:
+            return COLOR_SELS[self.sel_a]
+        elif key == s[9]:
+            return COLOR_SELS[self.sel_b]
+        elif key == s[10]:
+            return COLOR_SELS[self.sel_c]
+        elif key == s[11]:
+            return COLOR_SELS[self.sel_d]
+        elif key == s[12]:
+            return BIAS[self.bias]
+        elif key == s[13]:
+            return OPER[self.oper]
+        elif key == s[14]:
+            return self.clamp
+        elif key == s[15]:
+            return SCALE[self.scale]
+        elif key == s[16]:
+            return COLOR_DEST[self.dest]
+        elif key in s[17:19]:
+            x = self.constant_a
+            if x > 7:
+                x -= 8
+            return ALPHA_CONSTANTS[x]
+        elif key == s[19]:
+            return ALPHA_SELS[self.sel_a_a]
+        elif key == s[20]:
+            return ALPHA_SELS[self.sel_b_a]
+        elif key == s[21]:
+            return ALPHA_SELS[self.sel_c_a]
+        elif key == s[22]:
+            return ALPHA_SELS[self.sel_d_a]
+        elif key == s[23]:
+            return BIAS[self.bias_a]
+        elif key == s[24]:
+            return OPER[self.oper_a]
+        elif key == s[25]:
+            return self.clamp_a
+        elif key == s[26]:
+            return SCALE[self.scale_a]
+        elif key == s[27]:
+            return ALPHA_DEST[self.dest_a]
+        elif key == s[28]:
+            return self.ind_stage
+        elif key == s[29]:
+            return TEX_FORMAT[self.ind_format]
+        elif key == s[30]:
+            return IND_ALPHA[self.ind_alpha]
+        elif key == s[31]:
+            return IND_BIAS[self.ind_bias]
+        elif key == s[32]:
+            x = self.ind_matrix
+            if x > 8:
+                x -= 1
+            if x > 4:
+                x -= 1
+            return IND_MATRIX[x]
+        elif key == s[33]:
+            return WRAP[self.ind_s_wrap]
+        elif key == s[34]:
+            return WRAP[self.ind_t_wrap]
+        elif key == s[35]:
+            return self.ind_use_prev
+        elif key == s[36]:
+            return self.ind_unmodify_lod

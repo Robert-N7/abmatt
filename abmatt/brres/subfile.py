@@ -8,7 +8,7 @@ import os
 
 from abmatt.brres.lib.binfile import UnpackingError, BinFile
 from abmatt.brres.lib.matching import validInt, validBool
-from abmatt.brres.lib.node import Clipable
+from abmatt.brres.lib.node import Clipable, Packable
 from autofix import Bug, AutoFix
 from brres.lib.packing.pack_subfile import PackSubfile
 
@@ -29,7 +29,7 @@ def get_anim_str(animation, key):
         return animation.loop
 
 
-class SubFile(Clipable):
+class SubFile(Clipable, Packable):
     """
     Brres Sub file Class
     """
@@ -57,6 +57,8 @@ class SubFile(Clipable):
         """ initialize with parent of this file """
         super(SubFile, self).__init__(name, parent, binfile)
         self.version = self.EXPECTED_VERSION
+        if binfile:
+            self.unpack(binfile)
 
     def _getNumSections(self):
         return self.VERSION_SECTIONCOUNT[self.version]

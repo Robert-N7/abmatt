@@ -6,7 +6,7 @@ from brres.mdl0.stage import Stage
 
 class UnpackShader(Unpacker):
     def __init__(self, name, mdl0, binfile):
-        s = Shader(name, None)
+        s = Shader(name, None, binfile)
         super().__init__(s, binfile)
 
     def unpack(self, shader, binfile):
@@ -15,12 +15,12 @@ class UnpackShader(Unpacker):
         binfile.readLen()
         outer, index, stage_count, res0, res1, res2, = binfile.read("2I4B", 12)
         layer_indices = binfile.read("8B", 8)
-        for i in range(len(layer_indices)):
-            assert i == layer_indices[i]
+        # for i in range(stage_count):
+        #     assert i == layer_indices[i]
         assert (stage_count <= 16)
         shader.stages = []
         for i in range(stage_count):
-            shader.stages.append(Stage(len(shader.stages), shader))
+            shader.stages.append(Stage(len(shader.stages), shader, binfile))
         binfile.advance(8)
         for x in shader.swap_table:
             binfile.advance(5)  # skip extra masks
@@ -47,7 +47,7 @@ class UnpackShader(Unpacker):
                 stage1.constant_a = s1_alpha_constant
                 stage1.map_id, stage1.coord_id, stage1.enabled, stage1.raster_color = tref_1
                 stage1.sel_a, stage1.sel_b, stage1.sel_c, stage1.sel_d, \
-                    stage1.dest, stage1.bias, stage1.oper, stage1.clamp, stage0.scale = bp.unpack_color_env(binfile)
+                    stage1.dest, stage1.bias, stage1.oper, stage1.clamp, stage1.scale = bp.unpack_color_env(binfile)
             else:
                 binfile.advance(5)  # skip unpack color env
             stage0.sel_a_a, stage0.sel_b_a, stage0.sel_c_a, stage0.sel_d_a, \

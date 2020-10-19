@@ -1,6 +1,11 @@
 from brres.lib.binfile import Folder, PackingError
 from brres.lib.packing.interface import Packer
+from brres.lib.packing.pack_mdl0.pack_bone import PackBone
+from brres.lib.packing.pack_mdl0.pack_color import PackColor
 from brres.lib.packing.pack_mdl0.pack_material import PackMaterial
+from brres.lib.packing.pack_mdl0.pack_point import PackVertex, PackNormal, PackUV
+from brres.lib.packing.pack_mdl0.pack_polygon import PackPolygon
+from brres.lib.packing.pack_mdl0.pack_shader import PackShader
 from brres.lib.packing.pack_subfile import PackSubfile
 from brres.mdl0.definition import DrawList
 
@@ -18,7 +23,7 @@ class PackMdl0(PackSubfile):
         super(PackMdl0, self).pack(mdl0, binfile)
         binfile.start()  # header
         binfile.write("Ii7I", 0x40, binfile.getOuterOffset(), mdl0.scaling_rule, mdl0.texture_matrix_mode,
-                      mdl0.facepoint_count, mdl0.faceCount, 0, mdl0.boneCount, 0x01000000)
+                      mdl0.facepoint_count, mdl0.faceCount, 0, len(mdl0.bones), 0x01000000)
         binfile.mark()  # bone table offset
         if mdl0.version >= 10:
             binfile.write("6f", mdl0.minimum[0], mdl0.minimum[1], mdl0.minimum[2],
@@ -32,20 +37,31 @@ class PackMdl0(PackSubfile):
         # texture links
         texture_link_map = self.packTextureLinks(binfile, folders[11])
         self.pack_definitions(binfile, folders[0])
-        self.pack_section(binfile, 1, folders[1])  # bones
+        self.pack_section(binfile, 1, folders[1], PackBone)  # bones
         i = 8
         self.pack_materials(binfile, folders[i], texture_link_map)
         i += 1
         self.pack_shaders(binfile, folders[i])
         i += 1
-        self.pack_section(binfile, 10, folders[i])  # objects
-        for i in range(2, 6):  # vertices, normals, colors, uvs
-            self.pack_section(binfile, i, folders[i])
+        self.pack_section(binfile, 10, folders[i], PackPolygon)  # objects
+        i = 2
+        self.pack_section(binfile, i, folders[i], PackVertex)
+        i += 1
+        self.pack_section(binfile, i, folders[i], PackNormal)
+        i += 1
+        self.pack_section(binfile, i, folders[i], PackColor)
+        i += 1
+        self.pack_section(binfile, i, folders[i], PackUV)
         binfile.alignAndEnd()  # end file
 
     def pack_bonetable(self, table):
         self.binfile.write('I', len(table))
-        self.binfile.write('{}I'.format(len(table), *table))
+        self.binfile.write('{}I'.format(len(table)), *table)
+
+    class TextureLink:
+        def __init__(self, name, num_refs):
+            self.name = name
+            self.num_refs = num_refs
 
     class PackTextureLink(Packer):
         """ Links from textures to materials and layers """
@@ -73,10 +89,10 @@ class PackMdl0(PackSubfile):
     def packTextureLinks(self, binfile, folder):
         """Packs texture link section, returning map of names:offsets be filled in by mat/layer refs"""
         tex_map = {}
-        links = self.sections[10]
+        links = self.sections[11]
         for x in links:
             folder.createEntryRefI()
-            tex_map[x] = self.PackTextureLink(x, binfile, links[x])
+            tex_map[x.name] = self.PackTextureLink(x.name, binfile, x.num_refs)
         return tex_map
 
     def pack_definitions(self, binfile, folder):
@@ -87,16 +103,28 @@ class PackMdl0(PackSubfile):
 
     def pack_materials(self, binfile, folder, texture_link_map):
         """packs materials, requires texture link map to offsets that need to be filled"""
+        mat_packers = self.mat_packers
         section = self.sections[8]
         for i in range(len(section)):
+            mat = section[i]
             folder.createEntryRefI()
-            PackMaterial(section[i], binfile, i, texture_link_map)
+            mat_packers[mat.name] = PackMaterial(mat, binfile, i, texture_link_map)
         for x in texture_link_map:
-            if binfile.references[texture_link_map[x]]:
+            if binfile.references[texture_link_map[x].offset]:
                 raise PackingError(binfile, 'Unused texture link {}!'.format(x))
 
     def pack_shaders(self, binfile, folder):
-        self.sections[9].pack(binfile, folder)
+        shaders = self.shaders
+        shader_mats = self.shader_mats
+        mat_packers = self.mat_packers
+        for i in range(len(shaders)):
+            # create index group and material refs
+            for mat in shader_mats[i]:
+                name = mat.name
+                folder.createEntryRef(name)
+                mat_packers[name].create_shader_ref(binfile)
+            # pack the shader
+            PackShader(shaders[i], binfile, i)
 
     def pack_section(self, binfile, section_index, folder, packer):
         """ Packs a model section (generic) """
@@ -146,10 +174,29 @@ class PackMdl0(PackSubfile):
                     texture_links[name] = 1
                 else:
                     texture_links[name] += 1
-        return texture_links
+
+        tex_links = [self.TextureLink(x, texture_links[x]) for x in texture_links]
+        return tex_links
 
     def build_shaders(self, materials):
-        pass # todo
+        shaders = self.shaders
+        shader_mats = self.shader_mats
+        for x in materials:
+            shader = x.shader
+            found = False
+            for i in range(len(shaders)):
+                if shader == shaders[i]:
+                    shader_mats[i].append(x)
+                    # This is to have the shader load the
+                    # maximum number of layers necessary
+                    if len(x.layers) > len(shaders[i].parent.layers):
+                        shaders[i] = shader
+                    found = True
+                    break
+            if not found:
+                shader_mats.append([x])
+                shaders.append(shader)
+        return shaders
 
     def pre_pack(self, mdl0):
         """Cleans up references in preparation for packing"""
@@ -198,3 +245,9 @@ class PackMdl0(PackSubfile):
             xlu.sort()
             defs.append(xlu)
         return defs
+
+    def __init__(self, node, binfile):
+        self.shaders = []
+        self.shader_mats = []
+        self.mat_packers = {}
+        super().__init__(node, binfile)

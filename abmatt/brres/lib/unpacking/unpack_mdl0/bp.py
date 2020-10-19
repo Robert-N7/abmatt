@@ -115,8 +115,8 @@ class UnpackIndMtx(Unpacker):
             if i == 0:
                 ind_matrix.id = (bpmem - ind_matrix.BPMEM_IND_MTXA0) // 3
             scale = scale | (data >> 22 & 3) << (2 * i)
-            ind_matrix.matrix[0] = ind_matrix.force11bitFloat(data & 0x7ff)  # row 0
-            ind_matrix.matrix[1] = ind_matrix.force11bitFloat(data >> 11 & 0x7ff)  # row 1
+            ind_matrix.matrix[0][i] = self.force11bitFloat(data & 0x7ff)  # row 0
+            ind_matrix.matrix[1][i] = self.force11bitFloat(data >> 11 & 0x7ff)  # row 1
         ind_matrix.scale = scale - 17
 
     def force11bitFloat(self, val):
@@ -139,6 +139,14 @@ class UnpackIndMtx(Unpacker):
         if val & 1:  # sign
             f *= -1
         return f
+
+
+def unpack_color(binfile, is_constant):
+    red, alpha = unpack_color_reg(binfile)
+    green, blue = unpack_color_reg(binfile)
+    if not is_constant:
+        binfile.advance(10)
+    return red, green, blue, alpha
 
 
 def unpack_color_reg(binfile):

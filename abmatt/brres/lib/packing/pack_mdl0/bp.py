@@ -1,4 +1,8 @@
-from brres.lib.unpacking.interface import Unpacker
+from brres.lib.packing.interface import Packer
+
+
+def pack_ras1_ss(binfile, data, index):
+    pack_bp(binfile, BPMEM_RAS1_SS0 + index, data)
 
 
 def pack_ras1_iref(binfile, ind_maps, ind_coords):
@@ -15,8 +19,8 @@ def pack_ind_cmd(binfile, index, stage, format, bias, alpha,
                  matrix, swrap, twrap,
                  use_prev_stage, unmodifiedLOD):
     data = stage & 3 | (format & 3) << 2 | (bias & 7) << 4 | (alpha & 3) << 7 \
-        | (matrix & 7) << 9 | (swrap & 7) << 13 | (twrap & 7) << 16 \
-        | (use_prev_stage & 1) << 19 | (unmodifiedLOD & 1) << 20
+           | (matrix & 7) << 9 | (swrap & 7) << 13 | (twrap & 7) << 16 \
+           | (use_prev_stage & 1) << 19 | (unmodifiedLOD & 1) << 20
     pack_bp(binfile, BPMEM_IND_CMD0 + index, data)
 
 
@@ -24,8 +28,8 @@ def pack_alpha_env(binfile, index, a, b, c, d,
                    dest, bias, op, clamp, shift,
                    tswap, rswap):
     data = (a & 7) << 13 | (b & 7) << 10 | (c & 7) << 7 | (d & 7) << 4 \
-        | (dest & 3) << 22 | (bias & 3) << 16 | (op & 1) << 18 | (clamp & 1) << 19 | (shift & 3) << 20 \
-        | (tswap & 3) << 2 | rswap & 3
+           | (dest & 3) << 22 | (bias & 3) << 16 | (op & 1) << 18 | (clamp & 1) << 19 | (shift & 3) << 20 \
+           | (tswap & 3) << 2 | rswap & 3
     pack_bp(binfile, BPMEM_TEV_ALPHA_ENV_0 + (index * 2), data)
 
 
@@ -33,28 +37,33 @@ def pack_color_env(binfile, index, a, b, c, d,
                    dest, bias, op,
                    clamp, shift):
     data = (a & 0xf) << 12 | (b & 0xf) << 8 | (c & 0xf) << 4 | (d & 0xf) \
-        | (dest & 3) << 22 | (bias & 3) << 16 | (op & 1) << 18 \
-        | (clamp & 1) << 19 | (shift & 1) << 3
+           | (dest & 3) << 22 | (bias & 3) << 16 | (op & 1) << 18 \
+           | (clamp & 1) << 19 | (shift & 1) << 3
     pack_bp(binfile, BPMEM_TEV_COLOR_ENV_0 + (index * 2), data)
 
 
 def pack_tref_helper(map, coord, enable, raster):
-    return map & 7 | (coord & 7) << 3 | (enable << 6) & 1 | (raster << 7) & 7
+    return map & 7 | (coord & 7) << 3 | (enable & 1) << 6 | (raster & 7) << 7
 
 
 def pack_tref(binfile, index, map0, coord0, enable0, raster0,
-              map1, coord1, enable1, raster1):
-    data = pack_tref_helper(map0, coord0, enable0, raster0) \
-        | pack_tref_helper(map1, coord1, enable1, raster1) << 12
+              map1=None, coord1=None, enable1=None, raster1=None):
+    data = pack_tref_helper(map0, coord0, enable0, raster0)
+    if map1 is not None:
+        data |= pack_tref_helper(map1, coord1, enable1, raster1) << 12
     pack_bp(binfile, BPMEM_TREF0 + index, data)
 
 
 def pack_kcel(binfile, index,
-            csel0, csel_a0, csel1, csel_a1,
-            xga0=0, xrgb0=0):
+              csel0, csel_a0, csel1=0, csel_a1=0,
+              xga0=0, xrgb0=0):
     data = (csel0 & 0x1f) << 4 | (csel_a0 & 0x1f) << 9 | (csel1 & 0x1f) << 14 \
-        | (csel_a1 & 0x1f) << 19 | (xga0 & 3) << 2 | xrgb0 & 3
+           | (csel_a1 & 0x1f) << 19 | (xga0 & 3) << 2 | xrgb0 & 3
     pack_bp(binfile, BPMEM_TEV_KSEL0 + index, data)
+
+
+def pack_bp_mask(binfile, mask=0):
+    pack_bp(binfile, BPMEM_BP_MASK, mask)
 
 
 def pack_alpha_function(binfile, ref0, ref1, comp0, comp1, logic):
@@ -67,76 +76,76 @@ def pack_zmode(binfile, depth_test, depth_update, depth_function):
     pack_bp(binfile, BPMEM_ZMODE, data)
 
 
-def pack_blend_mode(binfile, enabled, logic_enabled, dither, color, alpha,
-                    subtract, logic, source, dest):
-    data = enabled & 1 | (logic_enabled & 1) << 1 | (dither & 1) << 2 | (color & 1) << 1
-
-def unpack_blend_mode(mat, binfile):
-    data = unpack_bp(binfile)
-    mat.blend_enabled = data & 1
-    mat.blend_logic_enabled = data >> 1 & 1
-    mat.blend_dither = data >> 2 & 1
-    mat.blend_update_color = data >> 1 & 1
-    mat.blend_update_alpha = data >> 1 & 1
-    mat.blend_subtract = data >> 11 & 1
-    mat.blend_logic = data >> 12 & 0xf
-    mat.blend_source = data >> 8 & 0x7
-    mat.blend_dest = data >> 5 & 0x7
+def pack_blend_mode(binfile, enabled, logic_enabled, dither,
+                    color, alpha, subtract, logic,
+                    source, dest):
+    data = enabled & 1 | (logic_enabled & 1) << 1 | (dither & 1) << 2 \
+           | (color & 1) << 3 | (alpha & 1) << 4 | (subtract & 1) << 11 | (logic & 0xf) << 12 \
+           | (source & 7) << 8 | (dest & 7) << 5
+    pack_bp(binfile, BPMEM_BLENDMODE, data)
 
 
-def unpack_constant_alpha(binfile):
-    data = unpack_bp(binfile)
-    enabled = data >> 8 & 0x1
-    alpha = data & 0xff
-    return enabled, alpha
+def pack_constant_alpha(binfile, enabled, alpha):
+    data = (enabled & 1) << 8 | alpha & 0xff
+    pack_bp(binfile, BPMEM_CONSTANTALPHA, data)
 
 
-class UnpackIndMtx(Unpacker):
-    def __init__(self, node, binfile):
+class PackIndMtx(Packer):
+    def __init__(self, node, binfile, index):
+        self.index = index
         super().__init__(node, binfile)
 
-    def unpack(self, ind_matrix, binfile):
-        """ unpacks ind matrix """
-        scale = 0
-        for i in range(3):
-            ind_matrix.enabled, bpmem, data = unpack_bp(binfile, return_enabled=True)
-            if not ind_matrix.enabled:
-                binfile.advance(10)  # skip ahead
-                ind_matrix.scale = scale
-                return
-            # parse data
-            if i == 0:
-                ind_matrix.id = (bpmem - ind_matrix.BPMEM_IND_MTXA0) // 3
-            scale = scale | (data >> 22 & 3) << (2 * i)
-            ind_matrix.matrix[0] = ind_matrix.force11bitFloat(data & 0x7ff)  # row 0
-            ind_matrix.matrix[1] = ind_matrix.force11bitFloat(data >> 11 & 0x7ff)  # row 1
-        ind_matrix.scale = scale - 17
-
-    def force11bitFloat(self, val):
-        """Forces 11 bit to float
+    def encode11bitFloat(self, val):
+        """Encodes the 10bit float as int
             100 0000 0000 sign
             011 1111 1111 mantissa
         """
-        # There's probably a better way to do this
-        f = 0.0
-        bitn = 10
-        start = 1 << bitn
-        while bitn > 0:
-            # print("divisor {} bitn {}".format(start, bitn))
-            if val & 1:
-                f += 1.0 / start
-                # print(f)
-            val >>= 1
-            start >>= 1
-            bitn -= 1
-        if val & 1:  # sign
-            f *= -1
-        return f
+        e = 1 if val < 0 else 0  # sign
+        start = 2
+        bitn = 1
+        val = abs(val)
+        while bitn <= 10:
+            e <<= 1  # make room
+            subtractee = 1 / start  # divide by exponent of 2
+            if val >= subtractee:  # can subtractee be taken out?
+                val -= subtractee
+                e |= 1  # then place a bit
+            bitn += 1  # increase the number of bits
+            start <<= 1
+        return e
+
+    def pack(self, matrix, binfile):
+        """Packs the ind matrix """
+        if not matrix.enabled:
+            binfile.advance(15)
+            return
+        bpmem = BPMEM_IND_MTXA0 + self.index * 3
+        scale = matrix.scale + 17
+        for i in range(3):
+            sbits = (scale >> (2 * i) & 3)
+            r0 = self.encode11bitFloat(matrix.matrix[0][i])
+            r1 = self.encode11bitFloat(matrix.matrix[1][i])
+            data = sbits << 22 | r1 << 11 | r0
+            pack_bp(binfile, bpmem, data)
+            bpmem += 1
 
 
-def unpack_color_reg(binfile):
-    data = unpack_bp(binfile)
-    return data >> 12 & 0x7ff, data & 0xfff
+def pack_color(binfile, index, color, is_constant):
+    bpmem = BPMEM_TEV_REGISTER_L_0 + (2 * index)
+    pack_color_reg(binfile, bpmem, color[3], color[0])
+    bpmem += 1
+    green = color[1]
+    blue = color[2]
+    pack_color_reg(binfile, bpmem, green, blue)
+    if not is_constant:
+        pack_color_reg(binfile, bpmem, green, blue)
+        pack_color_reg(binfile, bpmem, green, blue)
+
+
+def pack_color_reg(binfile, bpmem, left_bits, right_bits):
+    data = (left_bits & 0x7ff) << 12 | right_bits & 0xfff
+    pack_bp(binfile, bpmem, data)
+
 
 def pack_bp(binfile, bp_mem, data):
     binfile.write('BI', LOAD_BP, bp_mem << 24 | data & 0xffffff)
@@ -369,7 +378,7 @@ BPMEM_TEV_ALPHA_ENV_0 = 0xC1
 # BPMEM_TEV_COLOR_ENV_F = 0xDE
 # BPMEM_TEV_ALPHA_ENV_F = 0xDF
 
-# BPMEM_TEV_REGISTER_L_0 = 0xE0
+BPMEM_TEV_REGISTER_L_0 = 0xE0
 # BPMEM_TEV_REGISTER_H_0 = 0xE1
 # BPMEM_TEV_REGISTER_L_1 = 0xE2
 # BPMEM_TEV_REGISTER_H_1 = 0xE3
