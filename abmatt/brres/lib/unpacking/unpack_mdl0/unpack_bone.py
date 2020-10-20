@@ -17,7 +17,7 @@ class UnpackBone(Unpacker):
             offset += self.offset
             for x in bones:
                 if x.offset == offset:
-                    return x
+                    return x.node
             raise ValueError('Failed to find bone link to {}'.format(offset))
 
     @staticmethod

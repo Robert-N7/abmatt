@@ -4,6 +4,8 @@ import uuid
 from threading import Thread
 from time import sleep
 
+from PyQt5.QtGui import QPixmap
+
 from brres import Brres
 from brres.lib.node import ClipableObserver
 from brres.tex0 import ImgConverter, Tex0
@@ -137,7 +139,7 @@ class ImageManager(ClipableObserver):
         return os.path.abspath(brres.name)
 
     def on_node_update(self, node):
-        pass
+        self.__enqueue(node)
 
     def on_child_update(self, child):
         if type(child) == Tex0:
@@ -157,3 +159,17 @@ class ImageManager(ClipableObserver):
             self.thread.start()
         # self.cfg_file = os.path.join(self.tmp_dir, 'brres_to_folder.txt')
         # self.__load_config()
+
+
+def update_image(widget, dir, name, scale_width=64):
+    img_file = os.path.join(dir, name + '.png')
+    if os.path.exists(img_file):
+        pixelmap = QPixmap(img_file)
+        width = pixelmap.width()
+        height = pixelmap.height()
+        if width > height:
+            pixelmap = pixelmap.scaledToWidth(scale_width)
+        else:
+            pixelmap = pixelmap.scaledToHeight(scale_width)
+        widget.setPixmap(pixelmap)
+        widget.setMask(pixelmap.mask())

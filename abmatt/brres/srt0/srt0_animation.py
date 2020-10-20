@@ -49,16 +49,17 @@ class SRTKeyFrameList:
             self.setKeyFrame(value, key, delta)
 
     def __eq__(self, other):
-        my_entries = self.entries
-        other_entries = other.entries
-        if len(my_entries) != len(other_entries):
-            return False
-        for i in range(len(my_entries)):
-            e = my_entries[i]
-            o = other_entries[i]
-            if e.index != o.index or e.value != o.value or e.delta != o.delta:
-                return False
-        return True
+        return self.entries == other.entries
+        # my_entries = self.entries
+        # other_entries = other.entries
+        # if len(my_entries) != len(other_entries):
+        #     return False
+        # for i in range(len(my_entries)):
+        #     e = my_entries[i]
+        #     o = other_entries[i]
+        #     if e.index != o.index or e.value != o.value or e.delta != o.delta:
+        #         return False
+        # return True
 
     def __str__(self):
         val = '('
@@ -197,6 +198,9 @@ class SRTTexAnim(Clipable):
         }
         super(SRTTexAnim, self).__init__(name, parent, binfile)
 
+    def __eq__(self, other):
+        return self.animations == other.animations
+
     # ---------------------- CLIPABLE -------------------------------------------------------------
     def paste(self, item):
         self.animations = deepcopy(item.animations)
@@ -282,6 +286,10 @@ class SRTMatAnim(Clipable):
         self.texEnabled = [False] * 8
         self.loop = looping
         super(SRTMatAnim, self).__init__(name, parent, binfile)
+
+    def __eq__(self, other):
+        return self.framecount == other.framecount and self.loop == other.loop \
+               and self.texEnabled == other.texEnabled and self.tex_animations == other.tex_animations
 
     def mark_unmodified(self):
         self.is_modified = False

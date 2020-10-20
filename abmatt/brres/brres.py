@@ -105,7 +105,7 @@ class Brres(Clipable, Packable):
 
     def set_str(self, key, value):
         if key == 'name':
-            self.name = value
+            self.rename(value)
         else:
             raise ValueError('Unknown key "{}"'.format(key))
 
@@ -181,25 +181,29 @@ class Brres(Clipable, Packable):
                 self.mark_unmodified()
             return True
 
-    def getTrace(self):
+    def get_trace(self):
         if self.parent:
             return self.parent.name + "->" + self.name
         return self.name
 
     def info(self, key=None, indentation_level=0):
-        print('{}{}:\t{} model(s)\t{} texture(s)'.format('  ' * indentation_level + '>', self.name,
-                                                         len(self.models), len(self.textures)))
-        folder_indent = indentation_level + 1
+        print('{}{}:\t{} model(s)\t{} texture(s)'.format('  ' * indentation_level + '>', self.name,                                                         len(self.models), len(self.textures)))
         indentation_level += 2
-        # todo, remove folders references
-        folders = self.folders
-        for folder_name in folders:
-            folder = folders[folder_name]
-            folder_len = len(folder)
-            if folder_len:
-                print('{}>{}\t{}'.format('  ' * folder_indent, folder_name, folder_len))
-                for x in folder:
-                    x.info(key, indentation_level)
+        self.sub_info('MDL0', self.models, key, indentation_level)
+        self.sub_info('TEX0', self.textures, key, indentation_level)
+        self.sub_info('PAT0', self.pat0, key, indentation_level)
+        self.sub_info('SRT0', self.srt0, key, indentation_level)
+        self.sub_info('CHR0', self.chr0, key, indentation_level)
+        self.sub_info('SCN0', self.scn0, key, indentation_level)
+        self.sub_info('SHP0', self.shp0, key, indentation_level)
+        self.sub_info('CLR0', self.clr0, key, indentation_level)
+
+    def sub_info(self, folder_name, folder, key, indentation_level):
+        folder_len = len(folder)
+        if folder_len:
+            print('{}>{}\t{}'.format('  ' * (indentation_level - 1), folder_name, folder_len))
+            for x in folder:
+                x.info(key, indentation_level)
 
     def isChanged(self):
         return self.is_modified
@@ -233,17 +237,18 @@ class Brres(Clipable, Packable):
             if item in filename:
                 return item
 
+    def get_animations(self):
+        return [self.srt0, self.pat0, self.chr0, self.scn0, self.shp0, self.clr0]
+
     def renameModel(self, old_name, new_name):
         for x in self.models:
             if x.name == new_name:
                 AutoFix.get().warn('Unable to rename {}, the model {} already exists!'.format(old_name, new_name))
                 return None
-        folders = self.folders
-        for n in folders:
-            if n != self.models and n != self.textures:
-                for x in folders[n]:
-                    if old_name == x.name:
-                        x.name = new_name
+        for n in self.get_animations():
+            for x in n:
+                if old_name == x.name:
+                    x.name = new_name
         return new_name
 
     def getModelsByName(self, name):
@@ -260,18 +265,27 @@ class Brres(Clipable, Packable):
                 if tex is not None:
                     return tex
 
-    def add_tex0(self, tex0):
+    def add_tex0(self, tex0, replace=True, mark_modified=True):
+        replaced = False
         if tex0.name in self.texture_map:
+            if not replace:
+                return False
             self.remove_tex0(tex0.name)
             AutoFix.get().info('Replaced tex0 {}'.format(tex0.name))
+            replaced = True
         self.textures.append(tex0)
         self.texture_map[tex0.name] = tex0
         tex0.parent = self      # this may be redundant
+        if mark_modified:
+            self.mark_modified()
+        return replaced
 
     def paste_tex0s(self, brres):
         tex_map = brres.texture_map
-        for x in tex_map:
-            self.add_tex0(tex_map[x])
+        if len(tex_map):
+            for x in tex_map:
+                self.add_tex0(tex_map[x], mark_modified=False)
+            self.mark_modified()
 
     def import_texture(self, image_path, name=None):
         tex0 = ImgConverter().encode(image_path, self)
@@ -309,6 +323,7 @@ class Brres(Clipable, Packable):
         try:
             tex = self.texture_map.pop(name)
             self.textures.remove(tex)
+            self.mark_modified()
         except KeyError:
             AutoFix.get().warn('No texture {} in {}'.format(name, self.name))
 
@@ -316,6 +331,7 @@ class Brres(Clipable, Packable):
         tex = self.textures.pop(i)
         if tex:
             self.texture_map.pop(tex.name)
+            self.mark_modified()
 
     def getUsedTextures(self):
         ret = set()

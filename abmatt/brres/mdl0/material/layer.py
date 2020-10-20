@@ -36,19 +36,29 @@ class Layer(Clipable):
     REMOVE_UNKNOWN_REFS = True
 
     def __init__(self, name, parent, binfile=None):
-        """ Initializes, id (position of layer), name, and parent material """
+        """ Initializes, name, and parent material """
         self.enable_identity_matrix = True
-        self.tex0 = None
-        self.projection = 0
-        self.inputform = 0
-        self.type = 0
-        self.coordinates = 5
-        self.emboss_source = 5
-        self.emboss_light = 0
         self.texture_matrix = [1.0, 0, 0, 0,
                                0, 1.0, 0, 0,
                                0, 0, 1.0, 0]
         super(Layer, self).__init__(name, parent, binfile)
+
+    def __eq__(self, other):
+        """
+        :type other: Layer
+        :return: true if equal
+        """
+        return self.enable == other.enable and self.name == other.name and self.scale == other.scale \
+            and self.rotation == other.rotation and self.translation == other.translation \
+            and self.scn0_light_ref == other.scn0_light_ref and self.scn0_camera_ref == other.scn0_camera_ref \
+            and self.map_mode == other.map_mode and self.vwrap == other.vwrap and self.uwrap == other.uwrap \
+            and self.minfilter == other.minfilter and self.magfilter == other.magfilter \
+            and self.lod_bias == other.lod_bias and self.max_anisotrophy == other.max_anisotrophy \
+            and self.texel_interpolate == other.texel_interpolate and self.clamp_bias == other.clamp_bias \
+            and self.normalize == other.normalize and self.projection == other.projection \
+            and self.inputform == other.inputform and self.type == other.type \
+            and self.coordinates == other.coordinates and self.emboss_source == other.emboss_source \
+            and self.emboss_light == other.emboss_light and self.texture_matrix == other.texture_matrix
 
     def begin(self):
         self.enable = True
@@ -64,6 +74,12 @@ class Layer(Clipable):
         self.max_anisotrophy = 0
         self.texel_interpolate = self.clamp_bias = False
         self.normalize = 0
+        self.projection = 0
+        self.inputform = 0
+        self.type = 0
+        self.coordinates = 5
+        self.emboss_source = 5
+        self.emboss_light = 0
 
     def __value__(self):
         return "Layer {}: scale {} rot {} trans {} uwrap {} vwrap {} minfilter {}".format(self.name,
@@ -74,6 +90,12 @@ class Layer(Clipable):
     # ----------------------------------------------------------------------------------
     #   GETTERS
     # ----------------------------------------------------------------------------------
+    def get_tex0(self, texture_map=None):
+        if texture_map is None:
+            texture_map = self.get_texture_map()
+        return texture_map.get(self.name)
+
+
     def get_str(self, item):
         for i in range(len(self.SETTINGS)):
             if self.SETTINGS[i] == item:
@@ -363,7 +385,7 @@ class Layer(Clipable):
         self.vwrap = item.vwrap
         self.minfilter = item.minfilter
         self.magfilter = item.magfilter
-        self.lod_bias = item.LODBias
+        self.lod_bias = item.lod_bias
         self.max_anisotrophy = item.max_anisotrophy
         self.clamp_bias = item.clamp_bias
         self.texel_interpolate = item.texel_interpolate
@@ -381,7 +403,6 @@ class Layer(Clipable):
         self.coordinates = item.coordinates
         self.emboss_source = item.emboss_source
         self.emboss_light = item.emboss_light
-        self.dual_matrix = item.dual_matrix
         self.normalize = item.normalize
         self.mark_modified()
 
@@ -403,9 +424,7 @@ class Layer(Clipable):
             self.mark_modified()
 
     def check(self, texture_map=None):
-        if texture_map is None:
-            texture_map = self.parent.get_texture_map()
-        tex = texture_map.get(self.name)
+        tex = self.get_tex0(texture_map)
         if not tex:
             # try fuzz
             result = None

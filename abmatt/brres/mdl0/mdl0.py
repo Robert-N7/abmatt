@@ -10,11 +10,11 @@ from autofix import AutoFix, Bug
 from brres.lib.packing.pack_mdl0.pack_mdl0 import PackMdl0
 from brres.lib.unpacking.unpack_mdl0.unpack_mdl0 import UnpackMdl0
 from brres.mdl0.bone import Bone
+from brres.mdl0.material.material import Material
 from brres.pat0.pat0 import Pat0Collection
 from brres.pat0.pat0_material import Pat0MatAnimation
 from brres.srt0.srt0 import SRTCollection
 from brres.srt0.srt0_animation import SRTMatAnim
-from converters.material import Material
 
 
 class ModelGeneric(Node):
@@ -182,14 +182,22 @@ class Mdl0(SubFile):
     #         group[i].index = i
 
     def update_polygon_material(self, polygon, old_mat, new_mat):
-        polys = self.get_polys_using_material(old_mat)
-        m = Material(new_mat.name, self)
-        m.polygons.append(polygon)
-        if len(polys) == 1:
+        # polys = self.get_polys_using_material(old_mat)
+        if new_mat.parent != self:  # is it a material not in the model already?
+            test = self.get_material_by_name(new_mat.name)
+            if test == new_mat:     # already have this material?
+                new_mat = test
+            else:
+                m = Material.get_unique_material(new_mat.name, self)
+                self.add_material(m)
+                m.paste(new_mat)
+                new_mat = m
+        old_mat.polygons.remove(polygon)
+        new_mat.polygons.append(polygon)
+        polygon.material = new_mat
+        if not len(old_mat.polygons):
             self.materials.remove(old_mat)
-        self.add_material(m)
-        m.paste(new_mat)
-        return m
+        return new_mat
 
     def add_material(self, material):
         self.add_to_group(self.materials, material)
@@ -241,7 +249,7 @@ class Mdl0(SubFile):
         self.srt0_collection = srt0_collection
         not_found = []
         for x in srt0_collection:
-            mat = self.getMaterialByName(x.name)
+            mat = self.get_material_by_name(x.name)
             if not mat:
                 not_found.append(x)
             else:
@@ -276,7 +284,7 @@ class Mdl0(SubFile):
         self.pat0_collection = pat0_collection
         not_found = []
         for x in pat0_collection:
-            mat = self.getMaterialByName(x.name)
+            mat = self.get_material_by_name(x.name)
             if not mat:
                 not_found.append(x)
             else:
@@ -318,19 +326,19 @@ class Mdl0(SubFile):
         return result
 
     # ------------------------------------ Materials ------------------------------
-    def getMaterialByName(self, name):
+    def get_material_by_name(self, name):
         """Exact naming"""
         for m in self.materials:
             if m.name == name:
                 return m
         return None
 
-    def getMaterialByID(self, id):
+    def get_material_by_id(self, id):
         for x in self.materials:
             if x.index == id:
                 return x
 
-    def getMaterialsByName(self, name):
+    def get_materials_by_name(self, name):
         return MATCHING.findAll(name, self.materials)
 
     # ------------------------------- Shaders -------------------------------------------
@@ -362,8 +370,8 @@ class Mdl0(SubFile):
             AutoFix.get().info(notify, 4)
         return name
 
-    def getTrace(self):
-        return self.parent.getTrace() + "->" + self.name
+    def get_trace(self):
+        return self.parent.get_trace() + "->" + self.name
 
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + '>' + self.name if indentation_level else self.parent.name + "->" + self.name

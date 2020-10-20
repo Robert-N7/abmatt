@@ -131,7 +131,7 @@ class Window(QMainWindow, ConvertObserver):
 
     def open_dialog(self):
         fname, filter = QFileDialog.getOpenFileName(self, 'Open file',
-                                            self.cwd, "Brres files (*.brres)")
+                                                    self.cwd, "Brres files (*.brres)")
         if fname:
             self.open(fname)
 
@@ -168,7 +168,7 @@ class Window(QMainWindow, ConvertObserver):
             if brres_name is not None:
                 brres = self.get_brres_by_fname(brres_name)
             elif self.brres and os.path.splitext(os.path.basename(self.brres.name))[0] == \
-                os.path.splitext(os.path.basename(fname))[0]:
+                    os.path.splitext(os.path.basename(fname))[0]:
                 brres = self.brres
         self.cwd, name = os.path.split(fname)
         base_name, ext = os.path.splitext(name)
@@ -263,6 +263,13 @@ class Window(QMainWindow, ConvertObserver):
         self.statusBar().showMessage(message)
 
 
+def on_exit():
+    #   join other threads
+    ImageManager.stop()
+    ConvertManager.stop()
+    AutoFix.get().quit()
+
+
 def main():
     argv = sys.argv[1:]
     if getattr(sys, 'frozen', False):
@@ -274,8 +281,7 @@ def main():
     exe.setStyle('Fusion')
     d = Window()
     result = exe.exec_()
-    ImageManager.stop()
-    ConvertManager.stop()
+    on_exit()
     sys.exit(result)
 
 

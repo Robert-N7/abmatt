@@ -1,19 +1,17 @@
-import os
-
-from PyQt5.QtCore import Qt, QMimeData, QUrl
-from PyQt5.QtGui import QDrag, QPixmap, QPainter
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QComboBox, QSlider, QStackedLayout
 from PyQt5.QtWidgets import QWidget, QGridLayout, QScrollArea, QVBoxLayout, QLabel, QHBoxLayout, QTabWidget, QCheckBox, \
     QFrame
 
 from brres import Brres
 from brres.lib.node import ClipableObserver
-from brres.mdl0.material import Material
+from brres.mdl0.material.material import Material
 from gui.brres_path import BrresPath, get_materials_by_url
-from gui.image_manager import ImageObserver, ImageManager
+from gui.image_manager import ImageObserver, ImageManager, update_image
+from gui.mat_widget import MaterialWidget, MatWidgetHandler
 
 
-class MaterialTabs(QWidget):
+class MaterialTabs(QWidget, MatWidgetHandler):
     def __init__(self, parent):
         super().__init__(parent)
         layout = QVBoxLayout()
@@ -24,7 +22,9 @@ class MaterialTabs(QWidget):
         tab_widget.addTab(self.material_library, 'Library Materials')
         self.scene_library = MaterialBrowser(self)
         tab_widget.addTab(self.scene_library, 'Scene Materials')
-        self.setAcceptDrops(True)
+        # tab_widget.setChangeCurrentOnDrag(True)
+        # self.setChangeCurrentOnDrag(True)
+        # self.setAcceptDrops(True)
         self.editor = MaterialSmallEditor(self)
         layout.addWidget(self.editor)
         self.setLayout(layout)
@@ -165,63 +165,6 @@ class MaterialLibrary(MaterialBrowser):
             a0.accept()
         else:
             a0.ignore()
-
-
-class MaterialWidget(QLabel, ClipableObserver, ImageObserver):
-    def on_image_update(self, dir):
-        self.layer_name = name = self.material.get_first_layer_name()
-        if name:
-            self.__update_image(dir, name)
-
-    def on_node_update(self, node):
-        self.on_child_update(node)  # redirect
-
-    def on_child_update(self, child):
-        name = self.material.get_first_layer_name()
-        if name != self.layer_name:
-            self.__update_image(ImageManager.get().get_image_dir(self.material.parent.parent), name)
-
-    def __update_image(self, dir, name):
-        update_image(self, dir, name)
-        # img_file = os.path.join(dir, name + '.png')
-        # if os.path.exists(img_file):
-        #     pixelmap = QPixmap(img_file).scaledToWidth(64)
-        #     self.setPixmap(pixelmap)
-        #     self.setMask(pixelmap.mask())
-
-    def __init__(self, parent, handler, material, brres_path=None):
-        super().__init__(material.name, parent)
-        self.setToolTip(material.name)
-        self.is_text = True
-        self.material = material
-        self.handler = handler
-        self.layer_name = None
-        self.material.register_observer(self)
-        ImageManager.get().subscribe(self, material.parent.parent)
-        if brres_path is None:
-            self.brres_path = BrresPath(material=material)
-        else:
-            self.brres_path = brres_path
-
-    def mousePressEvent(self, ev):
-        self.handler.on_material_select(self.material)
-        if ev.button() == Qt.LeftButton:
-            self.drag_start_position = ev.pos()
-
-    def mouseMoveEvent(self, ev):
-        if not ev.buttons() & Qt.LeftButton:
-            return
-        drag = QDrag(self)
-        mimedata = QMimeData()
-        mimedata.setText(self.brres_path.get_path())
-        drag.setMimeData(mimedata)
-        pixmap = QPixmap(self.size())
-        painter = QPainter(pixmap)
-        painter.drawPixmap(self.rect(), self.grab())
-        painter.end()
-        drag.setPixmap(pixmap)
-        drag.setHotSpot(ev.pos())
-        drag.exec_(Qt.CopyAction | Qt.MoveAction)
 
 
 class MaterialSmallEditor(QFrame, ClipableObserver):
@@ -374,15 +317,3 @@ class MapWidget(QLabel, ClipableObserver, ImageObserver):
         #     self.set_image_path(image_path)
 
 
-def update_image(widget, dir, name, scale_width=64):
-    img_file = os.path.join(dir, name + '.png')
-    if os.path.exists(img_file):
-        pixelmap = QPixmap(img_file)
-        width = pixelmap.width()
-        height = pixelmap.height()
-        if width > height:
-            pixelmap = pixelmap.scaledToWidth(scale_width)
-        else:
-            pixelmap = pixelmap.scaledToHeight(scale_width)
-        widget.setPixmap(pixelmap)
-        widget.setMask(pixelmap.mask())

@@ -4,7 +4,7 @@ import time
 import numpy as np
 
 from autofix import AutoFix
-from abmatt.brres.mdl0 import material
+from abmatt.brres.mdl0.material import material
 from abmatt.brres.tex0 import EncodeError, NoImgConverterError, ImgConverter
 from abmatt.converters.matrix import matrix_to_srt
 from brres import Brres
@@ -106,7 +106,7 @@ class Converter:
 
     def _encode_material(self, generic_mat):
         if self.replacement_model:
-            m = self.replacement_model.getMaterialByName(generic_mat.name)
+            m = self.replacement_model.get_material_by_name(generic_mat.name)
             if m is None:
                 m = self.material_library.get(generic_mat)
             if m is not None:

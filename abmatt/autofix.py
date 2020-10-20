@@ -105,16 +105,19 @@ class AutoFix:
         self.thread = Thread(target=self.run)
         self.thread.start()
 
-    def quit(self):
-        self.is_running = False
-        self.thread.join()
+    @staticmethod
+    def quit():
+        a = AutoFix.__AUTO_FIXER
+        if a is not None:
+            a.is_running = False
+            a.thread.join()
 
     def run(self):
         while self.is_running:
+            sleep(0.1)
             while len(self.queue):
                 message = self.queue.pop(0)
                 message.send(self.pipe)
-            sleep(0.1)
 
     def enqueue(self, message):
         self.queue.append(message)

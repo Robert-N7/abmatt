@@ -523,7 +523,7 @@ class Command:
                 Command.MATERIALS = []
         # Materials
         for x in Command.MODELS:
-            Command.MATERIALS.extend(x.getMaterialsByName(material))
+            Command.MATERIALS.extend(x.get_materials_by_name(material))
         Command.SELECT_TYPE = None  # reset selection
         return True
 

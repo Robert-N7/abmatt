@@ -59,10 +59,12 @@ class ConvertManager:
             manager.thread.join()
 
     def run(self):
-        while self.is_running:
+        while True:
             if len(self.queue):
                 self.item = self.queue.pop(0)
                 self.item.convert()
                 for x in self.observers:
                     x.on_conversion_finish(self.item)
+            if not self.is_running:
+                break
             sleep(0.2)

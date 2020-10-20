@@ -1,7 +1,7 @@
 import unittest
+
 import numpy as np
 
-from tests.lib import TestSimple, TestWater
 from abmatt.converters.matrix import srt_to_matrix, matrix_to_srt
 
 
@@ -12,7 +12,7 @@ class TestMatrix(unittest.TestCase):
                            [-1.000000, 0.000000, 0.000000, -129.523682],
                            [-0.000000, 1.000000, -0.000000, 1528.046021],
                            [0.000000, 0.000000, 0.000000, 1.000000]])
-        converted_matrix = srt_to_matrix((1, 1, 1), (90.0, 0.0, -90.0), (-2255.436,-129.5237,1528.046))
+        converted_matrix = srt_to_matrix((1, 1, 1), (90.0, 0.0, -90.0), (-2255.436, -129.5237, 1528.046))
         self.assertTrue(np.allclose(matrix, converted_matrix, atol=0.0001))
 
     def test_matrix_to_srt(self):
@@ -27,8 +27,6 @@ class TestMatrix(unittest.TestCase):
         self.assertTrue(np.allclose(scale, s, atol=0.0001))
         self.assertTrue(np.allclose(rotation, r, atol=0.0001))
         self.assertTrue(np.allclose(translation, t, atol=0.0001))
-
-
 
 
 if __name__ == '__main__':

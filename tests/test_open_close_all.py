@@ -2,6 +2,7 @@ import os
 import sys
 import unittest
 
+from autofix import AutoFix
 from brres import Brres
 
 
@@ -23,3 +24,4 @@ class TestOpenCloseAll(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+    AutoFix.quit()

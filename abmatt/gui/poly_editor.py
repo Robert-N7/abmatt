@@ -1,10 +1,15 @@
 from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QComboBox, QGridLayout, \
     QFrame, QDockWidget
 
+from brres.lib.node import ClipableObserver
 from gui.brres_path import BrresPath, NotABrresError
+from gui.mat_widget import MaterialWidget
 
 
-class PolyEditor(QFrame):
+class PolyEditor(QFrame, ClipableObserver):
+    def on_node_update(self, node):
+        self.on_update_polygon(node)
+
     def __init__(self, parent, poly=None):
         super().__init__(parent)
         self.__init_ui()
@@ -14,14 +19,18 @@ class PolyEditor(QFrame):
             self.poly = None
 
     def on_update_polygon(self, poly):
-        self.poly = poly
-        self.name_label.setText(poly.name)
-        self.material_box.setText(poly.get_material().name)
-        self.uv_count.setText(str(poly.num_tex))
-        self.face_count.setText(str(poly.face_count))
-        self.face_point_count.setText(str(poly.facepoint_count))
-        self.vertex_colors.setChecked(poly.num_colors > 0)
-        self.normals.setChecked(poly.has_normals())
+        if poly != self.poly:
+            if self.poly:
+                self.poly.unregister(self)
+            self.poly = poly
+            poly.register_observer(self)
+            self.name_label.setText(poly.name)
+            self.uv_count.setText(str(poly.count_uvs()))
+            self.face_count.setText(str(poly.face_count))
+            self.face_point_count.setText(str(poly.facepoint_count))
+            self.vertex_colors.setChecked(poly.count_colors() > 0)
+            self.normals.setChecked(poly.has_normals())
+        self.material_box.set_material(poly.get_material())
 
     def __init_ui(self):
         self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
@@ -47,13 +56,13 @@ class PolyEditor(QFrame):
         # Right side
         self.name_label = QLabel(self)
         # self.name_label.setReadOnly(True)
-        self.material_box = QLabel(self)
+        self.material_box = MaterialWidget(self)
         # self.material_box.setReadOnly(True)
         self.uv_count = QLabel(self)
         # self.uv_count.setReadOnly(True)
-        self.face_point_count = QLabel()
+        self.face_point_count = QLabel(self)
         # self.face_point_count.setReadOnly(True)
-        self.face_count = QLabel()
+        self.face_count = QLabel(self)
         # self.face_count.setReadOnly(True)
         layout.addWidget(self.name_label, 0, 1)
         layout.addWidget(self.material_box, 1, 1)
@@ -96,6 +105,6 @@ class PolyEditor(QFrame):
             if mat:
                 a0.accept()
                 self.poly.set_material(mat)
-                self.material_box.setText(mat.name)
+                # self.material_box.set_material()
                 return
         a0.ignore()

@@ -9,6 +9,21 @@ class LightChannel:
         if not unpacking:
             self.begin()
 
+    def __eq__(self, other):
+        """
+        :type other: LightChannel
+        :return: True if equal
+        """
+        return self.materialColorEnabled == other.materialColorEnabled and \
+            self.materialAlphaEnabled == other and \
+            self.ambientAlphaEnabled == other.ambientAlphaEnabled and \
+            self.ambientColorEnabled == other.ambientColorEnabled and \
+            self.rasterAlphaEnabled == other.rasterAlphaEnabled and \
+            self.rasterColorEnabled == other.rasterColorEnabled and \
+            self.materialColor == other.materialColor and \
+            self.ambientColor == other.ambientColor and \
+            self.colorLightControl == other.colorLightControl and \
+            self.alphaLightControl == other.alphaLightControl
 
     def begin(self):
         self.materialColorEnabled = self.materialAlphaEnabled = True
@@ -115,6 +130,20 @@ class LightChannel:
             self.attenuationEnabled = flags >> 9 & 1
             self.attenuationFunction = flags >> 10 & 1
             self.light4567 = flags >> 11 & 0xf
+
+        def __eq__(self, other):
+            """
+            :type other: LightChannel.LightChannelControl
+            :return: True if equal
+            """
+            return self.materialSourceVertex == other.materialSourceVertex and \
+                self.enabled == other.enabled and \
+                self.light0123 == other.light0123 and \
+                self.ambientSourceVertex == other.ambientSourceVertex and \
+                self.diffuseFunction == other.diffuseFunction and \
+                self.attenuationEnabled == other.attenuationEnabled and \
+                self.attenuationFunction == other.attenuationFunction and \
+                self.light4567 == other.light4567
 
         def is_vertex_color_enabled(self):
             return self.materialSourceVertex

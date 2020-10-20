@@ -38,7 +38,7 @@ def pack_color_env(binfile, index, a, b, c, d,
                    clamp, shift):
     data = (a & 0xf) << 12 | (b & 0xf) << 8 | (c & 0xf) << 4 | (d & 0xf) \
            | (dest & 3) << 22 | (bias & 3) << 16 | (op & 1) << 18 \
-           | (clamp & 1) << 19 | (shift & 1) << 3
+           | (clamp & 1) << 19 | (shift & 3) << 20
     pack_bp(binfile, BPMEM_TEV_COLOR_ENV_0 + (index * 2), data)
 
 

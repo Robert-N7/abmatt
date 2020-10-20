@@ -105,6 +105,7 @@ class UnpackPolygon(Unpacker):
     def parse_cp_vertex_format(self, polygon, hi, lo):
         if lo & 0x1:
             polygon.weight_index = self.i_pp()
+            self.encode_string += 'B'
         else:
             polygon.weight_index = -1
         lo >>= 1
@@ -161,6 +162,6 @@ class UnpackPolygon(Unpacker):
     def parse_xf_vertex_specs(self, vt_specs):
         poly = self.node
         poly.color_count = vt_specs & 0x3
-        poly.normal_type = vt_specs >> 2 & 0x3
+        normals = vt_specs >> 2 & 0x3
         poly.uv_count = vt_specs >> 4 & 0xf
 

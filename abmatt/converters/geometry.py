@@ -105,7 +105,7 @@ class Geometry:
         p.data = data
         p.encode_str = self.fmt_str
         mdl.add_to_group(mdl.objects, p)
-        material = mdl.getMaterialByName(self.material_name)
+        material = mdl.get_material_by_name(self.material_name)
         mdl.add_definition(material, p, bone)
         if self.colors:
             material.enable_vertex_color()
@@ -138,7 +138,7 @@ class Geometry:
             # now get the matrices and face points, encode them for each group
             matrices, face_points = group.get_influence_indices()
             data.extend(self.__encode_load_matrices(matrices))
-            new_data, face_count, facepoint_count = self.__encode_tris(face_points, fmt_str)
+            new_data, face_count, facepoint_count = self.__encode_tris(face_points, True)
             if face_count > 0:
                 total_face_count += face_count
                 total_facepoint_count += facepoint_count
@@ -157,6 +157,7 @@ class Geometry:
         if influences is not None:
             if influences.is_mixed():
                 polygon.bone_table = [i for i in range(len(mdl0.bones))]
+                polygon.weight_index = 0
                 self.fmt_str += 'B'
                 return True
             else:
@@ -168,7 +169,7 @@ class Geometry:
         mdl0.add_to_group(mdl0.vertices, vert)
         linked_bone = self.linked_bone
         points = vertices.points
-        if polygon.has_weighted_matrix:
+        if polygon.has_weighted_matrix():
             AutoFix.get().warn(f'Polygon weighting is experimental, {polygon.name} will likely be incorrect.')
             for i in range(len(vertices)):
                 influence = self.influences[i]
@@ -410,7 +411,7 @@ def decode_polygon(polygon, influences):
     color_index = polygon.get_color0_index()
     texcoords = []
     texcoord_index = polygon.get_uv_index(0)
-    for i in range(polygon.num_tex):
+    for i in range(polygon.count_uvs()):
         texcoords.append(polygon.get_uv_group(i))
 
     face_point_indices, weights = decode_indices(polygon, polygon.encode_str)

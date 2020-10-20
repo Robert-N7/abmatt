@@ -599,6 +599,13 @@ class IndMatrix():
     """
     BPMEM_IND_MTXA0 = 0x06
 
+    def __eq__(self, other):
+        """
+        :type other: IndMatrix
+        :return: True if equal
+        """
+        return self.enabled == other.enabled and self.scale == other.scale and self.matrix == other.matrix
+
     def __init__(self, scale=46, enable=False):
         """ Indirect 2x3 matrix that blit processor loads
             the matrix has two rows and three columns, and it appears on the

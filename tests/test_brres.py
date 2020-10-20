@@ -1,6 +1,7 @@
 import os
 import unittest
 
+from autofix import AutoFix
 from brres import Brres
 
 
@@ -19,3 +20,4 @@ class MyTestCase(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+    AutoFix.quit()

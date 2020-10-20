@@ -6,10 +6,10 @@ from brres.lib.packing.pack_subfile import PackSubfile
 class PackShp0(PackSubfile):
     class PackSub(Packer):
         class PackFrames(Packer):
-            def pack(self, frames, binfile):
+            def pack(self, k_frames, binfile):
                 binfile.createRefFromStored()  # create the reference to this offset
-                frames = frames.frames
-                binfile.write('2H', len(frames), frames.uk)
+                frames = k_frames.frames
+                binfile.write('2H', len(frames), k_frames.uk)
                 for frame in frames:
                     binfile.write('3f', frame.delta, frame.frame_id, frame.value)
 

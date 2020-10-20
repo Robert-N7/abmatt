@@ -57,8 +57,9 @@ class ClipableObserver:
     def on_node_update(self, node):
         raise NotImplementedError()
 
-    def on_child_update(self, child):
-        raise NotImplementedError()
+    def on_child_update(self, child):   # might not have children
+        pass
+        # raise NotImplementedError()
 
 
 class Clipable(Node):
@@ -134,7 +135,7 @@ class Clipable(Node):
         if not self.is_modified:
             self.is_modified = True
             if self.parent:
-                self.parent.mark_modified(False)
+                self.parent.mark_modified(False)    # marks parent modified but does not notify
 
     def _mark_unmodified_group(self, group):
         for x in group:

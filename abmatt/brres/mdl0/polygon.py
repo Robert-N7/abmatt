@@ -90,7 +90,10 @@ class Polygon(Clipable):
         if index < 0:
             return INDEX_FORMAT_NONE
         else:
-            return INDEX_FORMAT_BYTE if self.encode_str[index + 1] == 'B' else INDEX_FORMAT_SHORT
+            try:
+                return INDEX_FORMAT_BYTE if self.encode_str[index + 1] == 'B' else INDEX_FORMAT_SHORT
+            except IndexError:
+                AutoFix.get().error(f'Polygon {self.name} in {self.parent.parent.name} tri index {index} out of range.')
 
 
     def add_bone_table(self, table):
@@ -140,7 +143,8 @@ class Polygon(Clipable):
     def set_material(self, material):
         my_material = self.get_material()
         if material != my_material:
-            self.material = self.parent.update_polygon_material(self, my_material, material)
+            self.parent.update_polygon_material(self, my_material, material)
+            self.mark_modified()
 
     def get_bone(self):
         return self.visible_bone
@@ -210,4 +214,3 @@ class Polygon(Clipable):
 
     def has_normals(self):
         return self.normals is not None
-

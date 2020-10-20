@@ -133,14 +133,14 @@ class Material(Clipable):
     def get_unique_material(name, mdl):
         is_digit = False
         while True:
-            mat = mdl.getMaterialByName(name)
+            mat = mdl.get_material_by_name(name)
             if not mat:
                 return Material(name, mdl)
             if not is_digit and not name[-1].isdigit():
                 name = name + '1'
                 is_digit = True
             else:
-                name = re.sub('\d+$', lambda x : str(int(x.group(0)) + 1), name)
+                name = re.sub('\d+$', lambda x: str(int(x.group(0)) + 1), name)
 
     def begin(self):
         self.shaderStages = 0
@@ -153,8 +153,7 @@ class Material(Clipable):
         self.textureMatrixMode = 0
         self.indirect_matrices = [IndMatrix() for i in range(3)]
         self.lightChannels.append(LightChannel())
-        self.shader = Shader(self.name, self.parent)
-        self.shader.material = self
+        self.shader = Shader(self.name, self)
         self.ref0 = 0
         self.ref1 = 0
         self.comp0 = COMP_ALWAYS
@@ -177,8 +176,6 @@ class Material(Clipable):
         self.colors = [(0, 0, 0, 0), (0, 0, 0, 0), (0, 0, 0, 0)]
         self.constant_colors = [(0, 0, 0, 0), (0, 0, 0, 0), (0, 0, 0, 0), (0, 0, 0, 0)]
         self.ras1_ss = [0] * 2
-        self.indirect_matrices = [IndMatrix(), IndMatrix(), IndMatrix()]
-
 
     def auto_detect_layer(self):
         if not self.layers:
@@ -187,8 +184,8 @@ class Material(Clipable):
 
     def __str__(self):
         return "{}: xlu {} layers {} culling {} blend {}".format(self.name,
-                                                                      self.xlu, len(self.layers),
-                                                                      self.CULL_STRINGS[self.cullmode], self.getBlend())
+                                                                 self.xlu, len(self.layers),
+                                                                 self.CULL_STRINGS[self.cullmode], self.getBlend())
 
     # ==========================================================================
     # Getters
@@ -546,7 +543,6 @@ class Material(Clipable):
 
     MATRIX_ERR = 'Error parsing "{}", Usage: IndirectMatrix:[<i>:]<scale>,<r1c1>,<r1c2>,<r1c3>,<r2c1>,<r2c2>,<r2c3>'
 
-
     def setIndMatrixEnable(self, id, enable=True):
         x = self.indirect_matrices[id]
         x.enabled = enable
@@ -635,9 +631,9 @@ class Material(Clipable):
             return tex0s
         tex_map = self.get_texture_map()
         for x in self.layers:
-            map = tex_map.get(x.name)
-            if map is not None:
-                tex0s.append(map)
+            tex = tex_map.get(x.name)
+            if tex is not None:
+                tex0s.append(tex)
         return tex0s
 
     def get_uv_channels(self):
@@ -645,7 +641,6 @@ class Material(Clipable):
         if None in channels:
             channels.remove(None)
         return channels
-
 
     # ------------------------- SRT0 --------------------------------------------------
     def add_srt0(self):
@@ -836,6 +831,43 @@ class Material(Clipable):
         if self.lightChannels[0].enable_vertex_color(enable):
             self.mark_modified()
 
+    def __eq__(self, item):
+        return self.xlu == item.xlu and \
+               self.shaderStages == item.shaderStages and \
+               self.indirectStages == item.indirectStages and \
+               self.cullmode == item.cullmode and \
+               self.compareBeforeTexture == item.compareBeforeTexture and \
+               self.lightset == item.lightset and \
+               self.fogset == item.fogset and \
+               self.ref0 == item.ref0 and \
+               self.ref1 == item.ref1 and \
+               self.comp0 == item.comp0 and \
+               self.comp1 == item.comp1 and \
+               self.logic == item.logic and \
+               self.depth_test == item.depth_test and \
+               self.depth_update == item.depth_update and \
+               self.depth_function == item.depth_function and \
+               self.blend_enabled == item.blend_enabled and \
+               self.blend_logic_enabled == item.blend_logic_enabled and \
+               self.blend_dither == item.blend_dither and \
+               self.blend_update_color == item.blend_update_color and \
+               self.blend_update_alpha == item.blend_update_alpha and \
+               self.blend_subtract == item.blend_subtract and \
+               self.blend_logic == item.blend_logic and \
+               self.blend_source == item.blend_source and \
+               self.blend_dest == item.blend_dest and \
+               self.constant_alpha_enabled == item.constant_alpha_enabled and \
+               self.constant_alpha == item.constant_alpha and \
+               self.colors == item.colors and \
+               self.constant_colors == item.constant_colors and \
+               self.ras1_ss == item.ras1_ss and \
+               self.indirect_matrices == item.indirect_matrices and \
+               self.lightChannels == item.lightChannels and \
+               self.srt0 == item.srt0 and \
+               self.pat0 == item.pat0 and \
+               self.shader == item.shader and \
+               self.layers == item.layers
+
     # ---------------------------------PASTE------------------------------------------
     def paste(self, item):
         self.paste_layers(item)
@@ -889,6 +921,10 @@ class Material(Clipable):
         self.lightChannels = deepcopy(item.lightChannels)
 
     def paste_layers(self, item):
+        if self.parent.parent != item.parent.parent:  # then we need to move tex0s
+            brres = self.parent.parent
+            for x in item.get_tex0s():
+                brres.add_tex0(x)
         my_layers = self.layers
         item_layers = item.layers
         num_layers = len(item_layers)
@@ -896,4 +932,3 @@ class Material(Clipable):
         for i in range(num_layers):
             my_layers[i].paste(item_layers[i])
             my_layers[i].setName(item_layers[i].name)
-

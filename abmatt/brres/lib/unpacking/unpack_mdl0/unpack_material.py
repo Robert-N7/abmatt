@@ -41,7 +41,7 @@ class UnpackLayer(Unpacker):
         layer.inputform, \
         layer.type, \
         layer.coordinates, \
-        layer.enboss_source, \
+        layer.emboss_source, \
         layer.emboss_light = xf.unpack_tex_matrix(binfile)
         layer.normalize = xf.unpack_dual_tex_matrix(binfile)
 

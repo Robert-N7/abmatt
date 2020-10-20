@@ -25,6 +25,10 @@ class Pat0MatAnimation(Clipable):
         super(Pat0MatAnimation, self).__init__(name, parent, binfile)
 
 
+    def __eq__(self, other):
+        return self.enabled == other.enabled and self.framecount == other.framecount and \
+            self.loop == other.loop and self.frames == other.frames
+
     def __deepcopy__(self, memodict={}):
         tex = self.brres_textures
         self.brres_textures = None
@@ -90,6 +94,9 @@ class Pat0MatAnimation(Clipable):
 
         def __str__(self):
             return str(self.frame_id) + ':' + self.tex
+
+        def __eq__(self, other):
+            return self.frame_id == other.frame_id and self.tex == other.tex and self.palette_id == other.palette_id
 
     def updateName(self, new_name):
         if new_name != self.name:

@@ -30,25 +30,19 @@ class Shader(Clipable):
     def begin(self):
         self.stages.append(Stage(0, self))
 
-    def __eq__(self, other):
-        if len(self.stages) != len(other.stages) or self.getTexRefCount() != other.getTexRefCount():
-            return False
-        my_stages = self.stages
-        others = other.stages
-        for i in range(len(my_stages)):
-            if my_stages[i] != others[i]:
-                return False
-        for i in range(len(self.indTexMaps)):
-            if self.indTexMaps[i] != other.indTexMaps[i]:
-                return False
-        for i in range(len(self.indTexCoords)):
-            if self.indTexCoords[i] != other.indTexCoords[i]:
-                return False
-        return True
+    def __eq__(self, item):
+        """
+        :type item: Shader
+        :return: True if equal
+        """
+        return self.stages == item.stages and \
+               self.swap_table == item.swap_table and \
+               self.indTexCoords == item.indTexCoords and self.indTexMaps == item.indTexMaps
+
 
     # ------------------------------------ CLIPBOARD ----------------------------
     def paste(self, item):
-        # doesn't copy swap table
+        self.swap_table = deepcopy(item.swap_table)
         num_stages = len(item.stages)
         self.set_stage_count(num_stages)
         for i in range(num_stages):

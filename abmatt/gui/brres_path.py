@@ -82,5 +82,5 @@ class BrresPath:
                 mdl0 = brres.getModel(model_name)
                 if mdl0:
                     if material_name:
-                        material = mdl0.getMaterialByName(material_name)
+                        material = mdl0.get_material_by_name(material_name)
         return brres, mdl0, material if not return_new_brres_flag else brres, mdl0, material, new_brres

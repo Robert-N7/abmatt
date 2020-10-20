@@ -118,7 +118,7 @@ class PackPolygon(Packer):
 
     def get_xf_vertex_specs(self):
         poly = self.node
-        return poly.count_colors() | poly.normal_type << 2 | poly.count_uvs() << 4
+        return poly.count_colors() | poly.has_normals() << 2 | poly.count_uvs() << 4
 
     def get_xf_array_flags(self):
         poly = self.node
