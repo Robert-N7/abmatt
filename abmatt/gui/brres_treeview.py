@@ -2,11 +2,12 @@ import os
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
-from PyQt5.QtWidgets import QTreeView, QMenu, QAction
+from PyQt5.QtWidgets import QTreeView, QMenu, QAction, QTreeWidgetItemIterator
 
 # class BrresItemModel(QStandardItemModel):
 #     def __init__(self):
 from autofix import AutoFix
+from brres.lib.node import ClipableObserver
 
 
 class BrresTreeView(QTreeView):
@@ -24,8 +25,8 @@ class BrresTreeView(QTreeView):
         self.setDropIndicatorShown(True)
 
     @staticmethod
-    def __create_tree_item(linked_item, parent):
-        item = QLinkedItem(linked_item)
+    def __create_tree_item(linked_item, parent, use_base_name=False):
+        item = QLinkedItem(linked_item, use_base_name)
         item.setEditable(False)
         parent.appendRow(item)
         return item
@@ -77,11 +78,11 @@ class BrresTreeView(QTreeView):
 
     def start_context_menu(self, position, level):
         menu = QMenu()
-        if level == 0:      # top level
+        if level == 0:  # top level
             self.create_brres_menu(menu)
-        elif level == 1:    # mdl0
+        elif level == 1:  # mdl0
             pass
-        else:               # polygon
+        else:  # polygon
             pass
         menu.exec_(self.viewport().mapToGlobal(position))
 
@@ -147,19 +148,48 @@ class BrresTreeView(QTreeView):
             self.__create_tree_item(polygon, mdl0_tree)
 
     def add_brres_tree(self, brres):
-        brres_tree = self.__create_tree_item(brres, self.mdl)
+        brres_tree = self.__create_tree_item(brres, self.mdl, use_base_name=True)
         for model in brres.models:
             self.add_mdl0_item(brres_tree, model)
+
+    def unlink_tree(self, item):
+        """Unlinks the tree"""
+        # couldn't seem to find any iterators like this so here we go
+        i = 0
+        item.unlink()
+        while True:
+            x = item.takeChild(i)
+            if x is None:
+                return
+            self.unlink_tree(x)
+            # i += 1
 
     def on_file_close(self):
         """This is called when closing file"""
         # this needs to be changed if it's anything other than the clicked index
-        # item = self.get_indexed_item(self.clicked_index)
-        self.mdl.removeRow(self.clicked_index.row(), self.clicked_index.parent())
+        row = self.clicked_index.row()
+        row_item = self.mdl.itemFromIndex(self.clicked_index)
+        self.unlink_tree(row_item)
+        self.mdl.removeRow(row, self.clicked_index.parent())
         # self.invisibleRootItem().removeChild(item)
 
 
-class QLinkedItem(QStandardItem):
-    def __init__(self, linked_item):
-        super().__init__(linked_item.name)
+class QLinkedItem(QStandardItem, ClipableObserver):
+    def __init__(self, linked_item, use_base_name=False):
+        self.use_base_name = use_base_name
+        self.name = linked_item.name if not use_base_name else os.path.basename(linked_item.name)
+        super().__init__(self.name)
         self.linked_item = linked_item
+        linked_item.register_observer(self)
+
+    def on_rename_update(self, node):
+        if self.use_base_name:
+            name = os.path.basename(node.name)
+        else:
+            name = node.name
+        if self.name != name:
+            self.name = name
+            self.setText(name)
+
+    def unlink(self):
+        self.linked_item.unregister(self)

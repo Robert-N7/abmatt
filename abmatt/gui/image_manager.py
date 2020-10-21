@@ -4,6 +4,7 @@ import uuid
 from threading import Thread
 from time import sleep
 
+from PyQt5.QtCore import QObject, pyqtSignal, QRunnable, pyqtSlot
 from PyQt5.QtGui import QPixmap
 
 from brres import Brres
@@ -12,15 +13,32 @@ from brres.tex0 import ImgConverter, Tex0
 
 
 class ImageObserver:
-    """
-    Interface to get notifications from image manager
-    """
-
-    def on_image_update(self, directory):
+    def on_image_update(self, dir):
         raise NotImplementedError()
 
 
-class ImageManager(ClipableObserver):
+class ImageHandler:
+    def subscribe(self, obj, brres):
+        """Subscribes for updates for the corresponding brres"""
+        raise NotImplementedError()
+
+    def unsubscribe(self, obj, brres):
+        raise NotImplementedError()
+
+    def notify_image_observers(self, brres, dir):
+        raise NotImplementedError()
+
+
+class ImageSignals(QObject):
+    """
+    Interface to get notifications from image manager
+    Sends tuple of corresponding brres and dir path
+    (brres, dir)
+    """
+    on_image_update = pyqtSignal(tuple)
+
+
+class ImageManager(QRunnable, ClipableObserver, ImageHandler):
     """
     Manages decoding tex0s into png files to be used, has its own thread
     """
@@ -41,15 +59,15 @@ class ImageManager(ClipableObserver):
                 self.__enqueue(brres)
             else:
                 obj.on_image_update(dir)    # sends out immediate update
-        updater = self.updater.get(key)
+        updater = self.image_updater.get(key)
         if not updater:
-            self.updater[key] = [obj]
+            self.image_updater[key] = [obj]
         elif obj not in updater:
             updater.append(obj)
 
     def unsubscribe(self, obj, brres):
         key = self.__get_brres_key(brres)
-        updater = self.updater.get(key)
+        updater = self.image_updater.get(key)
         if updater:
             updater.remove(obj)
 
@@ -57,11 +75,31 @@ class ImageManager(ClipableObserver):
     def stop():
         if ImageManager.__INSTANCE is not None:
             ImageManager.__INSTANCE.enabled = False
-            ImageManager.__INSTANCE.thread.join()
+            # ImageManager.__INSTANCE.wait()
+            # ImageManager.__INSTANCE.thread.join()
 
     def is_done(self):
         return self.is_ready
 
+    # def subscribe(self, obj, brres):
+    #     li = self.image_updater.get(brres.name)
+    #     if not li:
+    #         self.image_updater[brres.name] = [obj]
+    #     else:
+    #         li.append(obj)
+    #
+    # def unsubscribe(self, obj, brres):
+    #     li = self.image_updater.get(brres.name)
+    #     if li:
+    #         li.remove(obj)
+
+    def notify_image_observers(self, brres, directory):
+        li = self.image_updater.get(self.__get_brres_key(brres))
+        if li:
+            for x in li:
+                x.on_image_update(directory)
+
+    @pyqtSlot()
     def run(self):
         self.__clean()
         while self.enabled:
@@ -99,7 +137,8 @@ class ImageManager(ClipableObserver):
         else:
             shutil.rmtree(folder_name, ignore_errors=True)
         ImgConverter().batch_decode(brres.textures, folder_name)
-        self.__on_update_brres_images(name, folder_name)
+        self.signals.on_image_update.emit((brres, folder_name))
+        # self.__on_update_brres_images(name, folder_name)
 
     def __get_unique_folder_name(self):
         return os.path.join(self.tmp_dir, str(uuid.uuid4()))
@@ -128,11 +167,11 @@ class ImageManager(ClipableObserver):
         else:
             os.mkdir(self.tmp_dir)
 
-    def __on_update_brres_images(self, brres_key, dir):
-        updater = self.updater.get(brres_key)
-        if updater:
-            for x in updater:
-                x.on_image_update(dir)
+    # def __on_update_brres_images(self, brres_key, dir):
+    #     updater = self.updater.get(brres_key)
+    #     if updater:
+    #         for x in updater:
+    #             x.on_image_update(dir)
 
     @staticmethod
     def __get_brres_key(brres):
@@ -148,15 +187,18 @@ class ImageManager(ClipableObserver):
     def __init__(self):
         if self.__INSTANCE:
             raise RuntimeError('Already initialized!')
+        ImageManager.__INSTANCE = self
+        super().__init__()
         self.brres_to_folder = {}
         self.is_ready = True
         self.tmp_dir = Brres.TEMP_DIR
         self.enabled = True if self.tmp_dir is not None else False
         self.queue = []
-        self.updater = {}
-        if self.enabled:
-            self.thread = Thread(target=self.run)
-            self.thread.start()
+        self.signals = ImageSignals()
+        self.image_updater = {}
+        # if self.enabled:
+        #     self.thread = Thread(target=self.run)
+        #     self.thread.start()
         # self.cfg_file = os.path.join(self.tmp_dir, 'brres_to_folder.txt')
         # self.__load_config()
 

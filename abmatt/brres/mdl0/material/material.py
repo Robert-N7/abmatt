@@ -832,7 +832,7 @@ class Material(Clipable):
             self.mark_modified()
 
     def __eq__(self, item):
-        return self.xlu == item.xlu and \
+        return item is not None and self.xlu == item.xlu and \
                self.shaderStages == item.shaderStages and \
                self.indirectStages == item.indirectStages and \
                self.cullmode == item.cullmode and \

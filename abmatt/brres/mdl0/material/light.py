@@ -14,7 +14,7 @@ class LightChannel:
         :type other: LightChannel
         :return: True if equal
         """
-        return self.materialColorEnabled == other.materialColorEnabled and \
+        return type(other) == LightChannel and self.materialColorEnabled == other.materialColorEnabled and \
             self.materialAlphaEnabled == other and \
             self.ambientAlphaEnabled == other.ambientAlphaEnabled and \
             self.ambientColorEnabled == other.ambientColorEnabled and \

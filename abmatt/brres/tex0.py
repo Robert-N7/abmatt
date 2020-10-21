@@ -2,6 +2,7 @@
 import os
 import shutil
 import subprocess
+import uuid
 from math import log
 
 from autofix import AutoFix, Bug
@@ -184,23 +185,21 @@ class ImgConverterI:
     IMG_FORMAT = 'cmpr'
     RESAMPLE = 3
     OVERWRITE_IMAGES = False
+    tmp_dir = None
 
     def __init__(self, converter):
         self.converter = converter
 
-    @staticmethod
-    def _get_tmp_dir_name():
-        prefix = name ='tmp'
-        id = 0
-        while os.path.exists(name):
-            name = prefix + str(id)
-            id += 1
-        return name
+    def set_tmp_dir(self, tmp_dir):
+        ImgConverterI.tmp_dir = tmp_dir
+        self.temp_dest = os.path.join(tmp_dir, 'abmatt_tmp')
 
-    @staticmethod
-    def _move_to_temp_dir(files=[], tmp_dir=None):
+    def _get_tmp_dir_name(self):
+        return os.path.join(self.tmp_dir, str(uuid.uuid4()))
+
+    def _move_to_temp_dir(self, files=[], tmp_dir=None):
         if tmp_dir is None:
-            tmp_dir = ImgConverterI._get_tmp_dir_name()
+            tmp_dir = self._get_tmp_dir_name()
         os.mkdir(tmp_dir)
         for file in files:
             shutil.copy(file, tmp_dir)
@@ -238,7 +237,8 @@ class ImgConverterI:
             ImgConverterI.RESAMPLE = sampler_index
         except (ValueError, IndexError):
             AutoFix.get().warn('Invalid config value {} for "img_resample", using {}'.format(sample,
-                                                                                      filters[ImgConverterI.RESAMPLE]))
+                                                                                             filters[
+                                                                                                 ImgConverterI.RESAMPLE]))
 
     @staticmethod
     def get_resample():
@@ -268,8 +268,8 @@ class ImgConverter:
 
         def __init__(self):
             program = which('wimgt')
-            if program:
-                self.temp_dest = 'abmatt_tmp'
+            # if program:
+            #     self.temp_dest = os.path.join(self.tmp_dir, 'abmatt_tmp')
             super(ImgConverter.Wimgt, self).__init__(program)
 
         @staticmethod
@@ -325,7 +325,7 @@ class ImgConverter:
             if check:
                 self.check_image_dimensions(img_file)
             # encode
-            mips = '--n-mm=' + str(num_mips) if num_mips >= 0 else ''
+            mips = '--n-mm=' + str(num_mips) if num_mips >= 0 else '--n-mm=auto'
             if not tex_format:
                 tex_format = self.IMG_FORMAT
             result = subprocess.call([self.converter, 'encode', img_file, '-d',
@@ -343,7 +343,7 @@ class ImgConverter:
             """Batch encode, faster than single encode when doing multiple files"""
             if overwrite is None:
                 overwrite = self.OVERWRITE_IMAGES
-            mips = '--n-mm=' + str(num_mips) if num_mips >= 0 else ''
+            mips = '--n-mm=' + str(num_mips) if num_mips >= 0 else '--n-mm=auto'
             if not tex_format:
                 tex_format = self.IMG_FORMAT
             t_files = []
@@ -370,8 +370,9 @@ class ImgConverter:
             if check:
                 for x in path_set:
                     self.check_image_dimensions(x)
-            result = subprocess.call([self.converter, 'encode', '*',
-                                      '-x', tex_format, mips, '-qo'])
+            args = [self.converter, '-x', tex_format, mips, '-qo', 'encode']
+            args.extend(list(path_set))
+            result = subprocess.call(args)
             if result:
                 self._move_out_of_temp_dir(tmp)
                 raise EncodeError('Failed to encode images {}'.format(files))
@@ -382,7 +383,7 @@ class ImgConverter:
                     t = Tex0(x, brres, BinFile(x))
                     tex0s.append(t)
                     brres.add_tex0(t)
-            self._move_out_of_temp_dir(tmp)    # cleanup
+            self._move_out_of_temp_dir(tmp)  # cleanup
             return tex0s
 
         def decode(self, tex0, dest_file, overwrite=None):
@@ -427,15 +428,18 @@ class ImgConverter:
                     f = BinFile(name, 'w')
                     tex.pack(f)
                     files.append(f)
-            if not files:   # our work is already done!
+            if not files:  # our work is already done!
                 return files
-            if use_temp_dir:    # use a temporary directory if this one already has stuff
+            if use_temp_dir:  # use a temporary directory if this one already has stuff
                 tmp_dir = self._move_to_temp_dir()
             for x in files:
                 x.commitWrite()
-            result = subprocess.call([self.converter, 'decode', '*',
-                                      '--no-mipmaps', '-qo'])
+            args = [self.converter, '--no-mipmaps', '-qo', 'decode']
+            args.extend([x.filename for x in files])
+            result = subprocess.call(args)
             if result:
+                if use_temp_dir:
+                    self._move_out_of_temp_dir(tmp_dir)
                 raise DecodeError('Failed to decode images')
             for x in files:
                 os.remove(x.filename)

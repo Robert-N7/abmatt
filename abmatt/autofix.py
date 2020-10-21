@@ -50,6 +50,18 @@ class AutoFixAbort(BaseException):
         super(AutoFixAbort, self).__init__('Operation aborted')
 
 
+class MessageReceiver:
+    """Interface to receive messages"""
+    def info(self, message):
+        raise NotImplementedError()
+
+    def warn(self, message):
+        raise NotImplementedError()
+
+    def error(self, message):
+        raise NotImplementedError()
+
+
 class Message:
     def __init__(self, message):
         self.message = message
@@ -96,13 +108,14 @@ class AutoFix:
                 pipe.error(message)
 
     def __init__(self, fix_level=3, loudness=3):
-        if (self.__AUTO_FIXER): raise RuntimeError('Autofixer already initialized')
+        if self.__AUTO_FIXER: raise RuntimeError('Autofixer already initialized')
         self.loudness = loudness
         self.fix_level = fix_level
         self.queue = []
         self.is_running = True
         self.pipe = None  # if set, output is sent to the pipe, must implement info warn and error.
         self.thread = Thread(target=self.run)
+        AutoFix.__AUTO_FIXER = self
         self.thread.start()
 
     @staticmethod
@@ -114,8 +127,8 @@ class AutoFix:
 
     def run(self):
         while self.is_running:
-            sleep(0.1)
-            while len(self.queue):
+            sleep(0.01)
+            if len(self.queue):
                 message = self.queue.pop(0)
                 message.send(self.pipe)
 

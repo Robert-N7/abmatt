@@ -200,6 +200,7 @@ class PackMdl0(PackSubfile):
 
     def pre_pack(self, mdl0):
         """Cleans up references in preparation for packing"""
+        self.rebuild_indexes(mdl0.materials)
         sections = [self.build_definitions(),
                     mdl0.bones,
                     mdl0.vertices,
@@ -213,7 +214,6 @@ class PackMdl0(PackSubfile):
                     mdl0.objects,
                     self.build_texture_links(mdl0.materials)
                     ]
-        self.rebuild_indexes(mdl0.materials)
         if mdl0.find_min_max:
             mdl0.search_for_min_and_max()
         return sections

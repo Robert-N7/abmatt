@@ -55,11 +55,13 @@ class Node:
 class ClipableObserver:
     """Receives updates from clipable"""
     def on_node_update(self, node):
-        raise NotImplementedError()
+        pass
 
     def on_child_update(self, child):   # might not have children
         pass
-        # raise NotImplementedError()
+
+    def on_rename_update(self, node):
+        pass
 
 
 class Clipable(Node):
@@ -78,11 +80,18 @@ class Clipable(Node):
     def rename(self, name):
         if name != self.name:
             self.name = name
-            self.mark_modified()
+            self.mark_modified(False)
+            self.notify_rename()
             return True
         return False
 
     # ------------------------------------- OBSERVERS ----------------------------
+    def notify_rename(self):
+        if self.observers:
+            for x in self.observers:
+                x.on_rename_update(self)
+        self.notify_parent_observers()
+
     def notify_observers(self):
         if self.observers:
             for x in self.observers:

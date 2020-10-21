@@ -12,7 +12,7 @@ from brres.mdl0.shader import Shader, Stage
 from brres.pat0.pat0 import Pat0
 from brres.srt0.srt0 import Srt0
 from brres.subfile import SubFile
-from brres.tex0 import Tex0, ImgConverterI
+from brres.tex0 import Tex0, ImgConverterI, ImgConverter
 from command import Command, ParsingException, NoSuchFile
 from config import Config
 from converters.material import Material
@@ -42,6 +42,9 @@ def set_remove_unused(val):
 
 def load_config(app_dir, loudness=None, autofix_level=None):
     conf = Config.get_instance(os.path.join(app_dir, 'config.conf'))
+    tmp_dir = os.path.join(app_dir, 'temp_files')
+    Brres.set_temp_dir(tmp_dir)
+    ImgConverter().set_tmp_dir(tmp_dir)
     if not loudness:
         loudness = conf['loudness']
     if loudness:
@@ -77,10 +80,10 @@ def load_config(app_dir, loudness=None, autofix_level=None):
         Mdl0.DETECT_MODEL_NAME = validBool(conf['detect_model_name'])
     except ValueError:
         pass
-    try:
-        Mdl0.DRAW_PASS_AUTO = validBool(conf['draw_pass_auto'])
-    except ValueError:
-        pass
+    # try:
+    #     Mdl0.DRAW_PASS_AUTO = validBool(conf['draw_pass_auto'])
+    # except ValueError:
+    #     pass
     try:
         Shader.MAP_ID_AUTO = validBool(conf['map_id_auto'])
     except ValueError:
@@ -101,7 +104,6 @@ def load_config(app_dir, loudness=None, autofix_level=None):
     if resample is not None:
         ImgConverterI.set_resample(resample)
     Brres.MATERIAL_LIBRARY = conf['material_library']
-    Brres.TEMP_DIR = conf['temp_dir']
     return conf
 
 

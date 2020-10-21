@@ -1,3 +1,5 @@
+import os
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QComboBox, QSlider, QStackedLayout
 from PyQt5.QtWidgets import QWidget, QGridLayout, QScrollArea, QVBoxLayout, QLabel, QHBoxLayout, QTabWidget, QCheckBox, \
@@ -144,24 +146,39 @@ class MaterialLibrary(MaterialBrowser):
                 self.grid.removeWidget(widget)
                 self.brres.save()
 
+    def get_brres_url(self, url):
+        path = url.toLocalFile()
+        if os.path.splitext(os.path.split(path)[1])[1].lower() == '.brres':
+            return path
+
     def dropEvent(self, a0):
         data = a0.mimeData()
         if data.hasUrls():
+            found = False
             for x in data.urls():
-                for material in get_materials_by_url(x):
-                    self.add_material(material)
-            a0.accept()
-        else:
-            a0.ignore()
+                path = self.get_brres_url(x)
+                if path:
+                    found = True
+                    self.add_brres_materials(Brres.get_brres(path, True))
+            if found:
+                a0.accept()
+                return
+        elif data.hasText():
+            mats = get_materials_by_url(data.text())
+            if mats:
+                self.add_materials(mats)
+        a0.ignore()
 
     def dragEnterEvent(self, a0):
-        if a0.mimeData().hasUrls():
+        md = a0.mimeData()
+        if md.hasUrls() or md.hasText():
             a0.accept()
         else:
             a0.ignore()
 
     def dragMoveEvent(self, a0):
-        if a0.mimeData().hasUrls():
+        md = a0.mimeData()
+        if md.hasUrls() or md.hasText():
             a0.accept()
         else:
             a0.ignore()
@@ -315,5 +332,3 @@ class MapWidget(QLabel, ClipableObserver, ImageObserver):
         ImageManager.get().subscribe(self, tex0.parent)
         # if image_path:
         #     self.set_image_path(image_path)
-
-

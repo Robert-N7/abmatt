@@ -170,7 +170,9 @@ class Converter:
 
     def __init__(self, brres, mdl_file, flags=0, encode=True):
         if brres is None:
-            filename = Brres.getExpectedBrresFileName(mdl_file)
+            # filename = Brres.getExpectedBrresFileName(mdl_file)
+            d, f = os.path.split(mdl_file)
+            filename = os.path.join(d, os.path.splitext(f)[0] + '.brres')
             brres = Brres.get_brres(filename, True)
         self.brres = brres
         self.texture_library = brres.get_texture_map()

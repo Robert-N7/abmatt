@@ -7,7 +7,7 @@ import os
 from abmatt.brres.lib.binfile import BinFile
 from abmatt.brres.lib.matching import MATCHING
 from abmatt.brres.lib.node import Clipable, Packable
-from abmatt.brres.tex0 import ImgConverter
+from abmatt.brres.tex0 import ImgConverter, Tex0, ImgConverterI
 from autofix import AutoFix, Bug
 from brres.lib.packing.pack_brres import PackBrres
 from brres.lib.unpacking.unpack_brres import UnpackBrres
@@ -69,12 +69,16 @@ class Brres(Clipable, Packable):
             return Brres(filename, readFile=False)
 
     @staticmethod
+    def set_temp_dir(tmp_dir):
+        if tmp_dir:
+            if not os.path.exists(tmp_dir):
+                os.mkdir(tmp_dir)
+            Brres.TEMP_DIR = os.path.abspath(tmp_dir)
+            ImgConverterI.tmp_dir = Brres.TEMP_DIR
+
+    @staticmethod
     def get_temp_dir():
-        dir = Brres.TEMP_DIR
-        if dir:
-            if not os.path.exists(dir):
-                os.mkdir(dir)
-        return dir
+        return Brres.TEMP_DIR
 
     @staticmethod
     def get_material_library():
@@ -153,22 +157,18 @@ class Brres(Clipable, Packable):
         # todo chr0 paste
 
     # -------------------------- SAVE/ CLOSE --------------------------------------------
-    def close(self):
+    def close(self, try_save=True):
         Brres.OPEN_FILES.remove(self)
-        if self.is_modified or self.DESTINATION and self.DESTINATION != self.name:
+        if try_save and self.is_modified or self.DESTINATION and self.DESTINATION != self.name:
             return self.save(self.DESTINATION, self.OVERWRITE)
-        return True
 
     def save(self, filename=None, overwrite=None, check=True):
         if not filename:
             filename = self.name
         if overwrite is None:
             overwrite = self.OVERWRITE
-            # if not self.isChanged():
-            #     return
         if not overwrite and os.path.exists(filename):
             AutoFix.get().error('File {} already exists!'.format(filename), 1)
-            return False
         else:
             if check:
                 self.check()
@@ -176,10 +176,11 @@ class Brres(Clipable, Packable):
             self.pack(f)
             if f.commitWrite():
                 AutoFix.get().info("Wrote file '{}'".format(filename), 2)
-                self.name = filename
+                self.rename(filename)
                 self.has_new_model = False
                 self.mark_unmodified()
-            return True
+                return True
+        return False
 
     def get_trace(self):
         if self.parent:

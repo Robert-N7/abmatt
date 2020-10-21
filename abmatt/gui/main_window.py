@@ -1,9 +1,9 @@
 import os
 import sys
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QThreadPool
 from PyQt5.QtWidgets import QMainWindow, QApplication, QAction, qApp, QFileDialog, QVBoxLayout, QHBoxLayout, \
-    QWidget, QPlainTextEdit, QMessageBox, QDockWidget
+    QWidget, QPlainTextEdit, QMessageBox, QDockWidget, QSizePolicy
 
 from brres import Brres
 from autofix import AutoFix
@@ -12,26 +12,43 @@ from converters.convert_dae import DaeConverter2
 from converters.convert_obj import ObjConverter
 from gui.brres_path import BrresPath
 from gui.brres_treeview import BrresTreeView
-from gui.converter import ConvertObserver, ConvertManager
-from gui.image_manager import ImageManager
+from gui.converter import ConvertManager
+from gui.image_manager import ImageManager, ImageHandler
+from gui.logger_pipe import LoggerPipe
 from gui.material_browser import MaterialBrowser, MaterialTabs
 from gui.poly_editor import PolyEditor
 from load_config import load_config, parse_args
 
 
-class Window(QMainWindow, ConvertObserver):
+class Window(QMainWindow):
 
     def __init__(self, brres_files=[]):
         super().__init__()
         self.open_files = []
         self.brres = None
-        ConvertManager.get().subscribe(self)
+        self.image_updater = {}     # maps brres to list of subscribers
         self.cwd = os.getcwd()
-        AutoFix.get().set_pipe(self)
+        self.__init_threads()
+        # AutoFix.get().set_pipe(self)
         self.__init_UI()
         for file in brres_files:
             self.open(file.name)
         self.show()
+
+    def __init_threads(self):
+        self.threadpool = QThreadPool()     # for multi-threading
+        # ConvertManager.get().subscribe(self)
+        self.converter = converter = ConvertManager.get()
+        converter.signals.on_conversion_finish.connect(self.on_conversion_finish)
+        self.image_manager = image_manager = ImageManager.get()
+        if image_manager.enabled:
+            image_manager.signals.on_image_update.connect(self.on_image_update)
+            self.threadpool.start(image_manager)
+        self.threadpool.start(converter)
+        log_pipe = LoggerPipe()
+        log_pipe.info_sig.connect(self.info)
+        log_pipe.warn_sig.connect(self.warn)
+        log_pipe.error_sig.connect(self.error)
 
     def __init_menus(self):
         # Actions
@@ -78,6 +95,9 @@ class Window(QMainWindow, ConvertObserver):
     def __init_child_UI(self, top_layout):
         # left
         vert_widget = QWidget(self)
+        policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.MinimumExpanding)
+        policy.setHorizontalStretch(2)
+        vert_widget.setSizePolicy(policy)
         top_layout.addWidget(vert_widget)
         vert_layout = QVBoxLayout()
         vert_widget.setLayout(vert_layout)
@@ -99,12 +119,15 @@ class Window(QMainWindow, ConvertObserver):
         # right
         # top_layout.addSpacing(30)
         self.material_browser = MaterialTabs(self)
+        policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.MinimumExpanding)
+        policy.setHorizontalStretch(1)
+        self.material_browser.setSizePolicy(policy)
         top_layout.addWidget(self.material_browser)
         # self.material_browser.setFixedWidth(300)
 
     def __init_UI(self):
         self.setWindowTitle('ANoobs Brres Material Tool')
-        self.resize(800, 600)
+        self.resize(1000, 700)
         self.__init_menus()
         main_layout = QHBoxLayout()
         self.__init_child_UI(main_layout)
@@ -112,6 +135,10 @@ class Window(QMainWindow, ConvertObserver):
         widget.setLayout(main_layout)
         self.setCentralWidget(widget)
         self.statusBar().showMessage('Ready')
+
+    def on_image_update(self, brres_dir):
+        # simply gives it back to the image manager to update observers
+        self.image_manager.notify_image_observers(*brres_dir)
 
     def on_update_polygon(self, poly):
         self.poly_editor.on_update_polygon(poly)
@@ -148,10 +175,14 @@ class Window(QMainWindow, ConvertObserver):
             self.material_browser.add_brres_materials_to_scene(brres)
 
     def save(self):
-        for x in self.open_files:
-            # A precaution against overwriting old models
-            overwrite = True if not x.has_new_model else Brres.OVERWRITE
-            x.save(overwrite=overwrite)
+        if len(self.open_files):
+            last = None
+            for x in self.open_files:
+                # A precaution against overwriting old models
+                overwrite = True if not x.has_new_model else Brres.OVERWRITE
+                if x.save(overwrite=overwrite):
+                    last = x
+            self.update_status('Wrote file {}'.format(last.name))
 
     def save_as_dialog(self):
         fname, filter = QFileDialog.getSaveFileName(self, 'Save as', self.cwd, 'Brres files (*.brres)')
@@ -159,6 +190,7 @@ class Window(QMainWindow, ConvertObserver):
             self.cwd = os.path.dirname(fname)
             if self.brres:
                 self.brres.save(fname, overwrite=True)
+                self.update_status('Wrote file {}'.format(fname))
 
     def import_texture(self, filename):
         raise NotImplementedError()
@@ -182,11 +214,13 @@ class Window(QMainWindow, ConvertObserver):
         else:
             self.statusBar().showMessage('Unknown extension {}'.format(ext))
             return
-        converter.load_model()
-        self.on_conversion_finish(converter)
-        # ConvertManager.get().enqueue(converter)
+        # converter.load_model()
+        # self.on_conversion_finish(converter)
+        self.update_status('Added {} to queue...'.format(fname))
+        self.converter.enqueue(converter)
 
     def on_conversion_finish(self, converter):
+        self.update_status('Finished Converting {}'.format(converter.brres.name))
         self.open(converter.brres.name)
 
     def import_file_dialog(self, brres=None):
@@ -209,8 +243,8 @@ class Window(QMainWindow, ConvertObserver):
             else:
                 self.statusBar().showMessage('Unknown extension {}'.format(ext))
                 return
-            self.update_status('Added {} to queue'.format(brres.name))
-            ConvertManager.enqueue(converter)
+            self.update_status('Added {} to queue...'.format(brres.name))
+            self.converter.enqueue(converter)
 
     def close_file(self, brres=None):
         if brres is None:
@@ -219,10 +253,10 @@ class Window(QMainWindow, ConvertObserver):
             m = QMessageBox(QMessageBox.Warning, 'Save Before Closing',
                             f'Save {brres.name} before closing?',
                             buttons=QMessageBox.Ok | QMessageBox.Cancel, parent=self)
-            if m.exec_():
+            if m.exec_() == QMessageBox.Ok:
                 brres.save(overwrite=True)
         self.open_files.remove(brres)
-        brres.close()
+        brres.close(try_save=False)
         self.brres = None
         self.treeview.on_file_close()
 
@@ -241,14 +275,14 @@ class Window(QMainWindow, ConvertObserver):
             m = QMessageBox(QMessageBox.Warning, 'Confirm Exit',
                             f'Exit without saving {fnames}?', buttons=QMessageBox.Ok | QMessageBox.Cancel, parent=self)
 
-            if m.exec_():
-                event.accept()
-            else:
+            if not m.exec_():
                 event.ignore()
         else:
             for x in files_to_save:
                 x.close()
-            event.accept()
+        self.image_manager.stop()
+        self.converter.stop()
+        event.accept()
 
     def info(self, message):
         self.emit('<p style="color:Blue;">' + message + '</p>')
@@ -265,8 +299,6 @@ class Window(QMainWindow, ConvertObserver):
 
 def on_exit():
     #   join other threads
-    ImageManager.stop()
-    ConvertManager.stop()
     AutoFix.get().quit()
 
 
