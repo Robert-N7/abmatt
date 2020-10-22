@@ -29,6 +29,7 @@ class Window(QMainWindow):
         self.image_updater = {}     # maps brres to list of subscribers
         self.cwd = os.getcwd()
         self.__init_threads()
+        self.locked_files = set()       # lock files that are pending conversion etc...
         # AutoFix.get().set_pipe(self)
         self.__init_UI()
         for file in brres_files:
@@ -141,7 +142,8 @@ class Window(QMainWindow):
         self.image_manager.notify_image_observers(*brres_dir)
 
     def on_update_polygon(self, poly):
-        self.poly_editor.on_update_polygon(poly)
+        enable_edits = poly.parent.parent not in self.locked_files
+        self.poly_editor.on_update_polygon(poly, enable_edits=enable_edits)
 
     def emit(self, message):
         self.logger.appendHtml(message)
@@ -162,17 +164,19 @@ class Window(QMainWindow):
         if fname:
             self.open(fname)
 
-    def open(self, fname):
+    def open(self, fname, force_update=False):
         self.cwd = os.path.dirname(fname)
         opened = self.get_brres_by_fname(fname)
         if opened:
-            self.set_brres(opened)
+            if not force_update:
+                return self.set_brres(opened)
         else:
-            brres = Brres.get_brres(fname)
-            self.set_brres(brres)
-            self.open_files.append(brres)
-            self.treeview.add_brres_tree(brres)
-            self.material_browser.add_brres_materials_to_scene(brres)
+            opened = Brres.get_brres(fname)
+            self.open_files.append(opened)
+        # either it's newly opened or forcing update
+        self.set_brres(opened)
+        self.treeview.on_brres_update(opened)
+        self.material_browser.add_brres_materials_to_scene(opened)
 
     def save(self):
         if len(self.open_files):
@@ -217,11 +221,21 @@ class Window(QMainWindow):
         # converter.load_model()
         # self.on_conversion_finish(converter)
         self.update_status('Added {} to queue...'.format(fname))
+        self.lock_file(converter.brres)
         self.converter.enqueue(converter)
 
+    def lock_file(self, brres):
+        self.locked_files.add(brres)
+        self.poly_editor.on_brres_lock(brres)
+
+    def unlock_file(self, brres):
+        self.locked_files.remove(brres)
+        self.poly_editor.on_brres_unlock(brres)
+
     def on_conversion_finish(self, converter):
+        self.open(converter.brres.name, force_update=True)
+        self.unlock_file(converter.brres)
         self.update_status('Finished Converting {}'.format(converter.brres.name))
-        self.open(converter.brres.name)
 
     def import_file_dialog(self, brres=None):
         fname, filter = QFileDialog.getOpenFileName(self, 'Import model', self.cwd, '(*.dae *.obj)')
@@ -258,7 +272,8 @@ class Window(QMainWindow):
         self.open_files.remove(brres)
         brres.close(try_save=False)
         self.brres = None
-        self.treeview.on_file_close()
+        self.poly_editor.on_brres_lock(brres)
+        self.treeview.on_file_close(brres)
 
     def shouldExitAnyway(self, result):
         return result == QMessageBox.Ok

@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QCheckBox
     QFrame, QDockWidget
 
 from brres.lib.node import ClipableObserver
-from gui.brres_path import BrresPath, NotABrresError
+from gui.brres_path import BrresPath, NotABrresError, get_material_by_url
 from gui.mat_widget import MaterialWidget
 
 
@@ -13,24 +13,44 @@ class PolyEditor(QFrame, ClipableObserver):
     def __init__(self, parent, poly=None):
         super().__init__(parent)
         self.__init_ui()
+        self.enable_mat_drag = True
         if poly is not None:
             self.on_update_poly(poly)
         else:
             self.poly = None
 
-    def on_update_polygon(self, poly):
+    def on_brres_lock(self, brres):
+        if self.poly and self.poly.parent.parent == brres:
+            self.on_update_polygon(None)
+
+    def on_brres_unlock(self, brres):
+        if self.poly and self.poly.parent.parent == brres:
+            self.enable_mat_drag = True
+
+    def on_update_polygon(self, poly, enable_edits=True):
         if poly != self.poly:
             if self.poly:
                 self.poly.unregister(self)
             self.poly = poly
-            poly.register_observer(self)
-            self.name_label.setText(poly.name)
-            self.uv_count.setText(str(poly.count_uvs()))
-            self.face_count.setText(str(poly.face_count))
-            self.face_point_count.setText(str(poly.facepoint_count))
-            self.vertex_colors.setChecked(poly.count_colors() > 0)
-            self.normals.setChecked(poly.has_normals())
-        self.material_box.set_material(poly.get_material())
+            if poly:
+                poly.register_observer(self)
+                self.name_label.setText(poly.name)
+                self.uv_count.setText(str(poly.count_uvs()))
+                self.face_count.setText(str(poly.face_count))
+                self.face_point_count.setText(str(poly.facepoint_count))
+                self.vertex_colors.setChecked(poly.count_colors() > 0)
+                self.normals.setChecked(poly.has_normals())
+                self.material_box.set_material(poly.get_material())
+                self.enable_mat_drag = enable_edits
+            else:
+                self.name_label.setText('Null')
+                self.uv_count.setText('0')
+                self.face_count.setText('0')
+                self.face_point_count.setText('0')
+                self.vertex_colors.setChecked(False)
+                self.normals.setChecked(False)
+                self.material_box.set_material(None)
+                self.enable_mat_drag = False
 
     def __init_ui(self):
         self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
@@ -73,35 +93,26 @@ class PolyEditor(QFrame, ClipableObserver):
         layout.addWidget(self.normals, 6, 1)
         self.setAcceptDrops(True)
 
-    @staticmethod
-    def get_material_from_text(text, trace_path=False):
-        try:
-            bp = BrresPath(path=text)
-            b, m, mat = bp.split_path()
-            return mat if not mat or not trace_path else bp.trace_path(b, m, mat)[2]
-        except NotABrresError as e:
-            return False
-
     def dragEnterEvent(self, a0):
         data = a0.mimeData()
-        if self.poly and data.hasText() \
-                and self.get_material_from_text(data.text()):
+        if self.enable_mat_drag and self.poly and data.hasText() \
+                and get_material_by_url(data.text()):
             a0.accept()
         else:
             a0.ignore()
 
     def dragMoveEvent(self, a0):
         data = a0.mimeData()
-        if self.poly and data.hasText() \
-                and self.get_material_from_text(data.text()):
+        if self.enable_mat_drag and self.poly and data.hasText() \
+                and get_material_by_url(data.text()):
             a0.accept()
         else:
             a0.ignore()
 
     def dropEvent(self, a0):
         data = a0.mimeData()
-        if self.poly and data.hasText():
-            mat = self.get_material_from_text(data.text(), trace_path=True)
+        if self.enable_mat_drag and self.poly and data.hasText():
+            mat = get_material_by_url(data.text(), trace_path=True)
             if mat:
                 a0.accept()
                 self.poly.set_material(mat)

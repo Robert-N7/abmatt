@@ -48,12 +48,15 @@ class MaterialWidget(QLabel, ClipableObserver, ImageObserver):
             ImageManager.get().unsubscribe(self, self.material.parent.parent)
             self.material.unregister(self)
         self.material = material
-        self.setToolTip(material.name)
-        self.setText(material.name)
         self.is_text = True
-        self.material.register_observer(self)
-        ImageManager.get().subscribe(self, material.parent.parent)
-
+        if material:
+            self.setToolTip(material.name)
+            self.setText(material.name)
+            self.material.register_observer(self)
+            ImageManager.get().subscribe(self, material.parent.parent)
+        else:
+            self.setText('Null')
+            self.setToolTip('Null')
         if brres_path is None:
             self.brres_path = BrresPath(material=material)
         else:

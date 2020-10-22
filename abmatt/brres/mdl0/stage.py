@@ -200,6 +200,28 @@ class Stage(Clipable):
     def __init__(self, name, parent, binfile=None):
         super(Stage, self).__init__(name, parent, binfile)
 
+    def __trace_color(self, sel):
+        if sel != COLOR_SEL_NONE:
+            if sel == COLOR_SEL_COLOR0:
+                return 'color0'
+            elif sel == COLOR_SEL_COLOR1:
+                return 'color1'
+            elif sel == COLOR_SEL_COLOR2:
+                return 'color2'
+            elif sel == COLOR_SEL_CONSTANT:
+                return self.get_str('colorconstantselection')
+            elif sel == COLOR_SEL_RASTER_COLOR:
+                if self.raster_color == RASTER_LIGHT0 or self.raster_color == RASTER_LIGHT1:
+                    return self.get_str('rastercolor')
+        return None     # return nothing for anything else
+
+    def get_colors_used(self, color_set):
+        color_set.add(self.__trace_color(self.sel_a))
+        color_set.add(self.__trace_color(self.sel_b))
+        color_set.add(self.__trace_color(self.sel_c))
+        color_set.add(self.__trace_color(self.sel_d))
+        return color_set
+
     def __deepcopy__(self, memodict={}):
         ret = Stage(self.name, self.parent, False)
         ret.__copy_data_from(self)

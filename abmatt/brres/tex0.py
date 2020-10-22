@@ -442,7 +442,10 @@ class ImgConverter:
                     self._move_out_of_temp_dir(tmp_dir)
                 raise DecodeError('Failed to decode images')
             for x in files:
-                os.remove(x.filename)
+                try:
+                    os.remove(x.filename)
+                except FileNotFoundError:
+                    pass
             files = os.listdir()
             if use_temp_dir:
                 self._move_out_of_temp_dir(tmp_dir, files)

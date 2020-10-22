@@ -7,20 +7,32 @@ class NotABrresError(Exception):
     pass
 
 
+def get_material_by_url(text, trace_path=False):
+    try:
+        bp = BrresPath(path=text)
+        b, m, mat = bp.split_path()
+        return mat if not mat or not trace_path else bp.trace_path(b, m, mat)[2]
+    except NotABrresError as e:
+        return False
+
+
 def get_materials_by_url(url):
-    brres, mdl0, material = BrresPath(path=url).trace_path(Brres.OPEN_FILES)
-    if material is None:
-        if mdl0 is None:
-            if not len(brres.models):
-                return []
-            materials = []
-            for x in brres.models:
-                materials.extend(x.materials)
+    try:
+        brres, mdl0, material = BrresPath(path=url).trace_path(Brres.OPEN_FILES)
+        if material is None:
+            if mdl0 is None:
+                if not len(brres.models):
+                    return []
+                materials = []
+                for x in brres.models:
+                    materials.extend(x.materials)
+            else:
+                materials = mdl0.materials
         else:
-            materials = mdl0.materials
-    else:
-        materials = [material]
-    return materials
+            materials = [material]
+        return materials
+    except NotABrresError:
+        return None
 
 
 class BrresPath:

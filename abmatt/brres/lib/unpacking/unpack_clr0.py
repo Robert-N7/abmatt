@@ -42,7 +42,7 @@ class UnpackClr0(UnpackSubfile):
             return anim
 
     def unpack(self, clr0, binfile):
-        clr0._unpack(binfile)
+        super().unpack(clr0, binfile)
         _, clr0.framecount, num_entries, clr0.loop = binfile.read('i2Hi', 12)
         binfile.recall()  # section 0
         folder = Folder(binfile)

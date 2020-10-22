@@ -831,8 +831,26 @@ class Material(Clipable):
         if self.lightChannels[0].enable_vertex_color(enable):
             self.mark_modified()
 
+    def get_colors_used(self):
+        """Returns the colors used, which is a list of
+            a. tuples or
+            b. string 'vertex' for vertex colors
+        """
+        ret = set()
+        colors_used = self.shader.get_colors_used()
+        for x in colors_used:
+            if x.startswith('color'):
+                is_constant = len(x) > 6
+                index = int(x[5])
+                colors = self.colors if not is_constant else self.constant_colors
+                ret.add((x, colors[index]))
+            elif x == 'lightchannel0':
+                if self.is_vertex_color_enabled():
+                    ret.add('vertex')
+        return ret
+
     def __eq__(self, item):
-        return item is not None and self.xlu == item.xlu and \
+        return self is item or (item is not None and self.xlu == item.xlu and \
                self.shaderStages == item.shaderStages and \
                self.indirectStages == item.indirectStages and \
                self.cullmode == item.cullmode and \
@@ -866,7 +884,7 @@ class Material(Clipable):
                self.srt0 == item.srt0 and \
                self.pat0 == item.pat0 and \
                self.shader == item.shader and \
-               self.layers == item.layers
+               self.layers == item.layers)
 
     # ---------------------------------PASTE------------------------------------------
     def paste(self, item):

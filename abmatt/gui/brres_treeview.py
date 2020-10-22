@@ -18,7 +18,7 @@ class BrresTreeView(QTreeView):
         self.mdl = QStandardItemModel()
         self.setModel(self.mdl)
         self.clicked.connect(self.on_click)
-
+        self.brres_map = {}
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.on_context_click)
         self.setAcceptDrops(True)
@@ -148,7 +148,7 @@ class BrresTreeView(QTreeView):
             self.__create_tree_item(polygon, mdl0_tree)
 
     def add_brres_tree(self, brres):
-        brres_tree = self.__create_tree_item(brres, self.mdl, use_base_name=True)
+        self.brres_map[brres.name] = brres_tree = self.__create_tree_item(brres, self.mdl, use_base_name=True)
         for model in brres.models:
             self.add_mdl0_item(brres_tree, model)
 
@@ -164,14 +164,20 @@ class BrresTreeView(QTreeView):
             self.unlink_tree(x)
             # i += 1
 
-    def on_file_close(self):
+    def on_file_close(self, brres):
         """This is called when closing file"""
         # this needs to be changed if it's anything other than the clicked index
-        row = self.clicked_index.row()
-        row_item = self.mdl.itemFromIndex(self.clicked_index)
-        self.unlink_tree(row_item)
-        self.mdl.removeRow(row, self.clicked_index.parent())
-        # self.invisibleRootItem().removeChild(item)
+        try:
+            item = self.brres_map.pop(brres.name)
+            self.unlink_tree(item)
+            self.mdl.removeRow(item.row(), self.clicked_index.parent())
+        except KeyError:
+            pass
+
+    def on_brres_update(self, brres):
+        """This provides a way to update brres tree (after conversion)"""
+        self.on_file_close(brres)
+        self.add_brres_tree(brres)
 
 
 class QLinkedItem(QStandardItem, ClipableObserver):

@@ -1,6 +1,7 @@
 import os
 
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor, QPainter
 from PyQt5.QtWidgets import QComboBox, QSlider, QStackedLayout
 from PyQt5.QtWidgets import QWidget, QGridLayout, QScrollArea, QVBoxLayout, QLabel, QHBoxLayout, QTabWidget, QCheckBox, \
     QFrame
@@ -226,12 +227,13 @@ class MaterialSmallEditor(QFrame, ClipableObserver):
         self.transparency.setMinimum(0)
         self.transparency.setMaximum(255)
         self.transparency.valueChanged.connect(self.on_transparency_change)
-        # todo colors here
+        self.colors = ColorGroup()
         self.maps = Tex0WidgetGroup(self)
         self.animations = QLabel('None', self)
         grid.addWidget(self.name_edit, 0, 1)
         grid.addWidget(self.cull_combo, 1, 1)
         grid.addWidget(self.transparency, 2, 1)
+        grid.addWidget(self.colors, 3, 1)
         grid.addWidget(self.animations, 5, 1)
         grid.addWidget(self.maps, 6, 1)
 
@@ -256,6 +258,8 @@ class MaterialSmallEditor(QFrame, ClipableObserver):
         if trans != self.transparency.value():
             self.transparency.setValue(trans)
         self.blend.setChecked(material.is_blend_enabled())
+        # self.colors = ColorGroup(material.get_colors_used())
+        self.colors.set_colors(material.get_colors_used())
         self.update_children(material)
 
     def update_children(self, material):
@@ -279,6 +283,39 @@ class MaterialSmallEditor(QFrame, ClipableObserver):
             self.material = material
             material.register_observer(self)
             self.on_node_update(material)
+
+
+class ColorGroup(QWidget):
+    def __init__(self, colors=None):
+        super().__init__()
+        self.widgets = []
+        self.layout = None
+        self.set_colors(colors)
+
+    def set_colors(self, colors):
+        if self.layout is None:
+            self.layout = QHBoxLayout()
+            self.setLayout(self.layout)
+        else:
+            while len(self.widgets):
+                widget = self.widgets.pop(0)
+                self.layout.removeWidget(widget)
+                widget.deleteLater()
+        if colors:
+            for x in colors:
+                widget = self.ColorWidget(x)
+                self.layout.addWidget(widget)
+                self.widgets.append(widget)
+            self.setLayout(self.layout)
+
+    class ColorWidget(QLabel):
+        def __init__(self, color):
+            if type(color) == str:
+                super().__init__(color)
+            else:
+                super().__init__(color[0])
+                s = 'rgba' + str(color[1][:3])
+                self.setStyleSheet('QLabel { background-color: ' + s + ' }')
 
 
 class Tex0WidgetGroup(QWidget):

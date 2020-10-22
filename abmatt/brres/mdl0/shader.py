@@ -39,6 +39,13 @@ class Shader(Clipable):
                self.swap_table == item.swap_table and \
                self.indTexCoords == item.indTexCoords and self.indTexMaps == item.indTexMaps
 
+    def get_colors_used(self):
+        colors = set()
+        for x in self.stages:
+            x.get_colors_used(colors)
+        if None in colors:
+            colors.remove(None)
+        return colors
 
     # ------------------------------------ CLIPBOARD ----------------------------
     def paste(self, item):
@@ -299,7 +306,6 @@ class Shader(Clipable):
         if resolved_bug:
             self.mark_modified()
         self.parent.check_shader(len(self.stages), ind_stage_count, ind_matrices_used)
-
 
 # Old code for maintaining shaders
 # class ShaderList:
