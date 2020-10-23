@@ -6,7 +6,7 @@ from PyQt5.QtCore import QRunnable, QObject, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QMessageBox, QLineEdit, QApplication
 from PyQt5.QtGui import QIcon
 
-from autofix import AutoFix
+from abmatt.autofix import AutoFix
 
 
 class ConvertSignals(QObject):

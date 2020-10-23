@@ -1,7 +1,7 @@
 import numpy as np
 
-from converters.influence import Influence, Weight, InfluenceCollection, Joint
-from converters.matrix import combine_matrices, apply_matrix
+from abmatt.converters.influence import Influence, Weight, InfluenceCollection, Joint
+from abmatt.converters.matrix import combine_matrices, apply_matrix
 
 
 class Controller:

@@ -1,10 +1,10 @@
-from brres.lib.binfile import UnpackingError
-from brres.lib.unpacking.interface import Unpacker
-from brres.lib.unpacking.unpack_mdl0 import bp, xf
-from brres.mdl0.material.layer import Layer
-from brres.mdl0.material.light import LightChannel
-from brres.mdl0.material.material import Material
-from brres.mdl0.wiigraphics.bp import IndMatrix
+from abmatt.brres.lib.binfile import UnpackingError
+from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.brres.lib.unpacking.unpack_mdl0 import bp, xf
+from abmatt.brres.mdl0.material.layer import Layer
+from abmatt.brres.mdl0.material.light import LightChannel
+from abmatt.brres.mdl0.material.material import Material
+from abmatt.brres.mdl0.wiigraphics.bp import IndMatrix
 
 
 class UnpackLayer(Unpacker):

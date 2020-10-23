@@ -1,5 +1,5 @@
-from brres.lib.binfile import UnpackingError
-from brres.lib.unpacking.interface import Unpacker
+from abmatt.brres.lib.binfile import UnpackingError
+from abmatt.brres.lib.unpacking.interface import Unpacker
 
 
 def unpack_default(subfile, binfile):

@@ -1,6 +1,6 @@
 import os
 
-from brres.mdl0.material import material
+from abmatt.brres.mdl0.material import material
 
 
 class Material:

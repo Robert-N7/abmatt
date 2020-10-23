@@ -1,8 +1,8 @@
 from copy import deepcopy, copy
 
-from autofix import Bug
-from brres.lib.matching import validFloat, splitKeyVal, validInt, validBool, MATCHING
-from brres.lib.node import Clipable
+from abmatt.autofix import Bug
+from abmatt.brres.lib.matching import validFloat, splitKeyVal, validInt, validBool, MATCHING
+from abmatt.brres.lib.node import Clipable
 
 
 class SRTKeyFrameList:
@@ -462,7 +462,7 @@ class SRTMatAnim(Clipable):
             self.parent.remove_srt0()
 
     def save(self, dest, overwrite):
-        from brres.srt0.srt0 import Srt0
+        from abmatt.brres.srt0.srt0 import Srt0
         s = Srt0(self.name, self.parent)
         s.add(self)
         s.save(dest, overwrite)

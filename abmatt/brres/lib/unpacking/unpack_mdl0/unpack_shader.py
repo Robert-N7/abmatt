@@ -1,7 +1,7 @@
-from brres.lib.unpacking.interface import Unpacker
-from brres.lib.unpacking.unpack_mdl0 import bp
-from brres.mdl0.shader import Shader
-from brres.mdl0.stage import Stage
+from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.brres.lib.unpacking.unpack_mdl0 import bp
+from abmatt.brres.mdl0.shader import Shader
+from abmatt.brres.mdl0.stage import Stage
 
 
 class UnpackShader(Unpacker):

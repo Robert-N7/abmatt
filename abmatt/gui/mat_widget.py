@@ -2,9 +2,9 @@ from PyQt5.QtCore import Qt, QMimeData
 from PyQt5.QtGui import QDrag, QPixmap, QPainter
 from PyQt5.QtWidgets import QLabel
 
-from brres.lib.node import ClipableObserver
-from gui.brres_path import BrresPath
-from gui.image_manager import ImageObserver, ImageManager, update_image
+from abmatt.brres.lib.node import ClipableObserver
+from abmatt.gui.brres_path import BrresPath
+from abmatt.gui.image_manager import ImageObserver, ImageManager, update_image
 
 
 class MatWidgetHandler:

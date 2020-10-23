@@ -2,18 +2,18 @@ from struct import unpack_from, pack
 
 import numpy as np
 
-from autofix import AutoFix
-from brres.mdl0.color import Color
-from brres.mdl0.normal import Normal
-from brres.mdl0.polygon import Polygon
-from brres.mdl0.texcoord import TexCoord
-from brres.mdl0.vertex import Vertex
-from converters.colors import ColorCollection
-from converters.convert_lib import Converter
-from converters.influence import InfluenceCollection
-from converters.matrix import get_rotation_matrix, apply_matrix
-from converters.points import PointCollection
-from converters.triangle import TriangleSet
+from abmatt.autofix import AutoFix
+from abmatt.brres.mdl0.color import Color
+from abmatt.brres.mdl0.normal import Normal
+from abmatt.brres.mdl0.polygon import Polygon
+from abmatt.brres.mdl0.texcoord import TexCoord
+from abmatt.brres.mdl0.vertex import Vertex
+from abmatt.converters.colors import ColorCollection
+from abmatt.converters.convert_lib import Converter
+from abmatt.converters.influence import InfluenceCollection
+from abmatt.converters.matrix import get_rotation_matrix, apply_matrix
+from abmatt.converters.points import PointCollection
+from abmatt.converters.triangle import TriangleSet
 
 
 class Geometry:

@@ -6,15 +6,15 @@ from abmatt.brres.lib.matching import fuzzy_match, MATCHING
 from abmatt.brres.lib.node import Node
 from abmatt.brres.mdl0.definition import get_definition
 from abmatt.brres.subfile import SubFile
-from autofix import AutoFix, Bug
-from brres.lib.packing.pack_mdl0.pack_mdl0 import PackMdl0
-from brres.lib.unpacking.unpack_mdl0.unpack_mdl0 import UnpackMdl0
-from brres.mdl0.bone import Bone
-from brres.mdl0.material.material import Material
-from brres.pat0.pat0 import Pat0Collection
-from brres.pat0.pat0_material import Pat0MatAnimation
-from brres.srt0.srt0 import SRTCollection
-from brres.srt0.srt0_animation import SRTMatAnim
+from abmatt.autofix import AutoFix, Bug
+from abmatt.brres.lib.packing.pack_mdl0.pack_mdl0 import PackMdl0
+from abmatt.brres.lib.unpacking.unpack_mdl0.unpack_mdl0 import UnpackMdl0
+from abmatt.brres.mdl0.bone import Bone
+from abmatt.brres.mdl0.material.material import Material
+from abmatt.brres.pat0.pat0 import Pat0Collection
+from abmatt.brres.pat0.pat0_material import Pat0MatAnimation
+from abmatt.brres.srt0.srt0 import SRTCollection
+from abmatt.brres.srt0.srt0_animation import SRTMatAnim
 
 
 class ModelGeneric(Node):

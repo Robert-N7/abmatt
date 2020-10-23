@@ -1,8 +1,8 @@
-from autofix import AutoFix
-from brres.lib.binfile import Folder
-from brres.lib.unpacking.interface import Unpacker
-from brres.lib.unpacking.unpack_subfile import UnpackSubfile
-from brres.pat0.pat0_material import Pat0MatAnimation
+from abmatt.autofix import AutoFix
+from abmatt.brres.lib.binfile import Folder
+from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.brres.lib.unpacking.unpack_subfile import UnpackSubfile
+from abmatt.brres.pat0.pat0_material import Pat0MatAnimation
 
 
 class UnpackPat0Animation(Unpacker):

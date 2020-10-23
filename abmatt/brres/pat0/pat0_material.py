@@ -1,8 +1,8 @@
 from copy import deepcopy
 
-from autofix import Bug, AutoFix
-from brres.lib.matching import validBool, validInt, splitKeyVal, validFloat, fuzzy_strings
-from brres.lib.node import Clipable
+from abmatt.autofix import Bug, AutoFix
+from abmatt.brres.lib.matching import validBool, validInt, splitKeyVal, validFloat, fuzzy_strings
+from abmatt.brres.lib.node import Clipable
 
 
 class Pat0MatAnimation(Clipable):
@@ -196,7 +196,7 @@ class Pat0MatAnimation(Clipable):
     # ------------------------------------------ PACKING ------------------------------------------------------------
     def save(self, dest, overwrite):
         # create the pat0
-        from brres.pat0.pat0 import Pat0
+        from abmatt.brres.pat0.pat0 import Pat0
         p = Pat0(self.name, self.parent)
         p.add(self)
         p.save(dest, overwrite)

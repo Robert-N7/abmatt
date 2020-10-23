@@ -5,8 +5,8 @@ import re
 import numpy as np
 
 from abmatt.converters.convert_lib import float_to_str
-from autofix import AutoFix
-from converters.points import PointCollection
+from abmatt.autofix import AutoFix
+from abmatt.converters.points import PointCollection
 
 
 class ObjMaterial:

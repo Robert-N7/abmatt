@@ -5,7 +5,7 @@ from abmatt.brres.lib.matching import parseValStr, indexListItem, validBool, fuz
 from abmatt.brres.lib.node import Clipable
 
 from abmatt.brres.mdl0.wiigraphics.xf import XFTexMatrix, XFDualTex
-from autofix import Bug
+from abmatt.autofix import Bug
 
 
 class Layer(Clipable):

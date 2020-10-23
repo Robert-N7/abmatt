@@ -6,8 +6,8 @@ from PyQt5.QtWidgets import QTreeView, QMenu, QAction, QTreeWidgetItemIterator
 
 # class BrresItemModel(QStandardItemModel):
 #     def __init__(self):
-from autofix import AutoFix
-from brres.lib.node import ClipableObserver
+from abmatt.autofix import AutoFix
+from abmatt.brres.lib.node import ClipableObserver
 
 
 class BrresTreeView(QTreeView):

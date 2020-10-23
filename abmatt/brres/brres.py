@@ -7,10 +7,11 @@ import os
 from abmatt.brres.lib.binfile import BinFile
 from abmatt.brres.lib.matching import MATCHING
 from abmatt.brres.lib.node import Clipable, Packable
-from abmatt.brres.tex0 import ImgConverter, Tex0, ImgConverterI
-from autofix import AutoFix, Bug
-from brres.lib.packing.pack_brres import PackBrres
-from brres.lib.unpacking.unpack_brres import UnpackBrres
+from abmatt.brres.tex0 import Tex0
+from abmatt.image_converter import ImgConverterI, ImgConverter
+from abmatt.autofix import AutoFix, Bug
+from abmatt.brres.lib.packing.pack_brres import PackBrres
+from abmatt.brres.lib.unpacking.unpack_brres import UnpackBrres
 
 
 class Brres(Clipable, Packable):
@@ -22,7 +23,6 @@ class Brres(Clipable, Packable):
     OPEN_FILES = []  # reference to active files
     REMOVE_UNUSED_TEXTURES = False
     MATERIAL_LIBRARY = None
-    TEMP_DIR = None
 
     def __init__(self, name, parent=None, readFile=True):
         """
@@ -67,18 +67,6 @@ class Brres(Clipable, Packable):
             return Brres(filename, readFile=True)
         elif create_if_not_exists:
             return Brres(filename, readFile=False)
-
-    @staticmethod
-    def set_temp_dir(tmp_dir):
-        if tmp_dir:
-            if not os.path.exists(tmp_dir):
-                os.mkdir(tmp_dir)
-            Brres.TEMP_DIR = os.path.abspath(tmp_dir)
-            ImgConverterI.tmp_dir = Brres.TEMP_DIR
-
-    @staticmethod
-    def get_temp_dir():
-        return Brres.TEMP_DIR
 
     @staticmethod
     def get_material_library():

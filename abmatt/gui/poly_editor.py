@@ -1,9 +1,9 @@
 from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QComboBox, QGridLayout, \
     QFrame, QDockWidget
 
-from brres.lib.node import ClipableObserver
-from gui.brres_path import BrresPath, NotABrresError, get_material_by_url
-from gui.mat_widget import MaterialWidget
+from abmatt.brres.lib.node import ClipableObserver
+from abmatt.gui.brres_path import BrresPath, NotABrresError, get_material_by_url
+from abmatt.gui.mat_widget import MaterialWidget
 
 
 class PolyEditor(QFrame, ClipableObserver):

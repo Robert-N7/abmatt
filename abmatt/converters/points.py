@@ -3,9 +3,9 @@ import math
 import numpy as np
 from numpy.lib._iotools import ConverterError
 
-from brres.mdl0 import point
-from converters.convert_lib import Converter
-from converters.matrix import apply_matrix
+from abmatt.brres.mdl0 import point
+from abmatt.converters.convert_lib import Converter
+from abmatt.converters.matrix import apply_matrix
 
 
 class PointCollection:

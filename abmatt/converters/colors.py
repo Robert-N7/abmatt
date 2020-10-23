@@ -2,7 +2,7 @@ from struct import pack, unpack, unpack_from
 
 import numpy as np
 
-from converters.points import consolidate_data
+from abmatt.converters.points import consolidate_data
 
 
 class ColorCollection:

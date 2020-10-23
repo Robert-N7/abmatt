@@ -1,13 +1,13 @@
-from brres.lib.binfile import Folder, PackingError
-from brres.lib.packing.interface import Packer
-from brres.lib.packing.pack_mdl0.pack_bone import PackBone
-from brres.lib.packing.pack_mdl0.pack_color import PackColor
-from brres.lib.packing.pack_mdl0.pack_material import PackMaterial
-from brres.lib.packing.pack_mdl0.pack_point import PackVertex, PackNormal, PackUV
-from brres.lib.packing.pack_mdl0.pack_polygon import PackPolygon
-from brres.lib.packing.pack_mdl0.pack_shader import PackShader
-from brres.lib.packing.pack_subfile import PackSubfile
-from brres.mdl0.definition import DrawList
+from abmatt.brres.lib.binfile import Folder, PackingError
+from abmatt.brres.lib.packing.interface import Packer
+from abmatt.brres.lib.packing.pack_mdl0.pack_bone import PackBone
+from abmatt.brres.lib.packing.pack_mdl0.pack_color import PackColor
+from abmatt.brres.lib.packing.pack_mdl0.pack_material import PackMaterial
+from abmatt.brres.lib.packing.pack_mdl0.pack_point import PackVertex, PackNormal, PackUV
+from abmatt.brres.lib.packing.pack_mdl0.pack_polygon import PackPolygon
+from abmatt.brres.lib.packing.pack_mdl0.pack_shader import PackShader
+from abmatt.brres.lib.packing.pack_subfile import PackSubfile
+from abmatt.brres.mdl0.definition import DrawList
 
 
 class PackMdl0(PackSubfile):

@@ -1,16 +1,16 @@
 import string
 
-from autofix import AutoFix
-from brres.chr0 import Chr0
-from brres.clr0.clr0 import Clr0
-from brres.lib.binfile import Folder, UnpackingError
-from brres.lib.unpacking.interface import Unpacker
-from brres.mdl0.mdl0 import Mdl0
-from brres.pat0.pat0 import Pat0Collection, Pat0
-from brres.scn0.scn0 import Scn0
-from brres.shp0.shp0 import Shp0
-from brres.srt0.srt0 import SRTCollection, Srt0
-from brres.tex0 import Tex0
+from abmatt.autofix import AutoFix
+from abmatt.brres.chr0 import Chr0
+from abmatt.brres.clr0.clr0 import Clr0
+from abmatt.brres.lib.binfile import Folder, UnpackingError
+from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.brres.mdl0.mdl0 import Mdl0
+from abmatt.brres.pat0.pat0 import Pat0Collection, Pat0
+from abmatt.brres.scn0.scn0 import Scn0
+from abmatt.brres.shp0.shp0 import Shp0
+from abmatt.brres.srt0.srt0 import SRTCollection, Srt0
+from abmatt.brres.tex0 import Tex0
 
 
 class UnpackBrres(Unpacker):

@@ -1,6 +1,6 @@
 import time
 
-from autofix import AutoFix
+from abmatt.autofix import AutoFix
 
 
 class XML:

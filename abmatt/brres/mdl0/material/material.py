@@ -8,13 +8,13 @@ from copy import deepcopy
 
 from abmatt.brres.lib.matching import validBool, indexListItem, validInt, validFloat, MATCHING, parse_color
 from abmatt.brres.lib.node import Clipable
-from brres.mdl0.material.layer import Layer
+from abmatt.brres.mdl0.material.layer import Layer
 from abmatt.brres.mdl0.shader import Shader
-from autofix import AutoFix
-from brres.mdl0.material.light import LightChannel
+from abmatt.autofix import AutoFix
+from abmatt.brres.mdl0.material.light import LightChannel
 
 # Constants
-from brres.mdl0.wiigraphics.bp import IndMatrix
+from abmatt.brres.mdl0.wiigraphics.bp import IndMatrix
 
 ALPHA_LOGIC_AND = 0
 ALPHA_LOGIC_OR = 1

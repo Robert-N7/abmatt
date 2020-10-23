@@ -6,12 +6,12 @@ from PyQt5.QtWidgets import QComboBox, QSlider, QStackedLayout
 from PyQt5.QtWidgets import QWidget, QGridLayout, QScrollArea, QVBoxLayout, QLabel, QHBoxLayout, QTabWidget, QCheckBox, \
     QFrame
 
-from brres import Brres
-from brres.lib.node import ClipableObserver
-from brres.mdl0.material.material import Material
-from gui.brres_path import BrresPath, get_materials_by_url
-from gui.image_manager import ImageObserver, ImageManager, update_image
-from gui.mat_widget import MaterialWidget, MatWidgetHandler
+from abmatt.brres import Brres
+from abmatt.brres.lib.node import ClipableObserver
+from abmatt.brres.mdl0.material.material import Material
+from abmatt.gui.brres_path import BrresPath, get_materials_by_url
+from abmatt.gui.image_manager import ImageObserver, ImageManager, update_image
+from abmatt.gui.mat_widget import MaterialWidget, MatWidgetHandler
 
 
 class MaterialTabs(QWidget, MatWidgetHandler):

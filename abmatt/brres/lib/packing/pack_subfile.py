@@ -1,4 +1,4 @@
-from brres.lib.packing.interface import Packer
+from abmatt.brres.lib.packing.interface import Packer
 
 
 def pack_default(subfile, binfile):

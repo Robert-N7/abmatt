@@ -5,16 +5,17 @@ import fnmatch
 import os
 
 from abmatt.brres import Brres
-from autofix import AutoFix
+from abmatt.autofix import AutoFix
 from abmatt.brres.lib.matching import validInt, MATCHING
-from brres.mdl0.material.layer import Layer
+from abmatt.brres.mdl0.material.layer import Layer
 from abmatt.brres.mdl0.shader import Shader, Stage
-from abmatt.brres.tex0 import Tex0, ImgConverter, EncodeError, NoImgConverterError
+from abmatt.brres.tex0 import Tex0
+from abmatt.image_converter import EncodeError, NoImgConverterError, ImgConverter
 from abmatt.brres.lib.binfile import UnpackingError, PackingError
-from brres.mdl0.material.material import Material
-from brres.mdl0.mdl0 import Mdl0
-from brres.pat0.pat0_material import Pat0MatAnimation
-from brres.srt0.srt0_animation import SRTMatAnim, SRTTexAnim
+from abmatt.brres.mdl0.material.material import Material
+from abmatt.brres.mdl0.mdl0 import Mdl0
+from abmatt.brres.pat0.pat0_material import Pat0MatAnimation
+from abmatt.brres.srt0.srt0_animation import SRTMatAnim, SRTTexAnim
 
 
 def convert_file_ext(path, new_ext):

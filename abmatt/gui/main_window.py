@@ -1,23 +1,21 @@
 import os
 import sys
 
-from PyQt5.QtCore import Qt, QThreadPool
-from PyQt5.QtWidgets import QMainWindow, QApplication, QAction, qApp, QFileDialog, QVBoxLayout, QHBoxLayout, \
-    QWidget, QPlainTextEdit, QMessageBox, QDockWidget, QSizePolicy
+from PyQt5.QtCore import QThreadPool
+from PyQt5.QtWidgets import QMainWindow, QApplication, QAction, QFileDialog, QVBoxLayout, QHBoxLayout, \
+    QWidget, QPlainTextEdit, QMessageBox, QSizePolicy
 
-from brres import Brres
-from autofix import AutoFix
-from converters.arg_parse import arg_parse
-from converters.convert_dae import DaeConverter2
-from converters.convert_obj import ObjConverter
-from gui.brres_path import BrresPath
-from gui.brres_treeview import BrresTreeView
-from gui.converter import ConvertManager
-from gui.image_manager import ImageManager, ImageHandler
-from gui.logger_pipe import LoggerPipe
-from gui.material_browser import MaterialBrowser, MaterialTabs
-from gui.poly_editor import PolyEditor
-from load_config import load_config, parse_args
+from abmatt.autofix import AutoFix
+from abmatt.brres import Brres
+from abmatt.converters.convert_dae import DaeConverter2
+from abmatt.converters.convert_obj import ObjConverter
+from abmatt.gui.brres_treeview import BrresTreeView
+from abmatt.gui.converter import ConvertManager
+from abmatt.gui.image_manager import ImageManager
+from abmatt.gui.logger_pipe import LoggerPipe
+from abmatt.gui.material_browser import MaterialTabs
+from abmatt.gui.poly_editor import PolyEditor
+from abmatt.load_config import parse_args
 
 
 class Window(QMainWindow):

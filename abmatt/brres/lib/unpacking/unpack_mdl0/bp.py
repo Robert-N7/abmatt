@@ -1,4 +1,4 @@
-from brres.lib.unpacking.interface import Unpacker
+from abmatt.brres.lib.unpacking.interface import Unpacker
 
 
 def unpack_ras1_iref(binfile):

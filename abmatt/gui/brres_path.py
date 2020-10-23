@@ -1,6 +1,6 @@
 import os
 
-from brres import Brres
+from abmatt.brres import Brres
 
 
 class NotABrresError(Exception):

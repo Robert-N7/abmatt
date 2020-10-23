@@ -5,9 +5,8 @@ For editing Mario Kart Wii files
 """
 import sys
 
-import load_config
-from autofix import AutoFix
-from load_config import load_config, parse_args
+from abmatt import load_config
+from abmatt.autofix import AutoFix
 
 
 def main():
@@ -21,7 +20,7 @@ def main():
     else:
         base_path = __file__
     try:
-        files = parse_args(argv, base_path)
+        files = load_config.parse_args(argv, base_path)
         # cleanup
         for file in files.values():
             file.close()
@@ -29,6 +28,7 @@ def main():
         AutoFix.get().quit()
         raise e
     AutoFix.get().quit()
+
 
 if __name__ == "__main__":
     main()

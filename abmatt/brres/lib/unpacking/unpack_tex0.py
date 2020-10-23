@@ -1,4 +1,4 @@
-from brres.lib.unpacking.unpack_subfile import UnpackSubfile
+from abmatt.brres.lib.unpacking.unpack_subfile import UnpackSubfile
 
 
 class UnpackTex0(UnpackSubfile):

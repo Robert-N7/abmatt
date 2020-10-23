@@ -1,7 +1,7 @@
 import numpy as np
 
-from brres.mdl0.definition import get_definition
-from converters.matrix import apply_matrix, apply_matrix_single, get_rotation_matrix, scale_matrix, translate_matrix, \
+from abmatt.brres.mdl0.definition import get_definition
+from abmatt.converters.matrix import apply_matrix, apply_matrix_single, get_rotation_matrix, scale_matrix, translate_matrix, \
     rotation_matrix_to_transform
 
 

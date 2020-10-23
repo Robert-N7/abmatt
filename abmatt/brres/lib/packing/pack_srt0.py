@@ -1,7 +1,7 @@
-from brres.lib.binfile import Folder
-from brres.lib.packing.interface import Packer
-from brres.lib.packing.pack_subfile import PackSubfile
-from brres.srt0.srt0_animation import SRTTexAnim
+from abmatt.brres.lib.binfile import Folder
+from abmatt.brres.lib.packing.interface import Packer
+from abmatt.brres.lib.packing.pack_subfile import PackSubfile
+from abmatt.brres.srt0.srt0_animation import SRTTexAnim
 
 
 def calcFrameScale(frameCount):

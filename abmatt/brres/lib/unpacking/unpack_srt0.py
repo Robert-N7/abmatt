@@ -1,9 +1,9 @@
 from copy import deepcopy
 
-from brres.lib.binfile import Folder, UnpackingError
-from brres.lib.unpacking.interface import Unpacker
-from brres.lib.unpacking.unpack_subfile import UnpackSubfile
-from brres.srt0.srt0_animation import SRTMatAnim, SRTTexAnim
+from abmatt.brres.lib.binfile import Folder, UnpackingError
+from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.brres.lib.unpacking.unpack_subfile import UnpackSubfile
+from abmatt.brres.srt0.srt0_animation import SRTMatAnim, SRTTexAnim
 
 
 class UnpackSrt0Tex(Unpacker):

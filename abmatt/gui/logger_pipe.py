@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QObject, pyqtSignal
 
-from autofix import MessageReceiver, AutoFix
+from abmatt.autofix import MessageReceiver, AutoFix
 
 
 class LoggerPipe(QObject, MessageReceiver):

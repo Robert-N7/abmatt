@@ -2,11 +2,11 @@
 from copy import deepcopy
 
 from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
-from brres.lib.packing.pack_scn0 import PackScn0
-from brres.lib.unpacking.unpack_scn0 import UnpackScn0
-from brres.scn0.camera import Camera
-from brres.scn0.fog import Fog
-from brres.scn0.light import Light, AmbientLight, LightSet
+from abmatt.brres.lib.packing.pack_scn0 import PackScn0
+from abmatt.brres.lib.unpacking.unpack_scn0 import UnpackScn0
+from abmatt.brres.scn0.camera import Camera
+from abmatt.brres.scn0.fog import Fog
+from abmatt.brres.scn0.light import Light, AmbientLight, LightSet
 
 
 class Scn0KeyFrameList:

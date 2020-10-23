@@ -1,7 +1,7 @@
 import os
 from copy import deepcopy
 
-from brres.lib.binfile import BinFile
+from abmatt.brres.lib.binfile import BinFile
 
 
 def get_item_by_index(group, index):

@@ -2,8 +2,8 @@
 from copy import deepcopy
 
 from abmatt.brres.subfile import SubFile, get_anim_str, set_anim_str
-from brres.lib.packing.pack_clr0 import PackClr0
-from brres.lib.unpacking.unpack_clr0 import UnpackClr0
+from abmatt.brres.lib.packing.pack_clr0 import PackClr0
+from abmatt.brres.lib.unpacking.unpack_clr0 import UnpackClr0
 
 
 class Clr0(SubFile):

@@ -1,6 +1,6 @@
-from brres.lib.binfile import Folder
-from brres.lib.unpacking.interface import Unpacker
-from brres.lib.unpacking.unpack_subfile import UnpackSubfile
+from abmatt.brres.lib.binfile import Folder
+from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.brres.lib.unpacking.unpack_subfile import UnpackSubfile
 
 
 class UnpackChr0(UnpackSubfile):

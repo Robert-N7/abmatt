@@ -1,4 +1,4 @@
-from brres.lib.matching import splitKeyVal, validBool, parse_color, indexListItem
+from abmatt.brres.lib.matching import splitKeyVal, validBool, parse_color, indexListItem
 
 
 class LightChannel:

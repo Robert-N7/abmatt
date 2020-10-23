@@ -1,7 +1,7 @@
-from brres.lib.binfile import UnpackingError
-from brres.lib.unpacking.interface import Unpacker
-from brres.lib.unpacking.unpack_mdl0.unpack_bone import unpack_bonetable
-from brres.mdl0 import polygon as ply
+from abmatt.brres.lib.binfile import UnpackingError
+from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.brres.lib.unpacking.unpack_mdl0.unpack_bone import unpack_bonetable
+from abmatt.brres.mdl0 import polygon as ply
 
 
 class UnpackPolygon(Unpacker):

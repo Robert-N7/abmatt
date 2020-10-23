@@ -1,4 +1,4 @@
-from brres.lib.packing.pack_subfile import PackSubfile
+from abmatt.brres.lib.packing.pack_subfile import PackSubfile
 
 
 class PackTex0(PackSubfile):

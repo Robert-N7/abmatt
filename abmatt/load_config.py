@@ -3,19 +3,20 @@ import os
 import sys
 from cmd import Cmd
 
-from brres import Brres
-from autofix import AutoFix
-from brres.lib.matching import validBool, MATCHING, parse_color, validInt
-from brres.mdl0.material.layer import Layer
-from brres.mdl0.mdl0 import Mdl0
-from brres.mdl0.shader import Shader, Stage
-from brres.pat0.pat0 import Pat0
-from brres.srt0.srt0 import Srt0
-from brres.subfile import SubFile
-from brres.tex0 import Tex0, ImgConverterI, ImgConverter
-from command import Command, ParsingException, NoSuchFile
-from config import Config
-from converters.material import Material
+from abmatt.brres import Brres
+from abmatt.autofix import AutoFix
+from abmatt.brres.lib.matching import validBool, MATCHING, parse_color, validInt
+from abmatt.brres.mdl0.material.layer import Layer
+from abmatt.brres.mdl0.mdl0 import Mdl0
+from abmatt.brres.mdl0.shader import Shader, Stage
+from abmatt.brres.pat0.pat0 import Pat0
+from abmatt.brres.srt0.srt0 import Srt0
+from abmatt.brres.subfile import SubFile
+from abmatt.brres.tex0 import Tex0
+from abmatt.image_converter import ImgConverterI, ImgConverter
+from abmatt.command import Command, ParsingException, NoSuchFile
+from abmatt.config import Config
+from abmatt.converters.material import Material
 
 
 def set_rename_unknown(val):
@@ -43,8 +44,8 @@ def set_remove_unused(val):
 def load_config(app_dir, loudness=None, autofix_level=None):
     conf = Config.get_instance(os.path.join(app_dir, 'config.conf'))
     tmp_dir = os.path.join(app_dir, 'temp_files')
-    Brres.set_temp_dir(tmp_dir)
-    ImgConverter().set_tmp_dir(tmp_dir)
+    converter = ImgConverter(tmp_dir)
+    Tex0.converter = converter
     if not loudness:
         loudness = conf['loudness']
     if loudness:

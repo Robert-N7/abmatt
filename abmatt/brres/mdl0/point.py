@@ -1,4 +1,4 @@
-from autofix import AutoFix
+from abmatt.autofix import AutoFix
 from abmatt.brres.lib.node import Node
 
 FMT_UINT8 = 0

@@ -1,8 +1,8 @@
-from brres.lib.unpacking.interface import Unpacker
-from brres.mdl0 import point
-from brres.mdl0.normal import Normal
-from brres.mdl0.texcoord import TexCoord
-from brres.mdl0.vertex import Vertex
+from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.brres.mdl0 import point
+from abmatt.brres.mdl0.normal import Normal
+from abmatt.brres.mdl0.texcoord import TexCoord
+from abmatt.brres.mdl0.vertex import Vertex
 
 
 def is_valid_format(format):

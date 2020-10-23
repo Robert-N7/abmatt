@@ -9,8 +9,8 @@ import os
 from abmatt.brres.lib.binfile import UnpackingError, BinFile
 from abmatt.brres.lib.matching import validInt, validBool
 from abmatt.brres.lib.node import Clipable, Packable
-from autofix import Bug, AutoFix
-from brres.lib.packing.pack_subfile import PackSubfile
+from abmatt.autofix import Bug, AutoFix
+from abmatt.brres.lib.packing.pack_subfile import PackSubfile
 
 
 def set_anim_str(animation, key, value):

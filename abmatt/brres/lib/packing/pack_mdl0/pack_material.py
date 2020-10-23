@@ -1,5 +1,5 @@
-from brres.lib.packing.interface import Packer
-from brres.lib.packing.pack_mdl0 import bp, xf
+from abmatt.brres.lib.packing.interface import Packer
+from abmatt.brres.lib.packing.pack_mdl0 import bp, xf
 
 
 class PackLayer:

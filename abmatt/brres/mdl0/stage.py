@@ -1,6 +1,6 @@
 # Constants
-from brres.lib.matching import validBool, validInt, indexListItem, validFloat
-from brres.lib.node import Clipable
+from abmatt.brres.lib.matching import validBool, validInt, indexListItem, validFloat
+from abmatt.brres.lib.node import Clipable
 
 RASTER_LIGHT0 = 0
 RASTER_LIGHT1 = 1

@@ -4,9 +4,9 @@ from copy import deepcopy
 from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
 from abmatt.brres.lib.binfile import Folder
 from abmatt.brres.lib.node import Node
-from brres.lib.packing.pack_pat0 import PackPat0
-from brres.lib.unpacking.unpack_pat0 import UnpackPat0
-from brres.pat0.pat0_material import Pat0MatAnimation
+from abmatt.brres.lib.packing.pack_pat0 import PackPat0
+from abmatt.brres.lib.unpacking.unpack_pat0 import UnpackPat0
+from abmatt.brres.pat0.pat0_material import Pat0MatAnimation
 
 
 class Pat0Collection(Node):

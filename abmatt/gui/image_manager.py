@@ -7,9 +7,10 @@ from time import sleep
 from PyQt5.QtCore import QObject, pyqtSignal, QRunnable, pyqtSlot
 from PyQt5.QtGui import QPixmap
 
-from brres import Brres
-from brres.lib.node import ClipableObserver
-from brres.tex0 import ImgConverter, Tex0
+from abmatt.brres import Brres
+from abmatt.brres.lib.node import ClipableObserver
+from abmatt.brres.tex0 import Tex0
+from abmatt.image_converter import ImgConverter, ImgConverterI
 
 
 class ImageObserver:
@@ -191,7 +192,7 @@ class ImageManager(QRunnable, ClipableObserver, ImageHandler):
         super().__init__()
         self.brres_to_folder = {}
         self.is_ready = True
-        self.tmp_dir = Brres.TEMP_DIR
+        self.tmp_dir = ImgConverterI.TMP_DIR
         self.enabled = True if self.tmp_dir is not None else False
         self.queue = []
         self.signals = ImageSignals()

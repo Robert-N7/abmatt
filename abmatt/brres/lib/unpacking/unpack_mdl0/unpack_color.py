@@ -1,5 +1,5 @@
-from brres.lib.unpacking.interface import Unpacker
-from brres.mdl0.color import Color
+from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.brres.mdl0.color import Color
 
 
 class UnpackColor(Unpacker):

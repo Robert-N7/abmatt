@@ -6,9 +6,9 @@ from abmatt.brres.lib.node import Clipable, Node
 from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
 
 # ---------------------------------------------------------
-from brres.lib.packing.pack_srt0 import PackSrt0
-from brres.lib.unpacking.unpack_srt0 import UnpackSrt0
-from brres.srt0.srt0_animation import SRTMatAnim
+from abmatt.brres.lib.packing.pack_srt0 import PackSrt0
+from abmatt.brres.lib.unpacking.unpack_srt0 import UnpackSrt0
+from abmatt.brres.srt0.srt0_animation import SRTMatAnim
 
 
 class SRTCollection(Node):

@@ -1,6 +1,6 @@
-from brres.lib.binfile import Folder
-from brres.lib.packing.interface import Packer
-from brres.lib.packing.pack_subfile import PackSubfile
+from abmatt.brres.lib.binfile import Folder
+from abmatt.brres.lib.packing.interface import Packer
+from abmatt.brres.lib.packing.pack_subfile import PackSubfile
 
 
 class PackClr0(PackSubfile):
