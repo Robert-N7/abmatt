@@ -69,7 +69,7 @@ class ImgConverterI:
         os.mkdir(tmp_dir)
         for file in files:
             shutil.copy(file, tmp_dir)
-        os.chdir(tmp_dir)
+        # os.chdir(tmp_dir)
         return tmp_dir
 
     @staticmethod
@@ -77,7 +77,7 @@ class ImgConverterI:
         parent_dir = '..'
         for file in files:
             shutil.move(file, parent_dir)
-        os.chdir(parent_dir)
+        # os.chdir(parent_dir)
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
     def encode(self, img_file, tex_format, num_mips=-1, check=False):
@@ -134,18 +134,21 @@ class ImgConverter:
 
         def __init__(self, tmp_dir=None):
             program = which('wimgt')
+            self.cleanup = False
             if program:
                 if tmp_dir:
                     self.set_tmp_dir(tmp_dir)
                 elif not self.get_tmp_dir():
                     self.set_tmp_dir(os.path.join(os.getcwd(), str(uuid.uuid4())))
+                    self.cleanup = True
             super(ImgConverter.Wimgt, self).__init__(program)
 
         def __del__(self):
             # clean up temp files
-            d = self.get_tmp_dir()
-            if d and os.path.exists(d):
-                shutil.rmtree(d, ignore_errors=True)
+            if self.cleanup:
+                d = self.get_tmp_dir()
+                if d and os.path.exists(d):
+                    shutil.rmtree(d, ignore_errors=True)
 
         @staticmethod
         def find_file(filename):
@@ -235,7 +238,7 @@ class ImgConverter:
             path_set = set()
             textures = brres.get_texture_map()
             for x in t_files:
-                path, name = self.convert_png(x, remove_old=True)
+                path, name = self.convert_png(os.path.join(tmp, x), remove_old=True)
                 if overwrite or name not in textures:
                     path_set.add(path)
                 else:
@@ -247,18 +250,18 @@ class ImgConverter:
                 for x in path_set:
                     self.check_image_dimensions(x)
             args = [self.converter, '-x', tex_format, mips, '-qo', 'encode']
-            args.extend(list(path_set))
-            result = subprocess.call(args)
+            file_names = [os.path.basename(x) for x in path_set]
+            args.extend(file_names)
+            result = subprocess.call(args, cwd=tmp)
             if result:
                 self._move_out_of_temp_dir(tmp)
                 raise EncodeError('Failed to encode images {}'.format(files))
             tex0s = []
-            new_files = os.listdir()
+            new_files = [x for x in os.listdir(tmp) if x not in file_names]
             for x in new_files:
-                if x not in path_set:
-                    t = Tex0(x, brres, BinFile(x))
-                    tex0s.append(t)
-                    brres.add_tex0(t)
+                t = Tex0(x, brres, BinFile(os.path.join(tmp, x)))
+                tex0s.append(t)
+                brres.add_tex0(t)
             self._move_out_of_temp_dir(tmp)  # cleanup
             return tex0s
 
@@ -291,29 +294,31 @@ class ImgConverter:
                 return
             if overwrite is None:
                 overwrite = self.OVERWRITE_IMAGES
-            tmp = os.getcwd()
             use_temp_dir = True
             if dest_dir is not None:
                 if not os.path.exists(dest_dir):
                     os.mkdir(dest_dir)
+                    tmp_dir = dest_dir
                     use_temp_dir = False
-                os.chdir(dest_dir)
+                # os.chdir(dest_dir)
+            if use_temp_dir:  # use a temporary directory if this one already has stuff
+                tmp_dir = self._move_to_temp_dir()
             files = []
+            base_names = []
             for tex in tex0s:
                 name = tex.name
-                if overwrite or not os.path.exists(name + '.png'):
-                    f = BinFile(name, 'w')
+                if overwrite or not os.path.exists(os.path.join(tmp_dir, name + '.png')):
+                    f = BinFile(os.path.join(tmp_dir, name), 'w')
                     tex.pack(f)
+                    base_names.append(name)
                     files.append(f)
             if not files:  # our work is already done!
                 return files
-            if use_temp_dir:  # use a temporary directory if this one already has stuff
-                tmp_dir = self._move_to_temp_dir()
             for x in files:
                 x.commitWrite()
             args = [self.converter, '--no-mipmaps', '-qo', 'decode']
-            args.extend([x.filename for x in files])
-            result = subprocess.call(args)
+            args.extend(base_names)
+            result = subprocess.call(args, cwd=tmp_dir)
             if result:
                 if use_temp_dir:
                     self._move_out_of_temp_dir(tmp_dir)
@@ -323,10 +328,9 @@ class ImgConverter:
                     os.remove(x.filename)
                 except FileNotFoundError:
                     pass
-            files = os.listdir()
+            files = os.listdir(tmp_dir)
             if use_temp_dir:
                 self._move_out_of_temp_dir(tmp_dir, files)
-            os.chdir(tmp)
             return files
 
         def convert(self, tex0, tex_format):

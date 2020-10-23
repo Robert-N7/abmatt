@@ -170,7 +170,7 @@ class BrresTreeView(QTreeView):
         try:
             item = self.brres_map.pop(brres.name)
             self.unlink_tree(item)
-            self.mdl.removeRow(item.row(), self.clicked_index.parent())
+            self.mdl.removeRow(item.row())
         except KeyError:
             pass
 

@@ -36,7 +36,6 @@ class Window(QMainWindow):
 
     def __init_threads(self):
         self.threadpool = QThreadPool()     # for multi-threading
-        # ConvertManager.get().subscribe(self)
         self.converter = converter = ConvertManager.get()
         converter.signals.on_conversion_finish.connect(self.on_conversion_finish)
         self.image_manager = image_manager = ImageManager.get()

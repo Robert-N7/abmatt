@@ -7,10 +7,11 @@ from time import sleep
 from PyQt5.QtCore import QObject, pyqtSignal, QRunnable, pyqtSlot
 from PyQt5.QtGui import QPixmap
 
+from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
 from abmatt.brres.lib.node import ClipableObserver
 from abmatt.brres.tex0 import Tex0
-from abmatt.image_converter import ImgConverter, ImgConverterI
+from abmatt.image_converter import ImgConverter, ImgConverterI, DecodeError
 
 
 class ImageObserver:
@@ -137,8 +138,11 @@ class ImageManager(QRunnable, ClipableObserver, ImageHandler):
             self.brres_to_folder[name] = folder_name = self.__get_unique_folder_name()
         else:
             shutil.rmtree(folder_name, ignore_errors=True)
-        ImgConverter().batch_decode(brres.textures, folder_name)
-        self.signals.on_image_update.emit((brres, folder_name))
+        try:
+            ImgConverter().batch_decode(brres.textures, folder_name)
+            self.signals.on_image_update.emit((brres, folder_name))
+        except DecodeError as e:
+            AutoFix.get().error(e)
         # self.__on_update_brres_images(name, folder_name)
 
     def __get_unique_folder_name(self):

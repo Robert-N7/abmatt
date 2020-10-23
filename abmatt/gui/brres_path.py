@@ -18,7 +18,7 @@ def get_material_by_url(text, trace_path=False):
 
 def get_materials_by_url(url):
     try:
-        brres, mdl0, material = BrresPath(path=url).trace_path(Brres.OPEN_FILES)
+        brres, mdl0, material = BrresPath(path=url).trace_path()
         if material is None:
             if mdl0 is None:
                 if not len(brres.models):
@@ -95,4 +95,7 @@ class BrresPath:
                 if mdl0:
                     if material_name:
                         material = mdl0.get_material_by_name(material_name)
-        return brres, mdl0, material if not return_new_brres_flag else brres, mdl0, material, new_brres
+        if not return_new_brres_flag:
+            return brres, mdl0, material
+        else:
+            return brres, mdl0, material, new_brres

@@ -1,6 +1,6 @@
 import os
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtGui import QColor, QPainter
 from PyQt5.QtWidgets import QComboBox, QSlider, QStackedLayout
 from PyQt5.QtWidgets import QWidget, QGridLayout, QScrollArea, QVBoxLayout, QLabel, QHBoxLayout, QTabWidget, QCheckBox, \
@@ -21,13 +21,13 @@ class MaterialTabs(QWidget, MatWidgetHandler):
         # Material selection tabs
         tab_widget = QTabWidget(self)
         layout.addWidget(tab_widget)
+        self.tabBar = tab_widget.tabBar()
+        # self.tabBar.setMouseTracking(True)
+        # self.tabBar.installEventFilter(self)
         self.material_library = MaterialLibrary(self, Brres.get_material_library())
         tab_widget.addTab(self.material_library, 'Library Materials')
         self.scene_library = MaterialBrowser(self)
         tab_widget.addTab(self.scene_library, 'Scene Materials')
-        # tab_widget.setChangeCurrentOnDrag(True)
-        # self.setChangeCurrentOnDrag(True)
-        # self.setAcceptDrops(True)
         self.editor = MaterialSmallEditor(self)
         layout.addWidget(self.editor)
         self.setLayout(layout)
@@ -52,6 +52,15 @@ class MaterialTabs(QWidget, MatWidgetHandler):
         grid.addWidget(self.blend)
         grid.addWidget(maps)
         # Right
+
+    def eventFilter(self, obj, ev):
+        if obj == self.tabBar:
+            # print(ev.type())
+            if ev.type() == QEvent.MouseMove:
+                index = self.tabBar.tabAt(ev.pos())
+                self.tabBar.setCurrentIndex(index)
+                return True
+        return super().eventFilter(obj, ev)
 
     def add_brres_materials_to_scene(self, brres):
         self.scene_library.add_brres_materials(brres)
@@ -129,6 +138,7 @@ class MaterialLibrary(MaterialBrowser):
     def __init__(self, parent, material_library):
         super().__init__(parent)
         self.brres = None
+        self.setAcceptDrops(True)
         self.add_materials(material_library.values())
         for x in material_library:
             self.brres = material_library[x].parent.parent
@@ -168,6 +178,8 @@ class MaterialLibrary(MaterialBrowser):
             mats = get_materials_by_url(data.text())
             if mats:
                 self.add_materials(mats)
+                a0.accept()
+                return
         a0.ignore()
 
     def dragEnterEvent(self, a0):
