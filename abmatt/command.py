@@ -3,18 +3,20 @@
 # ---------------------------------------------------------------------------
 import fnmatch
 import os
+from cmd import Cmd
 
 from abmatt.brres import Brres
-from abmatt.brres.lib.autofix import AUTO_FIXER
+from abmatt.autofix import AutoFix
 from abmatt.brres.lib.matching import validInt, MATCHING
-from abmatt.brres.mdl0 import Mdl0
-from abmatt.brres.mdl0.layer import Layer
-from abmatt.brres.mdl0.material import Material
+from abmatt.brres.mdl0.material.layer import Layer
 from abmatt.brres.mdl0.shader import Shader, Stage
-from abmatt.brres.pat0 import Pat0MatAnimation
-from abmatt.brres.srt0 import SRTMatAnim, SRTTexAnim
-from abmatt.brres.tex0 import Tex0, ImgConverter, EncodeError, NoImgConverterError
+from abmatt.brres.tex0 import Tex0
+from abmatt.image_converter import EncodeError, NoImgConverterError, ImgConverter
 from abmatt.brres.lib.binfile import UnpackingError, PackingError
+from abmatt.brres.mdl0.material.material import Material
+from abmatt.brres.mdl0.mdl0 import Mdl0
+from abmatt.brres.pat0.pat0_material import Pat0MatAnimation
+from abmatt.brres.srt0.srt0_animation import SRTMatAnim, SRTTexAnim
 
 
 def convert_file_ext(path, new_ext):
@@ -68,6 +70,10 @@ def getParents(group):
 
 def getBrresFromMaterials(mats):
     return {m.getBrres() for m in mats}
+
+
+# todo, refactor to separate classes for each command so this isn't so messy
+# todo, info command for each command, and information about presets
 
 
 class Command:
@@ -153,7 +159,7 @@ class Command:
                 x[i] = 'in'
                 break
         if for_index >= 0:
-            self.setSelection(x[for_index + 1:])
+            self.setSelection(x[for_index:])
             x = x[0:for_index]
         elif in_index >= 0:
             self.setSelection(x[in_index:])
@@ -228,7 +234,7 @@ class Command:
                 ext = None
             if ext is None or ext.lower() != '.brres':
                 if ext:
-                    AUTO_FIXER.warn('Unsupported target extension {}, using .brres'.format(ext))
+                    AutoFix.get().warn('Unsupported target extension {}, using .brres'.format(ext))
                 self.destination += '.brres'
         if not self.is_import:
             if not self.destination:
@@ -349,7 +355,7 @@ class Command:
                     elif not self.file:
                         self.file = os.path.normpath(in_sel[i])
                     else:
-                        raise ParsingException(self.txt, 'Unknown argument {}'.format(li[i]))
+                        raise ParsingException(self.txt, 'Unknown argument "{}"'.format(in_sel[i]))
                     i += 1
             except IndexError:
                 raise ParsingException(self.txt, "Argument required for " + x)
@@ -402,7 +408,7 @@ class Command:
         # first pass, mark non-modified files for closing, and appending active
         for x in opened:
             if x not in exclude:
-                if not opened[x].isModified:
+                if not opened[x].is_modified:
                     to_close.append(x)
                     amount -= 1
                 else:
@@ -435,12 +441,11 @@ class Command:
         # open any that aren't opened
         for f in to_open:
             # try:
-            brres = Brres(f)
+            brres = Brres.get_brres(f, True)
             opened[f] = brres
             active.append(brres)
         # except UnpackingError as e:
-        #     AUTO_FIXER.error(e)
-        Brres.OPEN_FILES = opened.values()
+        #     AutoFix.get().error(e)
         return active
 
     @staticmethod
@@ -466,7 +471,7 @@ class Command:
             try:
                 lines = f.readlines()
             except UnicodeDecodeError:
-                AUTO_FIXER.error('Not a text file {}'.format(filename))
+                AutoFix.get().error('Not a text file {}'.format(filename))
                 return
             preset_begin = False
             preset = []
@@ -480,7 +485,7 @@ class Command:
                         try:
                             preset.append(Command(line))
                         except ParsingException as e:
-                            AUTO_FIXER.error('Preset {} : {}'.format(name, e), 1)
+                            AutoFix.get().error('Preset {} : {}'.format(name, e), 1)
                             Command.PRESETS[name] = None
                     else:
                         commands.append(Command(line))
@@ -523,8 +528,11 @@ class Command:
             if Command.MATERIALS:
                 Command.MATERIALS = []
         # Materials
-        for x in Command.MODELS:
-            Command.MATERIALS.extend(x.getMaterialsByName(material))
+        if material or not Command.MATERIALS:
+            mats = []
+            for x in Command.MODELS:
+                mats.extend(x.get_materials_by_name(material))
+            Command.MATERIALS = mats
         Command.SELECT_TYPE = None  # reset selection
         return True
 
@@ -671,23 +679,19 @@ class Command:
         marked = Command.FILES_MARKED
         for f in Command.ACTIVE_FILES:
             if f not in marked:
-                f.isModified = True
+                f.is_modified = True
                 Command.FILES_MARKED.add(f)
 
     # ---------------------------------------------- RUN CMD ---------------------------------------------------
     @staticmethod
     def run_commands(commandlist):
-        if Command.DEBUG:
+        try:
             for cmd in commandlist:
                 cmd.run_cmd()
-        else:
-            try:
-                for cmd in commandlist:
-                    cmd.run_cmd()
-            except (ValueError, SaveError, PasteError, MaxFileLimit, NoSuchFile, FileNotFoundError, ParsingException,
-                    OSError, UnpackingError, PackingError, NotImplementedError, NoImgConverterError, RuntimeError) as e:
-                AUTO_FIXER.error(e)
-                return False
+        except (ValueError, SaveError, PasteError, MaxFileLimit, NoSuchFile, FileNotFoundError, ParsingException,
+                OSError, UnpackingError, PackingError, NotImplementedError, NoImgConverterError, RuntimeError) as e:
+            AutoFix.get().exception(e)
+            return False
         return True
 
     def run_import(self, files, converted_format=None):
@@ -720,16 +724,16 @@ class Command:
         self.destination = None
         self.run_convert()
 
-    def import_texture(self, file, tex_format=None, num_mips=-1):
+    def import_texture(self, brres, file, tex_format=None, num_mips=-1):
         try:
-            return ImgConverter().encode(file, tex_format, num_mips)
+            return ImgConverter().encode(brres, file, tex_format, num_mips)
         except EncodeError as e:
             print(e)
 
     def run_cmd(self):
         if self.hasSelection:
             if not self.updateSelection(self.file, self.model, self.name):
-                AUTO_FIXER.warn('No selection found for "{}"'.format(self.txt))
+                AutoFix.get().warn('No selection found for "{}"'.format(self.txt))
                 return False
             elif self.cmd == 'select':
                 return True
@@ -752,7 +756,7 @@ class Command:
         self.updateTypeSelection()
         if not self.SELECTED:
             if self.cmd == 'info':
-                AUTO_FIXER.info('No items in selection.')
+                AutoFix.get().info('No items in selection.')
                 return True
             raise RuntimeError('No items found in selection! ({})'.format(self.txt))
         if self.cmd == 'set':
@@ -943,7 +947,7 @@ class Command:
                     pass
                 files = self.getFiles(type_id)
                 for file in files:
-                    tex = self.import_texture(file, convert_fmt, num_mips)
+                    tex = self.import_texture(file, None, convert_fmt, num_mips)
                     if tex:
                         if resize:
                             tex.set_str(self.key, self.value)
@@ -1027,7 +1031,321 @@ def load_presets(app_dir):
     if app_dir != cwd:
         loaded_cwd = load_preset_file(cwd)
     if loaded or loaded_cwd:
-        AUTO_FIXER.info('Presets loaded...', 5)
+        AutoFix.get().info('Presets loaded...', 5)
     else:
-        AUTO_FIXER.info('No presets file detected', 3)
+        AutoFix.get().info('No presets file detected', 3)
     return loaded
+
+
+class Shell(Cmd, object):
+    prompt = '>'
+
+    def __init__(self):
+        super(Shell, self).__init__()
+        self.cmd_queue = []
+
+    def run(self, prefix, cmd):
+        line = prefix + ' ' + cmd
+        self.cmd_queue.append(line)
+        try:
+            Command.run_commands([Command(line)])
+        except (ParsingException, NoSuchFile) as e:
+            AutoFix.get().exception(e)
+
+    @staticmethod
+    def complete_material_name(match_text):
+        matches = []
+        for x in Command.MODELS:
+            matches.extend([mat for mat in x.materials if mat.name.startswith(match_text)])
+        return matches
+
+    @staticmethod
+    def complete_model_name(match_text):
+        matches = []
+        for x in Command.ACTIVE_FILES:
+            matches.extend([mdl for mdl in x.models if mdl.name.startswith(match_text)])
+        return matches
+
+    @staticmethod
+    def complete_type(match_text):
+        return [x for x in Command.TYPE_SETTING_MAP if x.startswith(match_text)]
+
+    @staticmethod
+    def complete_key(match_text, type=None):
+        if type:
+            matches = [x for x in Command.TYPE_SETTING_MAP[type] if x.startswith(match_text)]
+        else:
+            matches = []
+            for key, vals in enumerate(Command.TYPE_SETTING_MAP):
+                matches.extend([val for val in vals if val.startswith(match_text)])
+        return matches
+
+    @staticmethod
+    def find_files(path, text):
+        """finds the files at path, that start with text (removes anything on the path before text)"""
+        directory, name = os.path.split(path)
+        if not directory:
+            directory = "."
+        files = []
+        for file in os.listdir(directory):
+            if file.startswith(name):
+                files.append(file[name.rindex(text):])
+        return files
+
+    @staticmethod
+    def construct_file_path(sel_words, start_file=False):
+        path = None
+        for x in sel_words:
+            if x in ('in', 'to'):
+                start_file = True
+            elif x == 'model':
+                start_file = False
+            elif x == 'file':
+                start_file = True
+            elif start_file:
+                path = x if path is None else os.path.join(path, x)
+        return path
+
+    def complete_selection(self, text, sel_words):
+        if not sel_words:
+            return self.complete_material_name(text)
+        elif 'in' not in sel_words:
+            return ['in'] if not text or text in 'in' else None
+        else:
+            last_word = sel_words[-1]
+            if last_word == 'model':
+                return self.complete_model_name(text)
+            elif last_word == 'file':
+                return self.find_files(text, text)
+            # last word is 'in' or a model or file
+            possible = []
+            if 'model'.startswith(text):
+                possible.append('model')
+            elif 'file'.startswith(text):
+                possible.append('file')
+            sel_words.append(text)
+            possible.extend(self.find_files(self.construct_file_path(sel_words), text))
+            return possible
+
+    def generic_complete(self, text, words, for_sel_index=1):
+        """ :param text: text to complete
+            :param words: list of words in the line minus the command
+            :param for_sel_index: the index where the word 'for' should be in words
+        """
+        if not words:
+            return self.complete_type(text)
+        if len(words) == for_sel_index:
+            return ['for'] if 'for'.startswith(text) else None
+        elif len(words) > for_sel_index:
+            return self.complete_selection(text, words[for_sel_index + 1:])
+
+    def get_words(self, text, line):
+        if text:  # remove text from end
+            line = line[:-1 - len(text)]
+        return line.split(' ')[1:]  # remove the first command
+
+    def do_paste(self, line):
+        self.run('paste', line)
+
+    def help_paste(self):
+        print('USAGE: paste <type> [for <selection>]')
+
+    def complete_paste(self, text, line, begid, endid):
+        return self.generic_complete(text, self.get_words(text, line))
+
+    def do_copy(self, line):
+        self.run('copy', line)
+
+    def help_copy(self):
+        print('USAGE: copy <type> [for <selection>]')
+
+    def complete_copy(self, text, line, begid, endid):
+        return self.generic_complete(text, self.get_words(text, line))
+
+    def do_quit(self, line):
+        return True
+
+    def help_quit(self):
+        print('Ends the interactive shell.')
+
+    do_EOF = do_quit
+
+    def do_set(self, line):
+        self.run('set', line)
+
+    def help_set(self):
+        print('USAGE: set <type> <key>:<value> [for <selection>]')
+
+    def complete_set(self, text, line, begid, endid):
+        words = self.get_words(text, line)
+        possible = []
+        if not words:  # could bypass type
+            for key in Command.TYPE_SETTING_MAP:
+                if key.startswith(text):
+                    possible.append(key)
+                for setting in Command.TYPE_SETTING_MAP[key]:
+                    if setting.startswith(text):
+                        possible.append(setting + ':?')
+                        possible.append(setting + ':*')
+        else:
+            # Check for 'for'
+            try:
+                for_index = words.index('for')
+                return self.complete_selection(text, words[for_index + 1:])
+            except ValueError:
+                if 'for'.startswith(text):
+                    possible.append('for')
+            if len(words) < 2:  # maybe a key:val pair, more than that it can't be
+                keys = Command.TYPE_SETTING_MAP.get(words[0].split(':')[0])
+                if keys:
+                    for key in keys:
+                        if key.startswith(text):  # slightly weird way of saying, you gotta fill this in yourself
+                            possible.append(key + ':*')
+                            possible.append(key + ':?')
+        return possible
+
+    def do_add(self, line):
+        self.run('add', line)
+
+    def help_add(self):
+        print('USAGE: add <type> [for <selection>]')
+
+    def complete_add(self, text, line, begid, endid):
+        return self.generic_complete(text, self.get_words(text, line))
+
+    def do_remove(self, line):
+        self.run('remove', line)
+
+    def help_remove(self):
+        print('USAGE: remove <type> [for <selection>]')
+
+    def complete_remove(self, text, line, begid, endid):
+        return self.generic_complete(text, self.get_words(text, line))
+
+    def do_info(self, line):
+        self.run('info', line)
+
+    def help_info(self):
+        print('USAGE: info <type> [<key>] [for <selection>]')
+
+    def complete_info(self, text, line, begid, endid):
+        words = self.get_words(text, line)
+        possible = []
+        if not words:  # could be type key or 'for'
+            for x in Command.TYPE_SETTING_MAP:
+                if x.startswith(text):
+                    possible.append(x)
+                for key in Command.TYPE_SETTING_MAP[x]:
+                    if key.startswith(text):
+                        possible.append(key)
+            if 'for'.startswith(text):
+                possible.append('for')
+            return possible
+        else:
+            # check if for is present (selection)
+            try:
+                for_index = words.index('for')
+                return self.complete_selection(text, words[for_index + 1:])
+            except ValueError:
+                if 'for'.startswith(text):
+                    possible.append('for')
+            sel_type = words[0].split(':')[0]
+            settings = Command.TYPE_SETTING_MAP.get(sel_type)
+            if settings:  # specified type?
+                possible.extend([x for x in settings if x.startswith(text)])
+            return possible
+
+    def do_preset(self, line):
+        self.run('preset', line)
+
+    def help_preset(self):
+        print('USAGE: preset <preset> [for <selection>]')
+
+    def complete_preset(self, text, line, begid, endid):
+        words = self.get_words(text, line)
+        if not words:
+            return [x for x in Command.PRESETS if x.startswith(text)]
+        elif len(words) == 1:
+            return ['for'] if 'for'.startswith(text) else None
+        else:
+            return self.complete_selection(text, words[2:])  # need to check this
+
+    def do_select(self, line):
+        self.run('select', line)
+
+    def help_select(self):
+        print('USAGE: select <name> [in <container>]')
+
+    def complete_select(self, text, line, begid, endid):
+        return self.complete_selection(text, self.get_words(text, line))
+
+    def do_save(self, line):
+        self.run('save', line)
+
+    def help_save(self):
+        print('USAGE: save [<filename>] [as <destination>] [overwrite]')
+
+    def complete_save(self, text, line, begid, endid):
+        possible = []
+        words = self.get_words(text, line)
+        if not words:
+            possible = [x for x in Command.OPEN_FILES if x.startswith(text)]
+        elif 'as' in words:
+            file_words = words[words.index('as') + 1:]
+            if file_words:
+                path = file_words.pop(0)
+                for x in file_words:
+                    path = os.path.join(path, x)
+                path = os.path.join(path, text)
+            else:
+                path = text
+            try:
+                possible = self.find_files(path, text)
+            except OSError as e:
+                pass
+        if 'overwrite'.startswith(text) and 'overwrite' not in words:
+            possible.append('overwrite')
+        if 'as'.startswith(text) and 'as' not in words:
+            possible.append('as')
+        return possible
+
+    def do_dump(self, line):
+        words = line.split()
+        if not words:
+            print('USAGE: dump <filename> [overwrite]')
+        elif not self.cmd_queue:
+            print('Nothing in queue.')
+        else:
+            file = words.pop(0)
+            overwrite = True if 'overwrite' in words or Command.OVERWRITE else False
+            if os.path.exists(file) and not overwrite:
+                AutoFix.get().error('File {} already exists!'.format(file))
+            else:
+                with open(file, 'w') as f:
+                    f.write('\n'.join(self.cmd_queue))
+
+    def help_dump(self):
+        print('Dumps interactive shell commands to file.')
+        print('USAGE: dump <filename> [overwrite]')
+
+    def do_clear(self, line):
+        self.cmd_queue = []
+
+    def help_clear(self):
+        print('Clears the interactive shell command queue.')
+
+    def do_convert(self, line):
+        self.run('convert', line)
+
+    def complete_convert(self, text, line, begid, endid):
+        words = self.get_words(text, line)
+        possible = self.find_files(self.construct_file_path(words), text)
+        return possible
+
+    def help_convert(self):
+        print('Converts dae or obj model to/from brres.\nUsage: convert <filename> [to <destination>]')
+
+    def default(self, line):
+        if line == 'x' or line == 'q':
+            return self.do_quit(line)
+        print('Syntax error, type ? for help')

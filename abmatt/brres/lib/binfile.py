@@ -36,6 +36,7 @@ class BinFile:
         self.names_packed = False
         self.lenMap = {}  # used for tracking length of files
         self.c_length = None  # for tracking current length
+        # self.linked_offsets = []   # debugging
         self.isWriteMode = (mode == 'w')
         if not self.isWriteMode:
             with open(filename, "rb") as file:
@@ -135,6 +136,7 @@ class BinFile:
         offset = self.offset
         for i in range(num_refs):
             li.append(offset)
+            # self.linked_offsets.append(offset)      # debugging
             offset += 4
         self.advance(num_refs * 4)
 
@@ -405,6 +407,7 @@ class BinFile:
         #     reflist = names[key]
         #     for x in reflist:
         #         out.append(x[1])
+        # out.extend(self.linked_offsets)
         # with open('names.txt', 'w') as f:
         #     f.write(str(out))
 

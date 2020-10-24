@@ -1,13 +1,26 @@
-from abmatt.brres.mdl0.geometry import Geometry
+from abmatt.brres.mdl0.point import Point
+
+TYPE_NORMAL = 0
+TYPE_NORMAL_BINORMAL_TANGENT = 1
+TYPE_NORMAL_OR_BINORMAL_OR_TANGENT = 2
 
 
-class Normal(Geometry):
-    COMP_COUNT = (3, 9, 3)
+class Normal(Point):
+    @property
+    def point_width(self):
+        if self.comp_count == TYPE_NORMAL_BINORMAL_TANGENT:
+            return 9
+        return 3
 
-    def unpack(self, binfile):
-        super(Normal, self).unpack(binfile)
-        self.unpack_data(binfile)
+    @property
+    def default_comp_count(self):
+        return TYPE_NORMAL
 
-    def pack(self, binfile):
-        super(Normal, self).pack(binfile)
-        self.pack_data(binfile)
+    @staticmethod
+    def comp_count_from_width(width):
+        if width == 9:
+            return TYPE_NORMAL_BINORMAL_TANGENT
+        elif width == 3:
+            return TYPE_NORMAL
+        else:
+            raise ValueError('Normal has no comp_count of width {}'.format(width))

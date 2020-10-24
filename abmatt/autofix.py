@@ -1,6 +1,13 @@
 """Debugging and fixing"""
+import sys
+import traceback
+from threading import Thread
+from time import sleep
+
 from colorama import init
+
 init()
+
 
 class bcolors:
     HEADER = '\033[35m'
@@ -24,25 +31,45 @@ class Bug:
     # notify levels, 0 silent, 1 quiet, 2 mid, 3 loud, 4 max, 5 debug
     def __init__(self, bug_level, notify_level, description, fix_des=None):
         self.bug_level = bug_level
-        self.notify_level = notify_level        # lower numbers mean notify when quiet
+        self.notify_level = notify_level  # lower numbers mean notify when quiet
         self.description = description
         self.fix_des = fix_des
         self.is_resolved = False
-        AUTO_FIXER.notify(self)
+        AutoFix.get().notify(self)
 
     # def should_fix(self):
-    #     return not self.is_resolved and AUTO_FIXER.should_fix(self)
+    #     return not self.is_resolved and AutoFix.get().should_fix(self)
 
     def resolve(self):
         self.is_resolved = True
-        if AUTO_FIXER.loudness >= self.notify_level:
-            print(f'(FIXED): {self.fix_des}')
+        AutoFix.get().info(f'(FIXED): {self.fix_des}', self.notify_level)
 
 
 class AutoFixAbort(BaseException):
     """Raised by prompt"""
+
     def __init__(self):
         super(AutoFixAbort, self).__init__('Operation aborted')
+
+
+class MessageReceiver:
+    """Interface to receive messages"""
+    def info(self, message):
+        raise NotImplementedError()
+
+    def warn(self, message):
+        raise NotImplementedError()
+
+    def error(self, message):
+        raise NotImplementedError()
+
+
+class Message:
+    def __init__(self, message):
+        self.message = message
+
+    def send(self, pipe):
+        raise NotImplementedError()
 
 
 class AutoFix:
@@ -54,15 +81,70 @@ class AutoFix:
     # Suggest 4
     # Prompt 5
     FIX_PROMPT = 5
+    __AUTO_FIXER = None
 
     # Loudness levels, 0 silent, 1 quiet, 2 mid, 3 loud, 4 max, 5 debug
     LOUD_LEVELS = ('SILENT', 'QUIET', 'MID', 'LOUD', 'MAX', 'DEBUG')
     ERROR_LEVELS = (bcolors.ENDC, bcolors.FAIL, bcolors.FAIL, bcolors.OKBLUE, bcolors.OKBLUE, bcolors.BOLD)
     RESULTS = ('NONE', 'ERROR', 'WARN', 'CHECK', 'SUCCESS')
 
+    class Info(Message):
+        def send(self, pipe):
+            message = self.message
+            print(message)
+            if pipe:
+                pipe.info(message)
+
+    class Warn(Message):
+        def send(self, pipe):
+            message = self.message
+            print(f'{bcolors.FAIL}WARN: {message}{bcolors.ENDC}')
+            if pipe:
+                pipe.warn(message)
+
+    class Error(Message):
+        def send(self, pipe):
+            message = self.message
+            print(f'{bcolors.FAIL}ERROR: {message}{bcolors.ENDC}')
+            if pipe:
+                pipe.error(message)
+
     def __init__(self, fix_level=3, loudness=3):
+        if self.__AUTO_FIXER: raise RuntimeError('Autofixer already initialized')
         self.loudness = loudness
         self.fix_level = fix_level
+        self.queue = []
+        self.is_running = True
+        self.pipe = None  # if set, output is sent to the pipe, must implement info warn and error.
+        self.thread = Thread(target=self.run)
+        AutoFix.__AUTO_FIXER = self
+        self.thread.start()
+
+    @staticmethod
+    def quit():
+        a = AutoFix.__AUTO_FIXER
+        if a is not None:
+            a.is_running = False
+            a.thread.join()
+
+    def run(self):
+        while self.is_running:
+            sleep(0.01)
+            if len(self.queue):
+                message = self.queue.pop(0)
+                message.send(self.pipe)
+
+    def enqueue(self, message):
+        self.queue.append(message)
+
+    @staticmethod
+    def get(fixe_level=3, loudness=3):
+        if AutoFix.__AUTO_FIXER is None:
+            AutoFix.__AUTO_FIXER = AutoFix(fixe_level, loudness)
+        return AutoFix.__AUTO_FIXER
+
+    def set_pipe(self, obj):
+        self.pipe = obj
 
     def set_fix_level(self, fix_level):
         try:
@@ -79,18 +161,32 @@ class AutoFix:
 
     def log(self, message):
         if self.loudness >= 5:
-            print(f'{bcolors.OKBLUE}{message}{bcolors.ENDC}')
+            self.enqueue(self.Info(str(message)))
 
     def info(self, message, loudness=2):
         if self.loudness >= loudness:
-            print(message)
+            self.enqueue(self.Info(str(message)))
 
     def warn(self, message, loudness=2):
         if self.loudness >= loudness:
-            print(f'{bcolors.FAIL}WARN: {message}{bcolors.ENDC}')
+            self.enqueue(self.Warn(str(message)))
 
     def error(self, message, loudness=1):
-        print(f'{bcolors.FAIL}ERROR: {message}{bcolors.ENDC}')
+        if self.loudness >= loudness:
+            self.enqueue(self.Error(str(message)))
+
+    def exception(self, exception, shutdown=False):
+        exc_type, exc_value, exc_tb = sys.exc_info()
+        if self.loudness >= 5:      # Debug level
+            s = traceback.format_exception(exc_type, exc_value, exc_tb)
+        elif self.loudness >= 1:
+            s = traceback.format_exception(exc_type, exc_value, exc_tb, 3)
+        else:
+            s = traceback.format_exception_only(exc_type, exc_value)
+        self.enqueue(self.Error(''.join(s)))
+        if shutdown:
+            self.thread.join(5)
+            sys.exit(-1)
 
     # def should_fix(self, bug):
     #     """Determines if a bug should be fixed"""
@@ -122,14 +218,15 @@ class AutoFix:
     def display_result(self, bug, result_level=4, result_message=None):
         if self.loudness >= bug.notify_level:
             if result_message:
-                print('(' + self.RESULTS[result_level] + ') ' + result_message)
+                result_message = '(' + self.RESULTS[result_level] + ') ' + result_message
             else:
-                print('(' + self.RESULTS[result_level] + ') ' + bug.fix_des)
+                result_message = '(' + self.RESULTS[result_level] + ') ' + bug.fix_des
+            self.info(result_message, 0)
 
     def notify(self, bug):
         """Notifies of a bug check"""
         if self.loudness >= bug.notify_level:
-            print(f'{self.ERROR_LEVELS[bug.notify_level]}{bug.description}{bcolors.ENDC}')
+            self.info(bug.description, 0)
 
     def get_level(self, level_str):
         """Expects level to be a string, as a number or one of the Error levels"""
@@ -146,6 +243,3 @@ class AutoFix:
 
     def set_loudness(self, level_str):
         self.loudness = self.get_level(level_str)
-
-
-AUTO_FIXER = AutoFix()

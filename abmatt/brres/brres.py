@@ -3,40 +3,26 @@
 #   Brres Class
 # --------------------------------------------------------
 import os
-import string
 
-from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
-from abmatt.brres.lib.binfile import BinFile, Folder, UnpackingError
-from abmatt.brres.chr0 import Chr0
-from abmatt.brres.clr0 import Clr0
+from abmatt.brres.lib.binfile import BinFile
 from abmatt.brres.lib.matching import MATCHING
-from abmatt.brres.lib.node import Clipable
-from abmatt.brres.mdl0 import Mdl0
-from abmatt.brres.pat0 import Pat0, Pat0Collection
-from abmatt.brres.scn0 import Scn0
-from abmatt.brres.shp0 import Shp0
-from abmatt.brres.srt0 import Srt0, SRTCollection
-from abmatt.brres.tex0 import Tex0, ImgConverter
+from abmatt.brres.lib.node import Clipable, Packable
+from abmatt.brres.tex0 import Tex0
+from abmatt.image_converter import ImgConverterI, ImgConverter
+from abmatt.autofix import AutoFix, Bug
+from abmatt.brres.lib.packing.pack_brres import PackBrres
+from abmatt.brres.lib.unpacking.unpack_brres import UnpackBrres
 
 
-class Brres(Clipable):
-    FOLDERS = {"3DModels(NW4R)": Mdl0,
-               "Textures(NW4R)": Tex0,
-               "AnmTexPat(NW4R)": Pat0,
-               "AnmTexSrt(NW4R)": Srt0,
-               "AnmChr(NW4R)": Chr0,
-               "AnmScn(NW4R)": Scn0,
-               "AnmShp(NW4R)": Shp0,
-               "AnmClr(NW4R)": Clr0}
-    ANIM_COLLECTIONS = ("AnmTexPat(NW4R)", "AnmTexSrt(NW4R)")
-    ORDERED = ("3DModels(NW4R)", "Textures(NW4R)")
+class Brres(Clipable, Packable):
+
     SETTINGS = ('name')
-    MAGIC = "bres"
-    ROOTMAGIC = "root"
+    MAGIC = 'bres'
     OVERWRITE = False
     DESTINATION = None
-    OPEN_FILES = None  # reference to active files
+    OPEN_FILES = []  # reference to active files
     REMOVE_UNUSED_TEXTURES = False
+    MATERIAL_LIBRARY = None
 
     def __init__(self, name, parent=None, readFile=True):
         """
@@ -45,19 +31,63 @@ class Brres(Clipable):
             parent - optional for supporting containing files in future
             readfile - optional start reading and unpacking file
         """
-        self.folders = {}
-        self.isModified = False
+        # self.folders = {}
+        name = os.path.abspath(name)
+        self.is_modified = False
         self.texture_map = {}
+        self.has_new_model = False
+        self.models = []
+        self.textures = []
+        self.srt0 = []
+        self.pat0 = []
+        self.chr0 = []
+        self.scn0 = []
+        self.shp0 = []
+        self.clr0 = []
         binfile = BinFile(name) if readFile else None
         super(Brres, self).__init__(name, parent, binfile)
+        self.add_open_file(self)
+        if binfile:
+            self.unpack(binfile)
+
+    def get_full_path(self):
+        return self.name
+
+    @staticmethod
+    def add_open_file(file):
+        Brres.OPEN_FILES.append(file)
+
+    @staticmethod
+    def get_brres(filename, create_if_not_exists=False):
+        filename = os.path.abspath(filename)
+        for x in Brres.OPEN_FILES:
+            if filename == x.name:
+                return x
+        if os.path.exists(filename):
+            return Brres(filename, readFile=True)
+        elif create_if_not_exists:
+            return Brres(filename, readFile=False)
+
+    @staticmethod
+    def get_material_library():
+        lib = Brres.MATERIAL_LIBRARY
+        if lib is None:
+            Brres.MATERIAL_LIBRARY = {}
+        elif type(lib) == str:
+            try:
+                b = Brres(lib)
+                materials = {}
+                for model in b.models:
+                    for material in model.materials:
+                        materials[material.name] = material
+                Brres.MATERIAL_LIBRARY = materials
+            except FileNotFoundError as e:
+                AutoFix.get().warn(f'Material library "{lib}" not found.')
+                Brres.MATERIAL_LIBRARY = {}
+        return Brres.MATERIAL_LIBRARY
 
     def begin(self):
-        folders = self.folders
-        self.models = folders[self.ORDERED[0]] = []
-        self.textures = folders[self.ORDERED[1]] = []
-        self.pat0 = folders[self.ANIM_COLLECTIONS[0]] = []
-        self.srt0 = folders[self.ANIM_COLLECTIONS[1]] = []
-        self.isModified = True
+        self.is_modified = True
 
     def get_str(self, key):
         if key == 'name':
@@ -67,7 +97,7 @@ class Brres(Clipable):
 
     def set_str(self, key, value):
         if key == 'name':
-            self.name = value
+            self.rename(value)
         else:
             raise ValueError('Unknown key "{}"'.format(key))
 
@@ -75,14 +105,15 @@ class Brres(Clipable):
         from abmatt.converters.convert_dae import DaeConverter2
         converter = DaeConverter2(self, file_path)
         converter.load_model()
+        self.mark_modified()
 
     def add_mdl0(self, mdl0):
-        self.mark_modified()
         prev = self.getModel(mdl0.name)
         if prev:
             self.remove_mdl0(mdl0.name)
         self.models.append(mdl0)
         mdl0.link_parent(self)
+        self.mark_modified()
         return mdl0
 
     def remove_mdl0(self, name):
@@ -93,10 +124,12 @@ class Brres(Clipable):
                     self.srt0.remove(x.srt0_collection)
                 if x.pat0_collection:
                     self.pat0.remove(x.pat0_collection)
+                self.mark_modified()
                 break
 
     def remove_mdl0_i(self, i):
         self.models.pop(i)
+        self.mark_modified()
 
     # ---------------------------------------------- CLIPBOARD ------------------------------------------
     def paste(self, brres):
@@ -108,57 +141,62 @@ class Brres(Clipable):
             tex = t1.get(x)
             if tex:
                 tex.paste(t2[x])
+        self.mark_modified()
         # todo chr0 paste
 
-    def mark_modified(self):
-        self.isModified = True
-
     # -------------------------- SAVE/ CLOSE --------------------------------------------
-    def close(self):
-        if self.isModified or self.DESTINATION and self.DESTINATION != self.name:
+    def close(self, try_save=True):
+        Brres.OPEN_FILES.remove(self)
+        if try_save and self.is_modified or self.DESTINATION and self.DESTINATION != self.name:
             return self.save(self.DESTINATION, self.OVERWRITE)
-        return True
 
-    def save(self, filename=None, overwrite=None):
+    def save(self, filename=None, overwrite=None, check=True):
         if not filename:
             filename = self.name
         if overwrite is None:
             overwrite = self.OVERWRITE
-            # if not self.isChanged():
-            #     return
         if not overwrite and os.path.exists(filename):
-            AUTO_FIXER.error('File {} already exists!'.format(filename), 1)
-            return False
+            AutoFix.get().error('File {} already exists!'.format(filename), 1)
         else:
+            if check:
+                self.check()
             f = BinFile(filename, mode="w")
             self.pack(f)
             if f.commitWrite():
-                AUTO_FIXER.info("Wrote file '{}'".format(filename), 2)
-                self.name = filename
-                self.isModified = False
-            return True
+                AutoFix.get().info("Wrote file '{}'".format(filename), 2)
+                self.rename(filename)
+                self.has_new_model = False
+                self.mark_unmodified()
+                return True
+        return False
 
-    def getTrace(self):
+    def get_trace(self):
         if self.parent:
             return self.parent.name + "->" + self.name
         return self.name
 
     def info(self, key=None, indentation_level=0):
-        print('{}{}:\t{} model(s)\t{} texture(s)'.format('  ' * indentation_level + '>', self.name,
-                                                         len(self.models), len(self.textures)))
-        folder_indent = indentation_level + 1
+        AutoFix.get().info('{}{}:\t{} model(s)\t{} texture(s)'.format('  ' * indentation_level + '>',
+                                    self.name, len(self.models), len(self.textures)), 1)
         indentation_level += 2
-        folders = self.folders
-        for folder_name in folders:
-            folder = folders[folder_name]
-            folder_len = len(folder)
-            if folder_len:
-                print('{}>{}\t{}'.format('  ' * folder_indent, folder_name, folder_len))
-                for x in folder:
-                    x.info(key, indentation_level)
+        self.sub_info('MDL0', self.models, key, indentation_level)
+        self.sub_info('TEX0', self.textures, key, indentation_level)
+        # self.sub_info('PAT0', self.pat0, key, indentation_level)
+        # self.sub_info('SRT0', self.srt0, key, indentation_level)
+        self.sub_info('CHR0', self.chr0, key, indentation_level)
+        self.sub_info('SCN0', self.scn0, key, indentation_level)
+        self.sub_info('SHP0', self.shp0, key, indentation_level)
+        self.sub_info('CLR0', self.clr0, key, indentation_level)
+
+    def sub_info(self, folder_name, folder, key, indentation_level):
+        folder_len = len(folder)
+        if folder_len:
+            print('{}>{}\t{}'.format('  ' * (indentation_level - 1), folder_name, folder_len))
+            for x in folder:
+                x.info(key, indentation_level)
 
     def isChanged(self):
-        return self.isModified
+        return self.is_modified
 
     # ------------------------------ Models ---------------------------------
 
@@ -173,23 +211,34 @@ class Brres(Clipable):
         except IndexError:
             pass
 
+    @staticmethod
+    def getExpectedBrresFileName(filename):
+        dir, name = os.path.split(filename)
+        name = os.path.splitext(name)[0]
+        for item in ('course', 'map', 'vrcorn'):
+            if item in filename:
+                name = item + '_model'
+                break
+        return os.path.join(dir, name + '.brres')
+
     def getExpectedMdl(self):
         filename = self.name
         for item in ('course', 'map', 'vrcorn'):
             if item in filename:
                 return item
 
+    def get_animations(self):
+        return [self.srt0, self.pat0, self.chr0, self.scn0, self.shp0, self.clr0]
+
     def renameModel(self, old_name, new_name):
         for x in self.models:
             if x.name == new_name:
-                AUTO_FIXER.warn('Unable to rename {}, the model {} already exists!'.format(old_name, new_name))
+                AutoFix.get().warn('Unable to rename {}, the model {} already exists!'.format(old_name, new_name))
                 return None
-        folders = self.folders
-        for n in folders:
-            if n != self.models and n != self.textures:
-                for x in folders[n]:
-                    if old_name == x.name:
-                        x.name = new_name
+        for n in self.get_animations():
+            for x in n:
+                if old_name == x.name:
+                    x.name = new_name
         return new_name
 
     def getModelsByName(self, name):
@@ -206,30 +255,42 @@ class Brres(Clipable):
                 if tex is not None:
                     return tex
 
-    def add_tex0(self, tex0):
+    def add_tex0(self, tex0, replace=True, mark_modified=True):
+        replaced = False
         if tex0.name in self.texture_map:
+            if not replace:
+                return False
             self.remove_tex0(tex0.name)
-            AUTO_FIXER.info('Replaced tex0 {}'.format(tex0.name))
+            AutoFix.get().info('Replaced tex0 {}'.format(tex0.name))
+            replaced = True
         self.textures.append(tex0)
         self.texture_map[tex0.name] = tex0
+        tex0.parent = self      # this may be redundant
+        if mark_modified:
+            self.mark_modified()
+        return replaced
 
     def paste_tex0s(self, brres):
         tex_map = brres.texture_map
-        for x in tex_map:
-            self.add_tex0(tex_map[x])
+        if len(tex_map):
+            for x in tex_map:
+                self.add_tex0(tex_map[x], mark_modified=False)
+            self.mark_modified()
 
     def import_texture(self, image_path, name=None):
-        tex0 = ImgConverter().encode(image_path)
+        tex0 = ImgConverter().encode(image_path, self)
         if tex0:
             if name:
                 tex0.name = name
-            self.add_tex0(tex0)
         return tex0
 
+    def import_textures(self, paths, tex0_format=None, num_mips=-1, check=False):
+        return ImgConverter().batch_encode(paths, tex0_format, num_mips, check)
+
     def rename_texture(self, tex0, name):
-        self.texture_map[tex0.name] = None
-        tex0.name = name
-        self.texture_map[tex0.name] = tex0
+        if tex0.rename(name):
+            self.texture_map[tex0.name] = None
+            self.texture_map[tex0.name] = tex0
 
     def get_texture_map(self):
         return self.texture_map
@@ -252,13 +313,15 @@ class Brres(Clipable):
         try:
             tex = self.texture_map.pop(name)
             self.textures.remove(tex)
+            self.mark_modified()
         except KeyError:
-            AUTO_FIXER.warn('No texture {} in {}'.format(name, self.name))
+            AutoFix.get().warn('No texture {} in {}'.format(name, self.name))
 
     def remove_tex0_i(self, i):
         tex = self.textures.pop(i)
         if tex:
             self.texture_map.pop(tex.name)
+            self.mark_modified()
 
     def getUsedTextures(self):
         ret = set()
@@ -269,25 +332,6 @@ class Brres(Clipable):
         return ret
 
     # --------------------- Animations ----------------------------------------------
-    @staticmethod
-    def create_model_animation_map(animations):
-        model_anim_map = {}  # dictionary of model names to animations
-        if animations:
-            for x in animations:
-                name = x.name.rstrip(string.digits)
-                if not model_anim_map.get(name):
-                    model_anim_map[name] = [x]
-                else:
-                    model_anim_map[name].append(x)
-        return model_anim_map
-
-    @staticmethod
-    def get_anim_for_packing(anim_collection):
-        # srt animation processing
-        animations = []
-        for x in anim_collection:
-            animations.extend(x.consolidate())
-        return animations
 
     def add_srt_collection(self, collection):
         self.srt0.append(collection)
@@ -297,184 +341,19 @@ class Brres(Clipable):
         self.pat0.append(collection)
         return collection
 
-    def generate_srt_collections(self, srt0_anims):
-        # srt animation processing
-        model_anim_map = self.create_model_animation_map(srt0_anims)
-        # now create SRT Collection
-        anim_collections = []
-        for key in model_anim_map:
-            collection = SRTCollection(key, self, model_anim_map[key])
-            anim_collections.append(collection)
-            mdl = self.getModel(key)
-            if not mdl:
-                AUTO_FIXER.info('No model found matching srt0 animation {}'.format(key), 3)
-            else:
-                mdl.set_srt0(collection)
-        return anim_collections
-
-    def generate_pat0_collections(self, pat0_anims):
-        model_anim_map = self.create_model_animation_map(pat0_anims)
-        # now create PAT0 Collection
-        anim_collections = []
-        for key in model_anim_map:
-            collection = Pat0Collection(key, self, model_anim_map[key])
-            anim_collections.append(collection)
-            mdl = self.getModel(key)
-            if not mdl:
-                AUTO_FIXER.info('No model found matching pat0 animation {}'.format(key), 3)
-            else:
-                mdl.set_pat0(collection)
-        return anim_collections
-
     # -------------------------------------------------------------------------
     #   PACKING / UNPACKING
     # -------------------------------------------------------------------------
-    def post_unpacking(self):
-        mdl_name = self.ORDERED[0]
-        x = self.folders.get(mdl_name)
-        self.folders[mdl_name] = self.models = x if x else []
-        tex_name = self.ORDERED[1]
-        x = self.folders.get(tex_name)
-        self.folders[tex_name] = self.textures = x if x else []
-        for x in self.textures:
-            self.texture_map[x.name] = x
-        x = self.folders.get("AnmTexPat(NW4R)")
-        self.folders["AnmTexPat(NW4R)"] = self.pat0 = self.generate_pat0_collections(x) if x else []
-        x = self.folders.get("AnmTexSrt(NW4R)")
-        self.folders["AnmTexSrt(NW4R)"] = self.srt0 = self.generate_srt_collections(x) if x else []
-
-    def pre_packing(self):
-        self.check()
-        folders = self.folders
-        ret = []
-        ordered = self.ORDERED
-        anim_collect = self.ANIM_COLLECTIONS
-        added = set()
-        for folder in ordered:
-            x = folders.get(folder)
-            if x:
-                ret.append((folder, x))
-                added.add(folder)
-        for folder in anim_collect:
-            x = folders.get(folder)
-            if x:
-                ret.append((folder, self.get_anim_for_packing(x)))
-                added.add(folder)
-        for x in folders:
-            if x not in added:
-                ret.append((x, folders[x]))
-        return ret
 
     def unpack(self, binfile):
-        """ Unpacks the brres """
-        binfile.start()
-        magic = binfile.readMagic()
-        if magic != self.MAGIC:
-            raise UnpackingError(self, '"{}" not a brres file'.format(self.name))
-        bom = binfile.read("H", 2)
-        binfile.bom = "<" if bom == 0xfffe else ">"
-        binfile.advance(2)
-        binfile.readLen()
-        rootoffset, numSections = binfile.read("2h", 4)
-        binfile.offset = rootoffset
-        root = binfile.readMagic()
-        assert (root == self.ROOTMAGIC)
-        section_length = binfile.read("I", 4)
-        root = Folder(binfile, root)
-        root.unpack(binfile)
-        # open all the folders
-        while len(root):
-            container = []
-            folder_name = root.recallEntryI()
-            klass = self.FOLDERS[folder_name]
-            subFolder = Folder(binfile, folder_name)
-            subFolder.unpack(binfile)
-            while len(subFolder):
-                name = subFolder.recallEntryI()
-                container.append(klass(name, self, binfile))
-            self.folders[folder_name] = container
-        binfile.end()
-        self.post_unpacking()
-
-    @staticmethod
-    def getNumSections(folders):
-        """ gets the number of sections, including root"""
-        count = 1  # root
-        for x in folders[count:]:
-            if x:
-                count += len(x)
-                # print('Length of folder {} is {}'.format(x.name, len(x)))
-        return count
-
-    def generateRoot(self, binfile, subfiles):
-        """ Generates the root folders
-            Does not hook up data pointers except the head group,
-            returns (rootFolders, bytesize)
-        """
-        rootFolders = []  # for storing Index Groups
-        byteSize = 0
-        # Create folder indexing folders
-        rootFolder = Folder(binfile, self.ROOTMAGIC)
-        rootFolders.append(rootFolder)
-        offsets = []  # for tracking offsets from first group to others
-        # Create folder for each section the brres has
-        for i in range(len(subfiles)):
-            folder_name, folder = subfiles[i]
-            size = len(folder)
-            if size:
-                f = Folder(binfile, folder_name)
-                for j in range(size):
-                    f.addEntry(folder[j].name)  # might not have name?
-                rootFolder.addEntry(f.name)
-                rootFolders.append(f)
-                offsets.append(byteSize)
-                byteSize += f.byteSize()
-        # now update the dataptrs
-        rtsize = rootFolder.byteSize()
-        entries = rootFolder.entries
-        for i in range(len(offsets)):
-            entries[i].dataPtr = offsets[i] + rtsize
-        return rootFolders
-
-    @staticmethod
-    def packRoot(binfile, rt_folders):
-        """ Packs the root section, returns root folders that need data ptrs"""
-        binfile.start()
-        binfile.writeMagic("root")
-        binfile.markLen()
-        for f in rt_folders:
-            f.pack(binfile)
-        binfile.end()
-        binfile.align()
-        return rt_folders[1:]
+        UnpackBrres(self, binfile)
 
     def pack(self, binfile):
-        """ packs the brres """
-        sub_files = self.pre_packing()
-        binfile.start()
-        rt_folders = self.generateRoot(binfile, sub_files)
-        binfile.writeMagic(self.MAGIC)
-        binfile.write("H", 0xfeff)  # BOM
-        binfile.advance(2)
-        binfile.markLen()
-        num_sections = self.getNumSections(rt_folders)
-        binfile.write("2H", 0x10, num_sections)
-        folders = self.packRoot(binfile, rt_folders)
-        # now pack the folders
-        folder_index = 0
-        for name, file_group in sub_files:
-            if len(file_group):
-                index_group = folders[folder_index]
-                for file in file_group:
-                    index_group.createEntryRefI()  # create the dataptr
-                    file.pack(binfile)
-                folder_index += 1
-        binfile.packNames()
-        binfile.end()
+        PackBrres(self, binfile)
 
     # --------------------------------------------------------------------------
     def check(self):
-        AUTO_FIXER.info('checking file {}'.format(self.name), 4)
+        AutoFix.get().info('checking file {}'.format(self.name), 4)
         expected = self.getExpectedMdl()
         for mdl in self.models:
             mdl.check(expected)
@@ -496,3 +375,8 @@ class Brres(Clipable):
         tex_map = self.texture_map
         for x in unused_textures:
             tex.remove(tex_map.pop(x))
+
+    def mark_unmodified(self):
+        self.is_modified = False
+        self._mark_unmodified_group(self.models)
+        self._mark_unmodified_group(self.textures)

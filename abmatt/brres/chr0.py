@@ -3,6 +3,8 @@ from copy import copy
 
 from abmatt.brres.lib.binfile import Folder
 from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
+from abmatt.brres.lib.packing.pack_chr0 import PackChr0
+from abmatt.brres.lib.unpacking.unpack_chr0 import UnpackChr0
 
 
 class Chr0(SubFile):
@@ -39,31 +41,8 @@ class Chr0(SubFile):
         self.loop = item.loop
         self.data = copy(item.data)
 
-
-
     def unpack(self, binfile):
-        self._unpack(binfile)
-        _, self.framecount, num_entries, self.loop, self.scaling_rule = binfile.read('I2H2I', 16)
-        binfile.recall()  # section 0
-        f = Folder(binfile)
-        f.unpack(binfile)
-        self.data = binfile.readRemaining()
-        # printCollectionHex(self.data)
-        while len(f):
-            name = f.recallEntryI()
-            self.animations.append(self.ModelAnim(name, binfile.offset - binfile.beginOffset))
+        UnpackChr0(self, binfile)
 
     def pack(self, binfile):
-        self._pack(binfile)
-        binfile.write('I2H2I', 0, self.framecount, len(self.animations), self.loop, self.scaling_rule)
-        f = Folder(binfile)
-        for x in self.animations:
-            f.addEntry(x.name)
-        binfile.createRef()
-        f.pack(binfile)
-        binfile.writeRemaining(self.data)
-        for x in self.animations:  # hackish way of overwriting the string offsets
-            binfile.offset = binfile.beginOffset + x.offset
-            f.createEntryRefI()
-            binfile.storeNameRef(x.name)
-        binfile.end()
+        PackChr0(self, binfile)

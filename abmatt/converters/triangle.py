@@ -21,8 +21,9 @@ def encode_triangles(triangle_indices, fmt_str, byte_array):
 class TriangleSet:
     triangles_in_strips_count = 0
 
-    def __init__(self, np_tris):
+    def __init__(self, np_tris, is_weighted=False):
         Triangle.edge_map = {}  # reset
+        self.is_weighted = is_weighted
         tris = []
         total_set = {}
         for tri in np_tris:
@@ -48,6 +49,7 @@ class TriangleSet:
     def get_tri_strips(self, fmt_str):
         queue = sorted(self.triangles, key=lambda tri: tri.get_connection_count())
         disconnected = []
+        # weight_matrices = []        # maximum of 10 per group
         tristrips = bytearray()
         face_point_count = 0
         # find the tri to start at
@@ -64,14 +66,22 @@ class TriangleSet:
         while start is not None:
             strip = start.create_strip()
             if strip:
+                # if self.is_weighted:
+                #     self.__create_strip_weights(strip, weight_matrices)
                 face_point_count += encode_triangle_strip(strip, fmt_str, tristrips)
                 TriangleSet.triangles_in_strips_count += len(strip) - 2
             else:
                 disconnected.append(start)
             start = self.get_next(queue)
-        face_point_count += encode_triangles(disconnected, fmt_str, tristrips)
+        if len(disconnected):
+            face_point_count += encode_triangles(disconnected, fmt_str, tristrips)
         # print('Total tristrip triangles {}'.format(self.triangles_in_strips_count))
         return tristrips, len(self.triangles), face_point_count
+
+    # def __create_strip_weights(self, strip, weight_matrices):
+    #     unadded_weight_indices = {vertex[0] for vertex in strip if vertex[0] not in weight_matrices}
+    #     if len(unadded_weight_indices) + len(weight_matrices) >
+
 
 
 class Triangle:
