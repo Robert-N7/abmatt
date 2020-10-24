@@ -1,4 +1,5 @@
 # Constants
+from abmatt.autofix import AutoFix
 from abmatt.brres.lib.matching import validBool, validInt, indexListItem, validFloat
 from abmatt.brres.lib.node import Clipable
 
@@ -366,12 +367,12 @@ class Stage(Clipable):
         self.mark_modified()
 
     def info(self, key=None, indentation_level=0):
-        trace = '  ' * indentation_level if indentation_level else '>' + str(self.parent.getMaterialName())
+        trace = '>' + '  ' * indentation_level if indentation_level else '>' + str(self.parent.getMaterialName())
         if key:
-            print('{}->Stage:{}\t{}:{}'.format(trace, self.name, key, self[key]))
+            AutoFix.get().info('{}->Stage:{}\t{}:{}'.format(trace, self.name, key, self[key]), 1)
         else:
-            print('{}Stage:{}\tMapId:{} ColorScale:{}'.format(
-                trace, self.name, self['mapid'], self['colorscale']))
+            AutoFix.get().info('{}Stage:{}\tMapId:{} ColorScale:{}'.format(
+                trace, self.name, self['mapid'], self['colorscale']), 1)
 
     # --------------------------------------------------------------------
     # GETTERS/SETTERS

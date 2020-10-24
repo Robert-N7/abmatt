@@ -5,7 +5,7 @@ from abmatt.brres.lib.matching import parseValStr, indexListItem, validBool, fuz
 from abmatt.brres.lib.node import Clipable
 
 from abmatt.brres.mdl0.wiigraphics.xf import XFTexMatrix, XFDualTex
-from abmatt.autofix import Bug
+from abmatt.autofix import Bug, AutoFix
 
 
 class Layer(Clipable):
@@ -410,10 +410,10 @@ class Layer(Clipable):
         trace = '  ' * indentation_level + self.name if indentation_level else '>' + self.parent.name + "->" + self.name
         if key:
             val = self.get_str(key)
-            print("{}\t{}:{}".format(trace, key, val))
+            AutoFix.get().info("{}\t{}:{}".format(trace, key, val), 1)
         else:
-            print("{}:\tScale:{} Rot:{} Trans:{}".format(
-                trace, self.scale, self.rotation, self.translation))
+            AutoFix.get().info("{}:\tScale:{} Rot:{} Trans:{}".format(
+                trace, self.scale, self.rotation, self.translation), 1)
 
     def uses_mipmaps(self):
         return self.minfilter > 1

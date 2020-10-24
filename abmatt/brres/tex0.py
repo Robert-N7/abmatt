@@ -1,7 +1,7 @@
 """Tex0 subfile"""
 from math import log
 
-from abmatt.autofix import Bug
+from abmatt.autofix import Bug, AutoFix
 from abmatt.brres.lib.matching import parseValStr, validInt
 from abmatt.brres.subfile import SubFile
 from abmatt.brres.lib.packing.pack_tex0 import PackTex0
@@ -155,7 +155,7 @@ class Tex0(SubFile):
         PackTex0(self, binfile)
 
     def info(self, key=None, indentation=0):
-        print('{} {}: {} {}x{} mips:{}'.format(self.MAGIC, self.name, self.FORMATS[self.format],
-                                               self.width, self.height, self.num_mips))
+        AutoFix.get().info('{} {}: {} {}x{} mips:{}'.format(self.MAGIC, self.name, self.FORMATS[self.format],
+                                               self.width, self.height, self.num_mips), 1)
 
 

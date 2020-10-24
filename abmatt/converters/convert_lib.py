@@ -156,7 +156,7 @@ class Converter:
         try:
             return self._try_import_textures(self.brres, image_paths)
         except NoImgConverterError as e:
-            AutoFix.get().error(e)
+            AutoFix.get().exception(e)
 
     @staticmethod
     def _try_import_textures(brres, image_paths):

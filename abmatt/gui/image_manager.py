@@ -142,7 +142,7 @@ class ImageManager(QRunnable, ClipableObserver, ImageHandler):
             ImgConverter().batch_decode(brres.textures, folder_name)
             self.signals.on_image_update.emit((brres, folder_name))
         except DecodeError as e:
-            AutoFix.get().error(e)
+            AutoFix.get().exception(e)
         # self.__on_update_brres_images(name, folder_name)
 
     def __get_unique_folder_name(self):

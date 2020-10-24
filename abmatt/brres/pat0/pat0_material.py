@@ -181,14 +181,14 @@ class Pat0MatAnimation(Clipable):
         return tex_list
 
     def info(self, prefix='', key=None, indentation=0):
-        prefix = '  ' * indentation + self.name if indentation else '>(PAT0)' + self.name
+        prefix = '>' + '  ' * indentation + self.name if indentation else '>(PAT0)' + self.name
         if key:
-            print('{}: {}'.format(prefix, self.get_str(key)))
+            AutoFix.get().info('{}: {}'.format(prefix, self.get_str(key)), 1)
         else:
             val = prefix + ': '
             for x in self.SETTINGS:
                 val += ' ' + x + ':' + str(self.get_str(x))
-            print(val)
+            AutoFix.get().info(val, 1)
 
     def calcFrameScale(self):
         return 1 / (self.frames[-1].frame_id - self.frames[0].frame_id)

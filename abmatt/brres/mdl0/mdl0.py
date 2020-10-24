@@ -375,7 +375,7 @@ class Mdl0(SubFile):
 
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + '>' + self.name if indentation_level else self.parent.name + "->" + self.name
-        print("{}:\t{} material(s)".format(trace, len(self.materials)))
+        AutoFix.get().info("{}:\t{} material(s)".format(trace, len(self.materials)), 1)
         indentation_level += 1
         # pass it along
         for x in self.materials:

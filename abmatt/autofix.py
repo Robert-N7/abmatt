@@ -1,4 +1,6 @@
 """Debugging and fixing"""
+import sys
+import traceback
 from threading import Thread
 from time import sleep
 
@@ -159,19 +161,32 @@ class AutoFix:
 
     def log(self, message):
         if self.loudness >= 5:
-            self.enqueue(self.Info(message))
+            self.enqueue(self.Info(str(message)))
 
     def info(self, message, loudness=2):
         if self.loudness >= loudness:
-            self.enqueue(self.Info(message))
+            self.enqueue(self.Info(str(message)))
 
     def warn(self, message, loudness=2):
         if self.loudness >= loudness:
-            self.enqueue(self.Warn(message))
+            self.enqueue(self.Warn(str(message)))
 
     def error(self, message, loudness=1):
         if self.loudness >= loudness:
-            self.enqueue(self.Error(message))
+            self.enqueue(self.Error(str(message)))
+
+    def exception(self, exception, shutdown=False):
+        exc_type, exc_value, exc_tb = sys.exc_info()
+        if self.loudness >= 5:      # Debug level
+            s = traceback.format_exception(exc_type, exc_value, exc_tb)
+        elif self.loudness >= 1:
+            s = traceback.format_exception(exc_type, exc_value, exc_tb, 3)
+        else:
+            s = traceback.format_exception_only(exc_type, exc_value)
+        self.enqueue(self.Error(''.join(s)))
+        if shutdown:
+            self.thread.join(5)
+            sys.exit(-1)
 
     # def should_fix(self, bug):
     #     """Determines if a bug should be fixed"""

@@ -1,6 +1,7 @@
 import os
 from copy import deepcopy
 
+from abmatt.autofix import AutoFix
 from abmatt.brres.lib.binfile import BinFile
 
 
@@ -168,8 +169,8 @@ class Clipable(Node):
                 key += setting + ':' + self.get_str(setting) + ' '
         else:
             key += ':' + self.get_str(key)
-        start = indentation_level * '  '
-        print('{}{}> {}'.format(start, self.name, key))
+        start = '>' + indentation_level * '  '
+        AutoFix.get().info('{}{}> {}'.format(start, self.name, key), 1)
 
     def get_full_path(self):
         return os.path.join(self.parent.get_full_path(), self.name)

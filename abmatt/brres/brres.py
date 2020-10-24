@@ -176,12 +176,13 @@ class Brres(Clipable, Packable):
         return self.name
 
     def info(self, key=None, indentation_level=0):
-        print('{}{}:\t{} model(s)\t{} texture(s)'.format('  ' * indentation_level + '>', self.name,                                                         len(self.models), len(self.textures)))
+        AutoFix.get().info('{}{}:\t{} model(s)\t{} texture(s)'.format('  ' * indentation_level + '>',
+                                    self.name, len(self.models), len(self.textures)), 1)
         indentation_level += 2
         self.sub_info('MDL0', self.models, key, indentation_level)
         self.sub_info('TEX0', self.textures, key, indentation_level)
-        self.sub_info('PAT0', self.pat0, key, indentation_level)
-        self.sub_info('SRT0', self.srt0, key, indentation_level)
+        # self.sub_info('PAT0', self.pat0, key, indentation_level)
+        # self.sub_info('SRT0', self.srt0, key, indentation_level)
         self.sub_info('CHR0', self.chr0, key, indentation_level)
         self.sub_info('SCN0', self.scn0, key, indentation_level)
         self.sub_info('SHP0', self.shp0, key, indentation_level)

@@ -1,6 +1,6 @@
 from copy import deepcopy, copy
 
-from abmatt.autofix import Bug
+from abmatt.autofix import Bug, AutoFix
 from abmatt.brres.lib.matching import validFloat, splitKeyVal, validInt, validBool, MATCHING
 from abmatt.brres.lib.node import Clipable
 
@@ -229,16 +229,17 @@ class SRTTexAnim(Clipable):
         return ret
 
     def info(self, key=None, indentation_level=0):
-        id = self.name if self.name else str(self.name)
-        trace = '  ' * indentation_level + 'Tex:' + id if indentation_level else '>(SRT0)' + self.parent.name + '->Tex:' + id
+        id = str(self.name)
+        trace = '>' + '  ' * indentation_level + 'Tex:' + id if indentation_level else '>(SRT0)' \
+                                                                                 + self.parent.name + '->Tex:' + id
         if not key:
             for x in self.SETTINGS:
                 anim = self.get_str(x)
                 if len(anim) > 1:
                     trace += ' ' + x + ':' + str(anim)
-            print(trace)
+            AutoFix.get().info(trace, 1)
         else:
-            print('{}\t{}:{}'.format(trace, key, self.get_str(key)))
+            AutoFix.get().info('{}\t{}:{}'.format(trace, key, self.get_str(key)), 1)
 
     def setKeyFrame(self, animType, value, index=0):
         """ Adds a key frame to the animation

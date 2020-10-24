@@ -12,6 +12,7 @@ from abmatt.converters.convert_obj import ObjConverter
 from abmatt.gui.brres_treeview import BrresTreeView
 from abmatt.gui.converter import ConvertManager
 from abmatt.gui.image_manager import ImageManager
+from abmatt.gui.interactive_cmd import InteractiveCmd
 from abmatt.gui.logger_pipe import LoggerPipe
 from abmatt.gui.material_browser import MaterialTabs
 from abmatt.gui.poly_editor import PolyEditor
@@ -30,6 +31,8 @@ class Window(QMainWindow):
         self.locked_files = set()       # lock files that are pending conversion etc...
         # AutoFix.get().set_pipe(self)
         self.__init_UI()
+        self.shell_is_shown = False
+        self.shell = None
         for file in brres_files:
             self.open(file.name)
         self.show()
@@ -49,7 +52,8 @@ class Window(QMainWindow):
         log_pipe.error_sig.connect(self.error)
 
     def __init_menus(self):
-        # Actions
+        # Files
+        # Exit
         exit_act = QAction('&Exit', self)
         exit_act.setShortcut('Ctrl+q')
         exit_act.setStatusTip('Exit Application')
@@ -90,6 +94,26 @@ class Window(QMainWindow):
         fileMenu.addSeparator()
         fileMenu.addAction(exit_act)
 
+        # Tools
+        shell_Act = QAction('&Interactive Shell', self)
+        shell_Act.setShortcut('Ctrl+Shift+I')
+        shell_Act.setStatusTip('Run interactive commands')
+        shell_Act.triggered.connect(self.open_interactive_shell)
+        toolMenu = menu.addMenu('&Tools')
+        toolMenu.addAction(shell_Act)
+
+    def open_interactive_shell(self):
+        if not self.shell_is_shown:
+            if self.shell is None:
+                self.shell = InteractiveCmd()
+                self.left.addWidget(self.shell)
+            else:
+                self.shell.show()
+            self.shell_is_shown = True
+        else:
+            self.shell_is_shown = False
+            self.shell.hide()
+
     def __init_child_UI(self, top_layout):
         # left
         vert_widget = QWidget(self)
@@ -97,7 +121,7 @@ class Window(QMainWindow):
         policy.setHorizontalStretch(2)
         vert_widget.setSizePolicy(policy)
         top_layout.addWidget(vert_widget)
-        vert_layout = QVBoxLayout()
+        self.left = vert_layout = QVBoxLayout()
         vert_widget.setLayout(vert_layout)
         widget = QWidget(self)
         vert_layout.addWidget(widget)
@@ -142,7 +166,12 @@ class Window(QMainWindow):
         enable_edits = poly.parent.parent not in self.locked_files
         self.poly_editor.on_update_polygon(poly, enable_edits=enable_edits)
 
-    def emit(self, message):
+    def emit(self, message, head=None, tail=None):
+        message = message.replace('\n', '<br/>').replace(' ', '&nbsp;')
+        if head:
+            message = head + message
+        if tail:
+            message += tail
         self.logger.appendHtml(message)
 
     def get_brres_by_fname(self, fname):
@@ -297,13 +326,13 @@ class Window(QMainWindow):
         event.accept()
 
     def info(self, message):
-        self.emit('<p style="color:Blue;">' + message + '</p>')
+        self.emit(message, '<p style="color:Blue;">', '</p>')
 
     def warn(self, message):
-        self.emit('<p style="color:Red;">' + message + '</p>')
+        self.emit(message, '<p style="color:Red;">', '</p>')
 
     def error(self, message):
-        self.emit('<p style="color:Red;">' + message + '</p>')
+        self.emit(message, '<p style="color:Red;">', '</p>')
 
     def update_status(self, message):
         self.statusBar().showMessage(message)

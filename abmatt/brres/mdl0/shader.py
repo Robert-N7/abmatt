@@ -138,14 +138,14 @@ class Shader(Clipable):
         return self.parent.name
 
     def info(self, key=None, indentation_level=0):
-        trace = '  ' * indentation_level if indentation_level else '>'
+        trace = '>' + '  ' * indentation_level if indentation_level else '>'
         if not key:
-            print('{}(Shader){}'.format(trace, self.getMaterialName()))
+            AutoFix.get().info('{}(Shader){}'.format(trace, self.getMaterialName()), 1)
             indentation_level += 1
             for x in self.stages:
                 x.info(key, indentation_level)
         else:
-            print('{}(Shader){}: {}:{} '.format(trace, self.getMaterialName(), key, self[key]))
+            AutoFix.get().info('{}(Shader){}: {}:{} '.format(trace, self.getMaterialName(), key, self[key]), 1)
 
     def getStage(self, n):
         if not 0 <= n < len(self.stages):

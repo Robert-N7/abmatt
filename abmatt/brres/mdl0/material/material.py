@@ -732,17 +732,22 @@ class Material(Clipable):
 
     # ----------------------------INFO ------------------------------------------
     def info(self, key=None, indentation_level=0):
-        trace = '  ' * indentation_level + self.name if indentation_level else '>' + self.parent.name + "->" + self.name
+        trace = '>' + '  ' * indentation_level + self.name if indentation_level else '>' \
+                    + self.parent.name + "->" + self.name
         if key in self.SETTINGS:
             val = self.getKey(key)
             if val is not None:
-                print("{}\t{}:{}".format(trace, key, val))
+                AutoFix.get().info("{}\t{}:{}".format(trace, key, val), 1)
             return
         elif not key:
-            print("{}\txlu:{} cull:{}".format(trace, self.xlu, self.CULL_STRINGS[self.cullmode]))
+            AutoFix.get().info("{}\txlu:{} cull:{}".format(trace, self.xlu, self.CULL_STRINGS[self.cullmode]), 1)
         indentation_level += 1
         for x in self.layers:
             x.info(key, indentation_level)
+        if self.srt0:
+            self.srt0.info(key, indentation_level)
+        elif self.pat0:
+            self.pat0.info(key, indentation_level)
 
     # ------------------------------------- Check ----------------------------------------
     def check(self, texture_map=None):
