@@ -35,7 +35,7 @@ def set_remove_unknown(val):
 
 def set_remove_unused(val):
     try:
-        Shader.REMOVE_UNUSED_LAYERS = Stage.REMOVE_UNUSED_LAYERS = validBool(val)
+        Shader.REMOVE_UNUSED_LAYERS = Stage.REMOVE_UNUSED_LAYERS = Mdl0.REMOVE_UNUSED_REFS = validBool(val)
     except ValueError:
         pass
 
@@ -43,6 +43,7 @@ def set_remove_unused(val):
 def load_config(app_dir, loudness=None, autofix_level=None):
     conf = Config.get_instance(os.path.join(app_dir, 'config.conf'))
     tmp_dir = os.path.join(app_dir, 'temp_files')
+    Brres.MATERIAL_LIBRARY = os.path.join(app_dir, 'mat_lib.brres')
     converter = ImgConverter(tmp_dir)
     Tex0.converter = converter
     if not loudness:
@@ -75,7 +76,7 @@ def load_config(app_dir, loudness=None, autofix_level=None):
         pass
     set_rename_unknown(conf['rename_unknown_refs'])
     set_remove_unknown(conf['remove_unknown_refs'])
-    set_remove_unused(conf['remove_unused_layers'])
+    set_remove_unused(conf['remove_unused_refs'])
     try:
         Mdl0.DETECT_MODEL_NAME = validBool(conf['detect_model_name'])
     except ValueError:
@@ -103,7 +104,6 @@ def load_config(app_dir, loudness=None, autofix_level=None):
     resample = conf['img_resample']
     if resample is not None:
         ImgConverterI.set_resample(resample)
-    Brres.MATERIAL_LIBRARY = conf['material_library']
     return conf
 
 

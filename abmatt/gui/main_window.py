@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QAction, QFileDialog, QVB
     QWidget, QPlainTextEdit, QMessageBox, QSizePolicy
 
 from abmatt.autofix import AutoFix
-from abmatt.brres import Brres
+from abmatt.brres.brres import Brres
 from abmatt.converters.convert_dae import DaeConverter2
 from abmatt.converters.convert_obj import ObjConverter
 from abmatt.gui.brres_treeview import BrresTreeView

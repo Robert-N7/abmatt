@@ -149,21 +149,22 @@ class Polygon(Clipable):
     def get_bone(self):
         return self.visible_bone
 
-    def check(self, verts, norms, uvs, colors):  # as we go along, gather verts norms uvs colors
+    def check(self, verts, norms, uvs, colors, materials):  # as we go along, gather verts norms uvs colors materials
         modified = False
         vertices = self.get_vertex_group()
         if vertices:
-            verts.add(vertices)
+            verts.add(vertices.name)
         normals = self.get_normal_group()
         if normals:
-            norms.add(normals)
+            norms.add(normals.name)
         material = self.get_material()
-
+        if material:
+            materials.add(material.name)
         # Colors
         my_colors = self.get_color_group()
         uses_vertex_colors = material.is_vertex_color_enabled()
         if my_colors:
-            colors.add(my_colors)
+            colors.add(my_colors.name)
             if not uses_vertex_colors:
                 AutoFix.get().info(f'{self.name} has unused vertex colors', 4)
         elif uses_vertex_colors:
@@ -180,7 +181,7 @@ class Polygon(Clipable):
             tex = self.get_uv_group(i)
             if tex:
                 uv_count += 1
-                uvs.add(tex)
+                uvs.add(tex.name)
                 if i in uvs_used:
                     uvs_used.remove(i)
                 else:

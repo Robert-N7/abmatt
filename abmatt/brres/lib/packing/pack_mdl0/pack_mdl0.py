@@ -214,8 +214,6 @@ class PackMdl0(PackSubfile):
                     mdl0.objects,
                     self.build_texture_links(mdl0.materials)
                     ]
-        if mdl0.find_min_max:
-            mdl0.search_for_min_and_max()
         return sections
 
     @staticmethod

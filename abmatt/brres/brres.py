@@ -34,9 +34,9 @@ class Brres(Clipable, Packable):
         # self.folders = {}
         name = os.path.abspath(name)
         self.is_modified = False
-        self.texture_map = {}
         self.has_new_model = False
         self.models = []
+        self.texture_map = {}
         self.textures = []
         self.srt0 = []
         self.pat0 = []

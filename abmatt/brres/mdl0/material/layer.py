@@ -38,6 +38,7 @@ class Layer(Clipable):
     def __init__(self, name, parent, binfile=None):
         """ Initializes, name, and parent material """
         self.enable_identity_matrix = True
+        self.tex0_ref = None    # this can be filled with the reference to the brres texture
         self.texture_matrix = [1.0, 0, 0, 0,
                                0, 1.0, 0, 0,
                                0, 0, 1.0, 0]
@@ -91,9 +92,14 @@ class Layer(Clipable):
     #   GETTERS
     # ----------------------------------------------------------------------------------
     def get_tex0(self, texture_map=None):
+        if self.tex0_ref:
+            return self.tex0_ref
         if texture_map is None:
             texture_map = self.get_texture_map()
-        return texture_map.get(self.name)
+            if texture_map is None:
+                return None
+        self.tex0_ref = texture_map.get(self.name)
+        return self.tex0_ref
 
 
     def get_str(self, item):
@@ -424,7 +430,20 @@ class Layer(Clipable):
             self.mark_modified()
 
     def check(self, texture_map=None):
-        tex = self.get_tex0(texture_map)
+        # check if we have texture map
+        if texture_map is None:
+            texture_map = self.get_texture_map()
+            if texture_map is None:
+                return
+        tex = texture_map.get(self.name)
+        if not tex:
+            # check if we have some reference
+            if self.tex0_ref:
+                if texture_map:     # add the texture if it's not in the map
+                    self.parent.get_brres().add_tex0(self.tex0_ref)
+                tex = self.tex0_ref
+        else:
+            self.tex0_ref = tex
         if not tex:
             # try fuzz
             result = None

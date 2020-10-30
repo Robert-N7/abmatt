@@ -1,6 +1,7 @@
 """ MDL0 Models """
 # ----------------- Model sub files --------------------------------------------
 import math
+from copy import deepcopy
 
 from abmatt.brres.lib.matching import fuzzy_match, MATCHING
 from abmatt.brres.lib.node import Node
@@ -62,13 +63,14 @@ class Mdl0(SubFile):
 
     MAGIC = "MDL0"
     EXT = 'mdl0'
-    VERSION_SECTIONCOUNT = {8: 11, 9:11, 10:14, 11:14}
+    VERSION_SECTIONCOUNT = {8: 11, 9: 11, 10: 14, 11: 14}
     EXPECTED_VERSION = 11
 
     SETTINGS = ('name')  # todo, more settings
     DETECT_MODEL_NAME = True
     RENAME_UNKNOWN_REFS = True
     REMOVE_UNKNOWN_REFS = True
+    REMOVE_UNUSED_REFS = False
 
     def __init__(self, name, parent, binfile=None):
         """ initialize model """
@@ -76,12 +78,20 @@ class Mdl0(SubFile):
         self.pat0_collection = None
         self.DrawOpa = self.DrawXlu = self.NodeTree = self.NodeMix = None
         self.weights_by_id = None
+        self.polygons_added = False
+        self.boneMatrixCount = 0
+        self.minimum = [0] * 3
+        self.maximum = [0] * 3
         self.definitions = []
         self.bones = []
         self.vertices = []
         self.normals = []
         self.colors = []
         self.uvs = []
+        self.faceCount = 0
+        self.facepoint_count = 0
+        self.scaling_rule = 0
+        self.texture_matrix_mode = 0
         # self.furVectors = []
         # self.furLayers = []
         self.materials = []
@@ -90,17 +100,11 @@ class Mdl0(SubFile):
         # self.paletteLinks = []
         # self.textureLinks = []
         self.version = 11
-        self.find_min_max = False
         self.is_map_model = True if 'map' in name else False
         super(Mdl0, self).__init__(name, parent, binfile)
 
     def begin(self):
         self.boneTable = []
-        self.boneMatrixCount = 0
-        self.faceCount = 0
-        self.facepoint_count = 0
-        self.scaling_rule = 0
-        self.texture_matrix_mode = 0
         self.parent.has_new_model = True
         for definition in ('DrawOpa', 'DrawXlu', 'NodeTree', 'NodeMix'):
             self.__setattr__(definition, get_definition(definition, self))
@@ -147,7 +151,6 @@ class Mdl0(SubFile):
         bone = self.bones[0]
         bone.minimum = [x for x in self.minimum]
         bone.maximum = [x for x in self.maximum]
-        self.find_min_max = False
 
     def rebuild_header(self):
         """After encoding data, calculates the header data"""
@@ -155,7 +158,6 @@ class Mdl0(SubFile):
         self.search_for_min_and_max()
         self.facepoint_count = sum(obj.facepoint_count for obj in self.objects)
         self.faceCount = sum(obj.face_count for obj in self.objects)
-
 
     def get_str(self, key):
         if key == 'name':
@@ -185,7 +187,7 @@ class Mdl0(SubFile):
         # polys = self.get_polys_using_material(old_mat)
         if new_mat.parent != self:  # is it a material not in the model already?
             test = self.get_material_by_name(new_mat.name)
-            if test == new_mat:     # already have this material?
+            if test == new_mat:  # already have this material?
                 new_mat = test
             else:
                 m = Material.get_unique_material(new_mat.name, self)
@@ -200,18 +202,32 @@ class Mdl0(SubFile):
         return new_mat
 
     def add_material(self, material):
-        self.add_to_group(self.materials, material)
-        # for x in material.layers:
-        #     self.add_texture_link(x.name)
+        """
+        Adds material to model
+        Throws a runtime exception if the material is already in model or if the material is used by another model
+        """
+        # check material parent, but does not check for duplicates!
+        if material.parent:
+            if material.parent is not self:
+                raise RuntimeError(f'Material {material.name} is already used by {material.parent.name}')
+        else:
+            material.parent = self
+        if self.get_materials_by_name(material.name):
+            raise RuntimeError(f'Material with name {material.name} is already in model!')
+        self.materials.append(material)
         return material
 
     def remove_material(self, material):
         polys = self.get_polys_using_material(material)
         if polys:
-            AutoFix.error('Unable to remove linked material, used by {}'.format(polys))
-            return False
+            raise RuntimeError('Unable to remove linked material, used by {}'.format(polys))
         self.materials.remove(material)
-        return True
+        # take care of animations
+        if material.srt0:
+            self.srt0_collection.remove(material.srt0)
+        if material.pat0:
+            self.pat0_collection.remove(material.pat0)
+
 
     def get_polys_using_material(self, material):
         return [x for x in self.objects if x.get_material() == material]
@@ -223,10 +239,12 @@ class Mdl0(SubFile):
                  scale_equal=scale_equal, fixed_scale=fixed_scale,
                  fixed_rotation=fixed_rotation, fixed_translation=fixed_translation)
         self.add_to_group(self.bones, b)
+        if self.boneTable is None:
+            self.boneTable = []
         b.weight_id = len(self.boneTable)
         self.boneTable.append(self.boneMatrixCount)
         if parent_bone:
-            parent_index = parent_bone.index    # todo check this
+            parent_index = parent_bone.index  # todo check this
             parent_bone.link_child(b)
         else:
             parent_index = 0
@@ -239,10 +257,7 @@ class Mdl0(SubFile):
         polygon.material = material
         polygon.visible_bone = bone
         polygon.draw_priority = priority
-        # if bone is None:
-        #     bone = self.bones[0]
-        # definitions = self.DrawOpa if not material.xlu else self.DrawXlu
-        # definitions.add_entry(material.index, polygon.index, bone.index, priority)
+        self.polygons_added = True
 
     # ---------------------------------- SRT0 ------------------------------------------
     def set_srt0(self, srt0_collection):
@@ -448,14 +463,40 @@ class Mdl0(SubFile):
         return self.parent.get_texture_map()
 
     # --------------------------------------- Check -----------------------------------
+    @staticmethod
+    def rebuild_indexes(group):
+        for i in range(len(group)):
+            group[i].index = i
+
+    def check_group(self, group, used_set, extras=None):
+        """
+        helper function for check
+        :param group, the group to check
+        :param used_set, set of items with references
+        """
+        to_remove = []
+        for x in group:
+            if x.name not in used_set:
+                AutoFix.get().info('Unused reference {}'.format(x.name), 3)
+                if self.REMOVE_UNUSED_REFS:
+                    to_remove.append(x)
+            if extras and x.check(extras):
+                self.mark_modified()
+            elif x.check():
+                self.mark_modified()
+        if to_remove:
+            AutoFix.get().info('(FIXED) Removed unused refs')
+            for x in to_remove:
+                group.remove(x)
+            self.rebuild_indexes(group)
+
     def check(self, expected_name=None):
-        """Checks model (somewhat) for validity
-            texture_map: dictionary of tex_name:texture
+        """
+        Checks model (somewhat) for validity
         """
         super(Mdl0, self).check()
-        texture_map = self.getTextureMap()
-        for x in self.materials:
-            x.check(texture_map)
+        if self.polygons_added:
+            self.rebuild_header()
         if expected_name:
             if expected_name != self.name:
                 b = Bug(2, 2, 'Model name does not match file', 'Rename to {}'.format(expected_name))
@@ -470,22 +511,25 @@ class Mdl0(SubFile):
                     self.add_map_bones()
                     b.resolve()
                     self.mark_modified()
+        # as we go along, keep track of those references used
         uvs = set()
         normals = set()
         vertices = set()
         colors = set()
+        materials = set()
         for x in self.objects:
-            if x.check(vertices, normals, uvs, colors):
+            if x.check(vertices, normals, uvs, colors, materials):
                 self.mark_modified()
-        for x in self.uvs:
-            if x.check():
-                self.mark_modified()
-        for x in self.vertices:
-            if x.check():
-                self.mark_modified()
-        for x in self.normals:
-            if x.check():
-                self.mark_modified()
+        texture_map = self.getTextureMap()
+        self.check_group(self.materials, materials, extras=texture_map)
+        self.check_group(self.vertices, vertices)
+        self.check_group(self.normals, normals)
+        self.check_group(self.uvs, uvs)
+        self.check_group(self.colors, colors)
+        if not len(self.bones):     # no bones???
+            name = expected_name if expected_name else 'default'
+            AutoFix.get().warn('No bones in model, adding bone {}'.format(name))
+            self.add_bone(name)
 
     def add_map_bones(self):
         current_names = [bone.name for bone in self.bones]

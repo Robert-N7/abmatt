@@ -224,7 +224,27 @@ class Shader(Clipable):
         return i
 
     def getIndCoords(self):
-        return {x['indirectstage'] for x in self.stages}
+        return {x.get_str('indirectstage') for x in self.stages}
+
+    def getIndMap(self, id=0):
+        return self.indTexMaps[id]
+
+    def getIndCoord(self, id=0):
+        return self.indTexCoords[id]
+
+    def setIndCoord(self, value, id=0):
+        if not 0 <= value < 8:
+            raise ValueError('Ind coord {} out of range'.format(value))
+        if value != self.indTexCoords[id]:
+            self.indTexCoords[id] = value
+            self.mark_modified()
+
+    def setIndMap(self, value, id=0):
+        if not 0 <= value < 8:
+            raise ValueError('Ind map {} out of range'.format(value))
+        if value != self.indTexMaps[id]:
+            self.indTexMaps[id] = value
+            self.mark_modified()
 
     def getTexRefCount(self):
         return len(self.parent.layers)

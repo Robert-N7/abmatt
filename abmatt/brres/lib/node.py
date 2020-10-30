@@ -159,7 +159,8 @@ class Clipable(Node):
         self.is_modified = False
 
     def get_texture_map(self):
-        return self.parent.get_texture_map()
+        if self.parent:
+            return self.parent.get_texture_map()
 
     def info(self, key='', indentation_level=0):
         if not key:

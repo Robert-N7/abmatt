@@ -1,20 +1,27 @@
 import os
 
 from PyQt5.QtCore import Qt, QEvent
-from PyQt5.QtGui import QColor, QPainter
-from PyQt5.QtWidgets import QComboBox, QSlider, QStackedLayout
+from PyQt5.QtWidgets import QComboBox, QSlider
 from PyQt5.QtWidgets import QWidget, QGridLayout, QScrollArea, QVBoxLayout, QLabel, QHBoxLayout, QTabWidget, QCheckBox, \
     QFrame
 
 from abmatt.brres import Brres
 from abmatt.brres.lib.node import ClipableObserver
 from abmatt.brres.mdl0.material.material import Material
-from abmatt.gui.brres_path import BrresPath, get_materials_by_url
-from abmatt.gui.image_manager import ImageObserver, ImageManager, update_image
+from abmatt.gui.brres_path import BrresPath, get_material_by_url
+from abmatt.gui.color_widget import ColorWidget
+from abmatt.gui.map_widget import Tex0WidgetGroup
 from abmatt.gui.mat_widget import MaterialWidget, MatWidgetHandler
+from abmatt.gui.material_editor import MaterialEditor
 
 
 class MaterialTabs(QWidget, MatWidgetHandler):
+    def on_material_edit(self, material):
+        mat_editor = MaterialEditor(material)
+
+    def on_material_remove(self, material):
+        self.material_library.remove_material(material)
+
     def __init__(self, parent):
         super().__init__(parent)
         layout = QVBoxLayout()
@@ -80,6 +87,7 @@ class MaterialBrowser(QWidget):
     def __init__(self, parent):
         super().__init__(parent)
         self.handler = parent
+        self.is_material_removable = False
         self.init_UI()
         self.grid_col_max = 4
         self.materials = {}
@@ -99,7 +107,6 @@ class MaterialBrowser(QWidget):
         self.setLayout(self.horz_layout)
 
     def add_brres_materials(self, brres):
-        materials = self.materials
         for model in brres.models:
             for material in model.materials:
                 self.add_material(material)
@@ -122,8 +129,8 @@ class MaterialBrowser(QWidget):
         mat_path = BrresPath(material=material)
         name = mat_path.get_path()
         if name not in self.materials:
-            self.materials[name] = material
-            label = MaterialWidget(self, self.handler, material, mat_path)
+            label = MaterialWidget(self, self.handler, material, mat_path, self.is_material_removable)
+            self.materials[name] = label
             # label.setFixedWidth(120)
             self.grid.addWidget(label, *self.increment_grid())
             return True
@@ -138,11 +145,15 @@ class MaterialLibrary(MaterialBrowser):
     def __init__(self, parent, material_library):
         super().__init__(parent)
         self.brres = None
+        self.is_material_removable = True
         self.setAcceptDrops(True)
         self.add_materials(material_library.values())
         for x in material_library:
             self.brres = material_library[x].parent.parent
             break
+
+    def can_add_material(self, mat_path):
+        return mat_path not in self.materials
 
     def add_material(self, material):
         if super().add_material(material) and self.brres is not None:
@@ -152,46 +163,54 @@ class MaterialLibrary(MaterialBrowser):
     def remove_material(self, material):
         b_path = BrresPath(material=material).get_path()
         if b_path in self.materials:
-            if self.brres.models[0].remove_material(material):
-                widget = self.materials.pop(b_path)
-                self.grid.removeWidget(widget)
-                self.brres.save()
+            self.brres.models[0].remove_material(material)
+            widget = self.materials.pop(b_path)
+            self.grid.removeWidget(widget)
+            self.brres.save()
 
     def get_brres_url(self, url):
         path = url.toLocalFile()
         if os.path.splitext(os.path.split(path)[1])[1].lower() == '.brres':
             return path
 
+    def get_brres_urls(self, urls):
+        ret = []
+        for x in urls:
+            b_url = self.get_brres_url(x)
+            if not b_url:
+                return None
+            ret.append(b_url)
+        return ret
+
     def dropEvent(self, a0):
         data = a0.mimeData()
         if data.hasUrls():
-            found = False
-            for x in data.urls():
-                path = self.get_brres_url(x)
-                if path:
-                    found = True
+            burls = self.get_brres_urls(data.urls())
+            if burls:
+                for path in burls:
                     self.add_brres_materials(Brres.get_brres(path, True))
-            if found:
                 a0.accept()
                 return
-        elif data.hasText():
-            mats = get_materials_by_url(data.text())
-            if mats:
-                self.add_materials(mats)
+        elif data.hasText() and self.can_add_material(data.text()):
+            mat = get_material_by_url(data.text(), True)
+            if mat:
+                self.add_material(mat)
                 a0.accept()
                 return
         a0.ignore()
 
     def dragEnterEvent(self, a0):
         md = a0.mimeData()
-        if md.hasUrls() or md.hasText():
+        if md.hasUrls() and self.get_brres_urls(md.urls()) \
+                or md.hasText() and self.can_add_material(a0.text()):
             a0.accept()
         else:
             a0.ignore()
 
     def dragMoveEvent(self, a0):
         md = a0.mimeData()
-        if md.hasUrls() or md.hasText():
+        if md.hasUrls() and self.get_brres_urls(md.urls()) \
+                or md.hasText() and self.can_add_material(a0.text()):
             a0.accept()
         else:
             a0.ignore()
@@ -315,69 +334,9 @@ class ColorGroup(QWidget):
                 widget.deleteLater()
         if colors:
             for x in colors:
-                widget = self.ColorWidget(x)
+                widget = ColorWidget(color=x[1], text=x[0])
                 self.layout.addWidget(widget)
                 self.widgets.append(widget)
             self.setLayout(self.layout)
 
-    class ColorWidget(QLabel):
-        def __init__(self, color):
-            if type(color) == str:
-                super().__init__(color)
-            else:
-                super().__init__(color[0])
-                s = 'rgba' + str(color[1][:3])
-                self.setStyleSheet('QLabel { background-color: ' + s + ' }')
 
-
-class Tex0WidgetGroup(QWidget):
-    def __init__(self, parent, tex0s=None, max_rows=0, max_columns=4):
-        super().__init__(parent)
-        main_layout = QVBoxLayout(self)
-        self.stack = QStackedLayout(self)
-        self.map_box = QComboBox()
-        self.map_box.activated.connect(self.stack.setCurrentIndex)
-        main_layout.addWidget(self.map_box)
-        main_layout.addLayout(self.stack)
-        self.tex0s = []
-        if tex0s is not None:
-            self.add_tex0s(tex0s)
-        self.setLayout(main_layout)
-
-    def reset(self):
-        for i in reversed(range(self.stack.count())):
-            self.stack.itemAt(i).widget().setParent(None)
-            self.map_box.removeItem(i)
-        self.tex0s = []
-
-    def add_tex0s(self, tex0s):
-        for x in tex0s:
-            if x not in self.tex0s:
-                widget = MapWidget(self, x)
-                self.tex0s.append(x)
-                self.add_map_widget(widget)
-
-    def add_map_widget(self, map_widget):
-        self.stack.addWidget(map_widget)
-        self.map_box.addItem(map_widget.name)
-
-
-class MapWidget(QLabel, ClipableObserver, ImageObserver):
-    def on_node_update(self, node):
-        self.tex0 = node
-        self.setToolTip(node.name)
-
-    def on_child_update(self, child):
-        pass
-
-    def on_image_update(self, directory):
-        update_image(self, directory, self.tex0.name, 128)
-
-    def __init__(self, parent, tex0):
-        self.name = tex0.name
-        super().__init__(self.name, parent)
-        tex0.register_observer(self)
-        self.on_node_update(tex0)
-        ImageManager.get().subscribe(self, tex0.parent)
-        # if image_path:
-        #     self.set_image_path(image_path)

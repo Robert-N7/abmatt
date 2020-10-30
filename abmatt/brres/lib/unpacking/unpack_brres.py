@@ -16,11 +16,13 @@ from abmatt.brres.tex0 import Tex0
 class UnpackBrres(Unpacker):
 
     @staticmethod
-    def create_model_animation_map(animations):
+    def create_model_animation_map(animations, model_names):
         model_anim_map = {}  # dictionary of model names to animations
         if animations:
             for x in animations:
-                name = x.name.rstrip(string.digits)
+                name = x.name   # first try just the name no change
+                if name not in model_names:
+                    name = name.rstrip(string.digits)   # strip digits
                 if not model_anim_map.get(name):
                     model_anim_map[name] = [x]
                 else:
@@ -30,7 +32,8 @@ class UnpackBrres(Unpacker):
     def generate_srt_collections(self, srt0_anims):
         # srt animation processing
         brres = self.node
-        model_anim_map = self.create_model_animation_map(srt0_anims)
+        model_names = {x.name for x in brres.models}
+        model_anim_map = self.create_model_animation_map(srt0_anims, model_names)
         # now create SRT Collection
         anim_collections = []
         for key in model_anim_map:
@@ -38,14 +41,15 @@ class UnpackBrres(Unpacker):
             anim_collections.append(collection)
             mdl = brres.getModel(key)
             if not mdl:
-                AutoFix.get().info('No model found matching srt0 animation {}'.format(key), 3)
+                AutoFix.get().info('No model found matching srt0 animation {} in {}'.format(key, brres.name), 3)
             else:
                 mdl.set_srt0(collection)
         return anim_collections
 
     def generate_pat0_collections(self, pat0_anims):
         brres = self.node
-        model_anim_map = self.create_model_animation_map(pat0_anims)
+        model_names = {x.name for x in brres.models}
+        model_anim_map = self.create_model_animation_map(pat0_anims, model_names)
         # now create PAT0 Collection
         anim_collections = []
         for key in model_anim_map:
@@ -53,7 +57,7 @@ class UnpackBrres(Unpacker):
             anim_collections.append(collection)
             mdl = brres.getModel(key)
             if not mdl:
-                AutoFix.get().info('No model found matching pat0 animation {}'.format(key), 3)
+                AutoFix.get().info('No model found matching pat0 animation {} in {}'.format(key, brres.name), 3)
             else:
                 mdl.set_pat0(collection)
         return anim_collections

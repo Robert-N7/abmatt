@@ -84,6 +84,7 @@ class Material(Clipable):
     CULL_STRINGS = ("none", "outside", "inside", "all")
     # COMPARE
     COMP_STRINGS = ("never", "less", "equal", "lessorequal", "greater", "notequal", "greaterorequal", "always")
+    LOGIC_STRINGS = ('and', 'or', 'exclusiveor', 'invexclusiveor')
     COMP_GREATEROREQUAL = 6
     COMP_LESSOREQUAL = 3
     COMP_ALWAYS = 7
@@ -108,6 +109,7 @@ class Material(Clipable):
         super(Material, self).__init__(name, parent, binfile)
 
     def __deepcopy__(self, memodict={}):
+        raise NotImplementedError()  # too many issues with tightly linked parent
         # don't copy references copied elsewhere
         # srt0 = self.srt0
         # self.srt0 = None
@@ -122,7 +124,7 @@ class Material(Clipable):
         # self.pat0 = pat0
         # self.shader = shader
         # self.polygons = polygons
-        copy = Material(self.name, self.parent)
+        copy = Material(self.name)
         copy.paste(self)
         return copy
 
@@ -218,6 +220,9 @@ class Material(Clipable):
     def getComp1(self):
         return self.COMP_STRINGS[self.comp1]
 
+    def getLogic(self):
+        return self.LOGIC_STRINGS[self.logic]
+
     def getCompareBeforeTexture(self):
         return self.compareBeforeTexture
 
@@ -260,7 +265,9 @@ class Material(Clipable):
         return self.constant_colors[i]
 
     def getBrres(self):
-        return self.parent.parent
+        parent = self.parent
+        if parent:
+            return parent.parent
 
     def getShaderColor(self):
         ret = ""
@@ -309,11 +316,19 @@ class Material(Clipable):
         return self.xlu
         # return self.parent.isMaterialDrawXlu(self.index)
 
-    def getIndMatrix(self):
-        ret = ''
-        for i in range(3):
-            matrix = self.indirect_matrices[i]
-            ret += '\n\t{}: Scale {}, {}'.format(i, matrix.scale, matrix.matrix)
+    def isIndMatrixEnabled(self, id=0):
+        return self.indirect_matrices[id].enabled
+
+    def getIndMatrixScale(self, id=0):
+        return self.indirect_matrices[id].scale
+
+    def getIndMatrix(self, id=0):
+        return self.indirect_matrices[id].matrix
+
+    def getIndMatrixStr(self, id=0):
+        matrix = self.indirect_matrices[id]
+        enabled = 'enabled' if matrix.enabled else 'disabled'
+        ret = '{}: {} Scale {}, {}'.format(id, enabled, matrix.scale, matrix.matrix)
         return ret
 
     def getLayerCount(self):
@@ -323,7 +338,7 @@ class Material(Clipable):
     GET_SETTING = (getXlu, getRef0, getRef1, getComp0, getComp1, getCompareBeforeTexture,
                    getBlend, getBlendSrc, getBlendLogic, getBlendDest, getConstantAlpha, getCullMode,
                    getShaderColor, getLightChannel, getLightset, getFogset, getMatrixMode, getEnableDepthTest,
-                   getEnableDepthUpdate, getDepthFunction, getDrawPriority, getIndMatrix, getName, getLayerCount)
+                   getEnableDepthUpdate, getDepthFunction, getDrawPriority, getIndMatrixStr, getName, getLayerCount)
 
     def get_str(self, key):
         for i in range(len(self.SETTINGS)):
@@ -483,16 +498,34 @@ class Material(Clipable):
             self.comp1 = i
             self.mark_modified()
 
-    def setCompareBeforeTexStr(self, str):
-        val = validBool(str)
+    def setLogic(self, str):
+        i = indexListItem(self.LOGIC_STRINGS, str, self.logic)
+        if i >= 0:
+            self.logic = i
+            self.mark_modified()
+
+    def setCompareBeforeTex(self, val):
         if val != self.compareBeforeTexture:
             self.compareBeforeTexture = val
+            self.mark_modified()
+
+    def setCompareBeforeTexStr(self, str):
+        self.setCompareBeforeTex(validBool(str))
+
+    def enable_xlu(self, enable):
+        if self.xlu != enable:
+            self.xlu = enable
             self.mark_modified()
 
     def setBlendStr(self, str):
         val = validBool(str)
         if val != self.blend_enabled:
             self.blend_enabled = val
+            self.mark_modified()
+
+    def enableBlendFlag(self, enable):
+        if self.blend_enabled != enable:
+            self.blend_enabled = enable
             self.mark_modified()
 
     def setBlendSrcStr(self, str):
@@ -513,17 +546,26 @@ class Material(Clipable):
             self.blend_logic = i
             self.mark_modified()
 
-    def setEnableDepthTestStr(self, str):
-        val = validBool(str)
+    def enableBlendLogic(self, enabled):
+        if self.blend_logic_enabled != enabled:
+            self.blend_logic_enabled = enabled
+            self.mark_modified()
+
+    def setEnableDepthTest(self, val):
         if val != self.depth_test:
             self.depth_test = val
             self.mark_modified()
 
-    def setEnableDepthUpdateStr(self, str):
-        val = validBool(str)
+    def setEnableDepthTestStr(self, str):
+        self.setEnableDepthTest(validBool(str))
+
+    def setEnableDepthUpdate(self, val):
         if val != self.depth_update:
             self.depth_update = val
             self.mark_modified()
+
+    def setEnableDepthUpdateStr(self, str):
+        self.setEnableDepthUpdate(validBool(str))
 
     def setDepthFunctionStr(self, str):
         i = indexListItem(self.COMP_STRINGS, str, self.depth_function)
@@ -543,7 +585,7 @@ class Material(Clipable):
 
     MATRIX_ERR = 'Error parsing "{}", Usage: IndirectMatrix:[<i>:]<scale>,<r1c1>,<r1c2>,<r1c3>,<r2c1>,<r2c2>,<r2c3>'
 
-    def setIndMatrixEnable(self, id, enable=True):
+    def setIndMatrixEnable(self, id=0, enable=True):
         x = self.indirect_matrices[id]
         x.enabled = enable
         if enable and not x.scale:
@@ -551,7 +593,28 @@ class Material(Clipable):
             x.scale = 14
             x.matrix = [[0.6396484375, 0, 0], [0, 0.639648375, 0]]
 
-    def setIndirectMatrix(self, str_value):
+    def setIndMatrixScale(self, scale, id=0):
+        matrix = self.indirect_matrices[id]
+        if not -17 <= scale < 47:
+            raise ValueError('Indirect scale {} out of range!'.format(scale))
+        if matrix.scale != scale:
+            matrix.scale = scale
+            self.mark_modified()
+
+    def setIndMatrix(self, matrix, id=0):
+        my_matrix = self.indirect_matrices[id].matrix
+        modify_flag = False
+        if len(matrix) != 2 or len(matrix[0]) != 3:
+            raise ValueError('Ind Matrix has incorrect shape! ' + str(matrix))
+        for i in range(2):
+            for j in range(3):
+                if my_matrix[i][j] != matrix[i][j]:
+                    my_matrix[i][j] = matrix[i][j]
+                    modify_flag = True
+        if modify_flag:
+            self.mark_modified()
+
+    def setIndirectMatrixStr(self, str_value):
         matrix_index = 0
         colon_index = str_value.find(':')
         if colon_index > -1:
@@ -596,7 +659,7 @@ class Material(Clipable):
                    setShaderColorStr, setLightChannelStr, setLightsetStr,
                    setFogsetStr, setMatrixModeStr, setEnableDepthTestStr,
                    setEnableDepthUpdateStr, setDepthFunctionStr, setDrawPriorityStr,
-                   setIndirectMatrix, rename, setLayerCountStr)
+                   setIndirectMatrixStr, rename, setLayerCountStr)
 
     # --------------------- threshold transparency -------------------------------
     def get_transparency_threshold(self):
@@ -620,11 +683,6 @@ class Material(Clipable):
                 self.compareBeforeTexture = True
             self.mark_modified()
 
-    # ----------------------- color ------------------------------------------------
-    def get_colors_used(self):
-        """Check shader and finds colors used (vertex colors, light colors, shader colors)"""
-        raise NotImplementedError()
-
     def get_tex0s(self):
         tex0s = []
         if len(self.layers) <= 0:
@@ -641,6 +699,18 @@ class Material(Clipable):
         if None in channels:
             channels.remove(None)
         return channels
+
+    def get_animation(self):
+        if self.srt0 is not None:
+            return self.srt0
+        elif self.pat0 is not None:
+            return self.pat0
+
+    def remove_animation(self):
+        if self.srt0 is not None:
+            self.remove_srt0()
+        elif self.pat0 is not None:
+            self.remove_pat0()
 
     # ------------------------- SRT0 --------------------------------------------------
     def add_srt0(self):
@@ -698,7 +768,7 @@ class Material(Clipable):
 
     def set_pat0(self, anim):
         if self.pat0:
-            AutoFix.get().error('Multiple Pat0 for {}!'.format(self.name), 1)
+            AutoFix.get().error('Multiple Pat0 for {} in {}!'.format(self.name, self.getBrres().name), 1)
             return False
         self.pat0 = anim
         return True
@@ -733,7 +803,7 @@ class Material(Clipable):
     # ----------------------------INFO ------------------------------------------
     def info(self, key=None, indentation_level=0):
         trace = '>' + '  ' * indentation_level + self.name if indentation_level else '>' \
-                    + self.parent.name + "->" + self.name
+                                                                                     + self.parent.name + "->" + self.name
         if key in self.SETTINGS:
             val = self.getKey(key)
             if val is not None:
@@ -823,7 +893,9 @@ class Material(Clipable):
     def renameLayer(self, layer, name):
         if self.srt0:
             self.srt0.updateLayerNameI(layer.layer_index, name)
-        return self.parent.rename_texture_link(layer, name)
+        if self.parent:
+            self.parent.rename_texture_link(layer, name)
+        return name
 
     def get_first_layer_name(self):
         if self.layers:
@@ -855,41 +927,42 @@ class Material(Clipable):
         return ret
 
     def __eq__(self, item):
-        return self is item or (item is not None and self.xlu == item.xlu and \
-               self.shaderStages == item.shaderStages and \
-               self.indirectStages == item.indirectStages and \
-               self.cullmode == item.cullmode and \
-               self.compareBeforeTexture == item.compareBeforeTexture and \
-               self.lightset == item.lightset and \
-               self.fogset == item.fogset and \
-               self.ref0 == item.ref0 and \
-               self.ref1 == item.ref1 and \
-               self.comp0 == item.comp0 and \
-               self.comp1 == item.comp1 and \
-               self.logic == item.logic and \
-               self.depth_test == item.depth_test and \
-               self.depth_update == item.depth_update and \
-               self.depth_function == item.depth_function and \
-               self.blend_enabled == item.blend_enabled and \
-               self.blend_logic_enabled == item.blend_logic_enabled and \
-               self.blend_dither == item.blend_dither and \
-               self.blend_update_color == item.blend_update_color and \
-               self.blend_update_alpha == item.blend_update_alpha and \
-               self.blend_subtract == item.blend_subtract and \
-               self.blend_logic == item.blend_logic and \
-               self.blend_source == item.blend_source and \
-               self.blend_dest == item.blend_dest and \
-               self.constant_alpha_enabled == item.constant_alpha_enabled and \
-               self.constant_alpha == item.constant_alpha and \
-               self.colors == item.colors and \
-               self.constant_colors == item.constant_colors and \
-               self.ras1_ss == item.ras1_ss and \
-               self.indirect_matrices == item.indirect_matrices and \
-               self.lightChannels == item.lightChannels and \
-               self.srt0 == item.srt0 and \
-               self.pat0 == item.pat0 and \
-               self.shader == item.shader and \
-               self.layers == item.layers)
+        return self is item or (item is not None and type(self) == type(item) and \
+                                self.name == item.name and item is not None and self.xlu == item.xlu and \
+                                self.shaderStages == item.shaderStages and \
+                                self.indirectStages == item.indirectStages and \
+                                self.cullmode == item.cullmode and \
+                                self.compareBeforeTexture == item.compareBeforeTexture and \
+                                self.lightset == item.lightset and \
+                                self.fogset == item.fogset and \
+                                self.ref0 == item.ref0 and \
+                                self.ref1 == item.ref1 and \
+                                self.comp0 == item.comp0 and \
+                                self.comp1 == item.comp1 and \
+                                self.logic == item.logic and \
+                                self.depth_test == item.depth_test and \
+                                self.depth_update == item.depth_update and \
+                                self.depth_function == item.depth_function and \
+                                self.blend_enabled == item.blend_enabled and \
+                                self.blend_logic_enabled == item.blend_logic_enabled and \
+                                self.blend_dither == item.blend_dither and \
+                                self.blend_update_color == item.blend_update_color and \
+                                self.blend_update_alpha == item.blend_update_alpha and \
+                                self.blend_subtract == item.blend_subtract and \
+                                self.blend_logic == item.blend_logic and \
+                                self.blend_source == item.blend_source and \
+                                self.blend_dest == item.blend_dest and \
+                                self.constant_alpha_enabled == item.constant_alpha_enabled and \
+                                self.constant_alpha == item.constant_alpha and \
+                                self.colors == item.colors and \
+                                self.constant_colors == item.constant_colors and \
+                                self.ras1_ss == item.ras1_ss and \
+                                self.indirect_matrices == item.indirect_matrices and \
+                                self.lightChannels == item.lightChannels and \
+                                self.srt0 == item.srt0 and \
+                                self.pat0 == item.pat0 and \
+                                self.shader == item.shader and \
+                                self.layers == item.layers)
 
     # ---------------------------------PASTE------------------------------------------
     def paste(self, item):
@@ -944,14 +1017,13 @@ class Material(Clipable):
         self.lightChannels = deepcopy(item.lightChannels)
 
     def paste_layers(self, item):
-        if self.parent.parent != item.parent.parent:  # then we need to move tex0s
-            brres = self.parent.parent
-            for x in item.get_tex0s():
-                brres.add_tex0(x)
         my_layers = self.layers
         item_layers = item.layers
         num_layers = len(item_layers)
         self.setLayerCount(num_layers)
         for i in range(num_layers):
-            my_layers[i].paste(item_layers[i])
-            my_layers[i].setName(item_layers[i].name)
+            my_layer = my_layers[i]
+            item_layer = item_layers[i]
+            my_layer.paste(item_layer)
+            my_layer.setName(item_layer.name)
+            my_layer.tex0_ref = item_layer.get_tex0()
