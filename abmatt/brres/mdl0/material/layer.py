@@ -49,7 +49,7 @@ class Layer(Clipable):
         :type other: Layer
         :return: true if equal
         """
-        return self.enable == other.enable and self.name == other.name and self.scale == other.scale \
+        return type(other) == Layer and self.enable == other.enable and self.name == other.name and self.scale == other.scale \
             and self.rotation == other.rotation and self.translation == other.translation \
             and self.scn0_light_ref == other.scn0_light_ref and self.scn0_camera_ref == other.scn0_camera_ref \
             and self.map_mode == other.map_mode and self.vwrap == other.vwrap and self.uwrap == other.uwrap \
@@ -370,9 +370,7 @@ class Layer(Clipable):
         return self.enable
 
     def setName(self, value):
-        if value != self.name:
-            self.name = self.parent.renameLayer(self, value)
-            self.mark_modified()
+        self.rename(value)
 
     SET_SETTING = (setScaleStr, setRotationStr, setTranslationStr, setCameraRefStr,
                    setLightRefStr, setMapmodeStr, setUWrapStr, setVWrapStr, setMinFilterStr, setMagFilterStr,
@@ -452,7 +450,7 @@ class Layer(Clipable):
                 result = fuzzy_strings(self.name, texture_map)
                 if result is not None:
                     b.fix_des = 'Rename to {}'.format(result)
-                    self.setName(result)
+                    self.rename(result)
                     b.resolve()
                     tex = texture_map.get(self.name)
                     self.mark_modified()
