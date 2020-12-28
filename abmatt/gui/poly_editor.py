@@ -3,10 +3,19 @@ from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QCheckBox
 
 from abmatt.brres.lib.node import ClipableObserver
 from abmatt.gui.brres_path import BrresPath, NotABrresError, get_material_by_url
-from abmatt.gui.mat_widget import MaterialWidget
+from abmatt.gui.mat_widget import MaterialWidget, MatWidgetHandler
 
 
-class PolyEditor(QFrame, ClipableObserver):
+class PolyEditor(QFrame, ClipableObserver, MatWidgetHandler):
+    def on_material_select(self, material):
+        pass
+
+    def on_material_edit(self, material):
+        pass
+
+    def on_material_remove(self, material):
+        pass
+
     def on_node_update(self, node):
         self.on_update_polygon(node)
 
@@ -76,7 +85,7 @@ class PolyEditor(QFrame, ClipableObserver):
         # Right side
         self.name_label = QLabel(self)
         # self.name_label.setReadOnly(True)
-        self.material_box = MaterialWidget(self)
+        self.material_box = MaterialWidget(self, handler=self)
         # self.material_box.setReadOnly(True)
         self.uv_count = QLabel(self)
         # self.uv_count.setReadOnly(True)
@@ -112,10 +121,11 @@ class PolyEditor(QFrame, ClipableObserver):
     def dropEvent(self, a0):
         data = a0.mimeData()
         if self.enable_mat_drag and self.poly and data.hasText():
-            mat = get_material_by_url(data.text(), trace_path=True)
+            text = data.text()
+            mat = get_material_by_url(text, trace_path=True)
             if mat:
                 a0.accept()
                 self.poly.set_material(mat)
-                # self.material_box.set_material()
+                self.material_box.set_material(mat)
                 return
         a0.ignore()

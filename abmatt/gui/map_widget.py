@@ -75,7 +75,8 @@ class MapWidget(QLabel, ClipableObserver, ImageObserver):
         update_image(self, directory, self.tex0.name, 128)
 
     def del_widget(self):
-        ImageManager().get().unsubscribe(self, self.tex0.parent)
+        self.tex0.unregister(self)
+        ImageManager.get().unsubscribe(self, self.tex0.parent)
         self.setParent(None)
 
     def __init__(self, parent, tex0):

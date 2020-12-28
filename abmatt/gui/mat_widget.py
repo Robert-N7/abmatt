@@ -26,6 +26,9 @@ class MaterialWidget(QLabel, ClipableObserver, ImageObserver):
 
     def on_node_update(self, node):
         self.on_child_update(node)  # redirect
+        if node is self.material:
+            if not node.is_used():
+                self.remove_material()
 
     def on_child_update(self, child):
         name = self.material.get_first_layer_name()
@@ -44,7 +47,7 @@ class MaterialWidget(QLabel, ClipableObserver, ImageObserver):
         self.removable = removable
         if material is not None:
             self.set_material(material, brres_path)
-        self.__init_context_menu()
+        # self.__init_context_menu()
 
     def __init_context_menu(self):
         self.setContextMenuPolicy(Qt.ActionsContextMenu)
@@ -57,6 +60,9 @@ class MaterialWidget(QLabel, ClipableObserver, ImageObserver):
             self.addAction(remove_action)
 
     def remove_material(self):
+        ImageManager.get().unsubscribe(self, self.material.parent.parent)
+        self.material.unregister(self)
+        self.setParent(None)
         self.handler.on_material_remove(self.material)
 
     def edit_material(self):

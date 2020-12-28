@@ -11,6 +11,8 @@ class ColorWidget(QLabel):
     def __init__(self, color=None, text=None, handler=None):
         if color is None:
             color = (0, 0, 0, 0)
+        elif not type(color) == tuple:
+            raise RuntimeError('Unexpected type for color {}'.format(type(color)))
         if text:
             self.has_label = True
         else:
@@ -32,6 +34,6 @@ class ColorWidget(QLabel):
             self.setText(str(color))
         self.color = color
         # todo, based on color set foreground
-        s = 'rgba' + str(color[:3])
+        s = 'rgba' + str((color[0], color[1], color[2], 255))
         self.setStyleSheet('QLabel { background-color: ' + s + ' }')
 

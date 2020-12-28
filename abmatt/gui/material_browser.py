@@ -20,7 +20,7 @@ class MaterialTabs(QWidget, MatWidgetHandler):
         mat_editor = MaterialEditor(material)
 
     def on_material_remove(self, material):
-        self.material_library.remove_material(material)
+        pass
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -83,7 +83,23 @@ class MaterialTabs(QWidget, MatWidgetHandler):
         self.editor.set_material(material)
 
 
-class MaterialBrowser(QWidget):
+class MaterialBrowser(QWidget, MatWidgetHandler):
+    def on_material_select(self, material):
+        self.handler.on_material_select(material)
+
+    def on_material_edit(self, material):
+        self.handler.on_material_edit(material)
+
+    def on_material_remove(self, material):
+        self.remove_material(material)
+        self.handler.on_material_remove(material)
+
+    def remove_material(self, material):
+        b_path = BrresPath(material=material).get_path()
+        if b_path in self.materials:
+            widget = self.materials.pop(b_path)
+            self.grid.removeWidget(widget)
+
     def __init__(self, parent):
         super().__init__(parent)
         self.handler = parent
@@ -129,7 +145,7 @@ class MaterialBrowser(QWidget):
         mat_path = BrresPath(material=material)
         name = mat_path.get_path()
         if name not in self.materials:
-            label = MaterialWidget(self, self.handler, material, mat_path, self.is_material_removable)
+            label = MaterialWidget(self, self, material, mat_path, self.is_material_removable)
             self.materials[name] = label
             # label.setFixedWidth(120)
             self.grid.addWidget(label, *self.increment_grid())
@@ -201,8 +217,8 @@ class MaterialLibrary(MaterialBrowser):
 
     def dragEnterEvent(self, a0):
         md = a0.mimeData()
-        if md.hasUrls() and self.get_brres_urls(md.urls()) \
-                or md.hasText() and self.can_add_material(a0.text()):
+        if (md.hasUrls() and self.get_brres_urls(md.urls())) \
+                or (md.hasText() and self.can_add_material(md.text())):
             a0.accept()
         else:
             a0.ignore()
@@ -334,7 +350,10 @@ class ColorGroup(QWidget):
                 widget.deleteLater()
         if colors:
             for x in colors:
-                widget = ColorWidget(color=x[1], text=x[0])
+                if x == 'vertex':
+                    widget = QLabel(x)
+                else:
+                    widget = ColorWidget(color=x[1], text=x[0])
                 self.layout.addWidget(widget)
                 self.widgets.append(widget)
             self.setLayout(self.layout)

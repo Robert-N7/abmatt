@@ -194,8 +194,8 @@ class Mdl0(SubFile):
                 self.add_material(m)
                 m.paste(new_mat)
                 new_mat = m
-        old_mat.polygons.remove(polygon)
-        new_mat.polygons.append(polygon)
+        new_mat.add_poly_ref(polygon)
+        old_mat.remove_poly_ref(polygon)
         polygon.material = new_mat
         if not len(old_mat.polygons):
             self.materials.remove(old_mat)
@@ -253,7 +253,7 @@ class Mdl0(SubFile):
         return b
 
     def add_definition(self, material, polygon, bone=None, priority=0):
-        material.polygons.append(polygon)
+        material.add_poly_ref(polygon)
         polygon.material = material
         polygon.visible_bone = bone
         polygon.draw_priority = priority

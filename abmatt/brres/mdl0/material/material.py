@@ -131,6 +131,17 @@ class Material(Clipable):
     def set_default_color(self):
         self.set_color(self.DEFAULT_COLOR)
 
+    def remove_poly_ref(self, poly):
+        self.polygons.remove(poly)
+        self.mark_modified()
+
+    def add_poly_ref(self, poly):
+        self.polygons.append(poly)
+        self.mark_modified()
+
+    def is_used(self):
+        return len(self.polygons) > 0
+
     @staticmethod
     def get_unique_material(name, mdl):
         is_digit = False
