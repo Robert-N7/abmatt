@@ -792,7 +792,7 @@ class Stage(Clipable):
         elif key in s[6:8]:
             x = self.constant
             if x > 7:
-                x += 4
+                x -= 4
             return COLOR_CONSTANTS[x]
         elif key == s[8]:
             return COLOR_SELS[self.sel_a]

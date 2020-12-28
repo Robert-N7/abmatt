@@ -20,10 +20,18 @@ class ColorWidget(QLabel):
         self.handler = handler
         self.set_color(color)
 
+    @staticmethod
+    def get_rgba255(qcolor):
+        ret = []
+        for x in qcolor.getRgbF():
+            ret.append(int(x * 255))
+        return ret
+
     def mouseDoubleClickEvent(self, ev):
         if self.handler:
-            color = QColorDialog.getColor()
+            color = QColorDialog.getColor(options=QColorDialog.ShowAlphaChannel)
             if color.isValid():
+                color = self.get_rgba255(color)
                 if self.handler.on_color_change(self, color):
                     self.set_color(color)
 

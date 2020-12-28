@@ -397,8 +397,14 @@ class Material(Clipable):
         self.mark_modified()
 
     def set_color(self, color, color_num=0):
-        self.colors[color_num] = color
-        self.mark_modified()
+        if self.colors[color_num] != color:
+            self.colors[color_num] = color
+            self.mark_modified()
+
+    def set_constant_color(self, color, color_num=0):
+        if self.constant_colors[color_num] != color:
+            self.constant_colors[color_num] = color
+            self.mark_modified()
 
     def setCullModeStr(self, cullstr):
         cullstr = cullstr.replace('cull', '')
@@ -430,6 +436,16 @@ class Material(Clipable):
             raise ValueError("Invalid fogset " + str + ", expected 0")
         if self.fogset != 0:
             self.fogset = 0
+            self.mark_modified()
+
+    def enable_constant_alpha(self, enable=True):
+        if enable != self.constant_alpha_enabled:
+            self.constant_alpha_enabled = enable
+            self.mark_modified()
+
+    def set_constant_alpha(self, val):
+        if val != self.constant_alpha:
+            self.constant_alpha = val
             self.mark_modified()
 
     def setConstantAlphaStr(self, str):
@@ -726,8 +742,8 @@ class Material(Clipable):
     def remove_srt0(self):
         if self.srt0:
             self.parent.remove_srt0(self.srt0)
-            self.mark_modified()
             self.srt0 = None
+            self.mark_modified()
 
     def set_srt0(self, anim):
         """This is called by model to set up the srt0 reference"""
@@ -895,6 +911,7 @@ class Material(Clipable):
             self.srt0.updateLayerNameI(layer.layer_index, name)
         if self.parent:
             self.parent.rename_texture_link(layer, name)
+        layer.rename(name)
         return name
 
     def get_first_layer_name(self):
@@ -906,6 +923,26 @@ class Material(Clipable):
 
     def enable_vertex_color(self, enable=True):
         if self.lightChannels[0].enable_vertex_color(enable):
+            self.mark_modified()
+
+    def get_material_color(self):
+        return self.lightChannels[0].materialColor
+
+    def set_material_color(self, color):
+        assert len(color) == 4
+        light = self.lightChannels[0]
+        if light.materialColor != color:
+            light.materialColor = color
+            self.mark_modified()
+
+    def get_ambient_color(self):
+        return self.lightChannels[0].ambientColor
+
+    def set_ambient_color(self, color):
+        assert len(color) == 4
+        light = self.lightChannels[0]
+        if light.ambientColor != color:
+            light.ambientColor = color
             self.mark_modified()
 
     def get_colors_used(self):
@@ -1013,7 +1050,6 @@ class Material(Clipable):
         self.constant_colors = deepcopy(item.constant_colors)
         self.ras1_ss = deepcopy(item.ras1_ss)
         self.indirect_matrices = deepcopy(item.indirect_matrices)
-
         self.lightChannels = deepcopy(item.lightChannels)
 
     def paste_layers(self, item):

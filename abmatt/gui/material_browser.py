@@ -10,7 +10,7 @@ from abmatt.brres.lib.node import ClipableObserver
 from abmatt.brres.mdl0.material.material import Material
 from abmatt.gui.brres_path import BrresPath, get_material_by_url
 from abmatt.gui.color_widget import ColorWidget
-from abmatt.gui.map_widget import Tex0WidgetGroup
+from abmatt.gui.map_widget import Tex0WidgetGroup, Tex0WidgetSubscriber
 from abmatt.gui.mat_widget import MaterialWidget, MatWidgetHandler
 from abmatt.gui.material_editor import MaterialEditor
 
@@ -202,7 +202,7 @@ class MaterialLibrary(MaterialBrowser):
     def dragEnterEvent(self, a0):
         md = a0.mimeData()
         if md.hasUrls() and self.get_brres_urls(md.urls()) \
-                or md.hasText() and self.can_add_material(a0.text()):
+                or md.hasText() and self.can_add_material(md.text()):
             a0.accept()
         else:
             a0.ignore()
@@ -210,13 +210,25 @@ class MaterialLibrary(MaterialBrowser):
     def dragMoveEvent(self, a0):
         md = a0.mimeData()
         if md.hasUrls() and self.get_brres_urls(md.urls()) \
-                or md.hasText() and self.can_add_material(a0.text()):
+                or md.hasText() and self.can_add_material(md.text()):
             a0.accept()
         else:
             a0.ignore()
 
 
-class MaterialSmallEditor(QFrame, ClipableObserver):
+class MaterialSmallEditor(QFrame, ClipableObserver, Tex0WidgetSubscriber):
+    def on_map_add(self, tex0, index):
+        self.material.addLayer(tex0.name)
+
+    def on_map_remove(self, tex0, index):
+        self.material.removeLayerI(index)
+
+    def on_map_replace(self, tex0, index):
+        self.material.layers[index].setName(tex0.name)
+
+    def on_map_change(self, tex0, index):
+        pass
+
     def __init__(self, parent, material=None):
         super().__init__(parent)
         self.__init_material_editor()
@@ -294,8 +306,8 @@ class MaterialSmallEditor(QFrame, ClipableObserver):
         self.update_children(material)
 
     def update_children(self, material):
-        self.maps.reset()
-        self.maps.add_tex0s(material.get_tex0s())
+        self.maps.set_tex0s(material.get_tex0s())
+        self.maps.set_brres(material.getBrres())
         if material.srt0:
             anims = 'Srt0'
         elif material.pat0:
