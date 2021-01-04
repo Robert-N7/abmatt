@@ -114,16 +114,13 @@ class ImageManager(QRunnable, ClipableObserver, ImageHandler):
 
     @pyqtSlot()
     def run(self):
-        try:
-            self.__clean()
-            while self.enabled:
-                if len(self.queue):
-                    self.__decode_brres_images(self.queue.pop(0))
-                else:
-                    self.is_ready = True
-                sleep(0.3)
-        except:
-            traceback.print_exc()
+        self.__clean()
+        while self.enabled:
+            if len(self.queue):
+                self.__decode_brres_images(self.queue.pop(0))
+            else:
+                self.is_ready = True
+            sleep(0.3)
 
 
     def __enqueue(self, brres):

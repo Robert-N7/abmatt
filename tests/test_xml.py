@@ -1,6 +1,6 @@
 import unittest
 
-from converters.xml import XML
+from abmatt.converters.xml import XML
 
 
 class MyTestCase(unittest.TestCase):

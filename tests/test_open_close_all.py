@@ -2,8 +2,8 @@ import os
 import sys
 import unittest
 
-from autofix import AutoFix
-from brres import Brres
+from abmatt.autofix import AutoFix
+from abmatt.brres import Brres
 
 
 class TestOpenCloseAll(unittest.TestCase):

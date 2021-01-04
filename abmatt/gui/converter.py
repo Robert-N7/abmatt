@@ -64,17 +64,14 @@ class ConvertManager(QRunnable):
 
     @pyqtSlot()
     def run(self):
-        try:
-            while True:
-                if len(self.queue):
-                    self.item = self.queue.pop(0)
-                    self.item.convert()
-                    self.signals.on_conversion_finish.emit(self.item)
-                    self.item = None
-                    # for x in self.observers:
-                    #     x.on_conversion_finish(self.item)
-                if not self.is_running:
-                    break
-                sleep(0.2)
-        except:
-            traceback.print_exc()
+        while True:
+            if len(self.queue):
+                self.item = self.queue.pop(0)
+                self.item.convert()
+                self.signals.on_conversion_finish.emit(self.item)
+                self.item = None
+                # for x in self.observers:
+                #     x.on_conversion_finish(self.item)
+            if not self.is_running:
+                break
+            sleep(0.2)

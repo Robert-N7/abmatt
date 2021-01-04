@@ -53,5 +53,5 @@ class PackClr0(PackSubfile):
         folder.pack(binfile)
         for x in animations:
             folder.createEntryRefI()
-            x.pack(binfile)
+            self.PackSub(x, binfile)
         binfile.end()

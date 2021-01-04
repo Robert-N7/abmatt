@@ -113,6 +113,7 @@ class UnpackPolygon(Unpacker):
         for i in range(8):
             if lo & 1:
                 tex_matrix.append(self.i_pp())
+                self.encode_string += 'B'
             else:
                 tex_matrix.append(-1)
             lo >>= 1

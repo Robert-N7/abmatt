@@ -5,8 +5,8 @@ import os
 import re
 import sys
 
+from abmatt.config import Config
 from get_bit_width import get_bit_width
-from config import Config
 
 
 def get_last_update(version_file):

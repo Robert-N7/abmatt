@@ -8,10 +8,10 @@ import time
 from threading import Thread
 
 from abmatt.config import Config
+from check_imports import ImportChecker
 from get_bit_width import get_bit_width
 from update_version import run_update_version
 
-from check_imports import check_imports
 
 
 def which(program):
@@ -44,7 +44,7 @@ def build_distribution(config, version):
     name = config['build_name']
     build_type = config['build_type']
     # build
-    clean(name, [name + '.exe', name])
+    clean([name, name + '_gui'], [name + '.exe', name, name + '_gui', name + '_gui.exe'])
     my_platform = platform.system().lower()
     if 'windows' in my_platform:
         makensis = which('makensis')
@@ -77,7 +77,8 @@ def main(args):
     config = Config(config_path)
     version = config['version']
     run_update_version([version], config)
-    check_imports(os.path.dirname(os.path.dirname(__file__)))
+    x = ImportChecker(os.path.dirname(os.path.dirname(__file__)))
+    x.check_imports()
     processes = []
     thread = Thread(target=build_distribution, args=(config, version))
     thread.start()
@@ -133,6 +134,8 @@ def make_distribution(dir, platform, binary_path, binary_path_is_dir, make_nsis,
     if binary_path_is_dir:
         shutil.copytree(bin_dir, dest_dir)
         shutil.move(os.path.join(dest_dir, base_name), exe)
+        shutil.copytree(bin_dir + '_gui', dest_dir)
+        shutil.move(os.path.join(dest_dir, base_name + '_gui'), exe + '_gui')
     else:
         os.mkdir(dest_dir)
         shutil.copy(binary_path, exe)
@@ -174,13 +177,13 @@ def update_os(file, platform):
     with open(file, 'w') as f:
         f.write('\n'.join(new_lines))
 
-def clean(folder, files):
-    if os.path.exists(folder) and os.path.isdir(folder):
-        shutil.rmtree(folder)
+def clean(folders, files):
+    for folder in folders:
+        if os.path.exists(folder) and os.path.isdir(folder):
+            shutil.rmtree(folder)
     for x in files:
         if os.path.exists(x) and os.path.isfile(x):
             os.remove(x)
-
 
 def build(name, build_type, interpreter, platform):
     output = None
@@ -197,6 +200,8 @@ def build(name, build_type, interpreter, platform):
     is_dir = True if 'onedir' in output_type else False
     params = '-y __main__.py --name ' + name + ' ' + output_type
     result = os.system(interpreter + ' -m PyInstaller ' + params)
+    params = '-y gui/main_window.py --name ' + name + '_gui ' + output_type
+    result2 = os.system(interpreter + ' -m PyInstaller ' + params)
     os.chdir('dist')
     if not result:
         output = name if not is_dir else name + '/' + name

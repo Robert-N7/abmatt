@@ -1,8 +1,6 @@
 import os
 import struct
 
-from config import Config
-
 
 def get_bit_width(interpreter_path):
     size = struct.calcsize('P') * 8

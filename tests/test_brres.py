@@ -1,8 +1,8 @@
 import os
 import unittest
 
-from autofix import AutoFix
-from brres import Brres
+from abmatt.autofix import AutoFix
+from abmatt.brres import Brres
 
 
 class MyTestCase(unittest.TestCase):

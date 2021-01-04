@@ -128,18 +128,12 @@ class AutoFix:
             a.thread.join()
             AutoFix.__AUTO_FIXER = None
 
-    def __del__(self):
-        print('Deleting Autofixer')
-
     def run(self):
-        try:
-            while self.is_running:
-                sleep(0.01)
-                if len(self.queue):
-                    message = self.queue.pop(0)
-                    message.send(self.pipe)
-        except:
-            traceback.print_exc()
+        while self.is_running:
+            sleep(0.01)
+            if len(self.queue):
+                message = self.queue.pop(0)
+                message.send(self.pipe)
 
     def enqueue(self, message):
         self.queue.append(message)
