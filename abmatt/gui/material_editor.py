@@ -1,9 +1,9 @@
 import re
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QWindow, QDoubleValidator
-from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QGridLayout, QLineEdit, QCheckBox, QGroupBox, QComboBox, \
-    QSlider, QVBoxLayout, QFrame, QHBoxLayout, QDialog, QMessageBox, QSpinBox
+from PyQt5.QtGui import QDoubleValidator
+from PyQt5.QtWidgets import QLabel, QWidget, QGridLayout, QLineEdit, QCheckBox, QComboBox, \
+    QSlider, QVBoxLayout, QFrame, QHBoxLayout, QSpinBox, QTabWidget
 
 from abmatt.brres.lib.node import ClipableObserver
 from abmatt.brres.mdl0 import stage
@@ -17,16 +17,34 @@ from abmatt.gui.color_widget import ColorWidget, ColorWidgetHandler
 from abmatt.gui.map_widget import Tex0WidgetGroup, Tex0WidgetSubscriber
 
 
-class MaterialEditor(QWidget, ClipableObserver, ColorWidgetHandler, Tex0WidgetSubscriber):
+class MaterialContainer(QTabWidget, ClipableObserver):
     def __init__(self, material):
-        super().__init__()
-        self.stage = self.layer = self.shader = self.material = None
-        self.anim = self.last_anim = None
-        self.__init_UI(material)
-        self.set_material(material)
+        super(MaterialContainer, self).__init__()
+        self.mat_editor = MaterialEditor(self, material)
+        self.addTab(self.mat_editor, 'Material')
+        self.shader_editor = ShaderEditor(self, material)
+        self.addTab(self.shader_editor, 'Shader')
+        self.material = material
+        material.register_observer(self)
+        self.setWindowTitle('Material Editor')
+        self.resize(700, 700)
         self.show()
 
-    def __init_grid(self):
+    def on_node_update(self, node):
+        self.mat_editor.on_node_update(node)
+        self.shader_editor.on_node_update(node)
+
+    def set_material(self, material):
+        self.material = material
+        self.mat_editor.set_material(material)
+        self.shader_editor.set_shader(material.shader)
+
+    def __del__(self):
+        self.material.unregister(self)
+
+
+class EditorStyle(QWidget):
+    def _init_grid(self):
         self.grid = QGridLayout()
         self.row = 0
         frame = QFrame(self)
@@ -34,204 +52,164 @@ class MaterialEditor(QWidget, ClipableObserver, ColorWidgetHandler, Tex0WidgetSu
         frame.setLayout(self.grid)
         self.current_layout.addWidget(frame)
 
-    def __add_to_layout(self, col0_label, col1=None):
+    def _add_to_layout(self, col0_label, col1=None):
         label = QLabel(col0_label, self)
         if col1:
             self.grid.addWidget(col1, self.row, 1)
         else:
-            self.__init_grid()
+            self._init_grid()
         self.grid.addWidget(label, self.row, 0)
         self.row += 1
 
-    def __add_checkbox(self, name, fptr):
+    def _add_checkbox(self, name, fptr):
         widget = QCheckBox(self)
         widget.stateChanged.connect(fptr)
-        self.__add_to_layout(name, widget)
+        self._add_to_layout(name, widget)
         return widget
 
-    def __add_combo_box(self, name, opts, fptr):
+    def _add_combo_box(self, name, opts, fptr):
         widget = QComboBox(self)
+        # widget.setS
         widget.addItems(opts)
         widget.currentIndexChanged.connect(fptr)
-        self.__add_to_layout(name, widget)
+        self._add_to_layout(name, widget)
         return widget
 
-    def __add_slider(self, name, min, max, fptr):
+    def _add_slider(self, name, min, max, fptr):
         slider = QSlider(Qt.Horizontal)
         slider.setMinimum(min)
         slider.setMaximum(max)
         slider.valueChanged.connect(fptr)
-        self.__add_to_layout(name, slider)
+        self._add_to_layout(name, slider)
         return slider
 
-    def __add_spin_box(self, name, min, max, fptr):
+    def _add_spin_box(self, name, min, max, fptr):
         spin_box = QSpinBox(self)
         spin_box.setMinimum(min)
         spin_box.setMaximum(max)
         spin_box.valueChanged.connect(fptr)
-        self.__add_to_layout(name, spin_box)
+        self._add_to_layout(name, spin_box)
         return spin_box
 
-    def __add_color_widget(self, name):
+    def _add_color_widget(self, name):
         c = ColorWidget(handler=self)
-        self.__add_to_layout(name, c)
+        self._add_to_layout(name, c)
         return c
 
-    def __add_layout_pane(self, layout):
+    def _add_layout_pane(self, layout):
         widget = QWidget(self)
         widget.setLayout(layout)
         self.top_layout.addWidget(widget)
 
-    def __add_edit(self, name, fptr, max_width=None, validator=None):
+    def _add_edit(self, name, fptr, max_width=None, validator=None):
         edit = QLineEdit(self)
         if max_width is not None:
             edit.setMaximumWidth(max_width)
         if validator is not None:
             edit.setValidator(validator)
         edit.textChanged.connect(fptr)
-        self.__add_to_layout(name, edit)
+        self._add_to_layout(name, edit)
         return edit
 
-    def __add_edit_grid(self, fptr, max_rows=1, max_cols=1, max_width=40, validator=None):
+
+class ShaderEditor(EditorStyle, ClipableObserver, ColorWidgetHandler):
+
+    def __init__(self, parent, material):
+        super(ShaderEditor, self).__init__(parent)
+        self.shader = self.stage = None
+        self.handler = parent
+        self.__init_UI()
+        self.set_shader(material.shader)
+        self.material = material
+        self.on_material_update(material)
+
+    def __init_matrix_ui(self):
         widget = QWidget(self)
         layout = QGridLayout()
-        ret = []
-        for row in range(max_rows):
-            widget_row = []
-            for col in range(max_cols):
-                edit = QLineEdit(self)
-                if max_width:
-                    edit.setMaximumWidth(max_width)
-                if validator:
-                    edit.setValidator(validator)
-                edit.textChanged.connect(fptr)
-                layout.addWidget(edit, row, col)
-                widget_row.append(edit)
-            ret.append(widget_row)
+        self.ind_matrix = []
+        fptr = [
+            [self.on_ind_matrix_change_00, self.on_ind_matrix_change_01, self.on_ind_matrix_change_02],
+            [self.on_ind_matrix_change_10, self.on_ind_matrix_change_11, self.on_ind_matrix_change_12]
+        ]
+        for i in range(2):
+            row = []
+            for j in range(3):
+                edit = QLineEdit('0', self)
+                # edit.setMinimumWidth(50)
+                edit.setValidator(QDoubleValidator(-1.0, 1.0, 7))
+                edit.textChanged.connect(fptr[i][j])
+                row.append(edit)
+                layout.addWidget(edit, i, j)
+            self.ind_matrix.append(row)
         widget.setLayout(layout)
-        if len(ret) == 1:
-            return widget, widget_row
-        return widget, ret
+        self._add_to_layout('Matrix', widget)
+        self.ind_matrix_widget = widget
 
-    def __init_UI(self, material):
-        self.setWindowTitle('Material Editor')
+    def __init_UI(self):
         self.top_layout = QHBoxLayout()
-
-        # MATERIAL PANE ----------------------------------------
-        self.current_layout = self.mat_pane = QVBoxLayout()
-        self.__init_grid()
-        # self.layout = QGridLayout()
-        self.name = QLabel(material.name)
-        self.__add_to_layout('Material', self.name)
-        self.cull_combo = self.__add_combo_box('Cull', Material.CULL_STRINGS, self.on_cull_change)
-        self.animation = self.__add_combo_box('Animation', ['None', 'SRT0', 'PAT0'], self.on_animation_change)
-
-        self.__add_to_layout('Alpha Function')
-        self.ref0 = self.__add_slider('Ref0', 0, 255, self.on_ref0_change)
-        self.comp0 = self.__add_combo_box('Comp0', Material.COMP_STRINGS, self.on_comp0_change)
-        self.logic = self.__add_combo_box('Logic', Material.LOGIC_STRINGS, self.on_logic_change)
-        self.ref1 = self.__add_slider('Ref1', 0, 255, self.on_ref1_change)
-        self.comp1 = self.__add_combo_box('Comp1', Material.COMP_STRINGS, self.on_comp1_change)
-        self.const_alpha_enabled = self.__add_checkbox('Constant Alpha Enable', self.on_const_alpha_enable)
-        self.const_alpha = self.__add_slider('Constant Alpha', 0, 255, self.on_const_alpha_change)
-
-        self.__add_to_layout('Blend')
-        self.is_xlu = self.__add_checkbox('Xlu', self.on_xlu_change)
-        self.blend_enabled = self.__add_checkbox('Blend Enable', self.on_blend_change)
-        self.blend_logic_enable = self.__add_checkbox('Logic Enable', self.on_blend_logic_enable)
-        self.blend_logic = self.__add_combo_box('Logic', Material.BLLOGIC_STRINGS, self.on_blend_logic_change)
-        self.blend_source = self.__add_combo_box('Source', Material.BLFACTOR_STRINGS, self.on_blend_source_change)
-        self.blend_dest = self.__add_combo_box('Dest', Material.BLFACTOR_STRINGS, self.on_blend_dest_change)
-
-        self.__add_to_layout('LightChannel')
-        self.vertex_color = self.__add_checkbox('Vertex Color', self.on_vertex_color_change)
-        self.material_color = self.__add_color_widget('Material Color')
-        self.ambient_color = self.__add_color_widget('Ambient Color')
-
-        self.__add_to_layout('Z-Mode')
-        self.compare_before_texture = self.__add_checkbox('Compare Before Texture', self.comp_before_tex_enable)
-        self.depth_test = self.__add_checkbox('Depth Test', self.depth_test_enable)
-        self.depth_update = self.__add_checkbox('Depth Update', self.depth_update_enable)
-        self.__add_layout_pane(self.mat_pane)
-
-        # MAP PANE ------------------------------------------------------------
-        self.current_layout = self.map_pane = QVBoxLayout()
-        self.maps = Tex0WidgetGroup(self)
-        self.__add_to_layout('Maps')
-        self.__add_to_layout('Tex0:', self.maps)
-        self.uwrap = self.__add_combo_box('U-Wrap', Layer.WRAP, self.on_uwrap_change)
-        self.vwrap = self.__add_combo_box('V-Wrap', Layer.WRAP, self.on_vwrap_change)
-        self.minfilter = self.__add_combo_box('Minfilter', Layer.FILTER, self.on_minfilter_change)
-        self.magfilter = self.__add_combo_box('Magfilter', Layer.FILTER, self.on_magfilter_change)
-        self.lod_bias = self.__add_edit('Lod Bias', self.on_lod_bias_change, 30, QDoubleValidator())
-        self.max_anisotrophy = self.__add_combo_box('Anisotrophy', Layer.ANISOTROPHY, self.on_anisotrophy_change)
-        self.clamp_bias = self.__add_checkbox('Clamp Bias', self.on_clamp_enable)
-        self.interpolate = self.__add_checkbox('Texel Interpolate', self.on_interpolate_enable)
-        self.mapmode = self.__add_combo_box('Map Mode', Layer.MAPMODE, self.on_mapmode_change)
-        self.coordinates = self.__add_combo_box('Coordinates', Layer.COORDINATES, self.on_coordinate_change)
-        self.projection = self.__add_combo_box('Projection', Layer.PROJECTION, self.on_projection_change)
-        self.inputform = self.__add_combo_box('Input Form', Layer.INPUTFORM, self.on_inputform_change)
-        self.normalize = self.__add_checkbox('Normalize', self.on_normalize_enable)
-        self.sc_widget, self.scale = self.__add_edit_grid(self.on_scale_change, max_width=30, max_cols=2)
-        self.__add_to_layout('Scale', self.sc_widget)
-        self.rotation = self.__add_edit('Rotation', self.on_rotation_change, 30, QDoubleValidator())
-        self.tr_widget, self.translation = self.__add_edit_grid(self.on_translation_change, max_width=30, max_cols=2)
-        self.__add_to_layout('Translation', self.tr_widget)
-        self.__add_layout_pane(self.map_pane)
-
         # Shader Pane ------------------------------------------
         self.current_layout = self.shader_pane = QVBoxLayout()
-        self.__add_to_layout('Shader')
+        self._add_to_layout('Shader')
+        self.stage_count = self._add_spin_box('Stage Count', 1, 7, self.on_stage_count_change)
         self.colors = colors = []
         for i in range(3):
-            colors.append(self.__add_color_widget('Color' + str(i)))
+            colors.append(self._add_color_widget('Color' + str(i)))
         self.const_colors = const_colors = []
         for i in range(4):
-            const_colors.append(self.__add_color_widget('Const Color' + str(i)))
-        self.__add_to_layout('Indirect')
+            const_colors.append(self._add_color_widget('Const Color' + str(i)))
+        self._add_to_layout('Indirect')
         sels = ['Map' + str(i) for i in range(7)]
         sels.append('None')
-        self.ind_map_sel = self.__add_combo_box('Map id', sels, self.on_ind_map_sel)
-        self.ind_matrix_enable = self.__add_checkbox('Matrix Enable', self.on_ind_matrix_enable)
-        self.ind_matrix_scale = self.__add_spin_box('Matrix Scale', -17, 46, self.on_ind_matrix_scale_change)
-        self.ind_matrix_widget, self.ind_matrix = self.__add_edit_grid(self.on_ind_matrix_change, 2, 3, 40, QDoubleValidator(-1.0, 1.0, 7))
-        self.__add_to_layout('Matrix', self.ind_matrix_widget)
-        self.__add_layout_pane(self.shader_pane)
+        self.ind_map_sel = self._add_combo_box('Map id', sels, self.on_ind_map_sel)
+        self.ind_matrix_enable = self._add_checkbox('Matrix Enable', self.on_ind_matrix_enable)
+        self.ind_matrix_scale = self._add_spin_box('Matrix Scale', -17, 46, self.on_ind_matrix_scale_change)
+        self.__init_matrix_ui()
+        self._add_layout_pane(self.shader_pane)
 
         # Stage Pane --------------------------------------------------
         self.current_layout = self.stage_pane = QVBoxLayout()
-        self.__add_to_layout('Stage')
-        self.stage_id = self.__add_combo_box('id', ['Stage 0'], self.on_stage_change)
-        self.stage_enable = self.__add_checkbox('Enabled', self.on_stage_enable)
-        self.stage_map_id = self.__add_combo_box('Map', sels, self.on_stage_map_id_change)
-        self.stage_raster = self.__add_combo_box('Raster', stage.RASTER_COLORS, self.on_stage_raster_change)
-        self.stage_ind_matrix_enable = self.__add_checkbox('Indirect Matrix', self.on_stage_ind_matrix_change)
-        self.__add_to_layout('Stage Color')
-        self.color_constant = self.__add_combo_box('Constant', stage.COLOR_CONSTANTS, self.on_color_constant_change)
-        self.color_a = self.__add_combo_box('A', stage.COLOR_SELS, self.on_color_a_change)
-        self.color_b = self.__add_combo_box('B', stage.COLOR_SELS, self.on_color_b_change)
-        self.color_c = self.__add_combo_box('C', stage.COLOR_SELS, self.on_color_c_change)
-        self.color_d = self.__add_combo_box('D', stage.COLOR_SELS, self.on_color_d_change)
-        self.color_bias = self.__add_combo_box('Bias', stage.BIAS, self.on_color_bias_change)
-        self.color_oper = self.__add_combo_box('Operation', stage.OPER, self.on_color_oper_change)
-        self.color_clamp = self.__add_checkbox('Clamp', self.on_color_clamp_enable)
-        self.color_scale = self.__add_combo_box('Scale', stage.SCALE, self.on_color_scale_change)
-        self.color_dest = self.__add_combo_box('Destination', stage.COLOR_DEST, self.on_color_dest_change)
-        self.__add_to_layout('Stage Alpha')
-        self.alpha_constant = self.__add_combo_box('Constant', stage.ALPHA_CONSTANTS, self.on_alpha_constant_change)
-        self.alpha_a = self.__add_combo_box('A', stage.ALPHA_SELS, self.on_alpha_a_change)
-        self.alpha_b = self.__add_combo_box('B', stage.ALPHA_SELS, self.on_alpha_b_change)
-        self.alpha_c = self.__add_combo_box('C', stage.ALPHA_SELS, self.on_alpha_c_change)
-        self.alpha_d = self.__add_combo_box('D', stage.ALPHA_SELS, self.on_alpha_d_change)
-        self.alpha_bias = self.__add_combo_box('Bias', stage.BIAS, self.on_alpha_bias_change)
-        self.alpha_oper = self.__add_combo_box('Operation', stage.OPER, self.on_alpha_oper_change)
-        self.alpha_clamp = self.__add_checkbox('Clamp', self.on_alpha_clamp_enable)
-        self.alpha_scale = self.__add_combo_box('Scale', stage.SCALE, self.on_alpha_scale_change)
-        self.alpha_dest = self.__add_combo_box('Destination', stage.ALPHA_DEST, self.on_alpha_dest_change)
-        self.__add_layout_pane(self.stage_pane)
+        self._add_to_layout('Stage')
+        self.stage_id = self._add_combo_box('id', ['Stage 0'], self.on_stage_change)
+        self.stage_enable = self._add_checkbox('Enabled', self.on_stage_enable)
+        self.stage_map_id = self._add_combo_box('Map', sels, self.on_stage_map_id_change)
+        self.stage_raster = self._add_combo_box('Raster', stage.RASTER_COLORS, self.on_stage_raster_change)
+        self.stage_ind_matrix_enable = self._add_checkbox('Indirect Matrix', self.on_stage_ind_matrix_change)
+        self._add_to_layout('Stage Color')
+        self.color_constant = self._add_combo_box('Constant', stage.COLOR_CONSTANTS, self.on_color_constant_change)
+        self.color_a = self._add_combo_box('A', stage.COLOR_SELS, self.on_color_a_change)
+        self.color_b = self._add_combo_box('B', stage.COLOR_SELS, self.on_color_b_change)
+        self.color_c = self._add_combo_box('C', stage.COLOR_SELS, self.on_color_c_change)
+        self.color_d = self._add_combo_box('D', stage.COLOR_SELS, self.on_color_d_change)
+        self.color_bias = self._add_combo_box('Bias', stage.BIAS, self.on_color_bias_change)
+        self.color_oper = self._add_combo_box('Operation', stage.OPER, self.on_color_oper_change)
+        self.color_clamp = self._add_checkbox('Clamp', self.on_color_clamp_enable)
+        self.color_scale = self._add_combo_box('Scale', stage.SCALE, self.on_color_scale_change)
+        self.color_dest = self._add_combo_box('Destination', stage.COLOR_DEST, self.on_color_dest_change)
+        self._add_to_layout('Stage Alpha')
+        self.alpha_constant = self._add_combo_box('Constant', stage.ALPHA_CONSTANTS, self.on_alpha_constant_change)
+        self.alpha_a = self._add_combo_box('A', stage.ALPHA_SELS, self.on_alpha_a_change)
+        self.alpha_b = self._add_combo_box('B', stage.ALPHA_SELS, self.on_alpha_b_change)
+        self.alpha_c = self._add_combo_box('C', stage.ALPHA_SELS, self.on_alpha_c_change)
+        self.alpha_d = self._add_combo_box('D', stage.ALPHA_SELS, self.on_alpha_d_change)
+        self.alpha_bias = self._add_combo_box('Bias', stage.BIAS, self.on_alpha_bias_change)
+        self.alpha_oper = self._add_combo_box('Operation', stage.OPER, self.on_alpha_oper_change)
+        self.alpha_clamp = self._add_checkbox('Clamp', self.on_alpha_clamp_enable)
+        self.alpha_scale = self._add_combo_box('Scale', stage.SCALE, self.on_alpha_scale_change)
+        self.alpha_dest = self._add_combo_box('Destination', stage.ALPHA_DEST, self.on_alpha_dest_change)
+        self._add_layout_pane(self.stage_pane)
 
-        # self.animations = QLabel('None', self)
         self.setLayout(self.top_layout)
+
+    def __set_stage(self, stage):
+        if self.__try_set(self.stage, stage):
+            self.stage = stage
+            self.__on_stage_update(stage)
+
+    def set_shader(self, shader):
+        if self.__try_set(self.shader, shader):
+            self.shader = shader
+            self.__set_stage(shader.stages[0])
+            self.__on_shader_update(shader)
 
     def __try_set(self, old, new):
         if old is new:
@@ -242,120 +220,24 @@ class MaterialEditor(QWidget, ClipableObserver, ColorWidgetHandler, Tex0WidgetSu
             new.register_observer(self)
         return True
 
-    def set_material(self, material):
-        if self.__try_set(self.material, material):
-            self.material = material
-            self.__on_material_update(material)
-            if len(material.layers):
-                self.__set_layer(material.layers[0])
-            else:
-                self.__set_layer(None)
-            self.__set_shader(material.shader)
-            self.__set_anim(material.get_animation())
-
-    def __set_anim(self, anim):
-        if self.__try_set(self.anim, anim):
-            self.anim = anim
-
-    def __set_layer(self, layer):
-        if self.__try_set(self.layer, layer):
-            self.layer = layer
-            self.__on_layer_update(layer)
-
-    def __set_stage(self, stage):
-        if self.__try_set(self.stage, stage):
-            self.stage = stage
-            self.__on_stage_update(stage)
-
-    def __set_shader(self, shader):
-        if self.__try_set(self.shader, shader):
-            self.shader = shader
-            self.__set_stage(shader.stages[0])
-            self.__on_shader_update(shader)
-
-    # ------------------------------------------------------
-    # EVENT HANDLERS
-    # ------------------------------------------------------
-    # Interface updates
-    def __on_material_update(self, material):
-        self.name.setText(material.name)
-        self.cull_combo.setCurrentIndex(material.cullmode)
-        self.__on_anim_update()
-        self.ref0.setValue(material.ref0)
-        self.comp0.setCurrentIndex(material.comp0)
-        self.logic.setCurrentIndex(material.logic)
-        self.ref1.setValue(material.ref1)
-        self.comp1.setCurrentIndex(material.comp1)
-        self.const_alpha_enabled.setChecked(material.constant_alpha_enabled)
-        self.const_alpha.setValue(material.constant_alpha)
-        self.is_xlu.setChecked(material.xlu)
-        self.blend_enabled.setChecked(material.blend_enabled)
-        self.blend_logic_enable.setChecked(material.blend_logic_enabled)
-        self.blend_logic.setCurrentIndex(material.blend_logic)
-        self.blend_source.setCurrentIndex(material.blend_source)
-        self.blend_dest.setCurrentIndex(material.blend_dest)
-        self.vertex_color.setChecked(material.is_vertex_color_enabled())
-        self.material_color.set_color(material.get_material_color())
-        self.ambient_color.set_color(material.get_ambient_color())
-        self.compare_before_texture.setChecked(material.compareBeforeTexture)
-        self.depth_test.setChecked(material.depth_test)
-        self.depth_update.setChecked(material.depth_update)
+    def on_material_update(self, material):
         for i in range(3):
             self.colors[i].set_color(material.getColor(i))
         for i in range(4):
             self.const_colors[i].set_color(material.getConstantColor(i))
-        found = False
-        self.maps.set_tex0s(material.get_tex0s())
-        self.maps.set_brres(material.getBrres())
-        for x in material.layers:
-            if self.layer is x:
-                found = True
-                break
-        if not found:
-            if len(material.layers):
-                self.__set_layer(material.layers[0])
-        if self.shader is not material.shader:
-            self.__set_shader(material.shader)
-
-    def __on_anim_update(self):
-        if self.material.pat0:
-            self.animation.setCurrentIndex(2)
-        elif self.material.srt0:
-            self.animation.setCurrentIndex(1)
-        else:
-            self.animation.setCurrentIndex(0)
-
-    def __on_layer_update(self, layer):
-        self.uwrap.setCurrentIndex(layer.uwrap)
-        self.vwrap.setCurrentIndex(layer.vwrap)
-        self.minfilter.setCurrentIndex(layer.minfilter)
-        self.magfilter.setCurrentIndex(layer.magfilter)
-        self.lod_bias.setText(str(layer.lod_bias))
-        self.max_anisotrophy.setCurrentIndex(layer.max_anisotrophy)
-        self.clamp_bias.setChecked(layer.clamp_bias)
-        self.interpolate.setChecked(layer.texel_interpolate)
-        self.mapmode.setCurrentIndex(layer.map_mode)
-        self.coordinates.setCurrentIndex(layer.coordinates)
-        self.projection.setCurrentIndex(layer.projection)
-        self.inputform.setCurrentIndex(layer.inputform)
-        self.normalize.setChecked(layer.normalize)
-        for i in range(2):
-            self.scale[i].setText(str(layer.scale[i]))
-        self.rotation.setText(str(layer.rotation))
-        for i in range(2):
-            self.translation[i].setText(str(layer.translation[i]))
-
-    def __on_shader_update(self, shader):
-        self.ind_map_sel.setCurrentIndex(shader.indTexMaps[0])
-        self.ind_matrix_enable.setChecked(self.material.isIndMatrixEnabled())
-        self.ind_matrix_scale.setValue(self.material.getIndMatrixScale())
+        self.ind_matrix_enable.setChecked(material.isIndMatrixEnabled())
+        self.ind_matrix_scale.setValue(material.getIndMatrixScale())
+        mat_matrix = material.getIndMatrix()
         ind_matrix = self.ind_matrix
-        mat_matrix = self.material.getIndMatrix()
         for i in range(2):
             for j in range(3):
                 ind_matrix[i][j].setText(str(mat_matrix[i][j]))
+
+    def __on_shader_update(self, shader):
+        self.ind_map_sel.setCurrentIndex(shader.indTexMaps[0])
         my_count = self.stage_id.count()
         need_count = len(shader.stages)
+        self.stage_count.setValue(need_count)
         if my_count > need_count:
             current_i = self.stage_id.currentIndex()
             for i in range(my_count - 1, need_count - 1, -1):
@@ -364,7 +246,7 @@ class MaterialEditor(QWidget, ClipableObserver, ColorWidgetHandler, Tex0WidgetSu
                 self.stage_id.setCurrentIndex(0)
         elif my_count < need_count:
             for i in range(my_count, need_count):
-                self.stage_id.addItem('Map ' + str(i))
+                self.stage_id.addItem('Stage ' + str(i))
 
     def __on_stage_update(self, stage):
         self.stage_enable.setChecked(stage.is_enabled())
@@ -394,14 +276,351 @@ class MaterialEditor(QWidget, ClipableObserver, ColorWidgetHandler, Tex0WidgetSu
         self.alpha_dest.setCurrentIndex(stage.get_alpha_dest())
 
     def on_node_update(self, node):
+        if type(node) == Shader:
+            self.__on_shader_update(node)
+        elif type(node) == Stage:
+            self.__on_stage_update(node)
+        elif type(node) == Material:
+            if node is not self.material:
+                self.material = self.__try_set(self.material, node)
+            self.on_material_update(node)
+
+    # COLOR EVENT HANDLERS
+    def on_color_change(self, widget, color):
+        found = False
+        for i in range(3):
+            if widget == self.colors[i]:
+                self.material.set_color(color, i)
+                found = True
+                break
+        if not found:
+            for i in range(4):
+                if widget == self.const_colors[i]:
+                    self.material.set_constant_color(color, i)
+                    break
+        return True
+
+
+    # STAGE EVENT HANDLERS
+    def on_stage_count_change(self, val):
+        self.shader.set_stage_count(val)
+
+    def on_stage_change(self, i):
+        self.__set_stage(self.shader.stages[i])
+
+    def on_stage_enable(self):
+        self.stage.set_enabled(self.stage_enable.isChecked())
+
+    def on_stage_map_id_change(self, i):
+        self.stage.set_map_id(i)
+        self.stage.set_coord_id(i)
+
+    def on_stage_raster_change(self, i):
+        self.stage.set_str('rastercolor', self.stage_raster.currentText())
+
+    def on_color_constant_change(self, i):
+        self.stage.set_str('colorconstantselection', self.color_constant.currentText())
+
+    def on_color_a_change(self, i):
+        self.stage.set_color_a(i)
+
+    def on_color_b_change(self, i):
+        self.stage.set_color_b(i)
+
+    def on_color_c_change(self, i):
+        self.stage.set_color_c(i)
+
+    def on_color_d_change(self, i):
+        self.stage.set_color_d(i)
+
+    def on_color_bias_change(self, i):
+        self.stage.set_color_bias(i)
+
+    def on_color_oper_change(self, i):
+        self.stage.set_color_oper(i)
+
+    def on_color_clamp_enable(self):
+        self.stage.set_color_clamp(self.color_clamp.isChecked())
+
+    def on_color_scale_change(self, i):
+        self.stage.set_color_scale(i)
+
+    def on_color_dest_change(self, i):
+        self.stage.set_color_dest(i)
+
+    def on_alpha_constant_change(self, i):
+        self.stage.set_str('alphaconstantselection', self.alpha_constant.currentText())
+
+    def on_alpha_a_change(self, i):
+        self.stage.set_alpha_a(i)
+
+    def on_alpha_b_change(self, i):
+        self.stage.set_alpha_b(i)
+
+    def on_alpha_c_change(self, i):
+        self.stage.set_alpha_c(i)
+
+    def on_alpha_d_change(self, i):
+        self.stage.set_alpha_d(i)
+
+    def on_alpha_bias_change(self, i):
+        self.stage.set_alpha_bias(i)
+
+    def on_alpha_oper_change(self, i):
+        self.stage.set_alpha_oper(i)
+
+    def on_alpha_clamp_enable(self):
+        self.stage.set_alpha_clamp(self.alpha_clamp.isChecked())
+
+    def on_alpha_scale_change(self, i):
+        self.stage.set_alpha_scale(i)
+
+    def on_alpha_dest_change(self, i):
+        self.stage.set_alpha_dest(i)
+
+    # ------------------------------------------------------
+    # INDIRECT
+    def on_stage_ind_matrix_change(self):
+        enable = self.stage_ind_matrix_enable.isChecked()
+        if enable:
+            self.stage.set_ind_bias(stage.IND_BIAS_STU)
+            self.stage.set_ind_matrix(stage.IND_MATRIX_0)
+        else:
+            self.stage.set_ind_bias(stage.IND_BIAS_NONE)
+            self.stage.set_ind_matrix(stage.IND_MATRIX_NONE)
+
+    def on_ind_matrix_enable(self):
+        if self.material.isIndMatrixEnabled() != self.ind_matrix_enable.isChecked():
+            self.material.setIndMatrixEnable(enable=self.ind_matrix_enable.isChecked())
+
+    def on_ind_map_sel(self, i):
+        if self.shader.getIndMap() != i:
+            self.shader.setIndMap(i)
+            self.shader.setIndCoord(i)
+
+    def on_ind_matrix_scale_change(self):
+        if self.material.getIndMatrixScale() != self.ind_matrix_scale.value():
+            self.material.setIndMatrixScale(self.ind_matrix_scale.value())
+
+    def on_ind_matrix_change_00(self):
+        self.on_ind_matrix_change(0, 0)
+
+    def on_ind_matrix_change_01(self):
+        self.on_ind_matrix_change(0, 1)
+
+    def on_ind_matrix_change_02(self):
+        self.on_ind_matrix_change(0, 2)
+
+    def on_ind_matrix_change_10(self):
+        self.on_ind_matrix_change(1, 0)
+
+    def on_ind_matrix_change_11(self):
+        self.on_ind_matrix_change(1, 1)
+
+    def on_ind_matrix_change_12(self):
+        self.on_ind_matrix_change(1, 2)
+
+    def on_ind_matrix_change(self, row, col):
+        widget = self.ind_matrix[row][col]
+        text = widget.text()
+        if not re.match('-?[0-1](\.\d+)?', text):
+            widget.setText('0')
+        else:
+            self.material.set_ind_matrix_single(float(text), row, col)
+
+
+class MaterialEditor(EditorStyle, ClipableObserver, ColorWidgetHandler, Tex0WidgetSubscriber):
+    def __init__(self, parent, material):
+        super().__init__(parent)
+        self.handler = parent
+        self.layer = self.material = None
+        self.anim = self.last_anim = None
+        self.__init_UI(material)
+        self.set_material(material)
+
+    def __init_UI(self, material):
+        self.top_layout = QHBoxLayout()
+        # MATERIAL PANE ----------------------------------------
+        self.current_layout = self.mat_pane = QVBoxLayout()
+        self._init_grid()
+        # self.layout = QGridLayout()
+        self.name = QLabel(material.name)
+        self._add_to_layout('Material', self.name)
+        self.cull_combo = self._add_combo_box('Cull', Material.CULL_STRINGS, self.on_cull_change)
+        self.animation = self._add_combo_box('Animation', ['None', 'SRT0', 'PAT0'], self.on_animation_change)
+
+        self._add_to_layout('Alpha Function')
+        self.ref0 = self._add_slider('Ref0', 0, 255, self.on_ref0_change)
+        self.comp0 = self._add_combo_box('Comp0', Material.COMP_STRINGS, self.on_comp0_change)
+        self.logic = self._add_combo_box('Logic', Material.LOGIC_STRINGS, self.on_logic_change)
+        self.ref1 = self._add_slider('Ref1', 0, 255, self.on_ref1_change)
+        self.comp1 = self._add_combo_box('Comp1', Material.COMP_STRINGS, self.on_comp1_change)
+        self.const_alpha_enabled = self._add_checkbox('Constant Alpha Enable', self.on_const_alpha_enable)
+        self.const_alpha = self._add_slider('Constant Alpha', 0, 255, self.on_const_alpha_change)
+
+        self._add_to_layout('Blend')
+        self.is_xlu = self._add_checkbox('Xlu', self.on_xlu_change)
+        self.blend_enabled = self._add_checkbox('Blend Enable', self.on_blend_change)
+        self.blend_logic_enable = self._add_checkbox('Logic Enable', self.on_blend_logic_enable)
+        self.blend_logic = self._add_combo_box('Logic', Material.BLLOGIC_STRINGS, self.on_blend_logic_change)
+        self.blend_source = self._add_combo_box('Source', Material.BLFACTOR_STRINGS, self.on_blend_source_change)
+        self.blend_dest = self._add_combo_box('Dest', Material.BLFACTOR_STRINGS, self.on_blend_dest_change)
+
+        self._add_to_layout('LightChannel')
+        self.vertex_color = self._add_checkbox('Vertex Color', self.on_vertex_color_change)
+        self.material_color = self._add_color_widget('Material Color')
+        self.ambient_color = self._add_color_widget('Ambient Color')
+
+        self._add_to_layout('Z-Mode')
+        self.compare_before_texture = self._add_checkbox('Compare Before Texture', self.comp_before_tex_enable)
+        self.depth_test = self._add_checkbox('Depth Test', self.depth_test_enable)
+        self.depth_update = self._add_checkbox('Depth Update', self.depth_update_enable)
+        self._add_layout_pane(self.mat_pane)
+
+        # MAP PANE ------------------------------------------------------------
+        self.current_layout = self.map_pane = QVBoxLayout()
+        self.maps = Tex0WidgetGroup(self)
+        self._add_to_layout('Maps')
+        self._add_to_layout('Tex0:', self.maps)
+        self.uwrap = self._add_combo_box('U-Wrap', Layer.WRAP, self.on_uwrap_change)
+        self.vwrap = self._add_combo_box('V-Wrap', Layer.WRAP, self.on_vwrap_change)
+        self.minfilter = self._add_combo_box('Minfilter', Layer.FILTER, self.on_minfilter_change)
+        self.magfilter = self._add_combo_box('Magfilter', Layer.FILTER, self.on_magfilter_change)
+        self.lod_bias = self._add_edit('Lod Bias', self.on_lod_bias_change, 30, QDoubleValidator())
+        self.max_anisotrophy = self._add_combo_box('Anisotrophy', Layer.ANISOTROPHY, self.on_anisotrophy_change)
+        self.clamp_bias = self._add_checkbox('Clamp Bias', self.on_clamp_enable)
+        self.interpolate = self._add_checkbox('Texel Interpolate', self.on_interpolate_enable)
+        self.mapmode = self._add_combo_box('Map Mode', Layer.MAPMODE, self.on_mapmode_change)
+        self.coordinates = self._add_combo_box('Coordinates', Layer.COORDINATES, self.on_coordinate_change)
+        self.projection = self._add_combo_box('Projection', Layer.PROJECTION, self.on_projection_change)
+        self.inputform = self._add_combo_box('Input Form', Layer.INPUTFORM, self.on_inputform_change)
+        self.normalize = self._add_checkbox('Normalize', self.on_normalize_enable)
+        self.scale_widget = QWidget(self)
+        layout = QHBoxLayout()
+        self.scale_x = QLineEdit(self)
+        self.scale_x.textChanged.connect(self.on_scale_x_change)
+        self.scale_y = QLineEdit(self)
+        self.scale_y.textChanged.connect(self.on_scale_y_change)
+        layout.addWidget(self.scale_x)
+        layout.addWidget(self.scale_y)
+        self.scale_widget.setLayout(layout)
+        self._add_to_layout('Scale', self.scale_widget)
+        self.rotation = self._add_edit('Rotation', self.on_rotation_change, 30, QDoubleValidator())
+        self.tr_widget = QWidget(self)
+        layout = QHBoxLayout()
+        self.tr_x = QLineEdit(self)
+        self.tr_x.textChanged.connect(self.on_translation_x_change)
+        self.tr_y = QLineEdit(self)
+        self.tr_y.textChanged.connect(self.on_translation_y_change)
+        layout.addWidget(self.tr_x)
+        layout.addWidget(self.tr_y)
+        self.tr_widget.setLayout(layout)
+        self._add_to_layout('Translation', self.tr_widget)
+        self._add_layout_pane(self.map_pane)
+
+        self.setLayout(self.top_layout)
+
+    def __try_set(self, old, new):
+        if old is new:
+            return False
+        if old is not None:
+            old.unregister(self)
+        if new is not None:
+            new.register_observer(self)
+        return True
+
+    def set_material(self, material):
+        # if self.__try_set(self.material, material):
+        self.material = material
+        self.__on_material_update(material)
+        if len(material.layers):
+            self.__set_layer(material.layers[0])
+        else:
+            self.__set_layer(None)
+        self.__set_anim(material.get_animation())
+
+    def __set_anim(self, anim):
+        if self.__try_set(self.anim, anim):
+            self.anim = anim
+
+    def __set_layer(self, layer):
+        if self.__try_set(self.layer, layer):
+            self.layer = layer
+            self.__on_layer_update(layer)
+
+    # ------------------------------------------------------
+    # EVENT HANDLERS
+    # ------------------------------------------------------
+    # Interface updates
+    def __on_material_update(self, material):
+        self.name.setText(material.name)
+        self.cull_combo.setCurrentIndex(material.cullmode)
+        self.__on_anim_update()
+        self.ref0.setValue(material.ref0)
+        self.comp0.setCurrentIndex(material.comp0)
+        self.logic.setCurrentIndex(material.logic)
+        self.ref1.setValue(material.ref1)
+        self.comp1.setCurrentIndex(material.comp1)
+        self.const_alpha_enabled.setChecked(material.constant_alpha_enabled)
+        self.const_alpha.setValue(material.constant_alpha)
+        self.is_xlu.setChecked(material.xlu)
+        self.blend_enabled.setChecked(material.blend_enabled)
+        self.blend_logic_enable.setChecked(material.blend_logic_enabled)
+        self.blend_logic.setCurrentIndex(material.blend_logic)
+        self.blend_source.setCurrentIndex(material.blend_source)
+        self.blend_dest.setCurrentIndex(material.blend_dest)
+        self.vertex_color.setChecked(material.is_vertex_color_enabled())
+        self.material_color.set_color(material.get_material_color())
+        self.ambient_color.set_color(material.get_ambient_color())
+        self.compare_before_texture.setChecked(material.compareBeforeTexture)
+        self.depth_test.setChecked(material.depth_test)
+        self.depth_update.setChecked(material.depth_update)
+        found = False
+        self.maps.set_tex0s(material.get_tex0s())
+        self.maps.set_brres(material.getBrres())
+        for x in material.layers:
+            if self.layer is x:
+                found = True
+                break
+        if not found:
+            if len(material.layers):
+                self.__set_layer(material.layers[0])
+        # if self.shader is not material.shader:
+        #     self.__set_shader(material.shader)
+
+    def __on_anim_update(self):
+        if self.material.pat0:
+            self.animation.setCurrentIndex(2)
+        elif self.material.srt0:
+            self.animation.setCurrentIndex(1)
+        else:
+            self.animation.setCurrentIndex(0)
+
+    def __on_layer_update(self, layer):
+        self.uwrap.setCurrentIndex(layer.uwrap)
+        self.vwrap.setCurrentIndex(layer.vwrap)
+        self.minfilter.setCurrentIndex(layer.minfilter)
+        self.magfilter.setCurrentIndex(layer.magfilter)
+        self.lod_bias.setText(str(layer.lod_bias))
+        self.max_anisotrophy.setCurrentIndex(layer.max_anisotrophy)
+        self.clamp_bias.setChecked(layer.clamp_bias)
+        self.interpolate.setChecked(layer.texel_interpolate)
+        self.mapmode.setCurrentIndex(layer.map_mode)
+        self.coordinates.setCurrentIndex(layer.coordinates)
+        self.projection.setCurrentIndex(layer.projection)
+        self.inputform.setCurrentIndex(layer.inputform)
+        self.normalize.setChecked(layer.normalize)
+        self.scale_x.setText(str(layer.scale[0]))
+        self.scale_y.setText(str(layer.scale[1]))
+        self.rotation.setText(str(layer.rotation))
+        self.tr_x.setText(str(layer.translation[0]))
+        self.tr_y.setText(str(layer.translation[1]))
+
+    def on_node_update(self, node):
         if type(node) == Material:
             self.__on_material_update(node)
         elif type(node) == Layer:
             self.__on_layer_update(node)
-        elif type(node) == Shader:
-            self.__on_shader_update(node)
-        elif type(node) == Stage:
-            self.__on_stage_update(node)
 
     def on_child_update(self, child):
         pass
@@ -415,18 +634,6 @@ class MaterialEditor(QWidget, ClipableObserver, ColorWidgetHandler, Tex0WidgetSu
             self.material.set_material_color(color)
         elif widget == self.ambient_color:
             self.material.set_ambient_color(color)
-        else:
-            found = False
-            for i in range(3):
-                if widget == self.colors[i]:
-                    self.material.set_color(color, i)
-                    found = True
-                    break
-            if not found:
-                for i in range(4):
-                    if widget == self.const_colors[i]:
-                        self.material.set_constant_color(color, i)
-                        break
         return True
 
     # gui updates
@@ -531,34 +738,6 @@ class MaterialEditor(QWidget, ClipableObserver, ColorWidgetHandler, Tex0WidgetSu
         if self.material.depth_update != self.depth_update.isChecked():
             self.material.setEnableDepthUpdate(self.depth_update.isChecked())
 
-    # ------------------------------------------------------
-    # INDIRECT
-    def on_ind_matrix_enable(self):
-        if self.material.isIndMatrixEnabled() != self.ind_matrix_enable.isChecked():
-            self.material.setIndMatrixEnable(enable=self.ind_matrix_enable.isChecked())
-
-    def on_ind_map_sel(self, i):
-        if self.shader.getIndMap() != i:
-            self.shader.setIndMap(i)
-            self.shader.setIndCoord(i)
-
-    def on_ind_matrix_scale_change(self):
-        if self.material.getIndMatrixScale() != self.ind_matrix_scale.value():
-            self.material.setIndMatrixScale(self.ind_matrix_scale.value())
-
-    def on_ind_matrix_change(self):
-        matrix = []
-        for row in self.ind_matrix:
-            x = []
-            for col in range(len(row)):
-                text = row[col].text()
-                if not re.match('-?[0-1](\.\d+)?', text):
-                    row[col].setText('0')
-                    return
-                x.append(text)
-            matrix.append(x)
-        self.material.setIndMatrix(matrix)
-
     # ----------------------------------------------
     #   LAYER functions
     # ----------------------------------------------
@@ -606,16 +785,17 @@ class MaterialEditor(QWidget, ClipableObserver, ColorWidgetHandler, Tex0WidgetSu
     def on_normalize_enable(self):
         self.layer.normalize = self.normalize.isChecked()
 
-    def on_scale_change(self):
-        # validate the scale
-        scale = []
-        for x in self.scale:
-            try:
-                scale.append(float(x.text()))
-            except ValueError:
-                x.setText('0.0')
-                return
-        self.layer.set_scale(scale)
+    def on_scale_x_change(self):
+        try:
+            self.layer.set_x_scale(self.scale_x.text())
+        except ValueError:
+            self.scale_x.setText(str(self.layer.scale[0]))
+
+    def on_scale_y_change(self):
+        try:
+            self.layer.set_y_scale(self.scale_y.text())
+        except ValueError:
+            self.scale_y.setText(str(self.layer.scale[1]))
 
     def on_rotation_change(self):
         try:
@@ -623,15 +803,17 @@ class MaterialEditor(QWidget, ClipableObserver, ColorWidgetHandler, Tex0WidgetSu
         except ValueError:
             self.rotation.setText('0.0')
 
-    def on_translation_change(self):
-        tr = []
-        for x in self.translation:
-            try:
-                tr.append(float(x.text()))
-            except ValueError:
-                x.setText('0.0')
-                return
-        self.layer.set_translation(tr)
+    def on_translation_x_change(self):
+        try:
+            self.layer.set_x_translation(self.tr_x.text())
+        except ValueError:
+            self.tr_x.setText(str(self.layer.translation[0]))
+
+    def on_translation_y_change(self):
+        try:
+            self.layer.set_y_translation(self.tr_y.text())
+        except ValueError:
+            self.tr_y.setText(str(self.layer.translation[1]))
 
     def on_anisotrophy_change(self, i):
         self.layer.setAnisotrophyStr(self.max_anisotrophy.currentText())
@@ -641,89 +823,6 @@ class MaterialEditor(QWidget, ClipableObserver, ColorWidgetHandler, Tex0WidgetSu
 
     def on_interpolate_enable(self):
         self.layer.setTexelInterpolateStr(str(self.interpolate.isChecked()).lower())
-
-    # STAGE
-    def on_stage_change(self, i):
-        self.__set_stage(self.shader.stages[i])
-
-    def on_stage_enable(self):
-        self.stage.set_enabled(self.stage_enable.isChecked())
-
-    def on_stage_map_id_change(self, i):
-        self.stage.set_map_id(i)
-        self.stage.set_coord_id(i)
-
-    def on_stage_raster_change(self, i):
-        self.stage.set_str('rastercolor', self.stage_raster.currentText())
-
-    def on_color_constant_change(self, i):
-        self.stage.set_str('colorconstantselection', self.color_constant.currentText())
-
-    def on_color_a_change(self, i):
-        self.stage.set_color_a(i)
-
-    def on_color_b_change(self, i):
-        self.stage.set_color_b(i)
-
-    def on_color_c_change(self, i):
-        self.stage.set_color_c(i)
-
-    def on_color_d_change(self, i):
-        self.stage.set_color_d(i)
-
-    def on_color_bias_change(self, i):
-        self.stage.set_color_bias(i)
-
-    def on_color_oper_change(self, i):
-        self.stage.set_color_oper(i)
-
-    def on_color_clamp_enable(self):
-        self.stage.set_color_clamp(self.color_clamp.isChecked())
-
-    def on_color_scale_change(self, i):
-        self.stage.set_color_scale(i)
-
-    def on_color_dest_change(self, i):
-        self.stage.set_color_dest(i)
-
-    def on_alpha_constant_change(self, i):
-        self.stage.set_str('alphaconstantselection', self.alpha_constant.currentText())
-
-    def on_alpha_a_change(self, i):
-        self.stage.set_alpha_a(i)
-
-    def on_alpha_b_change(self, i):
-        self.stage.set_alpha_b(i)
-
-    def on_alpha_c_change(self, i):
-        self.stage.set_alpha_c(i)
-
-    def on_alpha_d_change(self, i):
-        self.stage.set_alpha_d(i)
-
-    def on_alpha_bias_change(self, i):
-        self.stage.set_alpha_bias(i)
-
-    def on_alpha_oper_change(self, i):
-        self.stage.set_alpha_oper(i)
-
-    def on_alpha_clamp_enable(self):
-        self.stage.set_alpha_clamp(self.alpha_clamp.isChecked())
-
-    def on_alpha_scale_change(self, i):
-        self.stage.set_alpha_scale(i)
-
-    def on_alpha_dest_change(self, i):
-        self.stage.set_alpha_dest(i)
-
-    def on_stage_ind_matrix_change(self):
-        enable = self.stage_ind_matrix_enable.isChecked()
-        if enable:
-            self.stage.set_ind_bias(stage.IND_BIAS_STU)
-            self.stage.set_ind_matrix(stage.IND_MATRIX_0)
-        else:
-            self.stage.set_ind_bias(stage.IND_BIAS_NONE)
-            self.stage.set_ind_matrix(stage.IND_MATRIX_NONE)
 
     # ------------------------------------------------
     # End EVENT HANDLERS

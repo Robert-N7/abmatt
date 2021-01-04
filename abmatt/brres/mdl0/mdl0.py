@@ -185,8 +185,13 @@ class Mdl0(SubFile):
 
     def update_polygon_material(self, polygon, old_mat, new_mat):
         # polys = self.get_polys_using_material(old_mat)
-        if new_mat.parent != self:  # is it a material not in the model already?
+        if new_mat.parent is not self:  # is it a material not in the model already?
             test = self.get_material_by_name(new_mat.name)
+            if new_mat.parent is not None:
+                new_brres = new_mat.parent.parent
+                my_brres = self.parent
+                if my_brres is not None and new_brres is not None:
+                    my_brres.paste_material_tex0s(new_mat, new_brres)
             if test == new_mat:  # already have this material?
                 new_mat = test
             else:
@@ -199,6 +204,7 @@ class Mdl0(SubFile):
         polygon.material = new_mat
         if not len(old_mat.polygons):
             self.materials.remove(old_mat)
+        # self.mark_modified()
         return new_mat
 
     def add_material(self, material):
@@ -215,6 +221,7 @@ class Mdl0(SubFile):
         if self.get_materials_by_name(material.name):
             raise RuntimeError(f'Material with name {material.name} is already in model!')
         self.materials.append(material)
+        # self.mark_modified()
         return material
 
     def remove_material(self, material):
@@ -227,6 +234,7 @@ class Mdl0(SubFile):
             self.srt0_collection.remove(material.srt0)
         if material.pat0:
             self.pat0_collection.remove(material.pat0)
+        self.mark_modified()
 
 
     def get_polys_using_material(self, material):

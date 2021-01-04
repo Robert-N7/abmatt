@@ -58,6 +58,12 @@ class Brres(Clipable, Packable):
         Brres.OPEN_FILES.append(file)
 
     @staticmethod
+    def close_files():
+        for x in Brres.OPEN_FILES:
+            x.close()
+        Brres.OPEN_FILES = []
+
+    @staticmethod
     def get_brres(filename, create_if_not_exists=False):
         filename = os.path.abspath(filename)
         for x in Brres.OPEN_FILES:
@@ -143,6 +149,19 @@ class Brres(Clipable, Packable):
                 tex.paste(t2[x])
         self.mark_modified()
         # todo chr0 paste
+
+    def paste_material_tex0s(self, material, old_brres):
+        pasted_count = 0
+        if old_brres is not self:
+            old_map = old_brres.texture_map
+            for layer in material.layers:
+                tex0 = old_map.get(layer.name)
+                if tex0 is not None and layer.name not in self.texture_map:
+                    t = Tex0(tex0.name, parent=self)
+                    t.paste(tex0)
+                    if self.add_tex0(t, False, False):
+                        pasted_count += 1
+        return pasted_count
 
     # -------------------------- SAVE/ CLOSE --------------------------------------------
     def close(self, try_save=True):
@@ -256,19 +275,17 @@ class Brres(Clipable, Packable):
                     return tex
 
     def add_tex0(self, tex0, replace=True, mark_modified=True):
-        replaced = False
         if tex0.name in self.texture_map:
             if not replace:
                 return False
             self.remove_tex0(tex0.name)
             AutoFix.get().info('Replaced tex0 {}'.format(tex0.name))
-            replaced = True
         self.textures.append(tex0)
         self.texture_map[tex0.name] = tex0
         tex0.parent = self      # this may be redundant
         if mark_modified:
             self.mark_modified()
-        return replaced
+        return True
 
     def paste_tex0s(self, brres):
         tex_map = brres.texture_map

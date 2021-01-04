@@ -199,7 +199,7 @@ class SRTTexAnim(Clipable):
         super(SRTTexAnim, self).__init__(name, parent, binfile)
 
     def __eq__(self, other):
-        return self.animations == other.animations
+        return type(other) == SRTTexAnim and self.animations == other.animations
 
     # ---------------------- CLIPABLE -------------------------------------------------------------
     def paste(self, item):

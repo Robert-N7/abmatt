@@ -197,6 +197,18 @@ class Layer(Clipable):
         fun = self.getSetter(key)
         return fun(self, value)
 
+    def set_x_scale(self, x_scale):
+        val = float(x_scale)
+        if self.scale[0] != val:
+            self.scale = [val, self.scale[1]]
+            self.mark_modified()
+
+    def set_y_scale(self, x_scale):
+        val = float(x_scale)
+        if self.scale[1] != val:
+            self.scale = [self.scale[0], val]
+            self.mark_modified()
+
     def set_scale(self, scale):
         if self.scale != scale:
             self.scale = scale
@@ -215,6 +227,18 @@ class Layer(Clipable):
 
     def setRotationStr(self, value):
         self.set_rotation(float(value))
+
+    def set_x_translation(self, val):
+        val = float(val)
+        if val != self.translation[0]:
+            self.translation = [val, self.translation[0]]
+            self.mark_modified()
+
+    def set_y_translation(self, val):
+        val = float(val)
+        if val != self.translation[1]:
+            self.translation = [self.translation[0], val]
+            self.mark_modified()
 
     def set_translation(self, translation):
         if self.translation != translation:
@@ -438,7 +462,7 @@ class Layer(Clipable):
             # check if we have some reference
             if self.tex0_ref:
                 if texture_map:     # add the texture if it's not in the map
-                    self.parent.get_brres().add_tex0(self.tex0_ref)
+                    self.parent.getBrres().add_tex0(self.tex0_ref)
                 tex = self.tex0_ref
         else:
             self.tex0_ref = tex

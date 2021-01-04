@@ -133,11 +133,11 @@ class Material(Clipable):
 
     def remove_poly_ref(self, poly):
         self.polygons.remove(poly)
-        self.mark_modified()
+        # self.mark_modified()
 
     def add_poly_ref(self, poly):
         self.polygons.append(poly)
-        self.mark_modified()
+        # self.mark_modified()
 
     def is_used(self):
         return len(self.polygons) > 0
@@ -626,6 +626,16 @@ class Material(Clipable):
             raise ValueError('Indirect scale {} out of range!'.format(scale))
         if matrix.scale != scale:
             matrix.scale = scale
+            self.mark_modified()
+
+    def set_ind_matrix_single(self, value, row, col, matrix_id=0):
+        my_matrix = self.indirect_matrices[matrix_id].matrix
+        if not 0 <= row <= 1:
+            raise ValueError('Indirect matrix row {} out of range'.format(row))
+        if not 0 <= col <= 2:
+            raise ValueError('Indirect matrix column {} out of range'.format(col))
+        if value != my_matrix[row][col]:
+            my_matrix[row][col] = value
             self.mark_modified()
 
     def setIndMatrix(self, matrix, id=0):

@@ -1,5 +1,6 @@
 import os
 import shutil
+import traceback
 import uuid
 from threading import Thread
 from time import sleep
@@ -53,30 +54,40 @@ class ImageManager(QRunnable, ClipableObserver, ImageHandler):
             ImageManager.__INSTANCE = ImageManager()
         return ImageManager.__INSTANCE
 
-    def subscribe(self, obj, brres):
+    def subscribe(self, obj, brres, tex0_name=None):
         key = self.__get_brres_key(brres)
-        if brres not in self.queue:
-            dir = self.brres_to_folder.get(key)     # we haven't processed it!
-            if not dir:
-                self.__enqueue(brres)
-            else:
-                obj.on_image_update(dir)    # sends out immediate update
         updater = self.image_updater.get(key)
         if not updater:
             self.image_updater[key] = [obj]
         elif obj not in updater:
             updater.append(obj)
+        if brres not in self.queue:
+            dir = self.brres_to_folder.get(key)
+            # if not found...
+            if not dir:
+                self.enqueue(brres)
+            elif tex0_name is not None and not os.path.exists(os.path.join(dir, tex0_name + '.png')):
+                self.__enqueue(brres)
+            else:
+                obj.on_image_update(dir)    # sends out immediate update
 
     def unsubscribe(self, obj, brres):
         key = self.__get_brres_key(brres)
         updater = self.image_updater.get(key)
         if updater:
-            updater.remove(obj)
+            try:
+                updater.remove(obj)
+                # No more objects to update?
+                if len(updater) <= 0:
+                    brres.unregister(self)
+            except ValueError:
+                pass
 
     @staticmethod
     def stop():
         if ImageManager.__INSTANCE is not None:
             ImageManager.__INSTANCE.enabled = False
+            ImageManager.__INSTANCE = None
             # ImageManager.__INSTANCE.wait()
             # ImageManager.__INSTANCE.thread.join()
 
@@ -103,13 +114,17 @@ class ImageManager(QRunnable, ClipableObserver, ImageHandler):
 
     @pyqtSlot()
     def run(self):
-        self.__clean()
-        while self.enabled:
-            if len(self.queue):
-                self.__decode_brres_images(self.queue.pop(0))
-            else:
-                self.is_ready = True
-            sleep(0.3)
+        try:
+            self.__clean()
+            while self.enabled:
+                if len(self.queue):
+                    self.__decode_brres_images(self.queue.pop(0))
+                else:
+                    self.is_ready = True
+                sleep(0.3)
+        except:
+            traceback.print_exc()
+
 
     def __enqueue(self, brres):
         self.queue.append(brres)
@@ -117,6 +132,7 @@ class ImageManager(QRunnable, ClipableObserver, ImageHandler):
 
     def enqueue(self, brres):
         if self.enabled and not self.get_image_dir(brres):
+            brres.register_observer(self)
             self.__enqueue(brres)
             return True
         return False
@@ -220,3 +236,5 @@ def update_image(widget, dir, name, scale_width=64):
             pixelmap = pixelmap.scaledToHeight(scale_width)
         widget.setPixmap(pixelmap)
         widget.setMask(pixelmap.mask())
+        return True
+    return False

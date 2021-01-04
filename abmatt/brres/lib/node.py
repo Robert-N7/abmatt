@@ -112,7 +112,10 @@ class Clipable(Node):
             self.observers.append(observer)
 
     def unregister(self, observer):
-        self.observers.remove(observer)
+        try:
+            self.observers.remove(observer)
+        except ValueError as e:
+            pass
 
     # ---------------------------------------------- CLIPBOARD -------------------------------------------
     @staticmethod

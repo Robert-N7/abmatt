@@ -203,17 +203,8 @@ class Shader(Clipable):
         return ret
 
     def __str__(self):
-        return "shdr layers {} stages {}: {}".format(len(self.stages), self.countDirectStages(),
+        return "shdr stages {}: {}".format(len(self.stages),
                                                      self.countIndirectStages())
-
-    def countDirectStages(self):
-        i = 0
-        for x in self.stages:
-            # print("Ref {} is {}".format(i, x))
-            if x > 7:
-                break
-            i += 1
-        return i
 
     def countIndirectStages(self):
         i = 0

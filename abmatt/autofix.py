@@ -126,13 +126,20 @@ class AutoFix:
         if a is not None:
             a.is_running = False
             a.thread.join()
+            AutoFix.__AUTO_FIXER = None
+
+    def __del__(self):
+        print('Deleting Autofixer')
 
     def run(self):
-        while self.is_running:
-            sleep(0.01)
-            if len(self.queue):
-                message = self.queue.pop(0)
-                message.send(self.pipe)
+        try:
+            while self.is_running:
+                sleep(0.01)
+                if len(self.queue):
+                    message = self.queue.pop(0)
+                    message.send(self.pipe)
+        except:
+            traceback.print_exc()
 
     def enqueue(self, message):
         self.queue.append(message)

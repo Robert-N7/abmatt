@@ -74,9 +74,9 @@ class ImgConverterI:
 
     @staticmethod
     def _move_out_of_temp_dir(tmp_dir, files=[]):
-        parent_dir = '..'
-        for file in files:
-            shutil.move(file, parent_dir)
+        # parent_dir = os.path.join(tmp_dir, '..')
+        # for file in files:
+        #     shutil.move(os.path.join(tmp_dir, file), parent_dir)
         # os.chdir(parent_dir)
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
@@ -212,6 +212,7 @@ class ImgConverter:
             if result:
                 raise EncodeError('Failed to encode {}'.format(img_file))
             t = Tex0(name, brres, BinFile(dest))
+            t.name = name
             if brres is not None:
                 brres.add_tex0(t)
             os.remove(dest)
@@ -298,8 +299,8 @@ class ImgConverter:
             if dest_dir is not None:
                 if not os.path.exists(dest_dir):
                     os.mkdir(dest_dir)
-                    tmp_dir = dest_dir
-                    use_temp_dir = False
+                tmp_dir = dest_dir
+                use_temp_dir = False
                 # os.chdir(dest_dir)
             if use_temp_dir:  # use a temporary directory if this one already has stuff
                 tmp_dir = self._move_to_temp_dir()

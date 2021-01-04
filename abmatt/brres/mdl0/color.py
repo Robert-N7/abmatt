@@ -1,4 +1,13 @@
+from abmatt.autofix import AutoFix
 from abmatt.brres.lib.node import Node
+
+# Constants
+FMT_RGB565 = 0
+FMT_RGB8 = 1
+FMT_RGBX8 = 2
+FMT_RGBA4 = 3
+FMT_RGBA6 = 4
+FMT_RGBA8 = 5
 
 
 class Color(Node):
@@ -11,6 +20,11 @@ class Color(Node):
         self.has_alpha = False
         self.stride = 3
         self.flags = 0
+
+    def check(self):
+        if not FMT_RGB565 <= self.format <= FMT_RGBA8:
+            AutoFix.get().error(f'Color {self.name} has unknown color format.')
+            self.format = 0
 
     def set_format(self, fmt):
         self.format = fmt
@@ -37,10 +51,3 @@ class Color(Node):
         return self.count
 
 
-# Constants
-FMT_RGB565 = 0
-FMT_RGB8 = 1
-FMT_RGBX8 = 2
-FMT_RGBA4 = 3
-FMT_RGBA6 = 4
-FMT_RGBA8 = 5

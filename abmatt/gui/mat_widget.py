@@ -1,6 +1,6 @@
 from PyQt5.QtCore import Qt, QMimeData
 from PyQt5.QtGui import QDrag, QPixmap, QPainter
-from PyQt5.QtWidgets import QLabel, QAction
+from PyQt5.QtWidgets import QLabel, QAction, QWidget, QVBoxLayout
 
 from abmatt.brres.lib.node import ClipableObserver
 from abmatt.gui.brres_path import BrresPath
@@ -8,6 +8,9 @@ from abmatt.gui.image_manager import ImageObserver, ImageManager, update_image
 
 
 class MatWidgetHandler:
+    def should_remove_unused_mats(self):
+        return True
+
     def on_material_select(self, material):
         raise NotImplementedError()
 
@@ -18,7 +21,7 @@ class MatWidgetHandler:
         raise NotImplementedError()
 
 
-class MaterialWidget(QLabel, ClipableObserver, ImageObserver):
+class MaterialWidget(QWidget, ClipableObserver, ImageObserver):
     def on_image_update(self, dir):
         self.layer_name = name = self.material.get_first_layer_name()
         if name:
@@ -27,27 +30,41 @@ class MaterialWidget(QLabel, ClipableObserver, ImageObserver):
     def on_node_update(self, node):
         self.on_child_update(node)  # redirect
         if node is self.material:
-            if not node.is_used():
+            if self.handler.should_remove_unused_mats() and not node.is_used():
                 self.remove_material()
 
     def on_child_update(self, child):
         name = self.material.get_first_layer_name()
         if name != self.layer_name:
-            self.__update_image(ImageManager.get().get_image_dir(self.material.parent.parent), name)
+            self.__update_image(ImageManager.get().get_image_dir(self.material.getBrres()), name)
 
     def __update_image(self, dir, name):
-        update_image(self, dir, name)
+        if not update_image(self.img_label, dir, name, scale_width=self.w):
+            pass
 
-    def __init__(self, parent, handler=None, material=None, brres_path=None, removable=False):
+    def __init__(self, parent, handler=None, material=None, brres_path=None, removable=False, width=64):
         super().__init__(parent)
         self.handler = handler
+        self.__init_ui()
         self.layer_name = None
-        self.is_text = True
         self.material = None
         self.removable = removable
+        self.w = width
         if material is not None:
             self.set_material(material, brres_path)
-        # self.__init_context_menu()
+        self.__init_context_menu()
+
+    def __init_ui(self):
+        self.main_layout = QVBoxLayout(self)
+        self.text_label = QLabel(self)
+        self.img_label = QLabel(self)
+        self.main_layout.addWidget(self.text_label)
+        self.main_layout.addWidget(self.img_label)
+        self.setLayout(self.main_layout)
+
+    def __del__(self):
+        if self.material is not None:
+            self.material.unregister(self)
 
     def __init_context_menu(self):
         self.setContextMenuPolicy(Qt.ActionsContextMenu)
@@ -61,9 +78,8 @@ class MaterialWidget(QLabel, ClipableObserver, ImageObserver):
 
     def remove_material(self):
         ImageManager.get().unsubscribe(self, self.material.parent.parent)
-        self.material.unregister(self)
-        self.setParent(None)
         self.handler.on_material_remove(self.material)
+        self.setParent(None)
 
     def edit_material(self):
         self.handler.on_material_edit(self.material)
@@ -73,18 +89,18 @@ class MaterialWidget(QLabel, ClipableObserver, ImageObserver):
             ImageManager.get().unsubscribe(self, self.material.parent.parent)
             self.material.unregister(self)
         self.material = material
-        self.is_text = True
         if brres_path is None:
             self.brres_path = BrresPath(material=material)
         else:
             self.brres_path = brres_path
-        if material:
+        if material is not None:
             self.setToolTip(self.brres_path.get_path())
-            self.setText(material.name)
+            self.text_label.setText(material.name)
             self.material.register_observer(self)
-            ImageManager.get().subscribe(self, material.parent.parent)
+            ImageManager.get().subscribe(self,
+                                         material.parent.parent, material.get_first_layer_name())
         else:
-            self.setText('Null')
+            self.text_label.setText('Null')
             self.setToolTip('Null')
 
 
@@ -93,6 +109,9 @@ class MaterialWidget(QLabel, ClipableObserver, ImageObserver):
             self.handler.on_material_select(self.material)
         if ev.button() == Qt.LeftButton:
             self.drag_start_position = ev.pos()
+
+    def mouseDoubleClickEvent(self, a0):
+        self.handler.on_material_edit(self.material)
 
     def mouseMoveEvent(self, ev):
         if not ev.buttons() & Qt.LeftButton:

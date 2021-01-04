@@ -4,10 +4,11 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QStackedLayout, QComboBox, QLabel, QDialog, QGridLayout, QLineEdit, \
     QSpinBox, QHBoxLayout, QPushButton, QFileDialog, QAction
 
+from abmatt.autofix import AutoFix
 from abmatt.brres.lib.node import ClipableObserver
 from abmatt.brres.tex0 import Tex0
 from abmatt.gui.image_manager import ImageObserver, update_image, ImageManager
-from abmatt.image_converter import ImgConverter
+from abmatt.image_converter import ImgConverter, EncodeError
 
 
 def is_image_url(path):
@@ -114,8 +115,6 @@ class Tex0WidgetGroup(QWidget):
     def remove_map_widget(self, map_widget):
         tex0 = map_widget.tex0
         index = self.stack.currentIndex()
-        self.stack.removeWidget(map_widget)
-        map_widget.del_widget()
         if self.subscriber is not None:
             self.subscriber.on_map_remove(tex0, index)
 
@@ -124,7 +123,6 @@ class Tex0WidgetGroup(QWidget):
 
     def on_import(self, tex0):
         index = self.stack.count()
-        self.add_tex0(tex0)
         if self.subscriber:
             self.subscriber.on_map_add(tex0, index)
         self.importer = None
@@ -291,8 +289,11 @@ class MapImporter(QWidget):
         fmt = self.format_box.currentText()
         mips = self.num_mips.value()
         path = self.path_edit.text()
-        tex0 = ImgConverter().INSTANCE.encode(path, self.brres, tex_format=fmt, num_mips=mips)
-        if not tex0:
-            tex0 = self.brres.get_texture(os.path.splitext(os.path.basename(path))[0])
-        self.import_handler.on_import(tex0)
+        try:
+            tex0 = ImgConverter().INSTANCE.encode(path, self.brres, tex_format=fmt, num_mips=mips)
+            if not tex0:
+                tex0 = self.brres.getTexture(os.path.splitext(os.path.basename(path))[0])
+            self.import_handler.on_import(tex0)
+        except EncodeError as e:
+            AutoFix.get().error(e)
         self.close()

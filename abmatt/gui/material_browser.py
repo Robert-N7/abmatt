@@ -1,26 +1,31 @@
 import os
 
 from PyQt5.QtCore import Qt, QEvent
-from PyQt5.QtWidgets import QComboBox, QSlider
+from PyQt5.QtWidgets import QComboBox, QSlider, QPushButton, QMessageBox
 from PyQt5.QtWidgets import QWidget, QGridLayout, QScrollArea, QVBoxLayout, QLabel, QHBoxLayout, QTabWidget, QCheckBox, \
     QFrame
 
+from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
 from abmatt.brres.lib.node import ClipableObserver
 from abmatt.brres.mdl0.material.material import Material
 from abmatt.gui.brres_path import BrresPath, get_material_by_url
 from abmatt.gui.color_widget import ColorWidget
+from abmatt.gui.image_manager import ImageManager
 from abmatt.gui.map_widget import Tex0WidgetGroup, Tex0WidgetSubscriber
 from abmatt.gui.mat_widget import MaterialWidget, MatWidgetHandler
-from abmatt.gui.material_editor import MaterialEditor
+from abmatt.gui.material_editor import MaterialEditor, MaterialContainer
 
 
 class MaterialTabs(QWidget, MatWidgetHandler):
     def on_material_edit(self, material):
-        mat_editor = MaterialEditor(material)
+        mat_editor = MaterialContainer(material)
 
     def on_material_remove(self, material):
         pass
+
+    def on_close(self):
+        self.material_library.on_close()
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -168,13 +173,36 @@ class MaterialLibrary(MaterialBrowser):
             self.brres = material_library[x].parent.parent
             break
 
+    def on_close(self):
+        if self.brres is not None:
+            if self.brres.is_modified:
+                m = QMessageBox(QMessageBox.Warning, 'Save Before Closing',
+                                f'Save material library before closing?',
+                                buttons=QMessageBox.Ok | QMessageBox.Cancel, parent=self)
+                if m.exec_() == QMessageBox.Ok:
+                    self.brres.save(overwrite=True)
+            self.brres.close(False)
+
     def can_add_material(self, mat_path):
         return mat_path not in self.materials
 
     def add_material(self, material):
-        if super().add_material(material) and self.brres is not None:
-            self.brres.models[0].add_material(material)
-            self.brres.save(overwrite=True)
+        if self.brres is not None:
+            model = self.brres.models[0]
+            if model.get_materials_by_name(material.name):
+                AutoFix.get().error('Material {} already exists!'.format(material.name))
+                return False
+            mat = Material(material.name, self.brres.models[0])
+            mat.paste(material)
+            self.brres.models[0].add_material(mat)
+            self.brres.paste_material_tex0s(mat, material.getBrres())
+            material = mat
+            result = super().add_material(material)
+            return result
+        return super().add_material(material)
+
+    def should_remove_unused_mats(self):
+        return False
 
     def remove_material(self, material):
         b_path = BrresPath(material=material).get_path()
@@ -182,7 +210,6 @@ class MaterialLibrary(MaterialBrowser):
             self.brres.models[0].remove_material(material)
             widget = self.materials.pop(b_path)
             self.grid.removeWidget(widget)
-            self.brres.save()
 
     def get_brres_url(self, url):
         path = url.toLocalFile()
@@ -268,6 +295,9 @@ class MaterialSmallEditor(QFrame, ClipableObserver, Tex0WidgetSubscriber):
         self.blend.clicked.connect(self.on_blend_change)
         anims = QLabel('Animations:')
         maps = QLabel('Maps:')
+        advanced = QPushButton('Advanced')
+        advanced.clicked.connect(self.on_advanced_clicked)
+        advanced.setFlat(True)
         grid.addWidget(name_label)
         grid.addWidget(cull_label)
         grid.addWidget(trans_label)
@@ -295,6 +325,11 @@ class MaterialSmallEditor(QFrame, ClipableObserver, Tex0WidgetSubscriber):
         grid.addWidget(self.colors, 3, 1)
         grid.addWidget(self.animations, 5, 1)
         grid.addWidget(self.maps, 6, 1)
+        grid.addWidget(advanced, 7, 1)
+
+    def on_advanced_clicked(self):
+        if self.material is not None:
+            mat_editor = MaterialContainer(self.material)
 
     def on_blend_change(self):
         if self.material:
@@ -322,7 +357,8 @@ class MaterialSmallEditor(QFrame, ClipableObserver, Tex0WidgetSubscriber):
         self.update_children(material)
 
     def update_children(self, material):
-        self.maps.set_tex0s(material.get_tex0s())
+        tex0s = material.get_tex0s()
+        self.maps.set_tex0s(tex0s)
         self.maps.set_brres(material.getBrres())
         if material.srt0:
             anims = 'Srt0'

@@ -143,8 +143,9 @@ class Polygon(Clipable):
     def set_material(self, material):
         my_material = self.get_material()
         if material != my_material:
-            self.parent.update_polygon_material(self, my_material, material)
+            my_material = self.parent.update_polygon_material(self, my_material, material)
             self.mark_modified()
+        return my_material
 
     def get_bone(self):
         return self.visible_bone

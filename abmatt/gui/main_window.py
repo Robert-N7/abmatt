@@ -1,5 +1,6 @@
 import os
 import sys
+import traceback
 
 from PyQt5.QtCore import QThreadPool
 from PyQt5.QtWidgets import QMainWindow, QApplication, QAction, QFileDialog, QVBoxLayout, QHBoxLayout, \
@@ -226,7 +227,7 @@ class Window(QMainWindow):
         raise NotImplementedError()
 
     def import_file(self, fname, brres_name=None, brres=None):
-        if brres is None:
+        if not brres:
             if brres_name is not None:
                 brres = self.get_brres_by_fname(brres_name)
             elif self.brres and os.path.splitext(os.path.basename(self.brres.name))[0] == \
@@ -255,7 +256,10 @@ class Window(QMainWindow):
         self.poly_editor.on_brres_lock(brres)
 
     def unlock_file(self, brres):
-        self.locked_files.remove(brres)
+        try:
+            self.locked_files.remove(brres)
+        except KeyError:
+            pass
         self.poly_editor.on_brres_unlock(brres)
 
     def on_conversion_finish(self, converter):
@@ -266,7 +270,7 @@ class Window(QMainWindow):
     def import_file_dialog(self, brres=None):
         fname, filter = QFileDialog.getOpenFileName(self, 'Import model', self.cwd, '(*.dae *.obj)')
         if fname:
-            self.import_file(fname, brres)
+            self.import_file(fname, brres=brres)
 
     def export_file_dialog(self, brres=None):
         if brres is None:
@@ -305,6 +309,7 @@ class Window(QMainWindow):
         return result == QMessageBox.Ok
 
     def closeEvent(self, event):
+        self.material_browser.on_close()
         files_to_save = []
         for x in self.open_files:
             if x.is_modified:
@@ -355,8 +360,25 @@ def main():
     d = Window()
     result = exe.exec_()
     on_exit()
-    sys.exit(result)
+    if result:
+        sys.exit(result)
 
+
+# sys._excepthook = sys.excepthook
+#
+# def my_exception_hook(exctype, value, traceback):
+#     # Print the error and traceback
+#     print(exctype, value, traceback)
+#     # Call the normal Exception hook after
+#     sys._excepthook(exctype, value, traceback)
+#     sys.exit(1)
+#
+# sys.excepthook = my_exception_hook
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except:
+        traceback.print_exc()
+
+print('All done')

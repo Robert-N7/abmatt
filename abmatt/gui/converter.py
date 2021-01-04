@@ -1,4 +1,5 @@
 # !/usr/bin/env python
+import traceback
 from threading import Thread
 from time import sleep
 
@@ -58,17 +59,22 @@ class ConvertManager(QRunnable):
         manager = ConvertManager.__INSTANCE
         if manager:
             manager.is_running = False
+            ConvertManager.__INSTANCE = None
             # manager.wait()
 
     @pyqtSlot()
     def run(self):
-        while True:
-            if len(self.queue):
-                self.item = self.queue.pop(0)
-                self.item.convert()
-                self.signals.on_conversion_finish.emit(self.item)
-                # for x in self.observers:
-                #     x.on_conversion_finish(self.item)
-            if not self.is_running:
-                break
-            sleep(0.2)
+        try:
+            while True:
+                if len(self.queue):
+                    self.item = self.queue.pop(0)
+                    self.item.convert()
+                    self.signals.on_conversion_finish.emit(self.item)
+                    self.item = None
+                    # for x in self.observers:
+                    #     x.on_conversion_finish(self.item)
+                if not self.is_running:
+                    break
+                sleep(0.2)
+        except:
+            traceback.print_exc()
