@@ -61,7 +61,7 @@ def build_distribution(config, version):
     dist_dir = 'abmatt_' + my_platform + '-' + platform.release() + '_' \
                + bit_width + '-' + version
     # clean
-    clean(dist_dir, (dist_dir + '.zip', dist_dir + '.tar.gz', 'dist_dir'))
+    clean([dist_dir], (dist_dir + '.zip', dist_dir + '.tar.gz', 'dist_dir'))
     # dist
     if not make_distribution(dist_dir, my_platform, out_file, is_dir, makensis, win_zip):
         sys.exit(1)
@@ -124,18 +124,29 @@ def make_distribution(dir, platform, binary_path, binary_path_is_dir, make_nsis,
     shutil.copy('../../LICENSE', dir)
     shutil.copy('../../README.md', dir)
     etc = dir + '/etc/abmatt'
-    shutil.copy('../../etc/abmatt/presets.txt', etc)
-    shutil.copy('../../etc/abmatt/config.conf', etc)
+    copy_from = '../../etc/abmatt'
+    for file in os.listdir(copy_from):
+        path = os.path.join(copy_from, file)
+        if not os.path.isdir(path):
+            shutil.copy(path, etc)
     dest_dir = os.path.join(dir, 'bin')
     bin_dir, base_name = os.path.split(binary_path)
     exe = os.path.join(dest_dir, 'abmatt')
+    is_exe = False
     if 'exe' in base_name:
-        exe += '.exe'
+        is_exe = True
+        base_name, ext = os.path.splitext(base_name)
     if binary_path_is_dir:
         shutil.copytree(bin_dir, dest_dir)
-        shutil.move(os.path.join(dest_dir, base_name), exe)
-        shutil.copytree(bin_dir + '_gui', dest_dir)
-        shutil.move(os.path.join(dest_dir, base_name + '_gui'), exe + '_gui')
+        if is_exe:
+            shutil.move(os.path.join(dest_dir, base_name + '.exe'), exe + '.exe')
+        else:
+            shutil.move(os.path.join(dest_dir, base_name), exe)
+        copytree(bin_dir + '_gui', dest_dir)
+        if is_exe:
+            shutil.move(os.path.join(dest_dir, base_name + '_gui.exe'), exe + '_gui.exe')
+        else:
+            shutil.move(os.path.join(dest_dir, base_name + '_gui'), exe + '_gui')
     else:
         os.mkdir(dest_dir)
         shutil.copy(binary_path, exe)
@@ -163,6 +174,22 @@ def make_distribution(dir, platform, binary_path, binary_path_is_dir, make_nsis,
             return False
         os.chdir('..')
     return True
+
+
+def copytree(folder, dest, replace_existing=False):
+    if not os.path.exists(dest):
+        os.mkdir(dest)
+    for file in os.listdir(folder):
+        path = os.path.join(folder, file)
+        if os.path.isdir(path):
+            copytree(path, os.path.join(dest, file), replace_existing)
+        else:
+            file_dest = os.path.join(dest, file)
+            if not os.path.exists(file_dest):
+                shutil.copy2(path, file_dest)
+            elif replace_existing:
+                os.remove(file_dest)
+                shutil.copy2(path, file_dest)
 
 
 def update_os(file, platform):
@@ -199,8 +226,13 @@ def build(name, build_type, interpreter, platform):
         output_type = '--onedir' if platform == 'windows' else 'onefile'
     is_dir = True if 'onedir' in output_type else False
     params = '-y __main__.py --name ' + name + ' ' + output_type
+    print('Current dir is {}'.format(os.getcwd()))
+    if platform == 'windows':
+        params += ' -i ../etc/abmatt/icon.ico'
     result = os.system(interpreter + ' -m PyInstaller ' + params)
-    params = '-y gui/main_window.py --name ' + name + '_gui ' + output_type
+    params = '-y gui/main_window.py --name ' + name + '_gui --noconsole ' + output_type
+    if platform == 'windows':
+        params += ' -i ../etc/abmatt/icon.ico'
     result2 = os.system(interpreter + ' -m PyInstaller ' + params)
     os.chdir('dist')
     if not result:

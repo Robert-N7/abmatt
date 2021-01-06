@@ -1,7 +1,4 @@
-# Convert ../test_files/3ds_cow.dae to ../test_files/test.brres
-# convert cow in ../brres_files/cow.brres to ../test_files/test.dae
-# convert ../brres_files/water_course.brres to ../test_files/water_course.dae
-info for * in ../brres_files/bb_cow.brres
+info for * in C:/Users/rober/Desktop/candyland/course_model.brres
 save as ../brres_files/test.brres overwrite
 # info for * in ../brres_files/test.brres
 # save overwrite

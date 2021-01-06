@@ -20,6 +20,9 @@ class BPCommand(object):
         self.data = bt[2] << 16 | bt[3]
         return self.enabled
 
+    def __eq__(self, other):
+        return self.bpmem == other.bpmem and self.data == other.data and self.enabled == other.enabled
+
     def isEnabled(self):
         return self.enabled > 0
 

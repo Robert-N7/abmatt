@@ -136,6 +136,8 @@ class ImgConverter:
             program = which('wimgt')
             self.cleanup = False
             if program:
+                self.si = subprocess.STARTUPINFO()
+                self.si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
                 if tmp_dir:
                     self.set_tmp_dir(tmp_dir)
                 elif not self.get_tmp_dir():
@@ -208,7 +210,7 @@ class ImgConverter:
                 tex_format = self.IMG_FORMAT
             dest = self.get_temp_dest()
             result = subprocess.call([self.converter, 'encode', img_file, '-d',
-                                      dest, '-x', tex_format, mips, '-qo'])
+                                      dest, '-x', tex_format, mips, '-qo'], startupinfo=self.si)
             if result:
                 raise EncodeError('Failed to encode {}'.format(img_file))
             t = Tex0(name, brres, BinFile(dest))
@@ -253,7 +255,7 @@ class ImgConverter:
             args = [self.converter, '-x', tex_format, mips, '-qo', 'encode']
             file_names = [os.path.basename(x) for x in path_set]
             args.extend(file_names)
-            result = subprocess.call(args, cwd=tmp)
+            result = subprocess.call(args, cwd=tmp, startupinfo=self.si)
             if result:
                 self._move_out_of_temp_dir(tmp)
                 raise EncodeError('Failed to encode images {}'.format(files))
@@ -283,7 +285,7 @@ class ImgConverter:
             tex0.pack(f)
             f.commitWrite()
             result = subprocess.call([self.converter, 'decode', tmp,
-                                      '-d', dest_file, '--no-mipmaps', '-qo'])
+                                      '-d', dest_file, '--no-mipmaps', '-qo'], startupinfo=self.si)
             if tmp != dest_file:
                 os.remove(tmp)
             if result:
@@ -319,7 +321,7 @@ class ImgConverter:
                 x.commitWrite()
             args = [self.converter, '--no-mipmaps', '-qo', 'decode']
             args.extend(base_names)
-            result = subprocess.call(args, cwd=tmp_dir)
+            result = subprocess.call(args, cwd=tmp_dir, startupinfo=self.si)
             if result:
                 if use_temp_dir:
                     self._move_out_of_temp_dir(tmp_dir)
@@ -339,7 +341,7 @@ class ImgConverter:
             f = BinFile(tmp, 'w')
             tex0.pack(f)
             f.commitWrite()
-            result = subprocess.call([self.converter, 'encode', tmp, '-oq', '-x', tex_format])
+            result = subprocess.call([self.converter, 'encode', tmp, '-oq', '-x', tex_format], startupinfo=self.si)
             if result:
                 os.remove(tmp)
                 raise EncodeError('Failed to encode {}'.format(tex0.name))

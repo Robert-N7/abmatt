@@ -215,9 +215,9 @@ class Geometry:
     def __encode_texcoords(self, polygon, texcoords, mdl0):
         if texcoords:
             uv_i = len(mdl0.uvs)
-            polygon.num_tex = len(texcoords)
+            polygon.uv_count = len(texcoords)
             tri_indexer = len(self.fmt_str) - 1
-            for i in range(polygon.num_tex):
+            for i in range(polygon.uv_count):
                 x = texcoords[i]
                 tex = TexCoord(self.name + '#{}'.format(i), mdl0)
                 # convert xy to st

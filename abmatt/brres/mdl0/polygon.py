@@ -191,6 +191,7 @@ class Polygon(Clipable):
                 break
         if uvs_used:
             AutoFix.get().warn(f'{self.name} does not have UV channel(s) {uvs_used} but the material uses them!')
+        self.uv_count = uv_count
         return modified
 
     def get_bone_table(self):

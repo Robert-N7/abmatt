@@ -176,7 +176,7 @@ class PackMaterial(Packer):
         binfile.advance(7)  # pad
         c = mat.colors
         for i in range(len(c)):
-            bp.pack_color(binfile, i, c[i], False)
+            bp.pack_color(binfile, i + 1, c[i], False)
         binfile.advance(4)  # pad
         c = mat.constant_colors
         for i in range(len(c)):

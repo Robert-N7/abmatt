@@ -978,7 +978,8 @@ class Material(Clipable):
                 is_constant = len(x) > 6
                 index = int(x[5])
                 colors = self.colors if not is_constant else self.constant_colors
-                ret.add((x, colors[index]))
+                y = colors[index]
+                ret.add((x, (y[0], y[1], y[2], y[3])))
             elif x == 'lightchannel0':
                 if self.is_vertex_color_enabled():
                     ret.add('vertex')

@@ -3,17 +3,20 @@ import sys
 import traceback
 
 from PyQt5.QtCore import QThreadPool
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMainWindow, QApplication, QAction, QFileDialog, QVBoxLayout, QHBoxLayout, \
     QWidget, QPlainTextEdit, QMessageBox, QSizePolicy
 
 from abmatt.autofix import AutoFix
 from abmatt.brres.brres import Brres
+from abmatt.command import Command
 from abmatt.converters.convert_dae import DaeConverter2
 from abmatt.converters.convert_obj import ObjConverter
 from abmatt.gui.brres_treeview import BrresTreeView
 from abmatt.gui.converter import ConvertManager
 from abmatt.gui.image_manager import ImageManager
 from abmatt.gui.interactive_cmd import InteractiveCmd
+from abmatt.gui.kcl_calculator import KCLCalculator
 from abmatt.gui.logger_pipe import LoggerPipe
 from abmatt.gui.material_browser import MaterialTabs
 from abmatt.gui.poly_editor import PolyEditor
@@ -100,8 +103,16 @@ class Window(QMainWindow):
         shell_Act.setShortcut('Ctrl+Shift+I')
         shell_Act.setStatusTip('Run interactive commands')
         shell_Act.triggered.connect(self.open_interactive_shell)
+        kcl_calc_Act = QAction('&KCL Calculator', self)
+        kcl_calc_Act.setShortcut('Ctrl+k')
+        kcl_calc_Act.setStatusTip('KCL Flag Calculator')
+        kcl_calc_Act.triggered.connect(self.open_kcl_calculator)
         toolMenu = menu.addMenu('&Tools')
         toolMenu.addAction(shell_Act)
+        toolMenu.addAction(kcl_calc_Act)
+
+    def open_kcl_calculator(self):
+        self.calculator = KCLCalculator()
 
     def open_interactive_shell(self):
         if not self.shell_is_shown:
@@ -213,7 +224,8 @@ class Window(QMainWindow):
                 overwrite = True if not x.has_new_model else Brres.OVERWRITE
                 if x.save(overwrite=overwrite):
                     last = x
-            self.update_status('Wrote file {}'.format(last.name))
+            if last is not None:
+                self.update_status('Wrote file {}'.format(last.name))
 
     def save_as_dialog(self):
         fname, filter = QFileDialog.getSaveFileName(self, 'Save as', self.cwd, 'Brres files (*.brres)')
@@ -357,6 +369,7 @@ def main():
     parse_args(argv, base_path)
     exe = QApplication(argv)
     exe.setStyle('Fusion')
+    exe.setWindowIcon(QIcon(os.path.join(Command.APP_DIR, 'icon.ico')))
     d = Window()
     result = exe.exec_()
     on_exit()

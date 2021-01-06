@@ -16,7 +16,7 @@ class PackPolygon(Packer):
         binfile.write('i', binfile.getOuterOffset())
         hi, lo = self.get_cp_vertex_format()
         xf_specs = self.get_xf_vertex_specs()
-        binfile.write('i3I', self.get_item_id(poly.bone), lo, hi, xf_specs)
+        binfile.write('i3I', self.get_bone_id(poly.bone), lo, hi, xf_specs)
         binfile.write('3I', 0xe0, 0x80, 0)
         vt_dec_offset = binfile.offset - 4
         data_len = len(poly.data)
@@ -73,6 +73,11 @@ class PackPolygon(Packer):
             hi |= x << shifter
             shifter += 2
         return hi, lo
+
+    def get_bone_id(self, bone):
+        if bone:
+            return bone.index
+        return 0
 
     def get_item_id(self, point):
         if point:

@@ -222,16 +222,18 @@ class ImageManager(QRunnable, ClipableObserver, ImageHandler):
 
 
 def update_image(widget, dir, name, scale_width=64):
-    img_file = os.path.join(dir, name + '.png')
-    if os.path.exists(img_file):
-        pixelmap = QPixmap(img_file)
-        width = pixelmap.width()
-        height = pixelmap.height()
-        if width > height:
-            pixelmap = pixelmap.scaledToWidth(scale_width)
-        else:
-            pixelmap = pixelmap.scaledToHeight(scale_width)
-        widget.setPixmap(pixelmap)
-        widget.setMask(pixelmap.mask())
-        return True
+    if name is not None:
+        img_file = os.path.join(dir, name + '.png')
+        if os.path.exists(img_file):
+            pixelmap = QPixmap(img_file)
+            width = pixelmap.width()
+            height = pixelmap.height()
+            if width > height:
+                pixelmap = pixelmap.scaledToWidth(scale_width)
+            else:
+                pixelmap = pixelmap.scaledToHeight(scale_width)
+            widget.setPixmap(pixelmap)
+            widget.setMask(pixelmap.mask())
+            return True
+    widget.clear()
     return False
