@@ -176,7 +176,7 @@ class AutoFix:
         if self.loudness >= loudness:
             self.enqueue(self.Error(str(message)))
 
-    def exception(self, exception, shutdown=False):
+    def exception(self, exception=None, shutdown=False):
         exc_type, exc_value, exc_tb = sys.exc_info()
         if self.loudness >= 5:      # Debug level
             s = traceback.format_exception(exc_type, exc_value, exc_tb)

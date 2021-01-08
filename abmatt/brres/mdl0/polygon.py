@@ -34,6 +34,7 @@ class Polygon(Clipable):
         super(Polygon, self).__init__(name, parent, binfile)
 
     def begin(self):
+        # The face point indices, also indexes into the encode string
         self.vertex_index = -1
         self.normal_index = -1
         self.color0_index = -1

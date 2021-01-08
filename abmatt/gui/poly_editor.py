@@ -9,7 +9,7 @@ from abmatt.gui.material_editor import MaterialEditor, MaterialContainer
 
 class PolyEditor(QFrame, ClipableObserver, MatWidgetHandler):
     def on_material_select(self, material):
-        pass
+        self.handler.on_material_select(material)
 
     def on_material_edit(self, material):
         mat_editor = MaterialContainer(material=material)
@@ -22,6 +22,7 @@ class PolyEditor(QFrame, ClipableObserver, MatWidgetHandler):
 
     def __init__(self, parent, poly=None):
         super().__init__(parent)
+        self.handler = parent
         self.__init_ui()
         self.enable_mat_drag = True
         if poly is not None:
@@ -108,7 +109,7 @@ class PolyEditor(QFrame, ClipableObserver, MatWidgetHandler):
     def dragEnterEvent(self, a0):
         data = a0.mimeData()
         if self.enable_mat_drag and self.poly and data.hasText() \
-                and get_material_by_url(data.text()):
+                and self.handler.locate_material(BrresPath(data.text())):
             a0.accept()
         else:
             a0.ignore()
@@ -116,7 +117,7 @@ class PolyEditor(QFrame, ClipableObserver, MatWidgetHandler):
     def dragMoveEvent(self, a0):
         data = a0.mimeData()
         if self.enable_mat_drag and self.poly and data.hasText() \
-                and get_material_by_url(data.text()):
+                and self.handler.locate_material(BrresPath(data.text())):
             a0.accept()
         else:
             a0.ignore()
@@ -125,9 +126,11 @@ class PolyEditor(QFrame, ClipableObserver, MatWidgetHandler):
         data = a0.mimeData()
         if self.enable_mat_drag and self.poly and data.hasText():
             text = data.text()
-            mat = get_material_by_url(text, trace_path=True)
+            mat = self.handler.locate_material(BrresPath(text))
+            # mat = get_material_by_url(text, trace_path=True)
             if mat:
                 a0.accept()
-                self.poly.set_material(mat)
+                self.poly.material.paste(mat)
+                # self.poly.set_material(mat)
                 return
         a0.ignore()

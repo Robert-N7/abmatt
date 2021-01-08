@@ -20,6 +20,7 @@ class Geometry:
     def __init__(self, name, material_name, vertices, texcoords=None, normals=None, colors=None, triangles=None,
                  influences=None, linked_bone=None):
         self.name = name
+        self.index = 0
         self.vertices = vertices
         if texcoords is None:
             self.texcoords = []
@@ -69,9 +70,9 @@ class Geometry:
     def get_linked_bone(self):
         return self.linked_bone
 
-    def ipp(self, i):
-        j = i
-        i += 1
+    def ipp(self):
+        j = self.index
+        self.index += 1
         return j
 
     def encode(self, mdl, bone=None):
@@ -83,16 +84,15 @@ class Geometry:
                 self.linked_bone = bone = mdl.bones[0]
         self.linked_bone.has_geometry = True
         p = Polygon(self.name, mdl)
-        i = 0
         self.fmt_str = '>'
         if self.__encode_influences(p, self.influences, mdl):
-            p.weight_index = self.ipp(i)
+            p.weight_index = self.ipp()
         if self.__encode_vertices(p, self.vertices, mdl):
-            p.vertex_index = self.ipp(i)
+            p.vertex_index = self.ipp()
         if self.__encode_normals(p, self.normals, mdl):
-            p.normal_index = self.ipp(i)
+            p.normal_index = self.ipp()
         if self.__encode_colors(p, self.colors, mdl):
-            p.color0_index = self.ipp(i)
+            p.color0_index = self.ipp()
         self.__encode_texcoords(p, self.texcoords, mdl)
         tris = self.__construct_tris()
         if p.has_weighted_matrix():

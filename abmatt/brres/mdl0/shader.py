@@ -163,7 +163,7 @@ class Shader(Clipable):
         stage['alphab'] = 'zero'
         stage['alphac'] = 'zero'
         stage['alphad'] = 'zero'
-        stage['enabled'] = 'false'
+        stage['enabled'] = 'true'
         self.mark_modified()
 
     def addStage(self, send_updates=True):
@@ -253,7 +253,7 @@ class Shader(Clipable):
         resolved_bug = False
         # direct check
         for x in self.stages:
-            if x.get_str('enabled'):
+            if x.get_str('enabled') and x.map_is_used():
                 id = x.get_str('mapid')
                 if id >= texRefCount:
                     if self.MAP_ID_AUTO:

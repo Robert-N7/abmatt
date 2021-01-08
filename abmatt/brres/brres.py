@@ -165,7 +165,10 @@ class Brres(Clipable, Packable):
 
     # -------------------------- SAVE/ CLOSE --------------------------------------------
     def close(self, try_save=True):
-        Brres.OPEN_FILES.remove(self)
+        try:
+            Brres.OPEN_FILES.remove(self)
+        except ValueError:
+            pass
         if try_save and self.is_modified or self.DESTINATION and self.DESTINATION != self.name:
             return self.save(self.DESTINATION, self.OVERWRITE)
 
@@ -280,6 +283,10 @@ class Brres(Clipable, Packable):
                 return False
             self.remove_tex0(tex0.name)
             AutoFix.get().info('Replaced tex0 {}'.format(tex0.name))
+        if tex0.parent is not None and tex0.parent is not self:
+            t = Tex0(tex0.name, self)
+            t.paste(tex0)
+            tex0 = t
         self.textures.append(tex0)
         self.texture_map[tex0.name] = tex0
         tex0.parent = self      # this may be redundant

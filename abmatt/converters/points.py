@@ -22,6 +22,7 @@ class PointCollection:
         # if not minimum or not maximum:
         #     self.minimum, self.maximum = self.__calc_min_max(points)
         # else:
+        assert np.max(face_indices) < len(points)
         self.minimum = minimum
         self.maximum = maximum
 

@@ -1,3 +1,4 @@
+from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QLabel, QColorDialog
 
 
@@ -31,7 +32,9 @@ class ColorWidget(QLabel):
 
     def mouseDoubleClickEvent(self, ev):
         if self.handler:
-            color = QColorDialog.getColor(options=QColorDialog.ShowAlphaChannel)
+            initial = self.color
+            color = QColorDialog.getColor(QColor(initial[0], initial[1], initial[2], initial[3]),
+                                          options=QColorDialog.ShowAlphaChannel)
             if color.isValid():
                 color = self.get_rgba255(color)
                 if self.handler.on_color_change(self, color):

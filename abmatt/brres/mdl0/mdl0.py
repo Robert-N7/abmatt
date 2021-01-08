@@ -218,7 +218,7 @@ class Mdl0(SubFile):
                 raise RuntimeError(f'Material {material.name} is already used by {material.parent.name}')
         else:
             material.parent = self
-        if self.get_materials_by_name(material.name):
+        if self.get_material_by_name(material.name):
             raise RuntimeError(f'Material with name {material.name} is already in model!')
         self.materials.append(material)
         # self.mark_modified()

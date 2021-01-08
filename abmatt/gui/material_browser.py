@@ -27,6 +27,12 @@ class MaterialTabs(QWidget, MatWidgetHandler):
     def on_close(self):
         self.material_library.on_close()
 
+    def locate_material(self, brres_path):
+        mat = self.material_library.locate_material(brres_path)
+        if mat is None:
+            return self.scene_library.locate_material(brres_path)
+        return mat
+
     def __init__(self, parent):
         super().__init__(parent)
         layout = QVBoxLayout()
@@ -91,6 +97,11 @@ class MaterialTabs(QWidget, MatWidgetHandler):
 class MaterialBrowser(QWidget, MatWidgetHandler):
     def on_material_select(self, material):
         self.handler.on_material_select(material)
+
+    def locate_material(self, brres_path):
+        mat = self.materials.get(brres_path.get_path())
+        if mat is not None:
+            return mat.material
 
     def on_material_edit(self, material):
         self.handler.on_material_edit(material)
@@ -178,13 +189,14 @@ class MaterialLibrary(MaterialBrowser):
             if self.brres.is_modified:
                 m = QMessageBox(QMessageBox.Warning, 'Save Before Closing',
                                 f'Save material library before closing?',
-                                buttons=QMessageBox.Ok | QMessageBox.Cancel, parent=self)
-                if m.exec_() == QMessageBox.Ok:
+                                buttons=QMessageBox.Yes | QMessageBox.No, parent=self)
+                if m.exec_() == QMessageBox.Yes:
                     self.brres.save(overwrite=True)
             self.brres.close(False)
 
     def can_add_material(self, mat_path):
-        return mat_path not in self.materials
+        bpath = BrresPath(mat_path)
+        return mat_path not in self.materials and bpath.trace_path()[0] is not None
 
     def add_material(self, material):
         if self.brres is not None:
@@ -224,6 +236,10 @@ class MaterialLibrary(MaterialBrowser):
                 return None
             ret.append(b_url)
         return ret
+
+    def is_valid_image(self, url):
+        ext = os.path.splitext(os.path.split(url)[1])[1]
+        return ext in ('.png', '.bmp', '.tga', '.jpg')
 
     def dropEvent(self, a0):
         data = a0.mimeData()

@@ -412,6 +412,11 @@ class Material(Clipable):
             self.colors[color_num] = color
             self.mark_modified()
 
+    def set_single_color(self, color):
+        self.shader.set_single_color()
+        self.setLayerCount(0)
+        self.set_color(color)
+
     def set_constant_color(self, color, color_num=0):
         if self.constant_colors[color_num] != color:
             self.constant_colors[color_num] = color
@@ -1079,9 +1084,12 @@ class Material(Clipable):
         item_layers = item.layers
         num_layers = len(item_layers)
         self.setLayerCount(num_layers)
+        brres = self.getBrres()
         for i in range(num_layers):
             my_layer = my_layers[i]
             item_layer = item_layers[i]
             my_layer.paste(item_layer)
             my_layer.setName(item_layer.name)
             my_layer.tex0_ref = item_layer.get_tex0()
+            if brres is not None:
+                brres.add_tex0(my_layer.tex0_ref, replace=False)

@@ -126,6 +126,9 @@ class Window(QMainWindow):
             self.shell_is_shown = False
             self.shell.hide()
 
+    def locate_material(self, brres_path):
+        return self.material_browser.locate_material(brres_path)
+
     def __init_child_UI(self, top_layout):
         # left
         vert_widget = QWidget(self)
@@ -221,8 +224,8 @@ class Window(QMainWindow):
             last = None
             for x in self.open_files:
                 # A precaution against overwriting old models
-                overwrite = True if not x.has_new_model else Brres.OVERWRITE
-                if x.save(overwrite=overwrite):
+                # overwrite = True if not x.has_new_model else Brres.OVERWRITE
+                if x.save(overwrite=True):
                     last = x
             if last is not None:
                 self.update_status('Wrote file {}'.format(last.name))
@@ -237,6 +240,9 @@ class Window(QMainWindow):
 
     def import_texture(self, filename):
         raise NotImplementedError()
+
+    def on_material_select(self, material):
+        self.material_browser.on_material_select(material)
 
     def import_file(self, fname, brres_name=None, brres=None):
         if not brres:
@@ -308,10 +314,11 @@ class Window(QMainWindow):
         if brres.is_modified:
             m = QMessageBox(QMessageBox.Warning, 'Save Before Closing',
                             f'Save {brres.name} before closing?',
-                            buttons=QMessageBox.Ok | QMessageBox.Cancel, parent=self)
-            if m.exec_() == QMessageBox.Ok:
+                            buttons=QMessageBox.Yes | QMessageBox.No, parent=self)
+            if m.exec_() == QMessageBox.Yes:
                 brres.save(overwrite=True)
-        self.open_files.remove(brres)
+        if brres in self.open_files:
+            self.open_files.remove(brres)
         brres.close(try_save=False)
         self.brres = None
         self.poly_editor.on_brres_lock(brres)
@@ -326,16 +333,19 @@ class Window(QMainWindow):
         for x in self.open_files:
             if x.is_modified:
                 files_to_save.append(x)
-        if files_to_save and not Brres.OVERWRITE:
+        if Brres.OVERWRITE:
+            for x in files_to_save:
+                x.close()
+        elif files_to_save:
             self.files_to_save = files_to_save
             fnames = ', '.join([x.name for x in files_to_save])
 
-            m = QMessageBox(QMessageBox.Warning, 'Confirm Exit',
-                            f'Exit without saving {fnames}?', buttons=QMessageBox.Ok | QMessageBox.Cancel, parent=self)
+            m = QMessageBox(QMessageBox.Warning, 'Confirm Exit?',
+                            f'Exit without saving {fnames}?', buttons=QMessageBox.Yes | QMessageBox.No, parent=self)
 
-            if not m.exec_():
+            if m.exec_() == QMessageBox.No:
                 event.ignore()
-        else:
+                return
             for x in files_to_save:
                 x.close()
         self.image_manager.stop()
@@ -394,4 +404,3 @@ if __name__ == '__main__':
     except:
         traceback.print_exc()
 
-print('All done')

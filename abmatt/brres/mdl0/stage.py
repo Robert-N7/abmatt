@@ -312,6 +312,13 @@ class Stage(Clipable):
     def __setitem__(self, key, value):
         return self.set_str(key, value)
 
+    def map_is_used(self):
+        return self.sel_b == COLOR_SEL_TEXTURE_COLOR or self.sel_c == COLOR_SEL_TEXTURE_COLOR or \
+            self.sel_a == COLOR_SEL_TEXTURE_COLOR or self.sel_d == COLOR_SEL_TEXTURE_COLOR or \
+            self.sel_a_a == ALPHA_SEL_TEXTURE_ALPHA or self.sel_b_a == ALPHA_SEL_TEXTURE_ALPHA or \
+            self.sel_c_a == ALPHA_SEL_TEXTURE_ALPHA or self.sel_d_a == ALPHA_SEL_TEXTURE_ALPHA
+
+
     def check(self):
         pass
 

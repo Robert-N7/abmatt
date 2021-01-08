@@ -1,5 +1,6 @@
 import os
 import shutil
+import sys
 import traceback
 import uuid
 from threading import Thread
@@ -114,13 +115,16 @@ class ImageManager(QRunnable, ClipableObserver, ImageHandler):
 
     @pyqtSlot()
     def run(self):
-        self.__clean()
-        while self.enabled:
-            if len(self.queue):
-                self.__decode_brres_images(self.queue.pop(0))
-            else:
-                self.is_ready = True
-            sleep(0.3)
+        try:
+            self.__clean()
+            while self.enabled:
+                if len(self.queue):
+                    self.__decode_brres_images(self.queue.pop(0))
+                else:
+                    self.is_ready = True
+                sleep(0.3)
+        except:
+            AutoFix.get().exception(shutdown=True)
 
 
     def __enqueue(self, brres):

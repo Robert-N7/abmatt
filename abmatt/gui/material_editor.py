@@ -1,9 +1,9 @@
 import re
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QDoubleValidator
+from PyQt5.QtGui import QDoubleValidator, QColor
 from PyQt5.QtWidgets import QLabel, QWidget, QGridLayout, QLineEdit, QCheckBox, QComboBox, \
-    QSlider, QVBoxLayout, QFrame, QHBoxLayout, QSpinBox, QTabWidget
+    QSlider, QVBoxLayout, QFrame, QHBoxLayout, QSpinBox, QTabWidget, QPushButton, QColorDialog
 
 from abmatt.brres.lib.node import ClipableObserver
 from abmatt.brres.mdl0 import stage
@@ -157,6 +157,9 @@ class ShaderEditor(EditorStyle, ClipableObserver, ColorWidgetHandler):
         self.const_colors = const_colors = []
         for i in range(4):
             const_colors.append(self._add_color_widget('Const Color' + str(i)))
+        # self.color_button = QPushButton('Set Single Color...', self)
+        # self.color_button.clicked.connect(self.choose_single_color)
+        # self._add_to_layout('Use Single Color:', self.color_button)
         self._add_to_layout('Indirect')
         sels = ['Map' + str(i) for i in range(7)]
         sels.append('None')
@@ -199,6 +202,14 @@ class ShaderEditor(EditorStyle, ClipableObserver, ColorWidgetHandler):
         self._add_layout_pane(self.stage_pane)
 
         self.setLayout(self.top_layout)
+
+    def choose_single_color(self):
+        initial = self.colors[0].color
+        color = QColorDialog.getColor(QColor(initial[0], initial[1], initial[2], initial[3]),
+                                      options=QColorDialog.ShowAlphaChannel)
+        if color.isValid():
+            color = ColorWidget.get_rgba255(color)
+            self.material.set_single_color(color)
 
     def __set_stage(self, stage):
         if self.__try_set(self.stage, stage):

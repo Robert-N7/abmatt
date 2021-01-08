@@ -96,6 +96,7 @@ class MaterialWidget(QWidget, ClipableObserver, ImageObserver):
         if material is not None:
             self.setToolTip(self.brres_path.get_path())
             self.text_label.setText(material.name)
+            self.img_label.setPixmap(QPixmap(None))
             self.material.register_observer(self)
             ImageManager.get().subscribe(self,
                                          material.parent.parent, material.get_first_layer_name())
