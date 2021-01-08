@@ -6,11 +6,10 @@
 # --------------------------------------------------------
 import os
 
-from abmatt.brres.lib.binfile import UnpackingError, BinFile
+from abmatt.autofix import Bug, AutoFix
+from abmatt.brres.lib.binfile import BinFile
 from abmatt.brres.lib.matching import validInt, validBool
 from abmatt.brres.lib.node import Clipable, Packable
-from abmatt.autofix import Bug, AutoFix
-from abmatt.brres.lib.packing.pack_subfile import PackSubfile
 
 
 def set_anim_str(animation, key, value):

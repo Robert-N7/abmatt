@@ -1,6 +1,5 @@
 from abmatt.brres.lib.packing.interface import Packer
 from abmatt.brres.lib.packing.pack_mdl0 import xf
-from abmatt.brres.mdl0 import polygon as ply
 
 
 class PackPolygon(Packer):

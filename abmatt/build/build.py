@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 import os
+import platform
 import shutil
 import subprocess
 import sys
-import platform
 import time
 from threading import Thread
 
@@ -11,7 +11,6 @@ from abmatt.config import Config
 from check_imports import ImportChecker
 from get_bit_width import get_bit_width
 from update_version import run_update_version
-
 
 
 def which(program):

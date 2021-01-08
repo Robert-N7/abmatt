@@ -1,7 +1,7 @@
 """Objects (Polygons)"""
 
 from abmatt.autofix import AutoFix, Bug
-from abmatt.brres.lib.node import Node, get_item_by_index, Clipable
+from abmatt.brres.lib.node import Clipable
 
 INDEX_FORMAT_NONE = 0
 INDEX_FORMAT_DIRECT = 1

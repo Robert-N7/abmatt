@@ -3,12 +3,11 @@
 # ------------------------------------------------------------------------
 from copy import deepcopy, copy
 
-from abmatt.brres.lib.binfile import Folder, PackingError
-from abmatt.brres.lib.matching import *
-from abmatt.brres.mdl0.wiigraphics.bp import RAS1_IRef, BPCommand, KCel, ColorEnv, AlphaEnv, IndCmd, RAS1_TRef
 from abmatt.autofix import AutoFix, Bug
+from abmatt.brres.lib.matching import *
 from abmatt.brres.lib.node import Clipable
 from abmatt.brres.mdl0.stage import Stage
+from abmatt.brres.mdl0.wiigraphics.bp import BPCommand
 
 
 class Shader(Clipable):

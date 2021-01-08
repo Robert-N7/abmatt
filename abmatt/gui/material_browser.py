@@ -11,10 +11,9 @@ from abmatt.brres.lib.node import ClipableObserver
 from abmatt.brres.mdl0.material.material import Material
 from abmatt.gui.brres_path import BrresPath, get_material_by_url
 from abmatt.gui.color_widget import ColorWidget
-from abmatt.gui.image_manager import ImageManager
 from abmatt.gui.map_widget import Tex0WidgetGroup, Tex0WidgetSubscriber
 from abmatt.gui.mat_widget import MaterialWidget, MatWidgetHandler
-from abmatt.gui.material_editor import MaterialEditor, MaterialContainer
+from abmatt.gui.material_editor import MaterialContainer
 
 
 class MaterialTabs(QWidget, MatWidgetHandler):

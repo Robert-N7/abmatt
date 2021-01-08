@@ -3,7 +3,7 @@ import re
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QDoubleValidator, QColor
 from PyQt5.QtWidgets import QLabel, QWidget, QGridLayout, QLineEdit, QCheckBox, QComboBox, \
-    QSlider, QVBoxLayout, QFrame, QHBoxLayout, QSpinBox, QTabWidget, QPushButton, QColorDialog
+    QSlider, QVBoxLayout, QFrame, QHBoxLayout, QSpinBox, QTabWidget, QColorDialog
 
 from abmatt.brres.lib.node import ClipableObserver
 from abmatt.brres.mdl0 import stage

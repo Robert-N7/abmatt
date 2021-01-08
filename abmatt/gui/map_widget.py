@@ -1,7 +1,7 @@
 import os
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QStackedLayout, QComboBox, QLabel, QDialog, QGridLayout, QLineEdit, \
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QStackedLayout, QComboBox, QLabel, QGridLayout, QLineEdit, \
     QSpinBox, QHBoxLayout, QPushButton, QFileDialog, QAction
 
 from abmatt.autofix import AutoFix

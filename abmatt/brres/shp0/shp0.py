@@ -1,11 +1,9 @@
 """SHP0 """
 from copy import deepcopy
 
-from abmatt.brres.lib.binfile import Folder
-from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
 from abmatt.brres.lib.packing.pack_shp0 import PackShp0
 from abmatt.brres.lib.unpacking.unpack_shp0 import UnpackShp0
-from abmatt.brres.shp0.shp0_animation import Shp0Animation
+from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
 
 
 class Shp0(SubFile):

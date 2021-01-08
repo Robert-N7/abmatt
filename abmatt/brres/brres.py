@@ -4,14 +4,14 @@
 # --------------------------------------------------------
 import os
 
+from abmatt.autofix import AutoFix, Bug
 from abmatt.brres.lib.binfile import BinFile
 from abmatt.brres.lib.matching import MATCHING
 from abmatt.brres.lib.node import Clipable, Packable
-from abmatt.brres.tex0 import Tex0
-from abmatt.image_converter import ImgConverterI, ImgConverter
-from abmatt.autofix import AutoFix, Bug
 from abmatt.brres.lib.packing.pack_brres import PackBrres
 from abmatt.brres.lib.unpacking.unpack_brres import UnpackBrres
+from abmatt.brres.tex0 import Tex0
+from abmatt.image_converter import ImgConverter
 
 
 class Brres(Clipable, Packable):

@@ -1,5 +1,5 @@
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QWidget, QTextEdit, QLineEdit
+from PyQt5.QtWidgets import QLineEdit
 
 from abmatt.autofix import AutoFix
 from abmatt.command import Command, ParsingException

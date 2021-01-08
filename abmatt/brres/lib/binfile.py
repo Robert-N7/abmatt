@@ -2,7 +2,6 @@
 """ binary file read/writing operations """
 import struct
 from struct import *
-import sys
 
 
 class UnpackingError(BaseException):

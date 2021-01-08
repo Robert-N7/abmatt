@@ -1,10 +1,10 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QComboBox, QGridLayout, \
-    QFrame, QDockWidget
+from PyQt5.QtWidgets import QCheckBox, QLabel, QGridLayout, \
+    QFrame
 
 from abmatt.brres.lib.node import ClipableObserver
-from abmatt.gui.brres_path import BrresPath, NotABrresError, get_material_by_url
+from abmatt.gui.brres_path import BrresPath
 from abmatt.gui.mat_widget import MaterialWidget, MatWidgetHandler
-from abmatt.gui.material_editor import MaterialEditor, MaterialContainer
+from abmatt.gui.material_editor import MaterialContainer
 
 
 class PolyEditor(QFrame, ClipableObserver, MatWidgetHandler):

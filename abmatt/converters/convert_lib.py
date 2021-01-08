@@ -4,13 +4,13 @@ import time
 import numpy as np
 
 from abmatt.autofix import AutoFix
-from abmatt.brres.mdl0.material import material
-from abmatt.image_converter import EncodeError, NoImgConverterError, ImgConverter
-from abmatt.converters.matrix import matrix_to_srt
 from abmatt.brres import Brres
+from abmatt.brres.mdl0.material import material
 from abmatt.brres.mdl0.mdl0 import Mdl0
 from abmatt.converters import matrix
 from abmatt.converters.influence import decode_mdl0_influences
+from abmatt.converters.matrix import matrix_to_srt
+from abmatt.image_converter import EncodeError, NoImgConverterError, ImgConverter
 
 
 class Converter:

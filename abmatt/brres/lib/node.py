@@ -2,7 +2,6 @@ import os
 from copy import deepcopy
 
 from abmatt.autofix import AutoFix
-from abmatt.brres.lib.binfile import BinFile
 
 
 def get_item_by_index(group, index):

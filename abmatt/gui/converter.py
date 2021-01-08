@@ -1,11 +1,7 @@
 # !/usr/bin/env python
-import traceback
-from threading import Thread
 from time import sleep
 
 from PyQt5.QtCore import QRunnable, QObject, pyqtSignal, pyqtSlot
-from PyQt5.QtWidgets import QMessageBox, QLineEdit, QApplication
-from PyQt5.QtGui import QIcon
 
 from abmatt.autofix import AutoFix
 

@@ -1,14 +1,11 @@
 #!/usr/bin/python
 """ Srt0 Brres subfile """
 
-from abmatt.brres.lib.binfile import Folder
 from abmatt.brres.lib.node import Clipable, Node
-from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
-
 # ---------------------------------------------------------
 from abmatt.brres.lib.packing.pack_srt0 import PackSrt0
 from abmatt.brres.lib.unpacking.unpack_srt0 import UnpackSrt0
-from abmatt.brres.srt0.srt0_animation import SRTMatAnim
+from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
 
 
 class SRTCollection(Node):

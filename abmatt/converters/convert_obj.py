@@ -5,10 +5,9 @@ import numpy as np
 
 from abmatt.converters.arg_parse import cmdline_convert
 from abmatt.converters.convert_lib import Converter
-from abmatt.converters.obj import Obj, ObjGeometry, ObjMaterial
-from abmatt.autofix import AutoFix
 from abmatt.converters.geometry import Geometry, decode_polygon
 from abmatt.converters.material import Material
+from abmatt.converters.obj import Obj, ObjGeometry, ObjMaterial
 
 
 class ObjConverter(Converter):

@@ -2,7 +2,7 @@ import os
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
-from PyQt5.QtWidgets import QTreeView, QMenu, QAction, QTreeWidgetItemIterator
+from PyQt5.QtWidgets import QTreeView, QMenu, QAction
 
 # class BrresItemModel(QStandardItemModel):
 #     def __init__(self):

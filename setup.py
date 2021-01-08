@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+
 import setuptools
 from setuptools import setup
 
@@ -16,6 +18,13 @@ CLASSIFIERS = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent"
  ]
+
+data_dir = 'etc/abmatt'
+data_files = []
+for file in os.listdir(data_dir):
+    path = os.path.join(data_dir, file)
+    if not os.path.isdir(path):
+        data_files.append(path)
 
 # calling the setup function
 setup(name='abmatt',
@@ -36,7 +45,7 @@ setup(name='abmatt',
       author_email='robert7.nelson@gmail.com',
       license='GPLv3',
       packages=setuptools.find_packages(),
-      data_files=[('etc/abmatt', ['etc/abmatt/presets.txt', 'etc/abmatt/config.conf', 'etc/abmatt/mat_lib.brres'])],
+      data_files=[(data_dir, data_files)],
       classifiers=CLASSIFIERS,
       install_requires=REQUIREMENTS,
       keywords='Mario Kart Wii Brres Material Model'

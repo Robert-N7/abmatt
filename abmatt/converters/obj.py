@@ -1,11 +1,10 @@
-import math
 import os
 import re
 
 import numpy as np
 
-from abmatt.converters.convert_lib import float_to_str
 from abmatt.autofix import AutoFix
+from abmatt.converters.convert_lib import float_to_str
 from abmatt.converters.points import PointCollection
 
 

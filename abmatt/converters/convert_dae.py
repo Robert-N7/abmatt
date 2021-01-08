@@ -6,10 +6,10 @@ import numpy as np
 from abmatt.converters.arg_parse import cmdline_convert
 from abmatt.converters.controller import get_controller
 from abmatt.converters.convert_lib import Converter
+from abmatt.converters.dae import Dae, ColladaNode
 from abmatt.converters.geometry import decode_polygon
 from abmatt.converters.influence import InfluenceManager
 from abmatt.converters.material import Material
-from abmatt.converters.dae import Dae, ColladaNode
 from abmatt.converters.matrix import combine_matrices, srt_to_matrix
 
 

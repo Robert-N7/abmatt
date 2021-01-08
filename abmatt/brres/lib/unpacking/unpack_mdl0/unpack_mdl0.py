@@ -3,14 +3,13 @@ from copy import deepcopy
 from abmatt.brres.lib.binfile import Folder, UnpackingError
 from abmatt.brres.lib.unpacking.interface import Unpacker
 from abmatt.brres.lib.unpacking.unpack_mdl0.unpack_bone import UnpackBone, unpack_bonetable
-
 from abmatt.brres.lib.unpacking.unpack_mdl0.unpack_color import UnpackColor
 from abmatt.brres.lib.unpacking.unpack_mdl0.unpack_material import UnpackMaterial
 from abmatt.brres.lib.unpacking.unpack_mdl0.unpack_point import UnpackVertex, UnpackUV, UnpackNormal
 from abmatt.brres.lib.unpacking.unpack_mdl0.unpack_polygon import UnpackPolygon
 from abmatt.brres.lib.unpacking.unpack_mdl0.unpack_shader import UnpackShader
 from abmatt.brres.lib.unpacking.unpack_subfile import UnpackSubfile
-from abmatt.brres.mdl0.definition import DrawList, get_definition
+from abmatt.brres.mdl0.definition import get_definition
 
 
 class UnpackMdl0(UnpackSubfile):

@@ -1,12 +1,9 @@
 """SCN0 Subfile"""
 from copy import deepcopy
 
-from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
 from abmatt.brres.lib.packing.pack_scn0 import PackScn0
 from abmatt.brres.lib.unpacking.unpack_scn0 import UnpackScn0
-from abmatt.brres.scn0.camera import Camera
-from abmatt.brres.scn0.fog import Fog
-from abmatt.brres.scn0.light import Light, AmbientLight, LightSet
+from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
 
 
 class Scn0KeyFrameList:

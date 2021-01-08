@@ -1,5 +1,4 @@
 from abmatt.brres.lib.binfile import Folder
-from abmatt.brres.lib.packing.interface import Packer
 from abmatt.brres.lib.packing.pack_subfile import PackSubfile
 
 

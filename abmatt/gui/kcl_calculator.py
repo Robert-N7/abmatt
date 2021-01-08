@@ -1,4 +1,3 @@
-from PyQt5.QtGui import QDoubleValidator
 from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QLineEdit, QComboBox, QCheckBox, QHBoxLayout, QSpinBox
 
 
