@@ -35,11 +35,13 @@ class Tex0WidgetGroup(QWidget):
         super().__init__(parent)
         main_layout = QVBoxLayout(self)
         self.stack = QStackedLayout(self)
+        self.stack_widget = QWidget(self)
         self.map_box = QComboBox()
         self.map_box.activated.connect(self.on_map_change)
         self.__init_context_menu()
         main_layout.addWidget(self.map_box)
-        main_layout.addLayout(self.stack)
+        self.stack_widget.setLayout(self.stack)
+        main_layout.addWidget(self.stack_widget)
         self.subscriber = parent
         if tex0s is not None:
             self.set_tex0s(tex0s)
@@ -69,7 +71,6 @@ class Tex0WidgetGroup(QWidget):
         self.addAction(remove_action)
 
     def export(self):
-        # todo, export options (mipmaps)
         self.stack.currentWidget().export()
 
     def remove(self):
@@ -175,9 +176,8 @@ class MapWidget(QLabel, ClipableObserver, ImageObserver):
         #     self.set_image_path(image_path)
 
     def export(self):
-        fname = QFileDialog.getSaveFileName(self, 'Save Image', os.getcwd(), "Image Files (*.png)")[0]
-        if fname:
-            ImgConverter().INSTANCE.decode(self.tex0, fname, True)
+        self.exporter = MapExporter(self.tex0)
+        self.exporter.show()
 
     def set_tex0(self, tex0):
         replaced = False
@@ -297,3 +297,60 @@ class MapImporter(QWidget):
         except EncodeError as e:
             AutoFix.get().error(e)
         self.close()
+
+
+class MapExporter(QWidget):
+    def __init__(self, tex0, parent=None, path=None):
+        super().__init__(parent)
+        self.tex0 = tex0
+        self.handler = parent
+        self.__init_ui(path)
+        self.setWindowTitle('Map Exporter')
+        self.show()
+
+    def __init_ui(self, path):
+        layout = QGridLayout()
+        self.tex0_label = QLabel('Exporting ' + self.tex0.name + '...')
+        layout.addWidget(self.tex0_label)
+        # self.name = QLabel(self.tex0.name, self)
+        # layout.addWidget(self.name, 0, 1)
+        self.path_edit = QLineEdit(self)
+        self.path_edit.setMinimumWidth(300)
+        if path is not None:
+            self.path_edit.setText(path)
+        layout.addWidget(self.path_edit)
+        self.browse_button = QPushButton('Browse', self)
+        self.browse_button.clicked.connect(self.browse)
+        layout.addWidget(self.browse_button, 1, 1)
+        self.mipmap_label = QLabel('Mipmaps (-1=auto)', self)
+        layout.addWidget(self.mipmap_label)
+        self.mipmap_count = QSpinBox(self)
+        self.mipmap_count.setMinimum(-1)
+        self.mipmap_count.setMaximum(10)
+        self.mipmap_count.setValue(0)
+        layout.addWidget(self.mipmap_count, 2, 1)
+        self.cancel = QPushButton('Cancel')
+        self.cancel.clicked.connect(self.on_cancel)
+        layout.addWidget(self.cancel)
+        self.submit = QPushButton('Submit')
+        self.submit.clicked.connect(self.on_submit)
+        layout.addWidget(self.submit, 3, 1)
+        self.setLayout(layout)
+
+    def on_submit(self):
+        path = self.path_edit.text()
+        dir = os.path.dirname(path)
+        if not os.path.exists(dir):
+            AutoFix.get().error('Path {} does not exist!'.format(path))
+        else:
+            ImgConverter().decode(self.tex0, path, overwrite=True, num_mips=self.mipmap_count.value())
+            AutoFix.get().info('Exported {} to {}'.format(self.tex0.name, path))
+            self.close()
+
+    def on_cancel(self):
+        self.close()
+
+    def browse(self):
+        fname = QFileDialog.getSaveFileName(self, 'Save Image', os.getcwd(), "Image Files (*.png)")[0]
+        if fname:
+            self.path_edit.setText(fname)

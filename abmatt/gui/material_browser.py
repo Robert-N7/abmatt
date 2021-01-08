@@ -27,6 +27,9 @@ class MaterialTabs(QWidget, MatWidgetHandler):
     def on_close(self):
         self.material_library.on_close()
 
+    def on_brres_name_update(self, old_name, new_name):
+        self.scene_library.on_brres_name_update(old_name, new_name)
+
     def locate_material(self, brres_path):
         mat = self.material_library.locate_material(brres_path)
         if mat is None:
@@ -95,6 +98,17 @@ class MaterialTabs(QWidget, MatWidgetHandler):
 
 
 class MaterialBrowser(QWidget, MatWidgetHandler):
+    def on_brres_name_update(self, old_name, new_name):
+        old_mats = self.materials
+        new_mats = {}
+        for x in old_mats:
+            if old_name in x:
+                bp = old_mats[x].get_brres_path()
+                new_mats[bp] = old_mats[x]
+            else:
+                new_mats[x] = old_mats[x]
+        self.materials = new_mats
+
     def on_material_select(self, material):
         self.handler.on_material_select(material)
 

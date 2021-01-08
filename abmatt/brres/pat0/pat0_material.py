@@ -180,7 +180,7 @@ class Pat0MatAnimation(Clipable):
                 tex_list.append(frame.tex)
         return tex_list
 
-    def info(self, prefix='', key=None, indentation=0):
+    def info(self, key=None, indentation=0):
         prefix = '>' + '  ' * indentation + self.name if indentation else '>(PAT0)' + self.name
         if key:
             AutoFix.get().info('{}: {}'.format(prefix, self.get_str(key)), 1)

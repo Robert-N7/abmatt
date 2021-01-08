@@ -227,12 +227,12 @@ def build(name, build_type, interpreter, platform):
     is_dir = True if 'onedir' in output_type else False
     params = '-y __main__.py --name ' + name + ' ' + output_type
     print('Current dir is {}'.format(os.getcwd()))
-    if platform == 'windows':
-        params += ' -i ../etc/abmatt/icon.ico'
+    # if platform == 'windows':
+    params += ' -i ../etc/abmatt/icon.ico'
     result = os.system(interpreter + ' -m PyInstaller ' + params)
     params = '-y gui/main_window.py --name ' + name + '_gui --noconsole ' + output_type
-    if platform == 'windows':
-        params += ' -i ../etc/abmatt/icon.ico'
+    # if platform == 'windows':
+    params += ' -i ../etc/abmatt/icon.ico'
     result2 = os.system(interpreter + ' -m PyInstaller ' + params)
     os.chdir('dist')
     if not result:

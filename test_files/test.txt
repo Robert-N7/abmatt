@@ -1,4 +1,3 @@
-info for * in C:/Users/rober/Desktop/candyland/course_model.brres
-save as ../brres_files/test.brres overwrite
-# info for * in ../brres_files/test.brres
+# save as ../brres_files/test.brres overwrite
+info for * in ../brres_files/test.brres
 # save overwrite

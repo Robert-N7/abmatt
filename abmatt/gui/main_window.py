@@ -235,7 +235,11 @@ class Window(QMainWindow):
         if fname:
             self.cwd = os.path.dirname(fname)
             if self.brres:
+                old_name = self.brres.name
                 self.brres.save(fname, overwrite=True)
+                if fname != old_name:
+                    self.treeview.on_brres_rename(old_name, fname)
+                    self.material_browser.on_brres_name_update(old_name, fname)
                 self.update_status('Wrote file {}'.format(fname))
 
     def import_texture(self, filename):

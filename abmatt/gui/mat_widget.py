@@ -81,6 +81,11 @@ class MaterialWidget(QWidget, ClipableObserver, ImageObserver):
         self.handler.on_material_remove(self.material)
         self.setParent(None)
 
+    def get_brres_path(self):
+        self.brres_path = BrresPath(material=self.material).get_path()
+        self.setToolTip(self.brres_path)
+        return self.brres_path
+
     def edit_material(self):
         self.handler.on_material_edit(self.material)
 
@@ -119,7 +124,7 @@ class MaterialWidget(QWidget, ClipableObserver, ImageObserver):
             return
         drag = QDrag(self)
         mimedata = QMimeData()
-        mimedata.setText(self.brres_path.get_path())
+        mimedata.setText(BrresPath(material=self.material).get_path())
         drag.setMimeData(mimedata)
         pixmap = QPixmap(self.size())
         painter = QPainter(pixmap)

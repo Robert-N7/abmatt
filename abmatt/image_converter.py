@@ -83,7 +83,7 @@ class ImgConverterI:
     def encode(self, img_file, tex_format, num_mips=-1, check=False):
         raise NotImplementedError()
 
-    def decode(self, tex0, dest_file):
+    def decode(self, tex0, dest_file, overwrite=None, num_mips=0):
         raise NotImplementedError()
 
     def convert(self, tex0, tex_format):
@@ -136,8 +136,11 @@ class ImgConverter:
             program = which('wimgt')
             self.cleanup = False
             if program:
-                self.si = subprocess.STARTUPINFO()
-                self.si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                if os.name == 'nt':
+                    self.si = subprocess.STARTUPINFO()
+                    self.si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                else:
+                    self.si = None
                 if tmp_dir:
                     self.set_tmp_dir(tmp_dir)
                 elif not self.get_tmp_dir():
@@ -268,7 +271,7 @@ class ImgConverter:
             self._move_out_of_temp_dir(tmp)  # cleanup
             return tex0s
 
-        def decode(self, tex0, dest_file, overwrite=None):
+        def decode(self, tex0, dest_file, overwrite=None, num_mips=0):
             if overwrite is None:
                 overwrite = self.OVERWRITE_IMAGES
             if not dest_file:
@@ -284,8 +287,14 @@ class ImgConverter:
             f = BinFile(tmp, 'w')
             tex0.pack(f)
             f.commitWrite()
+            if num_mips == 0:
+                mips = '--no-mipmaps'
+            elif num_mips == -1:
+                mips = '--n-mm=auto'
+            else:
+                mips = '--n-mm=' + str(num_mips)
             result = subprocess.call([self.converter, 'decode', tmp,
-                                      '-d', dest_file, '--no-mipmaps', '-qo'], startupinfo=self.si)
+                                      '-d', dest_file, mips, '-qo'], startupinfo=self.si)
             if tmp != dest_file:
                 os.remove(tmp)
             if result:

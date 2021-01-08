@@ -11,7 +11,6 @@ from abmatt.brres.lib.node import ClipableObserver
 
 
 class BrresTreeView(QTreeView):
-
     def __init__(self, parent):
         super().__init__(parent)
         self.handler = parent
@@ -173,6 +172,10 @@ class BrresTreeView(QTreeView):
             self.mdl.removeRow(item.row())
         except KeyError:
             pass
+
+    def on_brres_rename(self, old_name, new_name):
+        self.brres_map[new_name] = self.brres_map[old_name]
+        self.brres_map[old_name] = None
 
     def on_brres_update(self, brres):
         """This provides a way to update brres tree (after conversion)"""
