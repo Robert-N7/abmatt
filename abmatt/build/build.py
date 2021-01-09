@@ -82,7 +82,7 @@ def main(args):
     thread = Thread(target=build_distribution, args=(config, version))
     thread.start()
     venv_dir = os.path.dirname(os.path.dirname(sys.executable))
-    abmatt_dir = os.path.dirname(venv_dir)
+    abmatt_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     start_dir = os.path.join(abmatt_dir, 'tests')
     start_path = os.path.join(start_dir, 'integration/start.py')
     # if config['run_unit_tests'].lower() == 'true':
@@ -197,11 +197,11 @@ def update_os(file, platform):
     new_lines = []
     for line in lines:
         if line.startswith('OS:'):
-            new_lines.append('OS: ' + platform)
+            new_lines.append('OS: ' + platform + '\n')
         else:
             new_lines.append(line)
     with open(file, 'w') as f:
-        f.write('\n'.join(new_lines))
+        f.write(''.join(new_lines))
 
 def clean(folders, files):
     for folder in folders:
