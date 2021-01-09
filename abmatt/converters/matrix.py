@@ -2,9 +2,19 @@ import math
 
 import numpy as np
 
+IDENTITY = np.identity(4)
+
+
+def apply_matrix_single(matrix, point):
+    return np.dot(matrix[:3], np.append(point, 1))
+
+
+def rotation_matrix_to_transform(matrix):
+    return np.append(np.append(matrix, np.array([0] * 3).reshape((3, 1)), 1), np.array([[0, 0, 0, 1]]), 0)
+
 
 def apply_matrix(matrix, points):
-    if np.allclose(matrix, np.identity(4)):
+    if np.allclose(matrix, IDENTITY):
         return points
     matrix = matrix[:3]
     # add a 1 after each point (for transformation)
@@ -16,42 +26,45 @@ def srt_to_matrix(scale=(1, 1, 1), rotation=(0, 0, 0), translation=(0, 0, 0)):
     matrix = euler_to_rotation_matrix(rotation)
     for i in range(3):
         matrix[:, i] = matrix[:, i] * scale[i]
-    np.append(matrix, np.array(translation, float).reshape((3, 1)), 1)
-    np.append(matrix, np.array([[0, 0, 0, 1]], float), 0)
-    return matrix
+    matrix = np.append(matrix, np.array(translation, float).reshape((3, 1)), 1)
+    return np.append(matrix, np.array([[0, 0, 0, 1]], float), 0)
 
 
 def matrix_to_srt(matrix):
     """Takes a matrix and returns scale, rotation, translation"""
-    scale = (vector_magnitude(matrix[:, 0]),
-             vector_magnitude(matrix[:, 1]),
-             vector_magnitude(matrix[:, 2]))
     translation = matrix[:, 3][:3]
-    matrix = np.delete(matrix, 3, 0)
-    matrix = np.delete(matrix, 3, 1)
-    for i in range(3):
-        scale_factor = scale[i]
-        if scale_factor != 1:
-            for j in range(3):
-                matrix[j][i] = matrix[j][i] / scale_factor
+    matrix, scale = get_rotation_matrix(matrix, True)
     rotation = rotation_matrix_to_euler(matrix)
     return scale, rotation, translation
+
+
+def get_rotation_matrix(matrix, get_scale=False):
+    scale = [round(vector_magnitude(matrix[:, 0]), 3),
+             round(vector_magnitude(matrix[:, 1]), 3),
+             round(vector_magnitude(matrix[:, 2]), 3)]
+    rotation_matrix = np.swapaxes([[matrix[j, i] / scale[i] for j in range(3)] for i in range(3)],
+                                  0, 1)
+    if get_scale:
+        return rotation_matrix, scale
+    return rotation_matrix
 
 
 def euler_to_rotation_matrix(euler_angles):
     x, y, z = np.array(euler_angles, float) * math.pi / 180
     rot_x = np.array([[1, 0, 0],
-                      [0, math.cos(x), -1 * math.sin(x)],
+                      [0, math.cos(x), -math.sin(x)],
                       [0, math.sin(x), math.cos(x)]], dtype=float)
 
     rot_y = np.array([[math.cos(y), 0, math.sin(y)],
                       [0, 1, 0],
-                      [-1 * math.sin(y), 0, math.cos(y)]], dtype=float)
+                      [-math.sin(y), 0, math.cos(y)]], dtype=float)
 
-    rot_z = np.array([[math.cos(z), -1 * math.sin(z), 0],
+    rot_z = np.array([[math.cos(z), -math.sin(z), 0],
                       [math.sin(z), math.cos(z), 0],
                       [0, 0, 1]], dtype=float)
-    return np.matmul(np.matmul(rot_x, rot_y), rot_z)
+    y_x = np.matmul(rot_y, rot_x)
+    matrix = np.matmul(rot_z, y_x)
+    return matrix
 
 
 def rotation_matrix_to_euler(matrix):
@@ -67,7 +80,7 @@ def rotation_matrix_to_euler(matrix):
         x = math.atan2(-matrix[1, 2], matrix[1, 1])
         y = math.atan2(-matrix[2, 0], sy)
         z = 0
-    return np.array([x, y, z]) * 180 / math.pi
+    return np.round(np.array([x, y, z]) * 180 / math.pi, 3)
 
 
 def scale_matrix(matrix, scale):
@@ -82,7 +95,7 @@ def rotate_matrix(matrix, rotation):
 
 
 def translate_matrix(matrix, translation):
-    for i in range(len(translation)):
+    for i in range(3):
         matrix[i, 3] += translation[i]
     return matrix
 

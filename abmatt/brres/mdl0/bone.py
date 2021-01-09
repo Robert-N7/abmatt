@@ -7,10 +7,26 @@ class Bone(Node):
                        (0, 1, 0, 0),
                        (0, 0, 1, 0))
 
+    def __init__(self, name, parent, binfile=None, has_geometry=False,
+                 scale_equal=True, fixed_scale=True,
+                 fixed_rotation=True, fixed_translation=True):
+        self.no_transform = False
+        self.fixed_translation = fixed_translation
+        self.fixed_rotation = fixed_rotation
+        self.fixed_scale = fixed_scale
+        self.scale_equal = scale_equal
+        self.seg_scale_comp_apply = False
+        self.seg_scale_comp_parent = False
+        self.classic_scale_off = False
+        self.visible = True
+        self.has_geometry = has_geometry
+        self.has_billboard_parent = False
+        super().__init__(name, parent, binfile)
+
+
     def begin(self):
         self.index = 0
-        self.bone_id = 0       # id in bone_table
-        self.flags = 790
+        self.weight_id = 0       # id in bone_table
         self.billboard = 0
         self.scale = (1, 1, 1)
         self.rotation = (0, 0, 0)
@@ -21,6 +37,9 @@ class Bone(Node):
         self.part2 = 0
         self.transform_matrix = [[y for y in x] for x in self.identity_matrix]
         self.inverse_matrix = [[y for y in x] for x in self.identity_matrix]
+
+    def get_bone_parent(self):
+        return self.b_parent
 
     def get_transform_matrix(self):
         matrix = [[y for y in x] for x in self.transform_matrix]
@@ -34,6 +53,7 @@ class Bone(Node):
 
     def set_translation(self, trans):
         self.translation = trans
+        self.fixed_translation = self.no_transform = False
         for i in range(3):
             self.transform_matrix[i][2] = trans[i]
             self.inverse_matrix[i][2] = trans[i] * -1
@@ -71,84 +91,28 @@ class Bone(Node):
                 else:
                     return bone
 
-    def unpack(self, binfile):
-        self.offset = binfile.start()
-        binfile.readLen()
-        binfile.advance(8)
-        self.index, self.bone_id, self.flags, self.billboard = binfile.read('4I', 20)
-        self.scale = binfile.read('3f', 12)
-        self.rotation = binfile.read('3f', 12)
-        self.translation = binfile.read('3f', 12)
-        self.minimum = binfile.read('3f', 12)
-        self.maximum = binfile.read('3f', 12)
-        self.b_parent, self.child, self.next, self.prev, self.part2 = binfile.read('5i', 20)
-        self.transform_matrix = binfile.readMatrix(4, 3)
-        self.inverse_matrix = binfile.readMatrix(4, 3)
-        binfile.end()
-
-    def find_bone_at(self, offset, bones):
-        if offset:
-            offset += self.offset
-            for x in bones:
-                if x.offset == offset:
-                    return x
-            raise ValueError('Failed to find bone link to {}'.format(offset))
-
-    @staticmethod
-    def post_unpack(bones):
-        for b in bones:
-            b.b_parent = b.find_bone_at(b.b_parent, bones)
-            b.child = b.find_bone_at(b.child, bones)
-            b.next = b.find_bone_at(b.next, bones)
-            b.prev = b.find_bone_at(b.prev, bones)
 
 
-    def pack(self, binfile):
-        self.offset = binfile.start()
-        # take care of marked references
-        if self.prev:
-            binfile.createRefFrom(self.prev.offset, 1)
-        elif self.b_parent:     # first child
-            binfile.createRefFrom(self.b_parent.offset, 0, False)
-        binfile.markLen()
-        binfile.write('i', binfile.getOuterOffset())
-        binfile.storeNameRef(self.name)
-        binfile.write('5I', self.index, self.bone_id, self.flags, self.billboard, 0)
-        binfile.write('3f', *self.scale)
-        binfile.write('3f', *self.rotation)
-        binfile.write('3f', *self.translation)
-        binfile.write('3f', *self.minimum)
-        binfile.write('3f', *self.maximum)
-        binfile.write('i', self.b_parent.offset - self.offset) if self.b_parent else binfile.advance(4)
-        binfile.mark(2)     # mark child and next
-        binfile.write('i', self.prev.offset - self.offset) if self.prev else binfile.advance(4)
-        binfile.write('i', self.part2)
-        binfile.writeMatrix(self.transform_matrix)
-        binfile.writeMatrix(self.inverse_matrix)
-        binfile.end()
-
-
-class BoneTable:
-    """ Bonetable class """
-    def __init__(self, binfile=None):
-        if binfile:
-            self.unpack(binfile)
-        else:
-            self.entries = []
-
-    def __getitem__(self, item):
-        return self.entries[item]
-
-    def add_entry(self, entry):
-        self.entries.append(entry)
-        return len(self.entries) - 1
-
-    def unpack(self, binfile):
-        """ unpacks bonetable """
-        [length] = binfile.read("I", 4)
-        self.entries = binfile.read("{}I".format(length), length * 4)
-
-    def pack(self, binfile):
-        length = len(self.entries)
-        binfile.write("I", length)
-        binfile.write("{}I".format(length), *self.entries)
+# class BoneTable:
+#     """ Bonetable class """
+#     def __init__(self, binfile=None):
+#         if binfile:
+#             self.unpack(binfile)
+#         else:
+#             self.entries = []
+#
+#     def __getitem__(self, item):
+#         return self.entries[item]
+#
+#     def __len__(self):
+#         return len(self.entries)
+#
+#     def add_entry(self, entry):
+#         self.entries.append(entry)
+#         return len(self.entries) - 1
+#
+#
+#     def pack(self, binfile):
+#         length = len(self.entries)
+#         binfile.write("I", length)
+#         binfile.write("{}i".format(length), *self.entries)

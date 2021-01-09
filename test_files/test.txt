@@ -1,2 +1,3 @@
-convert C:\Users\rober\Desktop\YWR\test.DAE to C:\Users\rober\Desktop\YWR\tmp.brres
-save as ../test_files\test.brres overwrite
+# save as ../brres_files/test.brres overwrite
+info for * in ../brres_files/test.brres
+# save overwrite

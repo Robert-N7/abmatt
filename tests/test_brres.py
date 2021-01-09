@@ -1,7 +1,8 @@
 import os
+import sys
 import unittest
 
-from brres import Brres
+from abmatt.brres import Brres
 
 
 class MyTestCase(unittest.TestCase):
@@ -19,3 +20,4 @@ class MyTestCase(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+    sys.exit(0)

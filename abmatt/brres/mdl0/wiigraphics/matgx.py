@@ -60,14 +60,6 @@ class MatGX:
     def getIndMatrix(self, id):
         return self.indMatrices[id]
 
-    def setIndMatrixEnable(self, id, enable=True):
-        x = self.indMatrices[id]
-        x.enabled = enable
-        if enable and not x.scale:
-            # set up a default
-            x.scale = 14
-            x.matrix = (0.6396484375, 0, 0, 0, 0.639648375, 0)
-
     def setIndMatrix(self, id, scale, matrix):
         x = self.indMatrices[id]
         x.scale = scale

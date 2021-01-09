@@ -2,7 +2,6 @@
 """ binary file read/writing operations """
 import struct
 from struct import *
-import sys
 
 
 class UnpackingError(BaseException):
@@ -36,6 +35,12 @@ class BinFile:
         self.names_packed = False
         self.lenMap = {}  # used for tracking length of files
         self.c_length = None  # for tracking current length
+
+        # debugging
+        # self.linked_offsets = []
+        # self.target = [18231, 18267, 18284, 18285]
+        # end debugging
+
         self.isWriteMode = (mode == 'w')
         if not self.isWriteMode:
             with open(filename, "rb") as file:
@@ -135,6 +140,7 @@ class BinFile:
         offset = self.offset
         for i in range(num_refs):
             li.append(offset)
+            # self.linked_offsets.append(offset)      # debugging
             offset += 4
         self.advance(num_refs * 4)
 
@@ -303,9 +309,6 @@ class BinFile:
         return magic[0].decode()
 
     def read(self, fmt, length):
-        # for x in range(self.offset, self.offset + length):
-        #     if x == 9331:
-        #         raise ValueError('Reached Mismatched offset {}'.format(x))
         read = unpack_from(self.bom + fmt, self.file, self.offset)
         self.advance(length)
         return read
@@ -338,6 +341,10 @@ class BinFile:
         """ Packs data onto end of file, shifting the offset"""
         self.file.extend(pack(self.bom + fmt, *args))
         self.offset = len(self.file)
+        # debugging
+        # for x in self.target:
+        #     if self.offset >= x - 4:
+        #         return len
         return len
 
     def writeOffset(self, fmt, offset, args):
@@ -405,6 +412,7 @@ class BinFile:
         #     reflist = names[key]
         #     for x in reflist:
         #         out.append(x[1])
+        # out.extend(self.linked_offsets)
         # with open('names.txt', 'w') as f:
         #     f.write(str(out))
 
@@ -458,6 +466,9 @@ class FolderEntry:
 
     def pack(self, binfile):
         # print("{} : {} ID {} left {} right {}".format(binfile.offset, self.name, self.id, self.left, self.right))
+        # binfile.linked_offsets.append(binfile.offset)   # Debugging
+        # binfile.linked_offsets.append(binfile.offset + 4)
+
         binfile.write("4H", self.id, 0, self.left, self.right)
         binfile.storeNameRef(self.name, True)
         if self.dataPtr:

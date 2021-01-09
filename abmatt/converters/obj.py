@@ -1,10 +1,11 @@
-import math
 import os
 import re
 
 import numpy as np
 
-from abmatt.converters.convert_lib import PointCollection, float_to_str
+from abmatt.autofix import AutoFix
+from abmatt.converters.convert_lib import float_to_str
+from abmatt.converters.points import PointCollection
 
 
 class ObjMaterial:
@@ -23,6 +24,9 @@ class ObjMaterial:
         self.dissolve = 1
         self.optical_density = 1.5
         self.illumination = 2
+
+    def get_transparency(self):
+        return 1 - self.dissolve
 
     def get_maps(self):
         maps = set()
@@ -70,19 +74,20 @@ class ObjGeometry():
 
     @staticmethod
     def normalize_indices_group(indices, data):
-        minimum = math.inf
-        maximum = -math.inf
-        for x in indices:
-            for ele in x:
-                if ele < minimum:
-                    minimum = ele
-                if ele > maximum:
-                    maximum = ele
+        minimum = indices.min()
+        maximum = indices.max()
+        # for x in indices:
+        #     for ele in x:
+        #         if ele < minimum:
+        #             minimum = ele
+        #         if ele > maximum:
+        #             maximum = ele
         ret = np.array(data[minimum:maximum + 1], np.float)
         return PointCollection(ret, indices - minimum)
 
     def normalize(self, vertices, normals, tex_coords):
-        triangles = np.array(self.triangles)
+        width = 1 + self.has_normals + self.has_texcoords
+        triangles = np.array(self.triangles).reshape((-1, 3, width))
         triangles = triangles - 1
         self.triangles = triangles
         self.vertices = self.normalize_indices_group(triangles[:, :, 0], vertices)
@@ -105,12 +110,23 @@ class Obj():
         if read_file:
             self.mtllib = None
             self.parse_file(filename)
+            to_remove = []
             for geo in self.geometries:
-                geo.normalize(self.vertices, self.normals, self.texcoords)
+                try:
+                    geo.normalize(self.vertices, self.normals, self.texcoords)
+                except ValueError:
+                    to_remove.append(geo)
+                    AutoFix.get().warn('No geometry found for {}'.format(geo.name))
+            if to_remove:
+                self.geometries = [x for x in self.geometries if x not in to_remove]
         else:
             dir, name = os.path.split(filename)
             base_name = os.path.splitext(name)[0]
             self.mtllib = base_name + '.mtl'
+
+    def write(self, filename):
+        self.filename = filename
+        self.save()
 
     def save(self):
         folder, name = os.path.split(self.filename)
@@ -118,7 +134,7 @@ class Obj():
         self.save_obj()
 
     def save_mtllib(self, folder):
-        s = '# Wavefront MTL exported with ABMATT v0.7.4'
+        s = '# Wavefront MTL exported with ABMATT v0.8.0'
         materials = self.materials
         for x in materials:
             s += '\n' + materials[x].get_save_str()
@@ -126,7 +142,7 @@ class Obj():
             f.write(s)
 
     def save_obj(self):
-        s = '# Wavefront OBJ exported with ABMATT v0.7.4\n\nmtllib ' + self.mtllib + '\n\n'
+        s = '# Wavefront OBJ exported with ABMATT v0.8.0\n\nmtllib ' + self.mtllib + '\n\n'
         vertex_index = 1
         normal_index = 1
         normal_offset = -1
@@ -279,4 +295,8 @@ class Obj():
                         self.geometries.append(geometry)
                         self.start_new_geo = True
         if self.mtllib:
-            self.parse_mat_lib(self.mtllib)
+            try:
+                self.parse_mat_lib(self.mtllib)
+            except FileNotFoundError as e:
+                AutoFix.get().error(str(e))
+

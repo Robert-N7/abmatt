@@ -23,7 +23,7 @@ class Config:
         if Config.__instance is None:
             Config.__instance = Config(filename)
         elif filename:
-            Config.__instance.set_filename(filename)
+            Config.__instance.set_file(filename)
         return Config.__instance
 
     def __init__(self, filename):

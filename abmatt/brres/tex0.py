@@ -1,11 +1,10 @@
 """Tex0 subfile"""
-import os
-import subprocess
 from math import log
 
-from abmatt.brres.lib.autofix import AUTO_FIXER, Bug
-from abmatt.brres.lib.binfile import BinFile
+from abmatt.autofix import Bug, AutoFix
 from abmatt.brres.lib.matching import parseValStr, validInt
+from abmatt.brres.lib.packing.pack_tex0 import PackTex0
+from abmatt.brres.lib.unpacking.unpack_tex0 import UnpackTex0
 from abmatt.brres.subfile import SubFile
 
 
@@ -17,6 +16,7 @@ class Tex0(SubFile):
     EXPECTED_VERSION = 3
     RESIZE_TO_POW_TWO = False
     MAX_IMG_SIZE = 1024
+    converter = None   # store a ref to image converter
     SETTINGS = ('dimensions', 'format', 'mipmapcount', 'name')
     FORMATS = {0: 'I4', 1: 'I8', 2: 'IA4', 3: 'IA8',
                4: 'RGB565', 5: 'RGB5A3', 6: 'RGBA32',
@@ -52,26 +52,31 @@ class Tex0(SubFile):
             width, height = parseValStr(value)
             width = validInt(width, 1, self.MAX_IMG_SIZE + 1)
             height = validInt(height, 1, self.MAX_IMG_SIZE + 1)
-            ImgConverter().set_dimensions(self, width, height)
+            self.set_dimensions(width, height)
         elif key == 'format':
             return self.set_format(value)
         elif key == 'mipmapcount':
             return self.set_mipmap_count(validInt(value, 0, 20))
         elif key == 'name':
-            return self.set_name(value)
+            return self.parent.rename_texture(value)
 
     def set_format(self, fmt):
         if fmt != self.format:
             if fmt.upper() not in self.FORMATS.values():
                 raise ValueError('Invalid tex0 format {}'.format(fmt))
-            ImgConverter().convert(self, fmt)
+            if self.converter:
+                self.converter.convert(self, fmt)
+                self.mark_modified()
+                return True
+        return False
 
     def set_mipmap_count(self, count):
         if count != self.num_mips:
-            ImgConverter().set_mipmap_count(self, count)
-
-    def set_name(self, name):
-        return self.parent.rename_texture(self, name)
+            if self.converter:
+                self.converter.set_mipmap_count(self, count)
+                self.mark_modified()
+                return True
+        return False
 
     @staticmethod
     def is_power_of_two(n):
@@ -88,7 +93,11 @@ class Tex0(SubFile):
     def set_power_of_two(self):
         width = self.width if self.is_power_of_two(self.width) else self.nearest_power_of_two(self.width)
         height = self.height if self.is_power_of_two(self.height) else self.nearest_power_of_two(self.height)
-        ImgConverter().set_dimensions(self, width, height)
+        if self.converter:
+            self.converter.set_dimensions(self, width, height)
+            self.mark_modified()
+            return True
+        return False
 
     def paste(self, item):
         self.width = item.width
@@ -97,6 +106,7 @@ class Tex0(SubFile):
         self.num_images = item.num_images
         self.num_mips = item.num_mips
         self.data = item.data
+        self.mark_modified()
 
     def should_resize_pow_two(self):
         return self.RESIZE_TO_POW_TWO
@@ -116,203 +126,36 @@ class Tex0(SubFile):
             width = Tex0.MAX_IMG_SIZE
         return width, height
 
+    def set_dimensions(self, width, height):
+        if width != self.width or height != self.height:
+            if self.converter:
+                self.converter.set_dimensions(self, width, height)
+                self.mark_modified()
+                return True
+        return False
+
     def check(self):
         super(Tex0, self).check()
         if not self.is_power_of_two(self.width) or not self.is_power_of_two(self.height):
             b = Bug(2, 2, str(self) + ' not a power of 2', None)
             if self.should_resize_pow_two():
-                self.set_power_of_two()
-                b.fix_des = 'Resize to {}x{}'.format(self.width, self.height)
-                b.resolve()
+                if self.set_power_of_two():
+                    b.fix_des = 'Resize to {}x{}'.format(self.width, self.height)
+                    b.resolve()
         if self.width > self.MAX_IMG_SIZE or self.height > self.MAX_IMG_SIZE:
             width, height = self.get_scaled_size(self.width, self.height)
             b = Bug(2, 2, str(self) + ' is too large', f'resize to {width}x{height}')
-            ImgConverter().set_dimensions(self, width, height)
-            b.resolve()
-
+            if self.set_dimensions(width, height):
+                b.resolve()
 
     def unpack(self, binfile):
-        self._unpack(binfile)
-        _, self.width, self.height, self.format, self.num_images, _, self.num_mips, _ = binfile.read('I2H3IfI', 0x1c)
-        binfile.recall()
-        self.data = binfile.readRemaining()
-        binfile.end()
+        UnpackTex0(self, binfile)
 
     def pack(self, binfile):
-        self._pack(binfile)
-        binfile.write('I2H3IfI', 0, self.width, self.height, self.format, self.num_images, 0, self.num_mips, 0)
-        binfile.align()
-        binfile.createRef()
-        binfile.writeRemaining(self.data)
-        binfile.end()
+        PackTex0(self, binfile)
 
     def info(self, key=None, indentation=0):
-        print('{} {}: {} {}x{} mips:{}'.format(self.MAGIC, self.name, self.FORMATS[self.format],
-                                               self.width, self.height, self.num_mips))
+        AutoFix.get().info('{} {}: {} {}x{} mips:{}'.format(self.MAGIC, self.name, self.FORMATS[self.format],
+                                               self.width, self.height, self.num_mips), 1)
 
 
-def which(program):
-    def is_exe(exe_file):
-        return os.path.isfile(exe_file) and os.access(exe_file, os.X_OK)
-
-    for path in os.environ["PATH"].split(os.pathsep):
-        exe_file = os.path.join(path, program)
-        if is_exe(exe_file):
-            return exe_file
-        exe_file += '.exe'
-        if is_exe(exe_file):
-            return exe_file
-
-
-class EncodeError(Exception):
-    def __init__(self, msg=None):
-        super(EncodeError, self).__init__(msg)
-
-
-class DecodeError(Exception):
-    def __init__(self, msg=None):
-        super(DecodeError, self).__init__(msg)
-
-
-class NoImgConverterError(Exception):
-    def __init__(self, msg=None):
-        if not msg:
-            msg = 'No image converter!'
-        super(NoImgConverterError, self).__init__(msg)
-
-
-class ImgConverterI:
-    IMG_FORMAT = 'cmpr'
-    RESAMPLE = 3
-
-    def __init__(self, converter):
-        self.converter = converter
-
-    def encode(self, img_file, tex_format, num_mips=-1):
-        raise NotImplementedError()
-
-    def decode(self, tex0, dest_file):
-        raise NotImplementedError()
-
-    def convert(self, tex0, tex_format):
-        raise NotImplementedError()
-
-    def set_mipmap_count(self, tex0, mip_count):
-        raise NotImplementedError()
-
-    def set_dimensions(self, tex0, width, height):
-        raise NotImplementedError()
-
-    @staticmethod
-    def set_resample(sample):
-        filters = ['nearest', 'lanczos', 'bilinear', 'bicubic', 'box', 'hamming']
-        try:
-            sampler_index = filters.index(sample)
-            ImgConverterI.RESAMPLE = sampler_index
-        except (ValueError, IndexError):
-            AUTO_FIXER.warn('Invalid config value {} for "img_resample", using {}'.format(sample,
-                                                                                      filters[ImgConverterI.RESAMPLE]))
-
-    @staticmethod
-    def get_resample():
-        return ImgConverterI.RESAMPLE
-
-    @staticmethod
-    def resize_image(img, width, height, img_file_path):
-        img = img.resize((width, height), ImgConverterI.get_resample())
-        img.save(img_file_path)
-
-    def __bool__(self):
-        return self.converter is not None
-
-
-class ImgConverter:
-    INSTANCE = None  # singleton instance
-
-    def __init__(self, converter=None):
-        if not self.INSTANCE:
-            if not converter:
-                converter = self.Wimgt()
-            self.INSTANCE = converter
-        elif converter:
-            self.INSTANCE.converter = converter
-
-    class Wimgt(ImgConverterI):
-
-        def __init__(self):
-            program = which('wimgt')
-            if program:
-                self.temp_dest = 'abmatt_tmp'
-            super(ImgConverter.Wimgt, self).__init__(program)
-
-        def encode(self, img_file, tex_format=None, num_mips=-1):
-            # encode
-            if img_file.startswith('file://'):
-                img_file = img_file.replace('file://', '')
-            if not os.path.exists(img_file):
-                raise EncodeError('No such file {}'.format(img_file))
-            dir, fname = os.path.split(img_file)
-            name = os.path.splitext(fname)[0]
-            mips = '--n-mm=' + str(num_mips) if num_mips >= 0 else ''
-            if not tex_format:
-                tex_format = self.IMG_FORMAT
-            result = subprocess.call([self.converter, 'encode', img_file, '-d',
-                                      self.temp_dest, '-x', tex_format, mips, '-qo'])
-            if result:
-                raise EncodeError('Failed to encode {}'.format(img_file))
-            t = Tex0(name, None, BinFile(self.temp_dest))
-            os.remove(self.temp_dest)
-            t.name = name
-            return t
-
-        def decode(self, tex0, dest_file):
-            if not dest_file:
-                dest_file = tex0.name + '.png'
-            elif os.path.isdir(dest_file):
-                dest_file = os.path.join(dest_file, tex0.name + '.png')
-            elif os.path.splitext(os.path.basename(dest_file))[1].lower() != '.png':
-                dest_file += '.png'
-            f = BinFile(self.temp_dest, 'w')
-            tex0.pack(f)
-            f.commitWrite()
-            result = subprocess.call([self.converter, 'decode', self.temp_dest,
-                                      '-d', dest_file, '--no-mipmaps', '-qo'])
-            if self.temp_dest != dest_file:
-                os.remove(self.temp_dest)
-            if result:
-                raise DecodeError('Failed to decode {}'.format(tex0.name))
-            return dest_file
-
-        def convert(self, tex0, tex_format):
-            f = BinFile(self.temp_dest, 'w')
-            tex0.pack(f)
-            f.commitWrite()
-            result = subprocess.call([self.converter, 'encode', self.temp_dest, '-oq', '-x', tex_format])
-            if result:
-                os.remove(self.temp_dest)
-                raise EncodeError('Failed to encode {}'.format(tex0.name))
-            t = Tex0(tex0.name, tex0.parent, BinFile(self.temp_dest))
-            os.remove(self.temp_dest)
-            return t
-
-        def set_mipmap_count(self, tex0, mip_count=-1):
-            fname = self.decode(tex0, self.temp_dest)
-            tex = self.encode(fname, tex0.format, mip_count)
-            tex0.paste(tex)
-
-        def set_dimensions(self, tex0, width, height):
-            tmp = self.decode(tex0, 'tmp.png')
-            from PIL import Image
-            self.resize_image(Image.open(tmp), width, height, tmp)
-            tex = self.encode(tmp, tex0.get_str(tex0.format))
-            os.remove(tmp)
-            tex0.paste(tex)
-            return tex0
-
-    def __getattr__(self, item):
-        if not self.INSTANCE:
-            raise NoImgConverterError()
-        return getattr(self.INSTANCE, item)
-
-    def __bool__(self):
-        return bool(self.INSTANCE)

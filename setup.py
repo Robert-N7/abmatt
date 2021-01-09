@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+
 import setuptools
 from setuptools import setup
 
@@ -7,7 +9,7 @@ with open('README.md') as file:
     long_description = file.read()
 
 
-REQUIREMENTS = ['fuzzywuzzy', 'python-Levenshtein', 'numpy', 'pillow', 'colorama']
+REQUIREMENTS = ['fuzzywuzzy', 'python-Levenshtein', 'numpy', 'pillow', 'colorama', 'PyQt5']
 
 # some more details
 CLASSIFIERS = [
@@ -17,12 +19,22 @@ CLASSIFIERS = [
     "Operating System :: OS Independent"
  ]
 
+data_dir = 'etc/abmatt'
+data_files = []
+for file in os.listdir(data_dir):
+    path = os.path.join(data_dir, file)
+    if not os.path.isdir(path):
+        data_files.append(path)
+
 # calling the setup function
 setup(name='abmatt',
-      version='0.7.4',
+      version='0.8.0',
       entry_points={
           'console_scripts': [
               'abmatt = abmatt.__main__:main'
+          ],
+          'gui_scripts': [
+              'abmatt-gui = abmatt.gui.main_window:main'
           ]
       },
       description='Brres file material editor',
@@ -33,7 +45,7 @@ setup(name='abmatt',
       author_email='robert7.nelson@gmail.com',
       license='GPLv3',
       packages=setuptools.find_packages(),
-      data_files=[('etc/abmatt', ['etc/abmatt/presets.txt', 'etc/abmatt/config.conf'])],
+      data_files=[(data_dir, data_files)],
       classifiers=CLASSIFIERS,
       install_requires=REQUIREMENTS,
       keywords='Mario Kart Wii Brres Material Model'

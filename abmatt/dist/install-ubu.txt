@@ -1,11 +1,11 @@
 ====================================================================================
 ANOOB'S BRRES MATERIAL TOOL
-Version: 0.7.4
+Version: 0.8.0
 Author: Robert Nelson
-OS: Ubuntu 18
+OS: linux
 Github: https://github.com/Robert-N7/abmatt
 ====================================================================================
-Thank you for downloading ABMatt!
-The entry point for abmatt is under the 'bin' folder.
-Add to your system path for easier access.
 
+Thank you for downloading ABMatt!
+The entry points for abmatt are under the 'bin' folder (abmatt, abmatt-gui).
+Add to your system path for easier access.

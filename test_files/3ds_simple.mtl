@@ -1,0 +1,44 @@
+# 3ds Max Wavefront OBJ Exporter v0.97b - (c)2007 guruware
+# File Created: 28.09.2020 00:28:06
+
+newmtl Wax_02
+	Ns 0.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 0.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.6784 0.8000 0.6392
+	Kd 0.6784 0.8000 0.6392
+	Ks 0.3333 0.3333 0.3333
+	Ke 0.0000 0.0000 0.0000
+	map_Ka simple\Wax_02.jpg
+	map_Kd simple\Wax_02.jpg
+
+newmtl Material1
+	Ns 0.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 0.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.3961 0.3961 0.3961
+	Kd 0.3961 0.3961 0.3961
+	Ks 0.3333 0.3333 0.3333
+	Ke 0.0000 0.0000 0.0000
+	map_Ka simple\material_1.png
+	map_Kd simple\material_1.png
+
+newmtl Material2
+	Ns 0.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 0.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.6667 0.7451 0.0314
+	Kd 0.6667 0.7451 0.0314
+	Ks 0.3333 0.3333 0.3333
+	Ke 0.0000 0.0000 0.0000
+	map_Ka simple\material_2.png
+	map_Kd simple\material_2.png

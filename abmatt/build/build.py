@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 import os
+import platform
 import shutil
 import subprocess
 import sys
-import platform
 import time
 from threading import Thread
 
 from abmatt.config import Config
+from check_imports import ImportChecker
 from get_bit_width import get_bit_width
 from update_version import run_update_version
 
@@ -42,7 +43,7 @@ def build_distribution(config, version):
     name = config['build_name']
     build_type = config['build_type']
     # build
-    clean(name, [name + '.exe', name])
+    clean([name, name + '-gui'], [name + '.exe', name, name + '-gui', name + '-gui.exe'])
     my_platform = platform.system().lower()
     if 'windows' in my_platform:
         makensis = which('makensis')
@@ -59,7 +60,7 @@ def build_distribution(config, version):
     dist_dir = 'abmatt_' + my_platform + '-' + platform.release() + '_' \
                + bit_width + '-' + version
     # clean
-    clean(dist_dir, (dist_dir + '.zip', dist_dir + '.tar.gz', 'dist_dir'))
+    clean([dist_dir], (dist_dir + '.zip', dist_dir + '.tar.gz', 'dist_dir'))
     # dist
     if not make_distribution(dist_dir, my_platform, out_file, is_dir, makensis, win_zip):
         sys.exit(1)
@@ -75,15 +76,17 @@ def main(args):
     config = Config(config_path)
     version = config['version']
     run_update_version([version], config)
+    x = ImportChecker(os.path.dirname(os.path.dirname(__file__)))
+    x.check_imports()
     processes = []
     thread = Thread(target=build_distribution, args=(config, version))
     thread.start()
     venv_dir = os.path.dirname(os.path.dirname(sys.executable))
-    abmatt_dir = os.path.dirname(venv_dir)
+    abmatt_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     start_dir = os.path.join(abmatt_dir, 'tests')
     start_path = os.path.join(start_dir, 'integration/start.py')
-    if config['run_unit_tests'].lower() == 'true':
-        processes.append(('unit tests', run_sub_process([start_path], start_dir)))
+    # if config['run_unit_tests'].lower() == 'true':
+    #     processes.append(('unit tests', run_sub_process([start_path], start_dir)))
     if config['run_integration_tests'].lower() == 'true':
         processes.append(('integration tests', run_sub_process([start_path], os.path.join(start_dir, 'integration'))))
     # os.system(f'pip uninstall abmatt')
@@ -120,16 +123,29 @@ def make_distribution(dir, platform, binary_path, binary_path_is_dir, make_nsis,
     shutil.copy('../../LICENSE', dir)
     shutil.copy('../../README.md', dir)
     etc = dir + '/etc/abmatt'
-    shutil.copy('../../etc/abmatt/presets.txt', etc)
-    shutil.copy('../../etc/abmatt/config.conf', etc)
+    copy_from = '../../etc/abmatt'
+    for file in os.listdir(copy_from):
+        path = os.path.join(copy_from, file)
+        if not os.path.isdir(path):
+            shutil.copy(path, etc)
     dest_dir = os.path.join(dir, 'bin')
     bin_dir, base_name = os.path.split(binary_path)
     exe = os.path.join(dest_dir, 'abmatt')
+    is_exe = False
     if 'exe' in base_name:
-        exe += '.exe'
+        is_exe = True
+        base_name, ext = os.path.splitext(base_name)
     if binary_path_is_dir:
         shutil.copytree(bin_dir, dest_dir)
-        shutil.move(os.path.join(dest_dir, base_name), exe)
+        if is_exe:
+            shutil.move(os.path.join(dest_dir, base_name + '.exe'), exe + '.exe')
+        else:
+            shutil.move(os.path.join(dest_dir, base_name), exe)
+        copytree(bin_dir + '-gui', dest_dir)
+        if is_exe:
+            shutil.move(os.path.join(dest_dir, base_name + '-gui.exe'), exe + '-gui.exe')
+        else:
+            shutil.move(os.path.join(dest_dir, base_name + '-gui'), exe + '-gui')
     else:
         os.mkdir(dest_dir)
         shutil.copy(binary_path, exe)
@@ -159,25 +175,41 @@ def make_distribution(dir, platform, binary_path, binary_path_is_dir, make_nsis,
     return True
 
 
+def copytree(folder, dest, replace_existing=False):
+    if not os.path.exists(dest):
+        os.mkdir(dest)
+    for file in os.listdir(folder):
+        path = os.path.join(folder, file)
+        if os.path.isdir(path):
+            copytree(path, os.path.join(dest, file), replace_existing)
+        else:
+            file_dest = os.path.join(dest, file)
+            if not os.path.exists(file_dest):
+                shutil.copy2(path, file_dest)
+            elif replace_existing:
+                os.remove(file_dest)
+                shutil.copy2(path, file_dest)
+
+
 def update_os(file, platform):
     with open(file) as f:
         lines = f.readlines()
     new_lines = []
     for line in lines:
         if line.startswith('OS:'):
-            new_lines.append('OS: ' + platform)
+            new_lines.append('OS: ' + platform + '\n')
         else:
             new_lines.append(line)
     with open(file, 'w') as f:
-        f.write('\n'.join(new_lines))
+        f.write(''.join(new_lines))
 
-def clean(folder, files):
-    if os.path.exists(folder) and os.path.isdir(folder):
-        shutil.rmtree(folder)
+def clean(folders, files):
+    for folder in folders:
+        if os.path.exists(folder) and os.path.isdir(folder):
+            shutil.rmtree(folder)
     for x in files:
         if os.path.exists(x) and os.path.isfile(x):
             os.remove(x)
-
 
 def build(name, build_type, interpreter, platform):
     output = None
@@ -193,7 +225,14 @@ def build(name, build_type, interpreter, platform):
         output_type = '--onedir' if platform == 'windows' else 'onefile'
     is_dir = True if 'onedir' in output_type else False
     params = '-y __main__.py --name ' + name + ' ' + output_type
+    print('Current dir is {}'.format(os.getcwd()))
+    # if platform == 'windows':
+    params += ' -i ../etc/abmatt/icon.ico'
     result = os.system(interpreter + ' -m PyInstaller ' + params)
+    params = '-y gui/main_window.py --name ' + name + '-gui --noconsole ' + output_type
+    # if platform == 'windows':
+    params += ' -i ../etc/abmatt/icon.ico'
+    result2 = os.system(interpreter + ' -m PyInstaller ' + params)
     os.chdir('dist')
     if not result:
         output = name if not is_dir else name + '/' + name
@@ -211,3 +250,4 @@ def build(name, build_type, interpreter, platform):
 
 if __name__ == '__main__':
     main(sys.argv[1:])
+    print('done')

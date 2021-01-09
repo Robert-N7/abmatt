@@ -20,6 +20,9 @@ class BPCommand(object):
         self.data = bt[2] << 16 | bt[3]
         return self.enabled
 
+    def __eq__(self, other):
+        return self.bpmem == other.bpmem and self.data == other.data and self.enabled == other.enabled
+
     def isEnabled(self):
         return self.enabled > 0
 
@@ -318,20 +321,31 @@ class AlphaFunction(BPCommand):
         data = 0x1eff80 if xlu else 0x3f0000
         super(AlphaFunction, self).__init__(BPCommand.BPMEM_ALPHACOMPARE, data)
 
-    def isXlu(self):
-        return not (self.data >> 16 & 0x3f)  # just checks comparison functions
+    def get_alpha_value(self):
+        if not self.is_enabled():
+            return 0
+        return self.getRef0()
 
-    def setXlu(self, enable):
+    def set_alpha_value(self, value):
+        self.enable(True, value)
+
+    def is_enabled(self):
+        return self.getComp0() < 7
+
+    def enable(self, enable, value=0x80):
+        assert 0 <= value < 256
         if enable:
-            if not self.getRef0():
-                self.setRef0(0x80)
+            if self.getRef0() != value:
+                self.setRef0(value)
             if not self.getRef1():
                 self.setRef1(0xff)
             self.setComp0(6)
             self.setComp1(3)
         else:
             self.setComp0(7)
+            self.setRef0(0)
             self.setComp1(7)
+            self.setRef1(0)
 
     def getRef0(self):
         return self.data & 0xff
@@ -586,9 +600,16 @@ class IndMatrix():
         id: 0 -2
         scale: 6-bit value that controls outgoing coordinate scale (2^scale)
     """
-    SIZE = 15
+    BPMEM_IND_MTXA0 = 0x06
 
-    def __init__(self, id, scale=46, enable=False):
+    def __eq__(self, other):
+        """
+        :type other: IndMatrix
+        :return: True if equal
+        """
+        return self.enabled == other.enabled and self.scale == other.scale and self.matrix == other.matrix
+
+    def __init__(self, scale=46, enable=False):
         """ Indirect 2x3 matrix that blit processor loads
             the matrix has two rows and three columns, and it appears on the
             left side of the multiply. On the right side is a column vector
@@ -606,8 +627,7 @@ class IndMatrix():
         """
         self.enabled = enable
         self.scale = scale
-        self.matrix = [0] * 6
-        self.id = id  # typically 0
+        self.matrix = [[0] * 3, [0] * 3]
 
     def getScale(self):
         return self.scale
@@ -623,78 +643,6 @@ class IndMatrix():
             print("Warning: Ind matrix {} value {} out of range! Should be between -1 and 1".format(self.id, val))
         self.matrix[key] = val
 
-    def force11bitFloat(self, val):
-        """Forces 11 bit to float
-            100 0000 0000 sign
-            011 1111 1111 mantissa
-        """
-        # There's probably a better way to do this
-        f = 0.0
-        bitn = 10
-        start = 1 << bitn
-        while bitn > 0:
-            # print("divisor {} bitn {}".format(start, bitn))
-            if val & 1:
-                f += 1.0 / start
-                # print(f)
-            val >>= 1
-            start >>= 1
-            bitn -= 1
-        if val & 1:  # sign
-            f *= -1
-        return f
-
-    def encode11bitFloat(self, val):
-        """Encodes the 10bit float as int
-            100 0000 0000 sign
-            011 1111 1111 mantissa
-        """
-        e = 1 if val < 0 else 0  # sign
-        start = 2
-        bitn = 1
-        val = abs(val)
-        while bitn <= 10:
-            e <<= 1     # make room
-            subtractee = 1 / start  # divide by exponent of 2
-            if val >= subtractee:   # can subtractee be taken out?
-                val -= subtractee
-                e |= 1          # then place a bit
-            bitn += 1           # increase the number of bits
-            start <<= 1
-        return e
-
-    def unpack(self, binfile):
-        """ unpacks ind matrix """
-        scale = 0
-        c = BPCommand(0)
-        for i in range(3):
-            self.enabled = c.unpack(binfile) > 0
-            if not self.enabled:
-                binfile.advance(10)  # skip ahead
-                self.scale = scale
-                return
-            # parse data
-            if i == 0:
-                self.id = (c.bpmem - BPCommand.BPMEM_IND_MTXA0) // 3
-            scale = scale | (c.data >> 22 & 3) << (2 * i)
-            self.matrix[i] = self.force11bitFloat(c.data & 0x7ff)   # row 0
-            self.matrix[i+3] = self.force11bitFloat(c.data >> 11 & 0x7ff)   # row 1
-        self.scale = scale - 17
-
-    def pack(self, binfile):
-        """Packs the ind matrix """
-        if not self.enabled:
-            binfile.advance(self.SIZE)
-            return
-        c = BPCommand(BPCommand.BPMEM_IND_MTXA0 + self.id * 3)
-        scale = self.scale + 17
-        for i in range(3):
-            sbits = (scale >> (2 * i) & 3)
-            r0 = self.encode11bitFloat(self.matrix[i])
-            r1 = self.encode11bitFloat(self.matrix[i+3])
-            c.data = sbits << 22 | r1 << 11 | r0
-            c.pack(binfile)
-            c.bpmem += 1
 
 
 class ColorReg(BPCommand):

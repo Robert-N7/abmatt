@@ -1,20 +1,26 @@
-!define VERSION "0.7.4"
+!define VERSION "0.8.0"
 !define PROGRAM_NAME "ANoob's Brres Material Tool ${VERSION}"
-InstallDir "$PROGRAMFILES64\abmatt"
+InstallDir "$Documents\abmatt"
 Name "${PROGRAM_NAME}"
 OutFile "install.exe"
+Icon "etc\abmatt\icon.ico"
+LicenseData LICENSE
 # Request admin rights
-RequestExecutionLevel admin
+RequestExecutionLevel user
 !include LogicLib.nsh
+
+page license
+page directory
+page instfiles
 
 Function .onInit
 UserInfo::GetAccountType
 pop $0
-${If} $0 != "admin"
-    MessageBox mb_iconstop "Administrator rights required!"
-    SetErrorLevel 740   # ERROR_ELEVATION_REQUIRED
-    Quit
-${EndIf}
+#${If} $0 != "admin"
+ #   MessageBox mb_iconstop "Administrator rights required!"
+  #  SetErrorLevel 740   # ERROR_ELEVATION_REQUIRED
+   # Quit
+# ${EndIf}
 FunctionEnd
 
 # INSTALL
@@ -27,6 +33,11 @@ File LICENSE
 SetOutPath "$INSTDIR\bin"
 EnVar::AddValue "PATH" "$INSTDIR\bin"
 File /a /r "bin\"
+# Shortcuts
+CreateShortCut "$DESKTOP\abmatt.lnk" "$INSTDIR\bin\abmatt-gui.exe"
+CreateDirectory "$SMPROGRAMS\abmatt"
+CreateShortCut "$SMPROGRAMS\abmatt\abmatt.lnk" "$INSTDIR\bin\abmatt-gui.exe"
+CreateShortCut "$SMPROGRAMS\abmatt\uninstall.lnk" "$INSTDIR\uninstall.exe"
 # etc
 SetOutPath "$INSTDIR\etc\abmatt"
 SetOverwrite off    # don't overwrite user files!
@@ -39,14 +50,14 @@ Section "Uninstall"
 SetOutPath "$INSTDIR\.."
 RMDir /r "$INSTDIR\*.*"
 EnVar::DeleteValue "PATH" "$INSTDIR\bin\abmatt.exe"
+RMDir /r "$SMPROGRAMS\abmatt"
+Delete "$DESKTOP\abmatt.lnk"
 SectionEnd
 
 Function .onInstSuccess
-  # MessageBox MB_OK "Success! Start by using 'abmatt' from the command line."
-  Quit
+  MessageBox MB_OK "Success! Use the desktop icon to start the program."
 FunctionEnd
 
 Function un.onUninstSuccess
   MessageBox MB_OK "Abmatt has been removed."
-  Quit
 FunctionEnd

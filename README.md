@@ -1,8 +1,8 @@
 # ANoobs Brres Material Tool (ABMatt)
-This command line tool is for converting and editing *Brres* files in *Mario Kart Wii*. 
+This tool is used to convert and edit *Brres* files in *Mario Kart Wii*. 
 
 ## Installation
-Download compiled [releases](https://github.com/Robert-N7/abmatt/releases) for Linux and Windows, and follow the install.txt instructions.
+Download compiled [releases](https://github.com/Robert-N7/abmatt/releases) for Linux and Windows.
 Alternatively, install as a python package:
 ```
 pip install git+https://github.com/Robert-N7/abmatt.git
@@ -13,25 +13,21 @@ ABMatt uses [Wiimm's Image Tool](https://szs.wiimm.de/download.html) which must 
 
 
 ## Modes
-ABMatt can be used in three ways.
-* Run command from command line. 
-* Run a series of commands from file. 
-* Run commands in interactive *shell* mode.
+ABMatt has Gui and command-line capabilities.
+* The Gui interface provides easy drag and drop interfacing.
+* Text-based commands can be issued from the command line, interactive shell, or from file.
 
 ## Converting Capabilities
 ABMatt supports converting to and from:
 * Wavefront OBJ
 * Collada DAE
 
-## Editing Capabilities
-ABMatt supports editing the following types:
-* materials
-* layers
-* shaders
-* stages
-* pat0
-* srt0
-* tex0
+When replacing an existing model, materials with matching names will take on the properties of the previous material.
+
+## GUI Features
+Materials can be dragged to replace existing materials.
+The material is copied and pasted, which includes shader and animation data.
+![Main Window](images/main_window.PNG)
 
 ## Command Line Usage
 ABMatt supports a command line (see [FileFormat](##FileFormat)) followed by options.

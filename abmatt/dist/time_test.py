@@ -1,6 +1,7 @@
-import time
 import os
+import subprocess
 import sys
+import time
 
 
 def get_path(prefix):
@@ -16,7 +17,8 @@ def get_path(prefix):
 
 def time_test(command):
     start_time = time.time()
-    result = os.system(command)
+    params = command.split(' ')
+    result = subprocess.call(params)
     return time.time() - start_time
 
 

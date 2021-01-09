@@ -5,8 +5,8 @@ import os
 import re
 import sys
 
+from abmatt.config import Config
 from get_bit_width import get_bit_width
-from config import Config
 
 
 def get_last_update(version_file):
@@ -21,7 +21,8 @@ def update_version(version):
         print('Version already up to date')
         return 0
     version_files = ['../../setup.py', '../dist/install-ubu.txt', '../dist/install-win.txt', '../__main__.py', '../dist/Makefile',
-                     'update_version.py', '../dist/make_installer.nsi', '../converters/obj.py', '../converters/dae.py']
+                     'update_version.py', '../dist/make_installer.nsi', '../converters/obj.py', '../converters/dae.py',
+                     '../load_config.py']
     # version_files = ['test.txt']
     rex = re.compile("(v(ersion)?\s*(\:|\=)?\s*(\"|\')?)\d+\.\d+\.\d+", re.IGNORECASE)
     replacement = '\g<1>' + version

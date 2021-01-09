@@ -1,0 +1,36 @@
+# Alias Wavefront MTL File Exported from SketchUp
+# with OBJexporter (c) 2010-2011 TIG
+# Made for 'skp_simple.obj'
+
+newmtl Default_Material
+Ka 0.000000 0.000000 0.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ns 0
+d 1.000000
+
+newmtl Wax_02
+Ka 0.678431 0.800000 0.639216
+Kd 0.678431 0.800000 0.639216
+Ks 0.333333 0.333333 0.333333
+Ns 0
+d 1.000000
+map_Kd skp_simple_Textures/Wax_02.PNG
+
+newmtl Material1
+Ka 0.396078 0.396078 0.396078
+Kd 0.396078 0.396078 0.396078
+Ks 0.333333 0.333333 0.333333
+Ns 0
+d 1.000000
+map_Kd skp_simple_Textures/Material1.PNG
+
+newmtl Material2
+Ka 0.666667 0.745098 0.031373
+Kd 0.666667 0.745098 0.031373
+Ks 0.333333 0.333333 0.333333
+Ns 0
+d 1.000000
+map_Kd skp_simple_Textures/Material2.PNG
+
+#EOF

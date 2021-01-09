@@ -4,9 +4,9 @@
 		<contributor>
 			<authoring_tool>BrawlCrate</authoring_tool>
 		</contributor>
-		<created>2020-09-26T23:50:07Z</created>
-		<modified>2020-09-26T23:50:07Z</modified>
-		<unit meter="0.01" name="centimeter" />
+		<created>2020-10-05T16:32:58Z</created>
+		<modified>2020-10-05T16:32:58Z</modified>
+		<unit meter="1" name="centimeter" />
 		<up_axis>Y_UP</up_axis>
 	</asset>
 	<library_images>
