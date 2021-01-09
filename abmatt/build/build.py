@@ -43,7 +43,7 @@ def build_distribution(config, version):
     name = config['build_name']
     build_type = config['build_type']
     # build
-    clean([name, name + '_gui'], [name + '.exe', name, name + '_gui', name + '_gui.exe'])
+    clean([name, name + '-gui'], [name + '.exe', name, name + '-gui', name + '-gui.exe'])
     my_platform = platform.system().lower()
     if 'windows' in my_platform:
         makensis = which('makensis')
@@ -85,8 +85,8 @@ def main(args):
     abmatt_dir = os.path.dirname(venv_dir)
     start_dir = os.path.join(abmatt_dir, 'tests')
     start_path = os.path.join(start_dir, 'integration/start.py')
-    if config['run_unit_tests'].lower() == 'true':
-        processes.append(('unit tests', run_sub_process([start_path], start_dir)))
+    # if config['run_unit_tests'].lower() == 'true':
+    #     processes.append(('unit tests', run_sub_process([start_path], start_dir)))
     if config['run_integration_tests'].lower() == 'true':
         processes.append(('integration tests', run_sub_process([start_path], os.path.join(start_dir, 'integration'))))
     # os.system(f'pip uninstall abmatt')
@@ -141,11 +141,11 @@ def make_distribution(dir, platform, binary_path, binary_path_is_dir, make_nsis,
             shutil.move(os.path.join(dest_dir, base_name + '.exe'), exe + '.exe')
         else:
             shutil.move(os.path.join(dest_dir, base_name), exe)
-        copytree(bin_dir + '_gui', dest_dir)
+        copytree(bin_dir + '-gui', dest_dir)
         if is_exe:
-            shutil.move(os.path.join(dest_dir, base_name + '_gui.exe'), exe + '_gui.exe')
+            shutil.move(os.path.join(dest_dir, base_name + '-gui.exe'), exe + '-gui.exe')
         else:
-            shutil.move(os.path.join(dest_dir, base_name + '_gui'), exe + '_gui')
+            shutil.move(os.path.join(dest_dir, base_name + '-gui'), exe + '-gui')
     else:
         os.mkdir(dest_dir)
         shutil.copy(binary_path, exe)
@@ -229,7 +229,7 @@ def build(name, build_type, interpreter, platform):
     # if platform == 'windows':
     params += ' -i ../etc/abmatt/icon.ico'
     result = os.system(interpreter + ' -m PyInstaller ' + params)
-    params = '-y gui/main_window.py --name ' + name + '_gui --noconsole ' + output_type
+    params = '-y gui/main_window.py --name ' + name + '-gui --noconsole ' + output_type
     # if platform == 'windows':
     params += ' -i ../etc/abmatt/icon.ico'
     result2 = os.system(interpreter + ' -m PyInstaller ' + params)
@@ -250,3 +250,4 @@ def build(name, build_type, interpreter, platform):
 
 if __name__ == '__main__':
     main(sys.argv[1:])
+    print('done')

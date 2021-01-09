@@ -1,3 +1,4 @@
+import sys
 import unittest
 
 from abmatt.autofix import AutoFix
@@ -43,4 +44,4 @@ class ChangePolyMatTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    AutoFix.quit()
+    sys.exit(0)

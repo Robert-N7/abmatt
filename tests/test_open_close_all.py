@@ -24,4 +24,5 @@ class TestOpenCloseAll(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    AutoFix.quit()
+    sys.exit(0)
+

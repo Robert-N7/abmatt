@@ -1,3 +1,4 @@
+import sys
 import unittest
 
 import numpy as np
@@ -31,3 +32,4 @@ class TestMatrix(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+    sys.exit(0)

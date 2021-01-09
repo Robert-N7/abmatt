@@ -44,7 +44,7 @@ class MaterialTabs(QWidget, MatWidgetHandler):
         self.tabBar = tab_widget.tabBar()
         # self.tabBar.setMouseTracking(True)
         # self.tabBar.installEventFilter(self)
-        self.material_library = MaterialLibrary(self, Brres.get_material_library())
+        self.material_library = MaterialLibrary(self)
         tab_widget.addTab(self.material_library, 'Library Materials')
         self.scene_library = MaterialBrowser(self)
         tab_widget.addTab(self.scene_library, 'Scene Materials')
@@ -187,15 +187,12 @@ class MaterialLibrary(MaterialBrowser):
     Material Browser that can also add and remove materials and be saved
     """
 
-    def __init__(self, parent, material_library):
+    def __init__(self, parent):
         super().__init__(parent)
-        self.brres = None
+        material_library, self.brres = Brres.get_material_library(True)
         self.is_material_removable = True
         self.setAcceptDrops(True)
         self.add_materials(material_library.values())
-        for x in material_library:
-            self.brres = material_library[x].parent.parent
-            break
 
     def on_close(self):
         if self.brres is not None:
@@ -211,10 +208,15 @@ class MaterialLibrary(MaterialBrowser):
         bpath = BrresPath(mat_path)
         return mat_path not in self.materials and bpath.trace_path()[0] is not None
 
-    def add_material(self, material):
+    def add_new_brres_materials(self, brres):
+        for model in brres.models:
+            for material in model.materials:
+                self.add_new_material(material)
+
+    def add_new_material(self, material):
         if self.brres is not None:
             model = self.brres.models[0]
-            if model.get_materials_by_name(material.name):
+            if model.get_material_by_name(material.name):
                 AutoFix.get().error('Material {} already exists!'.format(material.name))
                 return False
             mat = Material(material.name, self.brres.models[0])
@@ -260,13 +262,13 @@ class MaterialLibrary(MaterialBrowser):
             burls = self.get_brres_urls(data.urls())
             if burls:
                 for path in burls:
-                    self.add_brres_materials(Brres.get_brres(path, True))
+                    self.add_new_brres_materials(Brres.get_brres(path, True))
                 a0.accept()
                 return
         elif data.hasText() and self.can_add_material(data.text()):
             mat = get_material_by_url(data.text(), True)
             if mat:
-                self.add_material(mat)
+                self.add_new_material(mat)
                 a0.accept()
                 return
         a0.ignore()

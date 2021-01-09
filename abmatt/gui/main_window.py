@@ -1,6 +1,8 @@
 import os
+import platform
 import sys
 import traceback
+import webbrowser
 
 from PyQt5.QtCore import QThreadPool
 from PyQt5.QtGui import QIcon
@@ -20,7 +22,7 @@ from abmatt.gui.kcl_calculator import KCLCalculator
 from abmatt.gui.logger_pipe import LoggerPipe
 from abmatt.gui.material_browser import MaterialTabs
 from abmatt.gui.poly_editor import PolyEditor
-from abmatt.load_config import parse_args
+from abmatt import load_config
 
 
 class Window(QMainWindow):
@@ -110,6 +112,35 @@ class Window(QMainWindow):
         toolMenu = menu.addMenu('&Tools')
         toolMenu.addAction(shell_Act)
         toolMenu.addAction(kcl_calc_Act)
+
+        # Help
+        report_Act = QAction('&Report Issue', self)
+        report_Act.setStatusTip('Report an issue')
+        report_Act.triggered.connect(self.report_issue)
+        website_Act = QAction('&Website', self)
+        website_Act.setStatusTip('Visit website')
+        website_Act.triggered.connect(self.open_website)
+        about_Act = QAction('&About', self)
+        about_Act.setStatusTip('Information about ABMatt')
+        about_Act.triggered.connect(self.about_abmatt)
+        help_menu = menu.addMenu('&Help')
+        help_menu.addAction(report_Act)
+        help_menu.addAction(website_Act)
+        help_menu.addSeparator()
+        help_menu.addAction(about_Act)
+
+    def open_website(self):
+        webbrowser.open('https://github.com/Robert-N7/abmatt')
+
+    def report_issue(self):
+        webbrowser.open('https://github.com/Robert-N7/abmatt/issues')
+
+    def about_abmatt(self):
+        self.box = QMessageBox()
+        bit_size = '64-Bit' if sys.maxsize > 2 ** 32 else '32-Bit'
+        self.box.setText(f'ABMatt Version {load_config.VERSION} {platform.platform()} {bit_size}')
+        self.box.setWindowTitle('ABMatt')
+        self.box.show()
 
     def open_kcl_calculator(self):
         self.calculator = KCLCalculator()
@@ -380,7 +411,7 @@ def main():
         base_path = sys.executable
     else:
         base_path = os.path.dirname(__file__)
-    parse_args(argv, base_path)
+    load_config.parse_args(argv, base_path)
     exe = QApplication(argv)
     exe.setStyle('Fusion')
     exe.setWindowIcon(QIcon(os.path.join(Command.APP_DIR, 'icon.ico')))

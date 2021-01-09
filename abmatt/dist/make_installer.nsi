@@ -34,9 +34,9 @@ SetOutPath "$INSTDIR\bin"
 EnVar::AddValue "PATH" "$INSTDIR\bin"
 File /a /r "bin\"
 # Shortcuts
-CreateShortCut "$DESKTOP\abmatt.lnk" "$INSTDIR\bin\abmatt_gui.exe"
+CreateShortCut "$DESKTOP\abmatt.lnk" "$INSTDIR\bin\abmatt-gui.exe"
 CreateDirectory "$SMPROGRAMS\abmatt"
-CreateShortCut "$SMPROGRAMS\abmatt\abmatt.lnk" "$INSTDIR\bin\abmatt_gui.exe"
+CreateShortCut "$SMPROGRAMS\abmatt\abmatt.lnk" "$INSTDIR\bin\abmatt-gui.exe"
 CreateShortCut "$SMPROGRAMS\abmatt\uninstall.lnk" "$INSTDIR\uninstall.exe"
 # etc
 SetOutPath "$INSTDIR\etc\abmatt"

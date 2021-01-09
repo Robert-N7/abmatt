@@ -10,6 +10,7 @@ from abmatt.brres.lib.matching import MATCHING
 from abmatt.brres.lib.node import Clipable, Packable
 from abmatt.brres.lib.packing.pack_brres import PackBrres
 from abmatt.brres.lib.unpacking.unpack_brres import UnpackBrres
+from abmatt.brres.mdl0 import Mdl0
 from abmatt.brres.tex0 import Tex0
 from abmatt.image_converter import ImgConverter
 
@@ -23,6 +24,7 @@ class Brres(Clipable, Packable):
     OPEN_FILES = []  # reference to active files
     REMOVE_UNUSED_TEXTURES = False
     MATERIAL_LIBRARY = None
+    MATERIAL_LIBRARY_BRRES = None
 
     def __init__(self, name, parent=None, readFile=True):
         """
@@ -75,21 +77,24 @@ class Brres(Clipable, Packable):
             return Brres(filename, readFile=False)
 
     @staticmethod
-    def get_material_library():
+    def get_material_library(get_brres=False):
         lib = Brres.MATERIAL_LIBRARY
         if lib is None:
             Brres.MATERIAL_LIBRARY = {}
         elif type(lib) == str:
             try:
-                b = Brres(lib)
-                materials = {}
-                for model in b.models:
-                    for material in model.materials:
-                        materials[material.name] = material
-                Brres.MATERIAL_LIBRARY = materials
+                Brres.MATERIAL_LIBRARY_BRRES = b = Brres(lib)
             except FileNotFoundError as e:
-                AutoFix.get().warn(f'Material library "{lib}" not found.')
-                Brres.MATERIAL_LIBRARY = {}
+                AutoFix.get().info(f'Material library "{lib}" not found, Creating file.')
+                Brres.MATERIAL_LIBRARY_BRRES = b = Brres(lib, readFile=False)
+                b.add_mdl0(Mdl0('lib', b))
+            materials = {}
+            for model in b.models:
+                for material in model.materials:
+                    materials[material.name] = material
+            Brres.MATERIAL_LIBRARY = materials
+        if get_brres:
+            return Brres.MATERIAL_LIBRARY, Brres.MATERIAL_LIBRARY_BRRES
         return Brres.MATERIAL_LIBRARY
 
     def begin(self):

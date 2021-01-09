@@ -1,3 +1,4 @@
+import sys
 import unittest
 
 from abmatt.converters.xml import XML
@@ -13,3 +14,5 @@ class MyTestCase(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+    sys.exit(0)
+
