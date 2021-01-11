@@ -60,7 +60,7 @@ class ClipableObserver:
     def on_child_update(self, child):   # might not have children
         pass
 
-    def on_rename_update(self, node):
+    def on_rename_update(self, node, old_name):
         pass
 
 
@@ -79,17 +79,18 @@ class Clipable(Node):
 
     def rename(self, name):
         if name != self.name:
+            old_name = self.name
             self.name = name
             self.mark_modified(False)
-            self.notify_rename()
+            self.notify_rename(old_name)
             return True
         return False
 
     # ------------------------------------- OBSERVERS ----------------------------
-    def notify_rename(self):
+    def notify_rename(self, old_name):
         if self.observers:
             for x in self.observers:
-                x.on_rename_update(self)
+                x.on_rename_update(self, old_name)
         self.notify_parent_observers()
 
     def notify_observers(self):
@@ -107,7 +108,7 @@ class Clipable(Node):
     def register_observer(self, observer):
         if self.observers is None:
             self.observers = [observer]
-        else:
+        elif observer not in self.observers:
             self.observers.append(observer)
 
     def unregister(self, observer):

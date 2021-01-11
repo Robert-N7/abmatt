@@ -6,6 +6,7 @@ class KCLCalculator(QWidget):
         super().__init__()
         self.__init_ui()
         self.code = 0
+        self.setWindowTitle('KCL Calculator')
         self.show()
 
     def calc_flag(self):

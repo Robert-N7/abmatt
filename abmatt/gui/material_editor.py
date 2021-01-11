@@ -636,7 +636,7 @@ class MaterialEditor(EditorStyle, ClipableObserver, ColorWidgetHandler, Tex0Widg
     def on_child_update(self, child):
         pass
 
-    def on_rename_update(self, node):
+    def on_rename_update(self, node, old_name):
         if type(node) == Layer:
             self.maps.set_tex0s(self.material.get_tex0s())
 

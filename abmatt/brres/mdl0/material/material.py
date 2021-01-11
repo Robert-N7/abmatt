@@ -366,10 +366,14 @@ class Material(Clipable):
                 return func(self, value)
 
     def rename(self, value):
-        if value == self.name:
-            return True
-        self.name = self.parent.rename_material(self, value)
-        self.mark_modified()
+        for x in self.parent.materials:
+            if x is not self and x.name == value:
+                AutoFix.get().error('The name {} is already taken!'.format(value))
+                return False
+        result = super().rename(value)
+        if result:
+            self.parent.on_material_rename(self, value)
+        return result
 
     def setXluStr(self, str_value):
         val = validBool(str_value)

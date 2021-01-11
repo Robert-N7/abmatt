@@ -23,8 +23,6 @@ class Brres(Clipable, Packable):
     DESTINATION = None
     OPEN_FILES = []  # reference to active files
     REMOVE_UNUSED_TEXTURES = False
-    MATERIAL_LIBRARY = None
-    MATERIAL_LIBRARY_BRRES = None
 
     def __init__(self, name, parent=None, readFile=True):
         """
@@ -75,27 +73,6 @@ class Brres(Clipable, Packable):
             return Brres(filename, readFile=True)
         elif create_if_not_exists:
             return Brres(filename, readFile=False)
-
-    @staticmethod
-    def get_material_library(get_brres=False):
-        lib = Brres.MATERIAL_LIBRARY
-        if lib is None:
-            Brres.MATERIAL_LIBRARY = {}
-        elif type(lib) == str:
-            try:
-                Brres.MATERIAL_LIBRARY_BRRES = b = Brres(lib)
-            except FileNotFoundError as e:
-                AutoFix.get().info(f'Material library "{lib}" not found, Creating file.')
-                Brres.MATERIAL_LIBRARY_BRRES = b = Brres(lib, readFile=False)
-                b.add_mdl0(Mdl0('lib', b))
-            materials = {}
-            for model in b.models:
-                for material in model.materials:
-                    materials[material.name] = material
-            Brres.MATERIAL_LIBRARY = materials
-        if get_brres:
-            return Brres.MATERIAL_LIBRARY, Brres.MATERIAL_LIBRARY_BRRES
-        return Brres.MATERIAL_LIBRARY
 
     def begin(self):
         self.is_modified = True
@@ -257,11 +234,7 @@ class Brres(Clipable, Packable):
     def get_animations(self):
         return [self.srt0, self.pat0, self.chr0, self.scn0, self.shp0, self.clr0]
 
-    def renameModel(self, old_name, new_name):
-        for x in self.models:
-            if x.name == new_name:
-                AutoFix.get().warn('Unable to rename {}, the model {} already exists!'.format(old_name, new_name))
-                return None
+    def on_model_rename(self, old_name, new_name):
         for n in self.get_animations():
             for x in n:
                 if old_name == x.name:

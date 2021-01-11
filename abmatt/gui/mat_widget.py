@@ -1,7 +1,8 @@
 from PyQt5.QtCore import Qt, QMimeData
 from PyQt5.QtGui import QDrag, QPixmap, QPainter
-from PyQt5.QtWidgets import QLabel, QAction, QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QLabel, QAction, QWidget, QVBoxLayout, QInputDialog
 
+from abmatt.autofix import AutoFix
 from abmatt.brres.lib.node import ClipableObserver
 from abmatt.gui.brres_path import BrresPath
 from abmatt.gui.image_manager import ImageObserver, ImageManager, update_image
@@ -32,6 +33,10 @@ class MaterialWidget(QWidget, ClipableObserver, ImageObserver):
         if node is self.material:
             if self.handler.should_remove_unused_mats() and not node.is_used():
                 self.remove_material()
+
+    def on_rename_update(self, node, old_name):
+        self.text_label.setText(node.name)
+        self.get_brres_path()
 
     def on_child_update(self, child):
         name = self.material.get_first_layer_name()
@@ -66,10 +71,23 @@ class MaterialWidget(QWidget, ClipableObserver, ImageObserver):
         if self.material is not None:
             self.material.unregister(self)
 
+    def rename(self):
+        if self.material is not None:
+            current_name = self.material.name
+            text, ok = QInputDialog.getText(self, 'Rename Node', 'Rename to:', text=current_name)
+            if ok and text != current_name:
+                if self.material.parent.get_material_by_name(text) is not None:
+                    AutoFix.get().error('Material with name {} already exists!'.format(text))
+                    return
+                self.material.rename(text)
+
     def __init_context_menu(self):
         self.setContextMenuPolicy(Qt.ActionsContextMenu)
+        rename = QAction('Rename', self)
+        rename.triggered.connect(self.rename)
         edit_action = QAction('Edit', self)
         edit_action.triggered.connect(self.edit_material)
+        self.addAction(rename)
         self.addAction(edit_action)
         if self.removable:
             remove_action = QAction('Remove', self)
@@ -87,7 +105,8 @@ class MaterialWidget(QWidget, ClipableObserver, ImageObserver):
         return self.brres_path
 
     def edit_material(self):
-        self.handler.on_material_edit(self.material)
+        if self.material is not None:
+            self.handler.on_material_edit(self.material)
 
     def set_material(self, material, brres_path=None):
         if self.material is not None:
@@ -117,7 +136,8 @@ class MaterialWidget(QWidget, ClipableObserver, ImageObserver):
             self.drag_start_position = ev.pos()
 
     def mouseDoubleClickEvent(self, a0):
-        self.handler.on_material_edit(self.material)
+        if self.material is not None:
+            self.handler.on_material_edit(self.material)
 
     def mouseMoveEvent(self, ev):
         if not ev.buttons() & Qt.LeftButton:

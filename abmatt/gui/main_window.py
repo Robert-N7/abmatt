@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QAction, QFileDialog, QVB
 
 from abmatt.autofix import AutoFix
 from abmatt.brres.brres import Brres
+from abmatt.brres.lib.node import ClipableObserver
 from abmatt.command import Command
 from abmatt.converters.convert_dae import DaeConverter2
 from abmatt.converters.convert_obj import ObjConverter
@@ -25,7 +26,7 @@ from abmatt.gui.poly_editor import PolyEditor
 from abmatt import load_config
 
 
-class Window(QMainWindow):
+class Window(QMainWindow, ClipableObserver):
 
     def __init__(self, brres_files=[]):
         super().__init__()
@@ -236,6 +237,17 @@ class Window(QMainWindow):
         if fname:
             self.open(fname)
 
+    def on_node_update(self, node):
+        self.treeview.on_brres_update(node)
+
+    def on_rename_update(self, node, old_name):
+        if type(node) == Brres:
+            self.treeview.on_brres_rename(old_name, node.name)
+        self.material_browser.on_name_update()
+
+    def on_child_update(self, child):
+        self.treeview.on_brres_update(child.parent)
+
     def open(self, fname, force_update=False):
         self.cwd = os.path.dirname(fname)
         opened = self.get_brres_by_fname(fname)
@@ -245,6 +257,7 @@ class Window(QMainWindow):
         else:
             opened = Brres.get_brres(fname)
             self.open_files.append(opened)
+            opened.register_observer(self)
         # either it's newly opened or forcing update
         self.set_brres(opened)
         self.treeview.on_brres_update(opened)
@@ -262,16 +275,14 @@ class Window(QMainWindow):
                 self.update_status('Wrote file {}'.format(last.name))
 
     def save_as_dialog(self):
-        fname, filter = QFileDialog.getSaveFileName(self, 'Save as', self.cwd, 'Brres files (*.brres)')
-        if fname:
-            self.cwd = os.path.dirname(fname)
-            if self.brres:
-                old_name = self.brres.name
+        if self.brres:
+            fname, filter = QFileDialog.getSaveFileName(self, 'Save as', self.cwd, 'Brres files (*.brres)')
+            if fname:
+                self.cwd = os.path.dirname(fname)
                 self.brres.save(fname, overwrite=True)
-                if fname != old_name:
-                    self.treeview.on_brres_rename(old_name, fname)
-                    self.material_browser.on_brres_name_update(old_name, fname)
                 self.update_status('Wrote file {}'.format(fname))
+        else:
+            AutoFix.get().error('No Brres file selected.')
 
     def import_texture(self, filename):
         raise NotImplementedError()
@@ -279,7 +290,9 @@ class Window(QMainWindow):
     def on_material_select(self, material):
         self.material_browser.on_material_select(material)
 
-    def import_file(self, fname, brres_name=None, brres=None):
+    def import_file(self, fname, brres_name=None, brres=None, mdl0=None):
+        if mdl0 is not None:
+            brres = mdl0.parent
         if not brres:
             if brres_name is not None:
                 brres = self.get_brres_by_fname(brres_name)
@@ -290,9 +303,9 @@ class Window(QMainWindow):
         base_name, ext = os.path.splitext(name)
         lower = ext.lower()
         if lower == '.dae':
-            converter = DaeConverter2(brres, fname)
+            converter = DaeConverter2(brres, fname, mdl0=mdl0)
         elif lower == '.obj':
-            converter = ObjConverter(brres, fname)
+            converter = ObjConverter(brres, fname, mdl0=mdl0)
         # elif lower in ('.png', '.jpg', '.bmp', '.tga'):
         #     return self.import_texture(fname)
         else:
@@ -320,28 +333,44 @@ class Window(QMainWindow):
         self.unlock_file(converter.brres)
         self.update_status('Finished Converting {}'.format(converter.brres.name))
 
-    def import_file_dialog(self, brres=None):
+    def import_file_dialog(self, brres=None, mdl0=None):
         fname, filter = QFileDialog.getOpenFileName(self, 'Import model', self.cwd, '(*.dae *.obj)')
         if fname:
-            self.import_file(fname, brres=brres)
+            self.import_file(fname, brres=brres, mdl0=mdl0)
 
-    def export_file_dialog(self, brres=None):
+    def export_file_dialog(self, brres=None, mdl0=None):
+        if mdl0 is not None:
+            brres = mdl0.parent
+        multiple_models = False
         if brres is None:
             brres = self.brres
+        elif mdl0 is None:
+            if len(brres.models) > 1:
+                multiple_models = True
         fname, fil = QFileDialog.getSaveFileName(self, 'Export model', self.cwd, 'Model files (*.dae *.obj)')
         if fname:
             self.cwd, name = os.path.split(fname)
             base_name, ext = os.path.splitext(name)
             lower = ext.lower()
             if lower == '.obj':
-                converter = ObjConverter(brres, fname, encode=False)
+                klass = ObjConverter
             elif lower == '.dae':
-                converter = DaeConverter2(brres, fname, encode=False)
+                klass = DaeConverter2
             else:
                 self.statusBar().showMessage('Unknown extension {}'.format(ext))
                 return
-            self.update_status('Added {} to queue...'.format(brres.name))
-            self.converter.enqueue(converter)
+            if multiple_models:
+                for x in brres.models:
+                    export_name = os.path.join(self.cwd, base_name + '-' + x.name + ext)
+                    converter = klass(brres, export_name, encode=False, mdl0=x)
+                    self.update_status('Added {} to queue...'.format(x.name))
+                    self.converter.enqueue(converter)
+            else:
+                if mdl0 is None:
+                    mdl0 = brres.models[0]
+                converter = klass(brres, fname, encode=False, mdl0=mdl0)
+                self.update_status('Added {} to queue...'.format(mdl0.name))
+                self.converter.enqueue(converter)
 
     def close_file(self, brres=None):
         if brres is None:
@@ -354,6 +383,7 @@ class Window(QMainWindow):
                 brres.save(overwrite=True)
         if brres in self.open_files:
             self.open_files.remove(brres)
+            brres.unregister(self)
         brres.close(try_save=False)
         self.brres = None
         self.poly_editor.on_brres_lock(brres)

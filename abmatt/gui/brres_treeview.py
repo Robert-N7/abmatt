@@ -2,10 +2,8 @@ import os
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
-from PyQt5.QtWidgets import QTreeView, QMenu, QAction
+from PyQt5.QtWidgets import QTreeView, QMenu, QAction, QInputDialog
 
-# class BrresItemModel(QStandardItemModel):
-#     def __init__(self):
 from abmatt.autofix import AutoFix
 from abmatt.brres.lib.node import ClipableObserver
 
@@ -51,6 +49,12 @@ class BrresTreeView(QTreeView):
             return level, index
         return level
 
+    def __create_rename_action(self):
+        action = QAction('&Rename', self)
+        action.setStatusTip('Rename Node')
+        action.triggered.connect(self.rename)
+        return action
+
     def create_brres_menu(self, menu):
         imp = QAction('&Import', self)
         imp.setStatusTip('Import Model')
@@ -61,28 +65,106 @@ class BrresTreeView(QTreeView):
         close = QAction('&Close', self)
         close.setStatusTip('Close File')
         close.triggered.connect(self.close_file)
+        menu.addAction(self.__create_rename_action())
         menu.addAction(imp)
         menu.addAction(exp)
         menu.addSeparator()
         menu.addAction(close)
 
+    def create_mdl0_menu(self, menu):
+        replace = QAction('Re&place', self)
+        replace.setStatusTip('Replace Model')
+        replace.triggered.connect(self.import_file)
+        exp = QAction('&Export', self)
+        exp.setStatusTip('Export Model')
+        exp.triggered.connect(self.export_file)
+        delete = QAction('&Delete', self)
+        delete.setStatusTip('Delete Model')
+        delete.triggered.connect(self.delete_node)
+        menu.addAction(self.__create_rename_action())
+        menu.addAction(replace)
+        menu.addAction(exp)
+        menu.addSeparator()
+        menu.addAction(delete)
+
+    def create_polygon_menu(self, menu):
+        delete = QAction('&Delete', self)
+        delete.setStatusTip('Delete Polygon')
+        delete.triggered.connect(self.delete_node)
+        menu.addAction(self.__create_rename_action())
+        menu.addSeparator()
+        menu.addAction(delete)
+
+    def create_default_menu(self, menu):
+        imp = QAction('&Import', self)
+        imp.setStatusTip('Import Model')
+        imp.triggered.connect(self.import_file)
+        open = QAction('&Open', self)
+        open.setStatusTip('Open Brres')
+        open.triggered.connect(self.open_file)
+        menu.addAction(open)
+        menu.addAction(imp)
+
+    def rename(self):
+        node = self.get_indexed_item(self.clicked_index)
+        if self.level == 0:
+            self.handler.save_as_dialog()
+        elif self.level == 1:
+            brres = node.parent
+            old_name = node.name
+            text, ok = QInputDialog.getText(self, 'Rename Node', 'Rename to:', text=old_name)
+            if ok and text != old_name:
+                if brres.getModel(text):
+                    AutoFix.get().error('Model with name {} already exists!'.format(text))
+                    return
+                node.rename(text)
+                self.handler.on_rename_update(node, old_name)
+        elif self.level == 2:
+            mdl0 = node.parent
+            text, ok = QInputDialog.getText(self, 'Rename Node', 'Rename to:', text=node.name)
+            if ok:
+                if text in [x.name for x in mdl0.objects]:
+                    AutoFix.get().error('Polygon with name {} already exists!'.format(text))
+                    return
+                node.rename(text)
+
+    def delete_node(self):
+        node = self.get_indexed_item(self.clicked_index)
+        if self.level == 1:
+            node.parent.remove_mdl0(node.name)
+            self.on_brres_update(node.parent)
+        elif self.level == 2:
+            node.parent.remove_polygon(node)
+            self.on_brres_update(node.parent.parent)
+
+    def open_file(self):
+        self.handler.open_dialog()
+
     def import_file(self):
-        self.handler.import_file_dialog(self.get_indexed_item(self.clicked_index))
+        if self.level > 0:
+            self.handler.import_file_dialog(mdl0=self.get_indexed_item(self.clicked_index))
+        else:
+            self.handler.import_file_dialog(self.get_indexed_item(self.clicked_index))
 
     def export_file(self):
-        self.handler.export_file_dialog()
+        if self.level > 0:
+            self.handler.export_file_dialog(mdl0=self.get_indexed_item(self.clicked_index))
+        else:
+            self.handler.export_file_dialog(self.get_indexed_item(self.clicked_index))
 
     def close_file(self):
         self.handler.close_file(self.get_indexed_item(self.clicked_index))
 
     def start_context_menu(self, position, level):
         menu = QMenu()
-        if level == 0:  # top level
+        if level == -1:
+            self.create_default_menu(menu)
+        elif level == 0:  # top level
             self.create_brres_menu(menu)
         elif level == 1:  # mdl0
-            pass
+            self.create_mdl0_menu(menu)
         else:  # polygon
-            pass
+            self.create_polygon_menu(menu)
         menu.exec_(self.viewport().mapToGlobal(position))
 
     def on_context_click(self, position):
@@ -90,7 +172,11 @@ class BrresTreeView(QTreeView):
         if len(indexes) > 0:
             self.clicked_index = indexes[0]
             level = self.get_indexed_level(self.clicked_index)
-            self.start_context_menu(position, level)
+        else:
+            self.clicked_index = None
+            level = -1
+        self.level = level
+        self.start_context_menu(position, level)
 
     def dragEnterEvent(self, event):
         m = event.mimeData()
@@ -168,14 +254,17 @@ class BrresTreeView(QTreeView):
         # this needs to be changed if it's anything other than the clicked index
         try:
             item = self.brres_map.pop(brres.name)
-            self.unlink_tree(item)
-            self.mdl.removeRow(item.row())
+            if item:
+                self.unlink_tree(item)
+                self.mdl.removeRow(item.row())
         except KeyError:
             pass
 
     def on_brres_rename(self, old_name, new_name):
-        self.brres_map[new_name] = self.brres_map[old_name]
-        self.brres_map[old_name] = None
+        item = self.brres_map.get(old_name)
+        if item is not None:
+            self.brres_map[new_name] = item
+            self.brres_map[old_name] = None
 
     def on_brres_update(self, brres):
         """This provides a way to update brres tree (after conversion)"""
@@ -191,7 +280,11 @@ class QLinkedItem(QStandardItem, ClipableObserver):
         self.linked_item = linked_item
         linked_item.register_observer(self)
 
-    def on_rename_update(self, node):
+    def __del__(self):
+        if self.linked_item is not None:
+            self.linked_item.unregister(self)
+
+    def on_rename_update(self, node, old_name):
         if self.use_base_name:
             name = os.path.basename(node.name)
         else:
@@ -202,3 +295,4 @@ class QLinkedItem(QStandardItem, ClipableObserver):
 
     def unlink(self):
         self.linked_item.unregister(self)
+        self.linked_item = None

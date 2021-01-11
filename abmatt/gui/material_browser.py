@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import QWidget, QGridLayout, QScrollArea, QVBoxLayout, QLab
 from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
 from abmatt.brres.lib.node import ClipableObserver
+from abmatt.brres.material_library import MaterialLibrary
 from abmatt.brres.mdl0.material.material import Material
 from abmatt.gui.brres_path import BrresPath, get_material_by_url
 from abmatt.gui.color_widget import ColorWidget
@@ -26,8 +27,8 @@ class MaterialTabs(QWidget, MatWidgetHandler):
     def on_close(self):
         self.material_library.on_close()
 
-    def on_brres_name_update(self, old_name, new_name):
-        self.scene_library.on_brres_name_update(old_name, new_name)
+    def on_name_update(self):
+        self.scene_library.on_name_update()
 
     def locate_material(self, brres_path):
         mat = self.material_library.locate_material(brres_path)
@@ -44,7 +45,7 @@ class MaterialTabs(QWidget, MatWidgetHandler):
         self.tabBar = tab_widget.tabBar()
         # self.tabBar.setMouseTracking(True)
         # self.tabBar.installEventFilter(self)
-        self.material_library = MaterialLibrary(self)
+        self.material_library = MaterialLibraryGui(self)
         tab_widget.addTab(self.material_library, 'Library Materials')
         self.scene_library = MaterialBrowser(self)
         tab_widget.addTab(self.scene_library, 'Scene Materials')
@@ -97,15 +98,12 @@ class MaterialTabs(QWidget, MatWidgetHandler):
 
 
 class MaterialBrowser(QWidget, MatWidgetHandler):
-    def on_brres_name_update(self, old_name, new_name):
+    def on_name_update(self):
         old_mats = self.materials
         new_mats = {}
         for x in old_mats:
-            if old_name in x:
-                bp = old_mats[x].get_brres_path()
-                new_mats[bp] = old_mats[x]
-            else:
-                new_mats[x] = old_mats[x]
+            bp = old_mats[x].get_brres_path()
+            new_mats[bp] = old_mats[x]
         self.materials = new_mats
 
     def on_material_select(self, material):
@@ -182,17 +180,18 @@ class MaterialBrowser(QWidget, MatWidgetHandler):
         return False
 
 
-class MaterialLibrary(MaterialBrowser):
+class MaterialLibraryGui(MaterialBrowser):
     """
     Material Browser that can also add and remove materials and be saved
     """
 
     def __init__(self, parent):
         super().__init__(parent)
-        material_library, self.brres = Brres.get_material_library(True)
+        material_library = MaterialLibrary.get()
+        self.brres = material_library.brres
         self.is_material_removable = True
         self.setAcceptDrops(True)
-        self.add_materials(material_library.values())
+        self.add_materials(material_library.materials.values())
 
     def on_close(self):
         if self.brres is not None:
@@ -403,7 +402,7 @@ class MaterialSmallEditor(QFrame, ClipableObserver, Tex0WidgetSubscriber):
         self.update_children(child.parent)
 
     def set_material(self, material):
-        if material is not self.material:
+        if material is not self.material and material is not None:
             if self.material:
                 self.material.unregister(self)
             self.material = material
