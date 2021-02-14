@@ -12,14 +12,12 @@ install:
   - python -m easy_install -U setuptools
   - pip install -r requirements.txt
 
-  # Install abmatt
-  - pip install -e .
-
   # NSIS
   - ps choco install -y nsis.install
   - set "PATH=%PATH%;C:\Program Files (x86)\NSIS"
 
-build:
+build_script:
+  - pip install -e .
   - python abmatt/build/build.py $(APPVEYOR_BUILD_VERSION)
 
 test_script:
