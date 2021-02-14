@@ -5,6 +5,7 @@ import numpy as np
 
 from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
+from abmatt.brres.material_library import MaterialLibrary
 from abmatt.brres.mdl0.material import material
 from abmatt.brres.mdl0.mdl0 import Mdl0
 from abmatt.converters import matrix
@@ -22,11 +23,28 @@ class Converter:
     class ConvertError(Exception):
         pass
 
+    def __init__(self, brres, mdl_file, flags=0, encode=True, mdl0=None):
+        if not brres:
+            # filename = Brres.getExpectedBrresFileName(mdl_file)
+            d, f = os.path.split(mdl_file)
+            filename = os.path.join(d, os.path.splitext(f)[0] + '.brres')
+            brres = Brres.get_brres(filename, True)
+        self.brres = brres
+        self.texture_library = brres.get_texture_map()
+        self.mdl_file = mdl_file
+        self.mdl0 = mdl0
+        self.flags = flags
+        self.image_library = set()
+        self.replacement_model = None
+        self.encode = encode
+
     def _start_saving(self, mdl0):
         AutoFix.get().info('Exporting to {}...'.format(self.mdl_file))
         self.start = time.time()
-        if not mdl0:
-            self.mdl0 = mdl0 = self.brres.models[0]
+        if mdl0 is None:
+            mdl0 = self.mdl0
+            if mdl0 is None:
+                self.mdl0 = mdl0 = self.brres.models[0]
         self.cwd = os.getcwd()
         dir, name = os.path.split(self.mdl_file)
         if dir:
@@ -48,7 +66,7 @@ class Converter:
         self.start = time.time()
         self.cwd = os.getcwd()
         self.mdl_file = os.path.abspath(self.mdl_file)
-        self.material_library = Brres.get_material_library()
+        self.material_library = MaterialLibrary.get().materials
         brres_dir, brres_name = os.path.split(self.brres.name)
         base_name = os.path.splitext(brres_name)[0]
         self.is_map = True if 'map' in base_name else False
@@ -68,9 +86,13 @@ class Converter:
         return mdl0
 
     def _init_mdl0(self, brres_name, mdl_name, mdl0_name):
-        if mdl0_name is None:
-            mdl0_name = self.__get_mdl0_name(brres_name, mdl_name)
-        self.replacement_model = self.brres.getModel(mdl0_name)
+        if self.mdl0 is not None:
+            self.replacement_model = self.mdl0
+            mdl0_name = self.mdl0.name
+        else:
+            if mdl0_name is None:
+                mdl0_name = self.__get_mdl0_name(brres_name, mdl_name)
+            self.replacement_model = self.brres.getModel(mdl0_name)
         self.mdl0 = Mdl0(mdl0_name, self.brres)
         return self.mdl0
 
@@ -168,21 +190,6 @@ class Converter:
                 AutoFix.get().warn('Failed to encode images')
         return image_paths
 
-    def __init__(self, brres, mdl_file, flags=0, encode=True):
-        if not brres:
-            # filename = Brres.getExpectedBrresFileName(mdl_file)
-            d, f = os.path.split(mdl_file)
-            filename = os.path.join(d, os.path.splitext(f)[0] + '.brres')
-            brres = Brres.get_brres(filename, True)
-        self.brres = brres
-        self.texture_library = brres.get_texture_map()
-        self.mdl_file = mdl_file
-        self.mdl0 = None
-        self.flags = flags
-        self.image_library = set()
-        self.replacement_model = None
-        self.encode = encode
-
     def convert(self):
         if self.encode:
             self.load_model()
@@ -190,19 +197,13 @@ class Converter:
             self.save_model()
 
     def __eq__(self, other):
-        if other is None:
-            return False
-        if self.encode != other.encode:
-            return False
-        if self.encode:
-            return self.mdl_file == other.mdl_file
-        else:
-            return self.brres == other.brres
+        return type(self) == type(other) and self.brres is other.brres and self.mdl0 is other.mdl0 \
+               and self.mdl_file == other.mdl_file and self.encode == other.encode and self.flags == other.flags
 
-    def load_model(self, model_name):
+    def load_model(self, model_name=None):
         raise NotImplementedError()
 
-    def save_model(self, mdl0):
+    def save_model(self, mdl0=None):
         raise NotImplementedError()
 
 

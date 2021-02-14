@@ -28,9 +28,6 @@ class SRTCollection(Node):
         for x in self.collection:
             yield x
 
-    def rename(self, new_name):
-        self.name = new_name
-
     def add(self, mat_animation):
         self.collection.append(mat_animation)
 

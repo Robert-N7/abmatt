@@ -77,7 +77,7 @@ class Mdl0(SubFile):
         self.pat0_collection = None
         self.DrawOpa = self.DrawXlu = self.NodeTree = self.NodeMix = None
         self.weights_by_id = None
-        self.polygons_added = False
+        self.rebuild_head = False
         self.boneMatrixCount = 0
         self.minimum = [0] * 3
         self.maximum = [0] * 3
@@ -206,6 +206,33 @@ class Mdl0(SubFile):
         # self.mark_modified()
         return new_mat
 
+    def __remove_and_rebuild_index(self, item, group, if_not_in_group):
+        if item is not None and item not in if_not_in_group:
+            group.remove(item)
+            self.rebuild_indexes(group)
+
+    def remove_polygon(self, polygon):
+        self.objects.remove(polygon)
+        self.rebuild_indexes(self.objects)
+        self.rebuild_head = True
+        if len(polygon.material.polygons) == 1:
+            self.remove_material(polygon.material)
+        self.__remove_and_rebuild_index(polygon.get_vertex_group(), self.vertices,
+                                        [x.get_vertex_group() for x in self.objects])
+        self.__remove_and_rebuild_index(polygon.get_normal_group(), self.normals,
+                                        [x.get_normal_group() for x in self.objects])
+        self.__remove_and_rebuild_index(polygon.get_color_group(), self.colors,
+                                        [x.get_color_group() for x in self.objects])
+        if polygon.uv_count:
+            uv_groups = set()
+            for x in self.objects:
+                for i in range(x.uv_count):
+                    uv_groups.add(x.get_uv_group(i))
+            for i in range(polygon.uv_count):
+                self.__remove_and_rebuild_index(polygon.get_uv_group(i), self.uvs, uv_groups)
+        self.mark_modified()
+
+
     def add_material(self, material):
         """
         Adds material to model
@@ -220,7 +247,7 @@ class Mdl0(SubFile):
         if self.get_material_by_name(material.name):
             raise RuntimeError(f'Material with name {material.name} is already in model!')
         self.materials.append(material)
-        # self.mark_modified()
+        self.mark_modified()
         return material
 
     def remove_material(self, material):
@@ -264,7 +291,7 @@ class Mdl0(SubFile):
         polygon.material = material
         polygon.visible_bone = bone
         polygon.draw_priority = priority
-        self.polygons_added = True
+        self.rebuild_head = True
 
     # ---------------------------------- SRT0 ------------------------------------------
     def set_srt0(self, srt0_collection):
@@ -338,13 +365,15 @@ class Mdl0(SubFile):
 
     # ------------------ Name --------------------------------------
     def rename(self, name):
-        result = None
-        if name != self.name:
-            result = self.parent.renameModel(self.name, name)
-            if result:
-                self.name = result
-                self.is_map_model = True if 'map' in name else False
-            self.mark_modified()
+        for x in self.parent.models:
+            if x is not self and x.name == name:
+                AutoFix.get().error('Unable to rename {}, the model {} already exists!'.format(self.name, name))
+                return False
+        old_name = self.name
+        result = super().rename(name)
+        if result:
+            self.parent.on_model_rename(self, old_name, name)
+            self.is_map_model = True if 'map' in name else False
         return result
 
     # ------------------------------------ Materials ------------------------------
@@ -447,11 +476,7 @@ class Mdl0(SubFile):
             for x in self.pat0_collection:
                 x.brres_textures = brres_textures
 
-    def rename_material(self, material, new_name):
-        # first check if name is available
-        for x in self.materials:
-            if new_name == x.name:
-                raise ValueError('The name {} is already taken!'.format(new_name))
+    def on_material_rename(self, material, new_name):
         if material.srt0:
             material.srt0.rename(new_name)
         elif self.srt0_collection:
@@ -502,7 +527,7 @@ class Mdl0(SubFile):
         Checks model (somewhat) for validity
         """
         super(Mdl0, self).check()
-        if self.polygons_added:
+        if self.rebuild_head:
             self.rebuild_header()
         if expected_name:
             if expected_name != self.name:

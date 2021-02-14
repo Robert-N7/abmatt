@@ -5,6 +5,7 @@ import sys
 from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
 from abmatt.brres.lib.matching import validBool, MATCHING, parse_color, validInt
+from abmatt.brres.material_library import MaterialLibrary
 from abmatt.brres.mdl0.material.layer import Layer
 from abmatt.brres.mdl0.mdl0 import Mdl0
 from abmatt.brres.mdl0.shader import Shader, Stage
@@ -43,7 +44,7 @@ def set_remove_unused(val):
 def load_config(app_dir, loudness=None, autofix_level=None):
     conf = Config.get_instance(os.path.join(app_dir, 'config.conf'))
     tmp_dir = os.path.join(app_dir, 'temp_files')
-    Brres.MATERIAL_LIBRARY = os.path.join(app_dir, 'mat_lib.brres')
+    MaterialLibrary.LIBRARY_PATH = os.path.join(app_dir, 'mat_lib.brres')
     converter = ImgConverter(tmp_dir)
     Tex0.converter = converter
     if not loudness:
@@ -107,7 +108,7 @@ def load_config(app_dir, loudness=None, autofix_level=None):
     return conf
 
 
-VERSION = '0.8.0'
+VERSION = '0.9.0'
 USAGE = "USAGE: abmatt [command_line][--interactive -f <file> -b <brres-file> -d <destination> --overwrite]"
 
 
