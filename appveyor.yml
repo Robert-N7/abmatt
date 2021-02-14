@@ -8,7 +8,7 @@ environment:
   APPVEYOR_SAVE_CACHE_ON_ERROR: true
 
   matrix:
-    - fast_finish: true
+      fast_finish: true
     - PYTHON: C:\Python39-x64
       PYTHON_VERSION: 3.9
 
