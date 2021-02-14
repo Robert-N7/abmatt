@@ -4,22 +4,27 @@ image:
   - macOS
 
 install:
+  # Setup python
+  - python --version
+  - python -c "import sys, platform, struct;
+    print(sys.platform, platform.machine(), struct.calcsize('P')*8)"
+  - python -m pip install -U pip
+  - python -m easy_install -U setuptools
+  - pip install -r requirements.txt
+
+  # Install abmatt
+  - pip install -e .
+
   # NSIS
-  - ps: |
-      if (Test-Path "C:/Program Files (x86)/NSIS/makensis.exe") {
-          echo "using nsis from cache"
-      } else {
-          choco install -y nsis.install
-      }
+  - ps choco install -y nsis.install
   - set "PATH=%PATH%;C:\Program Files (x86)\NSIS"
 
-build_script:
-  setup.py install
-  abmatt/build/build.py $(APPVEYOR_BUILD_VERSION)
+build:
+  - python abmatt/build/build.py $(APPVEYOR_BUILD_VERSION)
 
 test_script:
   - cd tests/integration
-  - start.py
+  - python start.py
   - cd ../..
 
 artifacts:
