@@ -3,7 +3,29 @@ image:
   - Ubuntu
   - macOS
 
+environment:
+  # See https://www.appveyor.com/docs/build-cache/#saving-cache-for-failed-build.
+  APPVEYOR_SAVE_CACHE_ON_ERROR: true
+
+  matrix:
+    - PYTHON: C:\Python39-x64
+      PYTHON_VERSION: 3.9
+
+    - PYTHON: C:\Python39
+      PYTHON_VERSION: 3.9
+
+cache:
+  # Cache downloaded pip packages and built wheels.
+  - '%LOCALAPPDATA%\pip\Cache\http'
+  - '%LOCALAPPDATA%\pip\Cache\wheels'
+
 install:
+  - C:\cygwin\bin\du -hs "%LOCALAPPDATA%\pip\Cache"
+    # Prepend newly installed Python to the PATH of this build (this cannot be
+    # done from inside the powershell script as it would require to restart
+    # the parent CMD process).
+  - SET PATH=%PYTHON%;%PYTHON%\Scripts;%PATH%
+
   # Setup python
   - python --version
   - python -c "import sys, platform, struct;
