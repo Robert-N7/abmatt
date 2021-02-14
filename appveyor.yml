@@ -1,0 +1,46 @@
+image:
+  - Visual Studio 2019
+  - Ubuntu
+  - macOS
+
+install:
+  # Setup python
+  - python --version
+  - python -c "import sys, platform, struct;
+    print(sys.platform, platform.machine(), struct.calcsize('P')*8)"
+  - python -m pip install -U pip
+  - python -m easy_install -U setuptools
+  - pip install -r requirements.txt
+
+  # NSIS
+  - ps choco install -y nsis.install
+  - set "PATH=%PATH%;C:\Program Files (x86)\NSIS"
+
+build_script:
+  - pip install -e .
+  - python abmatt/build/build.py $(APPVEYOR_BUILD_VERSION)
+
+test_script:
+  - cd tests/integration
+  - python start.py
+  - cd ../..
+
+artifacts:
+  - path: 'abmatt\dist\abmatt_*.zip'
+    name: Abmatt-zip
+  - path: 'abmatt\dist\abmatt_*.tar.gz'
+    name: Abmatt-tar
+
+deploy:
+  release: ABMatt v$(APPVEYOR_BUILD_VERSION)
+  description: 'Release description'
+  provider: GitHub
+  auth_token:
+    secure: 6KTk86aiAEvcI6ogZAbY8iW75JpWLvs2vipWcPfIdWDQKoXsdpzq7tP5Zaq8jdrn
+  artifact: Abmatt-zip Abmatt-tar
+  draft: true
+  prerelease: false
+  on:
+    branch:
+      - release
+      - master
