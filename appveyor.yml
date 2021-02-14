@@ -35,7 +35,7 @@ install:
   - pip install -r requirements.txt
 
   # NSIS
-  - ps choco install -y nsis.install
+  - ps choco install nsis.install
   - set "PATH=%PATH%;C:\Program Files (x86)\NSIS"
 
 build_script:
