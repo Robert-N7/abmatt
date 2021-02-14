@@ -3,6 +3,7 @@ import sys
 
 import numpy as np
 
+from abmatt.autofix import AutoFix
 from abmatt.converters.arg_parse import cmdline_convert
 from abmatt.converters.convert_lib import Converter
 from abmatt.converters.geometry import Geometry, decode_polygon
@@ -23,7 +24,7 @@ class ObjConverter(Converter):
             # geo.encode(self.mdl0)
             mat = geometry.material_name
             if mat in material_geometry_map:
-                material_geometry_map[mat].combine(geometry)
+                material_geometry_map[mat].combine(geo)
             else:
                 material_geometry_map[mat] = geo
         return material_geometry_map
@@ -81,9 +82,11 @@ class ObjConverter(Converter):
         geo.vertices = geometry.vertices
         geo.normals = geometry.normals
         geo.has_normals = bool(geo.normals)
+        if geometry.colors:
+            AutoFix.get().warn('Loss of color data for {}'.format(geo.name))
         texcoords = geometry.texcoords
-        # if len(texcoords) > 1:
-        #     print('WARN: Loss of UV data for {}.'.format(geo.name))
+        if len(texcoords) > 1:
+            AutoFix.get().warn('Loss of UV data for {}.'.format(geo.name))
         stack = [geo.vertices.face_indices]
         if len(texcoords):
             geo.texcoords = texcoords[0]

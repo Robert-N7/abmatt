@@ -342,8 +342,11 @@ class Window(QMainWindow, ClipableObserver):
         if mdl0 is not None:
             brres = mdl0.parent
         multiple_models = False
-        if brres is None:
+        if not brres:
             brres = self.brres
+            if not brres:
+                AutoFix.get().error('Nothing to export!')
+                return
         elif mdl0 is None:
             if len(brres.models) > 1:
                 multiple_models = True
