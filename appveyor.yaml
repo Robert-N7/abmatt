@@ -14,6 +14,7 @@ install:
   - set "PATH=%PATH%;C:\Program Files (x86)\NSIS"
 
 build_script:
+  setup.py install
   abmatt/build/build.py $(APPVEYOR_BUILD_VERSION)
 
 test_script:
