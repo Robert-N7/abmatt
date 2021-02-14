@@ -74,7 +74,10 @@ def main(args):
         print('No configuration file!')
         sys.exit(1)
     config = Config(config_path)
-    version = config['version']
+    if(len(args)):
+        version = args[0]
+    else:
+        version = config['version']
     run_update_version([version], config)
     x = ImportChecker(os.path.dirname(os.path.dirname(__file__)))
     x.check_imports()
