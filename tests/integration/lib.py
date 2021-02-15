@@ -3,6 +3,8 @@ import subprocess
 import sys
 import colorama
 
+from abmatt.autofix import AutoFix
+
 colorama.init()
 
 class bcolors:

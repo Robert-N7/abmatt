@@ -24,9 +24,9 @@ def main():
         # cleanup
         for file in files.values():
             file.close()
-    except (AttributeError, ValueError, IndexError, KeyError) as e:
+    except:
         AutoFix.get().quit()
-        raise e
+        raise
     AutoFix.get().quit()
 
 
