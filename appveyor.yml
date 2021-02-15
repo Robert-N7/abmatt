@@ -43,7 +43,7 @@ install:
 build_script:
   - pip install -e .
   - cd abmatt/build
-  - cmd python build.py %APPVEYOR_BUILD_VERSION%
+  - cmd build.py %APPVEYOR_BUILD_VERSION%
   - cd ../..
 
 test_script:
