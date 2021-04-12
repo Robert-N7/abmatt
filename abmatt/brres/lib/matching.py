@@ -15,7 +15,14 @@ def fuzzy_match(text, group, acceptable_ratio=84):
         if r > best_ratio:
             best_ratio = r
             bssf = x
-    return bssf if best_ratio > acceptable_ratio else None
+    if best_ratio < acceptable_ratio:
+        for x in group:
+            r = fuzz.partial_ratio(lower, x.name.lower())
+            if r > best_ratio:
+                best_ratio = r
+                bssf = x
+
+    return bssf if best_ratio >= acceptable_ratio else None
 
 
 def fuzzy_strings(text, strings, acceptable_ratio=84):

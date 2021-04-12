@@ -5,6 +5,7 @@ import numpy as np
 
 from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
+from abmatt.brres.lib.matching import fuzzy_match
 from abmatt.brres.material_library import MaterialLibrary
 from abmatt.brres.mdl0.material import material
 from abmatt.brres.mdl0.mdl0 import Mdl0
@@ -127,16 +128,17 @@ class Converter:
         return np.allclose(mtx, matrix.IDENTITY)
 
     def _encode_material(self, generic_mat):
+        m = None
         if self.replacement_model:
             m = self.replacement_model.get_material_by_name(generic_mat.name)
-            if m is None:
-                m = self.material_library.get(generic_mat)
-            if m is not None:
-                mat = material.Material.get_unique_material(generic_mat.name, self.mdl0)
-                self.mdl0.add_material(mat)
-                mat.paste(m)
-            else:
-                mat = generic_mat.encode(self.mdl0)
+        if m is None:
+            m = self.material_library.get(generic_mat)
+            if m is None and self.replacement_model:
+                m = fuzzy_match(generic_mat.name, self.replacement_model.materials)
+        if m is not None:
+            mat = material.Material.get_unique_material(generic_mat.name, self.mdl0)
+            self.mdl0.add_material(mat)
+            mat.paste(m)
         else:
             mat = generic_mat.encode(self.mdl0)
         for x in mat.layers:

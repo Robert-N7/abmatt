@@ -263,13 +263,17 @@ class Dae:
         tri_node = first(mesh, 'triangles')
         if not material_name:
             material_name = tri_node.attrib['material']
-        inputs = [x for x in tri_node.iter('input')]
+        inputs = []
         stride = 0
+        uniqueOffsets = []
         indices = []
+        for input in tri_node.iter('input'):
+            offset = int(input.attrib['offset'])
+            if offset not in uniqueOffsets:   # duplicate
+                uniqueOffsets.append(offset)
+            inputs.append(input)
         for x in tri_node.iter('p'):
             indices.extend([int(index) for index in x.text.split()])
-        # indices = [int(x) for x in tri_node['p'].text.split()]
-        triangles = np.array(indices, np.uint16).reshape((-1, 3, len(inputs)))
         vertices = normals = colors = None
         texcoords = []
         data_inputs = []
@@ -290,6 +294,11 @@ class Dae:
                 data_types.append(input.attrib['semantic'])
                 offsets.append(offset)
                 stride += 1
+        triangles = np.array(indices, np.uint16).reshape((-1, 3, len(uniqueOffsets)))
+        count = tri_node.attrib.get('count')
+        if count is not None and int(count) != triangles.shape[0]:
+            raise ValueError('Failed to parse {} triangles of unexpected shape, expected {} and got {}'.format(material_name, count, triangles.shape[0]))
+
         for i in range(len(data_inputs)):
             decode_type = data_types[i]
             face_indices = np.copy(triangles[:, :, offsets[i]])
@@ -486,7 +495,7 @@ class Dae:
     def __initialize_assets(self, root):
         asset = XMLNode('asset', parent=root)
         contributor = XMLNode('contributor', parent=asset)
-        authoring_tool = XMLNode('authoring_tool', 'ABMATT COLLADA exporter v0.9.1', parent=contributor)
+        authoring_tool = XMLNode('authoring_tool', 'ABMATT COLLADA exporter v0.9.2', parent=contributor)
         time_stamp = datetime.now()
         created = XMLNode('created', str(time_stamp), parent=asset)
         modified = XMLNode('modified', str(time_stamp), parent=asset)
