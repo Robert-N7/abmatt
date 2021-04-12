@@ -27,7 +27,7 @@ class MaterialContainer(QTabWidget, ClipableObserver):
         self.material = material
         material.register_observer(self)
         self.setWindowTitle('Material Editor')
-        self.resize(700, 700)
+        self.resize(800, 800)
         self.show()
 
     def on_node_update(self, node):
