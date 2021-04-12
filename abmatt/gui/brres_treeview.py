@@ -37,6 +37,8 @@ class BrresTreeView(QTreeView):
 
     @staticmethod
     def get_indexed_item(index):
+        if index is None:
+            return None
         return index.model().itemFromIndex(index).linked_item
 
     @staticmethod
