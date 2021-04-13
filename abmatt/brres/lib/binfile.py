@@ -38,7 +38,7 @@ class BinFile:
 
         # debugging
         # self.linked_offsets = []
-        # self.target = [18231, 18267, 18284, 18285]
+        # self.target = [2183799]
         # end debugging
 
         self.isWriteMode = (mode == 'w')
@@ -344,13 +344,13 @@ class BinFile:
         # debugging
         # for x in self.target:
         #     if self.offset >= x - 4:
-        #         return len
-        return len
+        #         self.target.remove(x)
+        #         return
+        # return
 
     def writeOffset(self, fmt, offset, args):
         """ packs data at offset, must be less than file length """
         pack_into(self.bom + fmt, self.file, offset, args)
-        return len
 
     def writeRemaining(self, data):
         """ writes the remaining bytes at current offset """

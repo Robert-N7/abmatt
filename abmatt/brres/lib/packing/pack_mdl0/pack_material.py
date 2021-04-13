@@ -168,7 +168,7 @@ class PackMaterial(Packer):
         mat = self.node
         bp.pack_alpha_function(binfile, mat.ref0, mat.ref1, mat.comp0, mat.comp1, mat.logic)
         bp.pack_zmode(binfile, mat.depth_test, mat.depth_update, mat.depth_function)
-        bp.pack_bp_mask(binfile)
+        bp.pack_bp_mask(binfile, 0xffe3)
         bp.pack_blend_mode(binfile, mat.blend_enabled, mat.blend_logic_enabled, mat.blend_dither,
                            mat.blend_update_color, mat.blend_update_alpha, mat.blend_subtract, mat.blend_logic,
                            mat.blend_source, mat.blend_dest)

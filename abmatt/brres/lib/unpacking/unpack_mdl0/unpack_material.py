@@ -109,7 +109,7 @@ class UnpackMaterial(Unpacker):
     def unpack_matgx(self, mat, binfile):
         mat.ref0, mat.ref1, mat.comp0, mat.comp1, mat.logic = bp.unpack_alpha_function(binfile)
         mat.depth_test, mat.depth_update, mat.depth_function = bp.unpack_zmode(binfile)
-        bp.unpack_bp(binfile)   # mask
+        assert(bp.unpack_bp(binfile) == 0xffe3)   # mask
         mat.blend_enabled, mat.blend_logic_enabled, mat.blend_dither, \
             mat.blend_update_color, mat.blend_update_alpha, \
             mat.blend_subtract, mat.blend_logic, \

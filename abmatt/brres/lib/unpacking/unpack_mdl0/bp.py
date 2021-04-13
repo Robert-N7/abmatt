@@ -142,7 +142,7 @@ class UnpackIndMtx(Unpacker):
 
 
 def unpack_color(binfile, is_constant):
-    red, alpha = unpack_color_reg(binfile)
+    alpha, red = unpack_color_reg(binfile)
     green, blue = unpack_color_reg(binfile)
     if not is_constant:
         binfile.advance(10)
@@ -151,7 +151,7 @@ def unpack_color(binfile, is_constant):
 
 def unpack_color_reg(binfile):
     data = unpack_bp(binfile)
-    return data >> 12 & 0x7ff, data & 0xfff
+    return data >> 12 & 0xfff, data & 0xfff
 
 
 def unpack_bp(binfile, return_enabled=False):
