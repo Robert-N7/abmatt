@@ -6,6 +6,7 @@ environment:
     - PYTHON: C:\Python39
       PYTHON_VERSION: 3.9
       fast_finish: true
+      PYTHONPATH:
 
 
 install:
@@ -13,7 +14,7 @@ install:
     # done from inside the powershell script as it would require to restart
     # the parent CMD process).
   - SET PATH=%PYTHON%;%PYTHON%\Scripts;%PATH%
-
+  - SET PYTHONPATH=%CD%
   # Setup python
   - python --version
   - python -c "import sys, platform, struct;
