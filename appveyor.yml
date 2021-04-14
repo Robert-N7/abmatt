@@ -14,7 +14,6 @@ environment:
 stack: python %PYTHON%
 
 install:
-  - SET PATH=%PYTHON%;%PATH%
   - py --version
   - py -m pip install tox
 
@@ -27,7 +26,8 @@ artifacts:
   - path: 'abmatt\dist\abmatt_*.tar.gz'
     name: Abmatt-tar
 
-before_deploy:
+after_build:
+  - SET PYTHONPATH=%pwd%
   - cd abmatt/build
   - echo %APPVEYOR_BUILD_VERSION%
   - py build.py %APPVEYOR_BUILD_VERSION%
@@ -48,15 +48,21 @@ for:
         fast_finish: true
         PYTHON: "C:\\Python39"
 
-  before_deploy:
+  install:
+    - SET PATH=%PYTHON%;%PATH%
+    - py --version
+    - py -m pip install tox
+
+  after_build:
     # NSIS
+    - SET PYTHONPATH=%CD%
     - ps choco install nsis.install
     - set "PATH=%PATH%;C:\Program Files (x86)\NSIS"
     - curl -fsS https://nsis.sourceforge.io/mediawiki/images/7/7f/EnVar_plugin.zip -o plugin.zip
     - 7z x plugin.zip -o"C:\Program Files (x86)\NSIS"
     - cd abmatt/build
     - echo %APPVEYOR_BUILD_VERSION%
-    - build.py %APPVEYOR_BUILD_VERSION%
+    - py build.py %APPVEYOR_BUILD_VERSION%
     - cd ../..
 
   artifacts:
