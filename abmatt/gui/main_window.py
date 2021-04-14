@@ -185,6 +185,7 @@ class Window(QMainWindow, ClipableObserver):
         vert_layout.addWidget(self.logger)
 
         self.treeview = BrresTreeView(self)
+        self.treeview.setMinimumWidth(300)
         center_layout.addWidget(self.treeview)
         self.poly_editor = PolyEditor(self)
         center_layout.addWidget(self.poly_editor)
