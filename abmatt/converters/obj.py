@@ -231,7 +231,7 @@ class Obj():
         elif start == 'mtllib':
             self.mtllib = words[0]
         else:
-            raise self.ObjParseException('Unknown statement {} {}'.format(start, words.join(' ')))
+            raise self.ObjParseException('Unknown statement {} {}'.format(start, ' '.join(words)))
 
     def parse_mtl_words(self, words, material):
         first = words.pop(0)
