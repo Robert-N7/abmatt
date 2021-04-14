@@ -21,7 +21,7 @@ install:
     print(sys.platform, platform.machine(), struct.calcsize('P')*8)"
   - python -m pip install -U --force-reinstall pip
   - python -m easy_install -U setuptools
-  - pip install -r requirements.txt --user
+  - py -m pip install -r requirements.txt --user
 
   # NSIS
   - ps choco install nsis.install
@@ -30,14 +30,14 @@ install:
   - 7z x plugin.zip -o"C:\Program Files (x86)\NSIS"
 
 build_script:
-  - pip install -e .
+  - py -m pip install -e .
   - cd abmatt/build
   - echo %APPVEYOR_BUILD_VERSION%
-  - build.py %APPVEYOR_BUILD_VERSION%
+  - py build.py %APPVEYOR_BUILD_VERSION%
   - cd ../..
 
 test_script:
-  - tox
+  - py -m tox
 
 artifacts:
   - path: 'abmatt\dist\abmatt_*.zip'
