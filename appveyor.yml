@@ -1,49 +1,67 @@
 image:
   - Visual Studio 2019
+  - Ubuntu
 
 environment:
   matrix:
-    - PYTHON: C:\Python39
-      PYTHON_VERSION: 3.9
+    - TOXENV: py36
       fast_finish: true
-      PYTHONPATH:
+      PYTHON: "3.6"
+    - TOXENV: py39
+      fast_finish: true
+      PYTHON: "3.9"
 
+stack: python %PYTHON%
 
 install:
-    # Prepend newly installed Python to the PATH of this build (this cannot be
-    # done from inside the powershell script as it would require to restart
-    # the parent CMD process).
-  - SET PATH=%PYTHON%;%PYTHON%\Scripts;%PATH%
-  - SET PYTHONPATH=%CD%
-  # Setup python
   - python --version
-  - python -c "import sys, platform, struct;
-    print(sys.platform, platform.machine(), struct.calcsize('P')*8)"
-  - python -m pip install -U --force-reinstall pip
-  - python -m easy_install -U setuptools
-  - py -m pip install -r requirements.txt --user
+  - pip install tox
 
-  # NSIS
-  - ps choco install nsis.install
-  - set "PATH=%PATH%;C:\Program Files (x86)\NSIS"
-  - curl -fsS https://nsis.sourceforge.io/mediawiki/images/7/7f/EnVar_plugin.zip -o plugin.zip
-  - 7z x plugin.zip -o"C:\Program Files (x86)\NSIS"
-
-build_script:
-  - py -m pip install -e .
-  - cd abmatt/build
-  - echo %APPVEYOR_BUILD_VERSION%
-  - py build.py %APPVEYOR_BUILD_VERSION%
-  - cd ../..
+build: off
 
 test_script:
   - py -m tox
 
 artifacts:
-  - path: 'abmatt\dist\abmatt_*.zip'
-    name: Abmatt-zip
   - path: 'abmatt\dist\abmatt_*.tar.gz'
     name: Abmatt-tar
+
+before_deploy:
+  - cd abmatt/build
+  - echo %APPVEYOR_BUILD_VERSION%
+  - py build.py %APPVEYOR_BUILD_VERSION%
+  - cd ../..
+
+for:
+-
+  matrix:
+    only:
+      - image: Visual Studio 2019
+
+  environment:
+    matrix:
+      - TOXENV: py36
+        fast_finish: true
+        PYTHON: "C:\\Python36"
+      - TOXENV: py39
+        fast_finish: true
+        PYTHON: "C:\\Python39"
+
+  before_deploy:
+    # NSIS
+    - ps choco install nsis.install
+    - set "PATH=%PATH%;C:\Program Files (x86)\NSIS"
+    - curl -fsS https://nsis.sourceforge.io/mediawiki/images/7/7f/EnVar_plugin.zip -o plugin.zip
+    - 7z x plugin.zip -o"C:\Program Files (x86)\NSIS"
+    - cd abmatt/build
+    - echo %APPVEYOR_BUILD_VERSION%
+    - build.py %APPVEYOR_BUILD_VERSION%
+    - cd ../..
+
+  artifacts:
+    - path: 'abmatt\dist\abmatt_*.zip'
+      name: Abmatt-zip
+
 
 deploy:
   release: ABMatt v$(APPVEYOR_BUILD_VERSION)
