@@ -42,16 +42,21 @@ class Window(QMainWindow, ClipableObserver):
         self.shell = None
         for file in brres_files:
             self.open(file.name)
+        AutoFix.get().info('Initialized main window', 5)
         self.show()
 
     def __init_threads(self):
+        AutoFix.get().info('Starting threads...', 5)
         self.threadpool = QThreadPool()     # for multi-threading
+        self.threadpool.setMaxThreadCount(5)
         self.converter = converter = ConvertManager.get()
         converter.signals.on_conversion_finish.connect(self.on_conversion_finish)
         self.image_manager = image_manager = ImageManager.get()
         if image_manager.enabled:
             image_manager.signals.on_image_update.connect(self.on_image_update)
             self.threadpool.start(image_manager)
+        else:
+            AutoFix.get().warn('Image Manager disabled, do you have Wiimms SZS Tools installed?')
         self.threadpool.start(converter)
         log_pipe = LoggerPipe()
         log_pipe.info_sig.connect(self.info)
@@ -164,9 +169,9 @@ class Window(QMainWindow, ClipableObserver):
     def __init_child_UI(self, top_layout):
         # left
         vert_widget = QWidget(self)
-        policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.MinimumExpanding)
-        policy.setHorizontalStretch(2)
-        vert_widget.setSizePolicy(policy)
+        # policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.MinimumExpanding)
+        # policy.setHorizontalStretch(2)
+        # vert_widget.setSizePolicy(policy)
         top_layout.addWidget(vert_widget)
         self.left = vert_layout = QVBoxLayout()
         vert_widget.setLayout(vert_layout)
@@ -180,6 +185,7 @@ class Window(QMainWindow, ClipableObserver):
         vert_layout.addWidget(self.logger)
 
         self.treeview = BrresTreeView(self)
+        self.treeview.setMinimumWidth(300)
         center_layout.addWidget(self.treeview)
         self.poly_editor = PolyEditor(self)
         center_layout.addWidget(self.poly_editor)
@@ -416,6 +422,7 @@ class Window(QMainWindow, ClipableObserver):
                 return
             for x in files_to_save:
                 x.close()
+        self.threadpool.clear()
         self.image_manager.stop()
         self.converter.stop()
         event.accept()
@@ -443,7 +450,7 @@ def main():
     if getattr(sys, 'frozen', False):
         base_path = sys.executable
     else:
-        base_path = os.path.dirname(__file__)
+        base_path = os.path.dirname(os.path.abspath(__file__))
     load_config.parse_args(argv, base_path)
     exe = QApplication(argv)
     exe.setStyle('Fusion')

@@ -143,7 +143,7 @@ def pack_color(binfile, index, color, is_constant):
 
 
 def pack_color_reg(binfile, bpmem, left_bits, right_bits):
-    data = (left_bits & 0x7ff) << 12 | right_bits & 0xfff
+    data = (left_bits & 0xfff) << 12 | right_bits & 0xfff
     pack_bp(binfile, bpmem, data)
 
 

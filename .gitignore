@@ -1,13 +1,37 @@
 *.o
 *.out
 *.exe
-*.gch
 *.tags*
-*.pyc
+
+# Mario Kart Wii general files
 *.brres
 *.szs
 *.d
+
+# Pycharm
+__pycache*
+.idea*
+*.spec
+*.pyc
+*.gch
+venv*
+
+# Temporary files
 tmp.*
+tmp/*
+temp/*
 temp.*
 test.*
-__pycache*
+temp_files*
+
+# build and dist folders
+abmatt/dist/abmatt_*
+abmatt/dist/main*
+abmatt/build/main*
+abmatt/build/version
+
+# debugging files
+names.txt
+
+#Images
+*.png
