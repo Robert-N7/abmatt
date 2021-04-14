@@ -7,10 +7,6 @@ environment:
       PYTHON_VERSION: 3.9
       fast_finish: true
 
-    - PYTHON: C:\Python39
-      PYTHON_VERSION: 3.9
-      fast_finish: true
-
 
 install:
     # Prepend newly installed Python to the PATH of this build (this cannot be
@@ -40,7 +36,7 @@ build_script:
   - cd ../..
 
 test_script:
-  - tox
+  - cmd tox
 
 artifacts:
   - path: 'abmatt\dist\abmatt_*.zip'
