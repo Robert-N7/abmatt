@@ -21,7 +21,7 @@ install:
 build: off
 
 test_script:
-  - py -m tox
+  - py -m tox -e %TOXENV%
 
 artifacts:
   - path: 'abmatt\dist\abmatt_*.tar.gz'
