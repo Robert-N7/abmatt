@@ -3,6 +3,7 @@
 ANoob's Brres Material Editor
 For editing Mario Kart Wii files
 """
+import os.path
 import sys
 
 from abmatt import load_config
@@ -18,7 +19,7 @@ def main():
     if getattr(sys, 'frozen', False):
         base_path = sys.executable
     else:
-        base_path = __file__
+        base_path = os.path.abspath(__file__)
     try:
         files = load_config.parse_args(argv, base_path)
         # cleanup

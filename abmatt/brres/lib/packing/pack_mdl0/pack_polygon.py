@@ -88,6 +88,16 @@ class PackPolygon(Packer):
             return point.get_format()
         return 0
 
+    def get_format_color(self, color):
+        if color:
+            return color.get_format()
+        return 5
+
+    def get_format_uv(self, uv):
+        if uv:
+            return uv.get_format()
+        return 4
+
     def get_divisor(self, point):
         if point:
             return point.get_divisor()
@@ -102,21 +112,21 @@ class PackPolygon(Packer):
         uvs = poly.get_uvs()
         tex_e = poly.tex_e
         uvata = poly.vertex_e | self.get_format(vert) << 1 | self.get_divisor(vert) << 4 \
-                | poly.normal_e << 9 | self.get_format(normal) << 10 \
-                | poly.color0_e << 13 | self.get_format(color0) << 14 \
-                | poly.color1_e << 17 | self.get_format(color1) << 18 \
-                | tex_e[0] << 21 | self.get_format(uvs[0]) << 22 | self.get_divisor(uvs[0]) << 25 \
+                | poly.normal_e << 9 | self.get_format_uv(normal) << 10 \
+                | poly.color0_e << 13 | self.get_format_color(color0) << 14 \
+                | poly.color1_e << 17 | self.get_format_color(color1) << 18 \
+                | tex_e[0] << 21 | self.get_format_uv(uvs[0]) << 22 | self.get_divisor(uvs[0]) << 25 \
                 | 1 << 30 | poly.normal_index3 << 31
 
         shifter = uvatb = 0
         for i in range(1, 4):
-            uvatb |= (self.get_format(uvs[i]) << 1 | self.get_divisor(uvs[i]) << 4 | tex_e[i]) << shifter
+            uvatb |= (self.get_format_uv(uvs[i]) << 1 | self.get_divisor(uvs[i]) << 4 | tex_e[i]) << shifter
             shifter += 9
-        uvatb |= poly.tex_e[4] << shifter | self.get_format(uvs[4]) << shifter + 1 | 1 << 31
+        uvatb |= poly.tex_e[4] << shifter | self.get_format_uv(uvs[4]) << shifter + 1 | 1 << 31
         shifter = 5
         uvatc = self.get_divisor(uvs[4])
         for i in range(5, 8):
-            uvatc |= (tex_e[i] | self.get_format(uvs[i]) << 1 | self.get_divisor(uvs[i]) << 3) << shifter
+            uvatc |= (tex_e[i] | self.get_format_uv(uvs[i]) << 1 | self.get_divisor(uvs[i]) << 3) << shifter
             shifter += 9
         return uvata, uvatb, uvatc
 

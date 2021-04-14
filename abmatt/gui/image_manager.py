@@ -112,6 +112,7 @@ class ImageManager(QRunnable, ClipableObserver, ImageHandler):
     @pyqtSlot()
     def run(self):
         try:
+            AutoFix.get().info('Started image manager...', 5)
             self.__clean()
             while self.enabled:
                 if len(self.queue):
@@ -122,9 +123,9 @@ class ImageManager(QRunnable, ClipableObserver, ImageHandler):
         except:
             AutoFix.get().exception(shutdown=True)
 
-
     def __enqueue(self, brres):
-        self.queue.append(brres)
+        if brres not in self.queue:
+            self.queue.append(brres)
         self.is_ready = False
 
     def enqueue(self, brres):
@@ -156,7 +157,6 @@ class ImageManager(QRunnable, ClipableObserver, ImageHandler):
             self.signals.on_image_update.emit((brres, folder_name))
         except DecodeError as e:
             AutoFix.get().exception(e)
-        # self.__on_update_brres_images(name, folder_name)
 
     def __get_unique_folder_name(self):
         return os.path.join(self.tmp_dir, str(uuid.uuid4()))

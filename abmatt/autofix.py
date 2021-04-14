@@ -181,9 +181,9 @@ class AutoFix:
         if self.loudness >= 5:      # Debug level
             s = traceback.format_exception(exc_type, exc_value, exc_tb)
         elif self.loudness >= 1:
-            s = traceback.format_exception(exc_type, exc_value, exc_tb, 3)
+            s = traceback.format_exception(exc_type, exc_value, exc_tb, 10)
         else:
-            s = traceback.format_exception_only(exc_type, exc_value)
+            s = traceback.format_exception(exc_type, exc_value, exc_tb, 3)
         self.enqueue(self.Error(''.join(s)))
         if shutdown:
             self.thread.join(5)

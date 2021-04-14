@@ -1,11 +1,12 @@
+pip~=20.1.1
 argparse~=1.2.1
 wheel~=0.34.2
 setuptools~=44.1.1
 fuzzywuzzy~=0.18.0
 python-levenshtein~=0.12.0
 pycollada~=0.7.1
-numpy~=1.19.1
-pillow~=8.0
+numpy~=1.19.5
+pillow~=8.2.0
 
 pyinstaller~=4.0
 ifilter~=0.2

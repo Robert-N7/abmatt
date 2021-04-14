@@ -141,6 +141,9 @@ class UnpackPolygon(Unpacker):
         # polygon.color0_format = uvata >> 14 & 7
         polygon.color1_e = uvata >> 17 & 1
         # polygon.color1_format = uvata >> 18 & 7
+
+        # polygon.tex_format = [0] * 8
+        # polygon.tex_divisor = [0] * 8
         polygon.tex_e[0] = uvata >> 21 & 1
         # polygon.tex_format[0] = uvata >> 22 & 7
         # polygon.tex_divisor[0] = uvata >> 25 & 0x1f

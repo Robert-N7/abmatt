@@ -60,6 +60,7 @@ class ConvertManager(QRunnable):
 
     @pyqtSlot()
     def run(self):
+        AutoFix.get().info('Started converter... ', 5)
         try:
             while True:
                 if len(self.queue):

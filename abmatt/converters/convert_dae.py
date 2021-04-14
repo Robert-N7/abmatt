@@ -18,6 +18,7 @@ class DaeConverter2(Converter):
     def load_model(self, model_name=None):
         self._start_loading(model_name)
         self.bones = {}
+        self.bones_by_name = {}
         self.dae = dae = Dae(self.mdl_file)
         self.__parse_materials(dae.get_materials())
         self.controllers = []
@@ -30,6 +31,7 @@ class DaeConverter2(Converter):
                     matrix[i][i] = dae.unit_meter
         material_geometry_map = {}
         self.__parse_nodes(dae.get_scene(), material_geometry_map, matrix)
+        self.__combine_bones_map()
         self.__parse_controllers(material_geometry_map)
         self.influences.encode_bone_weights(self.mdl0)
         for material in material_geometry_map:
@@ -121,6 +123,9 @@ class DaeConverter2(Converter):
     def __add_bone(self, node, parent_bone=None, matrix=None):
         name = node.attrib['id']
         self.bones[name] = bone = self.mdl0.add_bone(name, parent_bone)
+        name = node.attrib.get('name')
+        if name is not None:
+            self.bones_by_name[name] = bone
         self.set_bone_matrix(bone, matrix)
         for n in node.nodes:
             self.__add_bone(n, bone, matrix=n.get_matrix())
@@ -152,6 +157,12 @@ class DaeConverter2(Converter):
                 bone_added = True
             if not bone_added:
                 self.__parse_nodes(node.nodes, {}, current_node_matrix)
+
+    def __combine_bones_map(self):
+        """Adds the bones by name to bones (in case naming is different than id)"""
+        for bone_name in self.bones_by_name:
+            if not bone_name in self.bones:
+                self.bones[bone_name] = self.bones_by_name[bone_name]
 
     def __parse_materials(self, materials):
         for material in materials:
