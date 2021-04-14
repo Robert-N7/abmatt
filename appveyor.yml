@@ -17,7 +17,7 @@ install:
   - python --version
   - python -m pip install tox
 
-build:
+build-script:
   - export PYTHONPATH=$pwd
   - cd abmatt/build
   - echo %APPVEYOR_BUILD_VERSION%
@@ -51,7 +51,7 @@ for:
     - python --version
     - python -m pip install tox
 
-  build:
+  build-script:
     # NSIS
     - SET PYTHONPATH=%CD%
     - ps choco install nsis.install
