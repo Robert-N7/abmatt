@@ -14,8 +14,9 @@ environment:
 stack: python %PYTHON%
 
 install:
-  - python --version
-  - pip install tox
+  - SET PATH=%PYTHON%;%PATH%
+  - py --version
+  - py -m pip install tox
 
 build: off
 
