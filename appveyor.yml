@@ -16,9 +16,10 @@ stack: python %PYTHON%
 install:
   - python --version
   - python -m pip install tox
+  - python -m pip install -r requirements.txt
 
 build_script:
-  - export PYTHONPATH=$pwd
+  - export PYTHONPATH=$PYTHONPATH:$pwd
   - cd abmatt/build
   - echo %APPVEYOR_BUILD_VERSION%
   - python build.py %APPVEYOR_BUILD_VERSION%
@@ -50,6 +51,7 @@ for:
     - SET PATH=%PYTHON%;%PATH%
     - py --version
     - py -m pip install tox
+    - py -m pip install -r requirements.txt
 
   build_script:
     # NSIS
