@@ -112,6 +112,7 @@ class ImageManager(QRunnable, ClipableObserver, ImageHandler):
     @pyqtSlot()
     def run(self):
         try:
+            AutoFix.get().info('Started image manager...', 5)
             self.__clean()
             while self.enabled:
                 if len(self.queue):
