@@ -14,10 +14,15 @@ environment:
 stack: python %PYTHON%
 
 install:
-  - py --version
-  - py -m pip install tox
+  - python --version
+  - python -m pip install tox
 
-build: off
+build:
+  - export PYTHONPATH=$pwd
+  - cd abmatt/build
+  - echo %APPVEYOR_BUILD_VERSION%
+  - py build.py %APPVEYOR_BUILD_VERSION%
+  - cd ../..
 
 test_script:
   - py -m tox -e %TOXENV%
@@ -25,13 +30,6 @@ test_script:
 artifacts:
   - path: 'abmatt\dist\abmatt_*.tar.gz'
     name: Abmatt-tar
-
-after_build:
-  - SET PYTHONPATH=%pwd%
-  - cd abmatt/build
-  - echo %APPVEYOR_BUILD_VERSION%
-  - py build.py %APPVEYOR_BUILD_VERSION%
-  - cd ../..
 
 for:
 -
@@ -50,10 +48,10 @@ for:
 
   install:
     - SET PATH=%PYTHON%;%PATH%
-    - py --version
-    - py -m pip install tox
+    - python --version
+    - python -m pip install tox
 
-  after_build:
+  build:
     # NSIS
     - SET PYTHONPATH=%CD%
     - ps choco install nsis.install
@@ -62,7 +60,7 @@ for:
     - 7z x plugin.zip -o"C:\Program Files (x86)\NSIS"
     - cd abmatt/build
     - echo %APPVEYOR_BUILD_VERSION%
-    - py build.py %APPVEYOR_BUILD_VERSION%
+    - python build.py %APPVEYOR_BUILD_VERSION%
     - cd ../..
 
   artifacts:
