@@ -34,6 +34,9 @@ class Geometry:
         self.linked_bone = linked_bone
 
     def combine(self, geometry):
+        """Combines geometries if they match up
+        influences are not combined so they must be equal
+        """
         if not self.__geometry_matches(geometry):
             return False
         self.vertices.combine(geometry.vertices)
@@ -45,12 +48,9 @@ class Geometry:
             self.normals.combine(geometry.normals)
         if self.colors:
             self.colors.combine(geometry.colors)
-        if self.influences:
-            self.influences.combine(geometry.influences)
         if self.triangles is not None and geometry.triangles is not None:
             self.triangles = np.append(self.triangles, geometry.triangles, 0)
         return True
-        # todo bone indices
 
     def swap_y_z_axis(self):
         collections = [self.vertices, self.normals]
