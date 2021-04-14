@@ -29,8 +29,8 @@ install:
   # NSIS
   - ps choco install nsis.install
   - set "PATH=%PATH%;C:\Program Files (x86)\NSIS"
-  - curl -fsS https://nsis.sourceforge.io/mediawiki/images/7/7f/EnVar_plugin.zip
-  - 7z x EnVar_plugin.zip -o"C:\Program Files (x86)\NSIS"
+  - curl -fsS https://nsis.sourceforge.io/mediawiki/images/7/7f/EnVar_plugin.zip -o plugin.zip
+  - 7z x plugin.zip -o"C:\Program Files (x86)\NSIS"
 
 build_script:
   - pip install -e .
