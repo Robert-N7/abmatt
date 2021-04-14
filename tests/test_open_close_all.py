@@ -4,11 +4,12 @@ import unittest
 
 from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
+from tests.lib import AbmattTest
 
 
-class TestOpenCloseAll(unittest.TestCase):
+class TestOpenCloseAll(AbmattTest):
     def test_open_close(self):
-        dir = '../brres_files'
+        dir = os.path.join(self.base_path, 'brres_files')
         output = os.path.join(dir, 'test.brres')
         for x in os.listdir(dir):
             current_file = os.path.join(dir, x)
@@ -24,5 +25,4 @@ class TestOpenCloseAll(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    sys.exit(0)
 

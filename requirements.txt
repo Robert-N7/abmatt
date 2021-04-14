@@ -13,3 +13,4 @@ ifilter~=0.2
 colorama~=0.4.3
 lxml~=4.6.2
 PyQt5~=5.15.1
+tox~=3.23.0

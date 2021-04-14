@@ -1,17 +1,19 @@
+import os
 import sys
 import unittest
 
 from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
+from tests.lib import AbmattTest
 
 
-class ChangePolyMatTest(unittest.TestCase):
+class ChangePolyMatTest(AbmattTest):
     def __init__(self, *args, **kwargs):
-        self.brres = Brres('../brres_files/beginner_course.brres')
+        self.brres = self._get_brres('beginner_course.brres')
         self.poly = self.brres.models[0].objects[0]
         self.mat = self.poly.get_material()
-        self.simple = Brres('../brres_files/simple.brres')
-        self.output = '../brres_files/test.brres'
+        self.simple = self._get_brres('simple.brres')
+        self.output = self._get_brres_fname('test.brres')
         super().__init__(*args, **kwargs)
 
     def test_from_same_brres(self):
@@ -44,4 +46,3 @@ class ChangePolyMatTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    sys.exit(0)

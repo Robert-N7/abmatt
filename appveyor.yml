@@ -1,12 +1,7 @@
 image:
   - Visual Studio 2019
-  - Ubuntu
-  - macOS
 
 environment:
-  # See https://www.appveyor.com/docs/build-cache/#saving-cache-for-failed-build.
-  APPVEYOR_SAVE_CACHE_ON_ERROR: true
-
   matrix:
     - PYTHON: C:\Python39-x64
       PYTHON_VERSION: 3.9
@@ -16,13 +11,8 @@ environment:
       PYTHON_VERSION: 3.9
       fast_finish: true
 
-cache:
-  # Cache downloaded pip packages and built wheels.
-  - '%LOCALAPPDATA%\pip\Cache\http'
-  - '%LOCALAPPDATA%\pip\Cache\wheels'
 
 install:
-  - C:\cygwin\bin\du -hs "%LOCALAPPDATA%\pip\Cache"
     # Prepend newly installed Python to the PATH of this build (this cannot be
     # done from inside the powershell script as it would require to restart
     # the parent CMD process).
@@ -34,11 +24,13 @@ install:
     print(sys.platform, platform.machine(), struct.calcsize('P')*8)"
   - python -m pip install -U --force-reinstall pip
   - python -m easy_install -U setuptools
-  - pip install -r requirements.txt
+  - pip install -r requirements.txt --user
 
   # NSIS
   - ps choco install nsis.install
   - set "PATH=%PATH%;C:\Program Files (x86)\NSIS"
+  - curl -fsS https://nsis.sourceforge.io/mediawiki/images/7/7f/EnVar_plugin.zip
+  - 7z x EnVar_plugin.zip -o"C:\Program Files (x86)\NSIS"
 
 build_script:
   - pip install -e .
@@ -48,9 +40,7 @@ build_script:
   - cd ../..
 
 test_script:
-  - cd tests/integration
-  - python start.py & exit 0
-  - cd ../..
+  - tox
 
 artifacts:
   - path: 'abmatt\dist\abmatt_*.zip'
