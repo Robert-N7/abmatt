@@ -3,7 +3,7 @@ image:
 
 environment:
   matrix:
-    - PYTHON: C:\Python39-x64
+    - PYTHON: C:\Python39
       PYTHON_VERSION: 3.9
       fast_finish: true
 
@@ -36,7 +36,7 @@ build_script:
   - cd ../..
 
 test_script:
-  - cmd tox
+  - tox
 
 artifacts:
   - path: 'abmatt\dist\abmatt_*.zip'
