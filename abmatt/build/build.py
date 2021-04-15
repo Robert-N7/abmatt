@@ -7,7 +7,7 @@ import sys
 import time
 from threading import Thread
 
-from abmatt.config import Config
+from config import Config
 from check_imports import ImportChecker
 from get_bit_width import get_bit_width
 from update_version import run_update_version
