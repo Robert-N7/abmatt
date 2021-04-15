@@ -1,5 +1,5 @@
 build_name = main   # build output name
 build_type = onedir   # the type of build, (auto|onefile|onedir)
-version = 0.9.3
-run_integration_tests = True
-run_unit_tests = True
+version = 0.9.42
+run_integration_tests = False
+run_unit_tests = False

@@ -351,6 +351,9 @@ def decode_indices(polygon, fmt_str):
                 pass
             else:
                 raise Converter.ConvertError('Texture matrices not supported')
+        elif cmd == 0x00:
+            AutoFix.get().warn('Finished parsing {} indices early, possible bug?'.format(polygon.name))
+            break
         else:
             raise ValueError('Unsupported draw cmd {}'.format(cmd))
     return face_point_indices, weight_groups

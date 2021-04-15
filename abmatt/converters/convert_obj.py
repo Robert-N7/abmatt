@@ -111,6 +111,8 @@ class ObjConverter(Converter):
                 tex = self.texture_library.get(name)
                 if tex:
                     self.tex0_map[name] = tex
+                else:
+                    AutoFix.get().warn('No texture found matching {}'.format(name))
             if first:
                 path = os.path.join(self.image_dir, name + '.png')
                 mat.diffuse_map = path

@@ -28,7 +28,7 @@ for file in os.listdir(data_dir):
 
 # calling the setup function
 setup(name='abmatt',
-      version='0.9.3',
+      version='0.9.42',
       entry_points={
           'console_scripts': [
               'abmatt = abmatt.__main__:main'

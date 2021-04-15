@@ -1,0 +1,85 @@
+image:
+  - Visual Studio 2019
+  - Ubuntu
+
+environment:
+  matrix:
+    - TOXENV: py36
+      fast_finish: true
+      PYTHON: "3.6"
+    - TOXENV: py39
+      fast_finish: true
+      PYTHON: "3.9"
+
+stack: python %PYTHON%
+
+install:
+  - python --version
+  - python -m pip install tox
+  - python -m pip install -r requirements.txt
+
+build_script:
+  - export PYTHONPATH=$PYTHONPATH:$pwd
+  - cd abmatt/build
+  - echo %APPVEYOR_BUILD_VERSION%
+  - python build.py %APPVEYOR_BUILD_VERSION%
+  - cd ../..
+
+test_script:
+  - py -m tox -e %TOXENV%
+
+artifacts:
+  - path: 'abmatt\dist\abmatt_*.tar.gz'
+    name: Abmatt-tar
+
+for:
+-
+  matrix:
+    only:
+      - image: Visual Studio 2019
+
+  environment:
+    matrix:
+      - TOXENV: py36
+        fast_finish: true
+        PYTHON: "C:\\Python36"
+      - TOXENV: py39
+        fast_finish: true
+        PYTHON: "C:\\Python39"
+
+  install:
+    - SET PATH=%PYTHON%;%PATH%
+    - py --version
+    - py -m pip install tox
+    - py -m pip install -r requirements.txt
+
+  build_script:
+    # NSIS
+    - SET PYTHONPATH=%CD%
+    - ps choco install nsis.install
+    - set "PATH=%PATH%;C:\Program Files (x86)\NSIS"
+    - curl -fsS https://nsis.sourceforge.io/mediawiki/images/7/7f/EnVar_plugin.zip -o plugin.zip
+    - 7z x plugin.zip -o"C:\Program Files (x86)\NSIS"
+    - cd abmatt/build
+    - echo %APPVEYOR_BUILD_VERSION%
+    - py build.py %APPVEYOR_BUILD_VERSION%
+    - cd ../..
+
+  artifacts:
+    - path: 'abmatt\dist\abmatt_*.zip'
+      name: Abmatt-zip
+
+
+deploy:
+  release: ABMatt v$(APPVEYOR_BUILD_VERSION)
+  description: 'Release description'
+  provider: GitHub
+  auth_token:
+    secure: 6KTk86aiAEvcI6ogZAbY8iW75JpWLvs2vipWcPfIdWDQKoXsdpzq7tP5Zaq8jdrn
+  artifact: Abmatt-zip Abmatt-tar
+  draft: true
+  prerelease: false
+  on:
+    branch:
+      - release
+      - master

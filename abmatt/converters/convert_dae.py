@@ -3,6 +3,7 @@ import sys
 
 import numpy as np
 
+from abmatt.autofix import AutoFix
 from abmatt.converters.arg_parse import cmdline_convert
 from abmatt.converters.controller import get_controller
 from abmatt.converters.convert_lib import Converter
@@ -26,7 +27,7 @@ class DaeConverter2(Converter):
         # geometry
         matrix = np.identity(4)
         if self.DETECT_FILE_UNITS:
-            if dae.unit_meter != 1:     # set the matrix scale to convert to meters
+            if not np.isclose(dae.unit_meter, 1.0):     # set the matrix scale to convert to meters
                 for i in range(3):
                     matrix[i][i] = dae.unit_meter
         material_geometry_map = {}
@@ -95,9 +96,12 @@ class DaeConverter2(Converter):
                 specular_map = layer
             if layer not in self.tex0_map:
                 tex0 = self.texture_library.get(layer)
-                map_path = layer + '.png'
-                mesh.add_image(layer, os.path.join(self.image_dir, map_path))
-                self.tex0_map[layer] = tex0
+                if tex0 is None:
+                    AutoFix.get().warn('No texture found matching {}'.format(layer))
+                else:
+                    map_path = layer + '.png'
+                    mesh.add_image(layer, os.path.join(self.image_dir, map_path))
+                    self.tex0_map[layer] = tex0
         return Material(material.name, diffuse_map, ambient_map, specular_map, material.xlu * 0.5)
 
     def __parse_controllers(self, material_geometry_map):
@@ -122,13 +126,14 @@ class DaeConverter2(Converter):
 
     def __add_bone(self, node, parent_bone=None, matrix=None):
         name = node.attrib['id']
-        self.bones[name] = bone = self.mdl0.add_bone(name, parent_bone)
-        name = node.attrib.get('name')
-        if name is not None:
-            self.bones_by_name[name] = bone
-        self.set_bone_matrix(bone, matrix)
-        for n in node.nodes:
-            self.__add_bone(n, bone, matrix=n.get_matrix())
+        if name not in self.bones:
+            self.bones[name] = bone = self.mdl0.add_bone(name, parent_bone)
+            name = node.attrib.get('name')
+            if name is not None and name not in self.bones_by_name:
+                self.bones_by_name[name] = bone
+            self.set_bone_matrix(bone, matrix)
+            for n in node.nodes:
+                self.__add_bone(n, bone, matrix=n.get_matrix())
 
     def __add_geometry(self, geometry, material_geometry_map):
         geo = material_geometry_map.get(geometry.material_name)

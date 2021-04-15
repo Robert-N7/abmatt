@@ -146,6 +146,8 @@ class ImgConverter:
                 elif not self.get_tmp_dir():
                     self.set_tmp_dir(os.path.join(os.getcwd(), str(uuid.uuid4())))
                     self.cleanup = True
+            else:
+                AutoFix.get().error('wimgt not found, please install Wiimms SZS Tools on your system path.')
             super(ImgConverter.Wimgt, self).__init__(program)
 
         def __del__(self):

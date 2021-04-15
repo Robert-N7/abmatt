@@ -4,9 +4,10 @@ import unittest
 import numpy as np
 
 from abmatt.converters.matrix import srt_to_matrix, matrix_to_srt
+from tests.lib import AbmattTest
 
 
-class TestMatrix(unittest.TestCase):
+class TestMatrix(AbmattTest):
 
     def test_srt_to_matrix(self):
         matrix = np.array([[-0.000000, -0.000000, -1.000000, -2255.436279],
@@ -32,4 +33,3 @@ class TestMatrix(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    sys.exit(0)
