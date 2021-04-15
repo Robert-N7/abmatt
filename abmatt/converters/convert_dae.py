@@ -21,7 +21,8 @@ class DaeConverter2(Converter):
         self.bones = {}
         self.bones_by_name = {}
         self.dae = dae = Dae(self.mdl_file)
-        self.__parse_materials(dae.get_materials())
+        materials = self.__parse_materials(dae.get_materials())
+        material_names = {x.name for x in materials}
         self.controllers = []
         self.influences = InfluenceManager()   # this is to track all influences, consolidating from each controller
         # geometry
@@ -36,6 +37,9 @@ class DaeConverter2(Converter):
         self.__parse_controllers(material_geometry_map)
         self.influences.encode_bone_weights(self.mdl0)
         for material in material_geometry_map:
+            if material not in material_names:
+                self._encode_material(Material(material))
+                material_names.add(material)
             geometries = material_geometry_map[material]
             for x in geometries:
                 self.__encode_geometry(x)
@@ -45,13 +49,13 @@ class DaeConverter2(Converter):
     def save_model(self, mdl0=None):
         base_name, mdl0 = self._start_saving(mdl0)
         mesh = Dae(initial_scene_name=base_name)
-        decoded_mats = [self.__decode_material(x, mesh) for x in mdl0.materials]
+        self.decoded_mats = [self.__decode_material(x, mesh) for x in mdl0.materials]
         # polygons
         polygons = mdl0.objects
         mesh.add_node(self.__decode_bone(mdl0.bones[0]))
         for polygon in polygons:
             mesh.add_node(self.__decode_geometry(polygon))
-        for mat in decoded_mats:
+        for mat in self.decoded_mats:
             mesh.add_material(mat)
         self._end_saving(mesh)
 
@@ -170,8 +174,8 @@ class DaeConverter2(Converter):
                 self.bones[bone_name] = self.bones_by_name[bone_name]
 
     def __parse_materials(self, materials):
-        for material in materials:
-            self._encode_material(material)
+        return [self._encode_material(material) for material in materials]
+
 
 
 def main():
