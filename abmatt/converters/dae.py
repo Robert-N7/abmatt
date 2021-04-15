@@ -82,7 +82,13 @@ class Dae:
         self.xml.write(filename, pretty_print=True, xml_declaration=True, encoding='utf-8')
 
     def get_scene(self):
-        return [self.decode_node(x) for x in self.scene]
+        self.node_ids = set()
+        nodes = []
+        for x in self.scene:
+            node = self.decode_node(x)
+            if node is not None:
+                nodes.append(node)
+        return nodes
 
     def get_materials(self):
         return [self.decode_material(x) for x in self.materials]
@@ -122,6 +128,10 @@ class Dae:
 
     def decode_node(self, xml_node):
         node = ColladaNode(first(xml_node, 'id'), xml_node.attrib)
+        node_id = node.attrib.get('id')
+        if node_id is not None and node_id in self.node_ids:
+            return None
+        self.node_ids.add(node_id)
         for child in xml_node:
             if child.tag == 'instance_controller':
                 geom = self.get_referenced_element(child, 'url')
@@ -134,7 +144,9 @@ class Dae:
             elif child.tag == 'extra':
                 node.extra = child
             elif child.tag == 'node':
-                node.nodes.append(self.decode_node(child))
+                n = self.decode_node(child)
+                if n is not None:
+                    node.nodes.append(n)
             elif child.tag == 'scale':
                 node.scale([float(x) for x in child.text.split()])
             elif child.tag == 'rotate':
