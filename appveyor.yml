@@ -22,7 +22,7 @@ build_script:
   - export PYTHONPATH=$PYTHONPATH:$pwd
   - cd abmatt/build
   - echo $APPVEYOR_BUILD_VERSION
-  - python build.py $APPVEYOR_BUILD_VERSION%
+  - python build.py $APPVEYOR_BUILD_VERSION
   - cd ../..
 
 test_script:
