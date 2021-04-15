@@ -274,7 +274,11 @@ class Dae:
         mesh = first(xml_geometry, 'mesh')
         tri_node = first(mesh, 'triangles')
         if not material_name:
-            material_name = tri_node.attrib['material']
+            material_name = tri_node.attrib.get('material')
+            if not material_name:
+                for attrib in xml_geometry.attrib:
+                    material_name = xml_geometry.attrib[attrib] + '-mat'
+                    break
         inputs = []
         stride = 0
         uniqueOffsets = []
@@ -656,7 +660,10 @@ class Dae:
 
     @staticmethod
     def __get_bound_material(node):
-        bound_material = first(first(first(node, 'bind_material'), 'technique_common'), 'instance_material')
-        return bound_material.attrib['target'][1:]
+        try:
+            bound_material = first(first(first(node, 'bind_material'), 'technique_common'), 'instance_material')
+            return bound_material.attrib['target'][1:]
+        except AttributeError:
+            return None
 
 
