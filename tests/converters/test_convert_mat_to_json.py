@@ -3,7 +3,7 @@ from copy import deepcopy
 
 from abmatt.brres.mdl0.material.material import Material
 from abmatt.converters.convert_mats_to_json import MatsToJsonConverter
-from tests.lib import test_mats_equal, TestBeginner
+from tests.lib import TestBeginner
 
 
 class TestConvertMatToJson(TestBeginner):
@@ -16,8 +16,8 @@ class TestConvertMatToJson(TestBeginner):
         importer = MatsToJsonConverter(temp)
         mats = importer.load()
         importer.load_into(updated)
-        self.assertTrue(test_mats_equal(materials, updated))
-        self.assertTrue(test_mats_equal(materials, mats))
+        self.assertTrue(self._test_mats_equal(materials, updated))
+        self.assertTrue(self._test_mats_equal(materials, mats))
 
 
 if __name__ == '__main__':
