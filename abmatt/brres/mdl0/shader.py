@@ -36,7 +36,7 @@ class Shader(Clipable):
         """
         return self.stages == item.stages and \
                self.swap_table == item.swap_table and \
-               self.indTexCoords == item.indTexCoords and self.indTexMaps == item.indTexMaps
+               it_eq(self.indTexCoords, item.indTexCoords) and it_eq(self.indTexMaps, item.indTexMaps)
 
     def get_colors_used(self):
         colors = set()
@@ -103,20 +103,41 @@ class Shader(Clipable):
                 value = value[i + 1:]
             except IndexError:
                 raise ValueError('Argument required after ":"')
-        value = validInt(value, 0, 8)
+        is_single_value = True
+        fun = values = None
+        try:
+            value = validInt(value, 0, 8)
+        except ValueError:
+            value = parseValStr(value)
+            is_single_value = False
+            values = [validInt(x) for x in value]
         if self.SETTINGS[0] in key:  # indirect map
-            if self.indTexMaps[key2] != value:
-                self.indTexMaps[key2] = value
-                self.mark_modified()
+            fun = self.set_ind_map
         elif self.SETTINGS[1] in key:  # indirect coord
-            if self.indTexCoords[key2] != value:
-                self.indTexCoords[key2] = value
-                self.onUpdateIndirectStages(self.countIndirectStages())
-                self.mark_modified()
+            fun = self.set_ind_coord
         elif self.SETTINGS[2] == key:  # stage count
+            if not is_single_value:
+                value = len(values)
             self.set_stage_count(value)
+            return
         else:
             raise ValueError('Unknown Key {} for shader'.format(key))
+        if is_single_value:
+            fun(key2, value)
+        else:
+            for i in range(len(values)):
+                fun(i, values[i])
+
+    def set_ind_coord(self, i, value):
+        if self.indTexCoords[i] != value:
+            self.indTexCoords[i] = value
+            self.onUpdateIndirectStages(self.countIndirectStages())
+            self.mark_modified()
+
+    def set_ind_map(self, i, value):
+        if self.indTexMaps[i] != value:
+            self.indTexMaps[i] = value
+            self.mark_modified()
 
     def set_stage_count(self, value):
         current_len = len(self.stages)

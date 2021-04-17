@@ -40,7 +40,7 @@ class ObjConverter(Converter):
             except KeyError:
                 self._encode_material(Material(material))
             material_geometry_map[material].encode(mdl)
-        self._import_images(self.__convert_set_to_map(obj.images))
+        self.import_textures_map = self.__convert_set_to_map(obj.images)
         return self._end_loading()
 
     def save_model(self, mdl0=None):

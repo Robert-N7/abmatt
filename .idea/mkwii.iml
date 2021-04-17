@@ -7,6 +7,18 @@
       <excludeFolder url="file://$MODULE_DIR$/venv" />
       <excludeFolder url="file://$MODULE_DIR$/venv1" />
       <excludeFolder url="file://$MODULE_DIR$/venv2" />
+      <excludeFolder url="file://$MODULE_DIR$/abmatt/build/main" />
+      <excludeFolder url="file://$MODULE_DIR$/abmatt/build/main-gui" />
+      <excludeFolder url="file://$MODULE_DIR$/abmatt/dist/abmatt_windows-10_x64-0.9.1" />
+      <excludeFolder url="file://$MODULE_DIR$/abmatt/dist/abmatt_windows-10_x64-0.9.2" />
+      <excludeFolder url="file://$MODULE_DIR$/abmatt/dist/abmatt_windows-10_x64-0.9.3" />
+      <excludeFolder url="file://$MODULE_DIR$/abmatt/dist/abmatt_windows-10_x64-0.9.42" />
+      <excludeFolder url="file://$MODULE_DIR$/abmatt/dist/main" />
+      <excludeFolder url="file://$MODULE_DIR$/abmatt/dist/main-gui" />
+      <excludeFolder url="file://$MODULE_DIR$/etc/abmatt/temp_files" />
+      <excludeFolder url="file://$MODULE_DIR$/test_files/test_maps" />
+      <excludeFolder url="file://$MODULE_DIR$/.pytest_cache" />
+      <excludeFolder url="file://$MODULE_DIR$/tmp" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.9 (abmatt)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

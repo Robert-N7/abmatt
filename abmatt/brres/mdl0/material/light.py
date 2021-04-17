@@ -1,4 +1,6 @@
-from abmatt.brres.lib.matching import splitKeyVal, validBool, parse_color, indexListItem
+import json
+
+from abmatt.brres.lib.matching import splitKeyVal, validBool, parse_color, indexListItem, it_eq
 
 
 class LightChannel:
@@ -20,8 +22,8 @@ class LightChannel:
             self.ambientColorEnabled == other.ambientColorEnabled and \
             self.rasterAlphaEnabled == other.rasterAlphaEnabled and \
             self.rasterColorEnabled == other.rasterColorEnabled and \
-            self.materialColor == other.materialColor and \
-            self.ambientColor == other.ambientColor and \
+            it_eq(self.materialColor, other.materialColor) and \
+            it_eq(self.ambientColor, other.ambientColor) and \
             self.colorLightControl == other.colorLightControl and \
             self.alphaLightControl == other.alphaLightControl
 
@@ -34,6 +36,32 @@ class LightChannel:
         self.colorLightControl = self.LightChannelControl(0x700)
         self.alphaLightControl = self.LightChannelControl(0x700)
         return self
+
+    def to_json(self):
+        return {
+            'materialColorEnabled': self.materialColorEnabled,
+            'materialAlphaEnabled': self.materialAlphaEnabled,
+            'ambientColorEnabled': self.ambientColorEnabled,
+            'ambientAlphaEnabled': self.ambientAlphaEnabled,
+            'rasterColorEnabled': self.rasterColorEnabled,
+            'rasterAlphaEnabled': self.rasterAlphaEnabled,
+            'materialColor': self.materialColor,
+            'ambientColor': self.ambientColor,
+            'colorLightControl': self.colorLightControl.to_json(),
+            'alphaLightControl': self.alphaLightControl.to_json()
+        }
+
+    def parse_json(self, x):
+        self.materialColorEnabled = x['materialColorEnabled']
+        self.materialAlphaEnabled = x['materialAlphaEnabled']
+        self.ambientColorEnabled = x['ambientColorEnabled']
+        self.ambientAlphaEnabled = x['ambientAlphaEnabled']
+        self.rasterColorEnabled = x['rasterColorEnabled']
+        self.rasterAlphaEnabled = x['rasterAlphaEnabled']
+        self.materialColor = x['materialColor']
+        self.ambientColor = x['ambientColor']
+        self.colorLightControl.parse_json(x['colorLightControl'])
+        self.alphaLightControl.parse_json(x['alphaLightControl'])
 
     def __str__(self):
         return 'Mat:{} Amb:{}\n\tColorControl: {}\n\tAlphaControl: {}'.format(
@@ -144,6 +172,19 @@ class LightChannel:
                 self.attenuationEnabled == other.attenuationEnabled and \
                 self.attenuationFunction == other.attenuationFunction and \
                 self.light4567 == other.light4567
+
+        def parse_json(self, json):
+            for x in json:
+                self[x] = json[x]
+
+        def to_json(self):
+            return {
+                'materialSourceVertex': self['material'],
+                'enabled': str(self['enable']),
+                'ambient': self['ambient'],
+                'diffuse': self['diffuse'],
+                'attenuation': self['attenuation']
+            }
 
         def is_vertex_color_enabled(self):
             return self.materialSourceVertex

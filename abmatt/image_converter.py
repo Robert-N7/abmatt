@@ -48,6 +48,8 @@ class ImgConverterI:
         self.converter = converter
 
     def get_tmp_dir(self):
+        if self.TMP_DIR is None:
+            ImgConverterI.TMP_DIR = os.path.join(os.getcwd(), 'tmp_abmatt')
         if not os.path.exists(self.TMP_DIR):
             os.mkdir(self.TMP_DIR)
         return self.TMP_DIR

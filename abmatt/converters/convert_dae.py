@@ -43,7 +43,7 @@ class DaeConverter2(Converter):
             geometries = material_geometry_map[material]
             for x in geometries:
                 self.__encode_geometry(x)
-        self._import_images(dae.get_images())
+        self.import_textures_map = dae.get_images()
         return self._end_loading()
 
     def save_model(self, mdl0=None):

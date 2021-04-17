@@ -132,18 +132,18 @@ class PackIndMtx(Packer):
 
 def pack_color(binfile, index, color, is_constant):
     bpmem = BPMEM_TEV_REGISTER_L_0 + (2 * index)
-    pack_color_reg(binfile, bpmem, color[3], color[0])
+    pack_color_reg(binfile, bpmem, color[3], color[0], is_constant)
     bpmem += 1
     green = color[1]
     blue = color[2]
-    pack_color_reg(binfile, bpmem, green, blue)
+    pack_color_reg(binfile, bpmem, green, blue, is_constant)
     if not is_constant:
-        pack_color_reg(binfile, bpmem, green, blue)
-        pack_color_reg(binfile, bpmem, green, blue)
+        pack_color_reg(binfile, bpmem, green, blue, is_constant)
+        pack_color_reg(binfile, bpmem, green, blue, is_constant)
 
 
-def pack_color_reg(binfile, bpmem, left_bits, right_bits):
-    data = (left_bits & 0xfff) << 12 | right_bits & 0xfff
+def pack_color_reg(binfile, bpmem, left_bits, right_bits, is_const):
+    data = is_const << 23 | (left_bits & 0x7ff) << 12 | right_bits & 0xfff
     pack_bp(binfile, bpmem, data)
 
 

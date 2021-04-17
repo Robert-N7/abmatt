@@ -10,6 +10,7 @@ from abmatt.brres.material_library import MaterialLibrary
 from abmatt.brres.mdl0.material import material
 from abmatt.brres.mdl0.mdl0 import Mdl0
 from abmatt.converters import matrix
+from abmatt.converters.convert_mats_to_json import MatsToJsonConverter
 from abmatt.converters.influence import decode_mdl0_influences
 from abmatt.converters.matrix import matrix_to_srt
 from abmatt.image_converter import EncodeError, NoImgConverterError, ImgConverter
@@ -35,6 +36,7 @@ class Converter:
         self.mdl_file = mdl_file
         self.mdl0 = mdl0
         self.flags = flags
+        self.image_dir = None
         self.image_library = set()
         self.replacement_model = None
         self.encode = encode
@@ -46,17 +48,23 @@ class Converter:
             mdl0 = self.mdl0
             if mdl0 is None:
                 self.mdl0 = mdl0 = self.brres.models[0]
+        else:
+            self.mdl0 = mdl0
         self.cwd = os.getcwd()
         dir, name = os.path.split(self.mdl_file)
         if dir:
             os.chdir(dir)
         base_name, ext = os.path.splitext(name)
         self.image_dir = base_name + '_maps'
+        self.json_file = base_name + '.json'
         self.influences = decode_mdl0_influences(mdl0)
         self.tex0_map = {}
         return base_name, mdl0
 
     def _end_saving(self, writer):
+        # dump json materials, create image library, write file
+        MatsToJsonConverter(self.json_file).export(self.mdl0.materials)
+        self.__add_pat0_images()
         self._create_image_library(self.tex0_map.values())
         os.chdir(self.cwd)
         writer.write(self.mdl_file)
@@ -66,18 +74,24 @@ class Converter:
         AutoFix.get().info('Converting {}... '.format(self.mdl_file))
         self.start = time.time()
         self.cwd = os.getcwd()
+        self.import_textures_map = {}
         self.mdl_file = os.path.abspath(self.mdl_file)
         self.material_library = MaterialLibrary.get().materials
         brres_dir, brres_name = os.path.split(self.brres.name)
         base_name = os.path.splitext(brres_name)[0]
         self.is_map = True if 'map' in base_name else False
         dir, name = os.path.split(self.mdl_file)
+        self.json_file = os.path.join(dir, os.path.splitext(name)[0]) + '.json'
         if dir:
             os.chdir(dir)  # change to the dir to help find relative paths
         return self._init_mdl0(brres_name, os.path.splitext(name)[0], model_name)
 
     def _end_loading(self):
         mdl0 = self.mdl0
+        if os.path.exists(self.json_file):
+            MatsToJsonConverter(self.json_file).load_into(mdl0.materials)
+        import_path_map = self.__normalize_image_path_map(self.import_textures_map)
+        self._import_images(import_path_map)
         mdl0.rebuild_header()
         self.brres.add_mdl0(mdl0)
         if self.is_map:
@@ -127,6 +141,13 @@ class Converter:
     def is_identity_matrix(mtx):
         return np.allclose(mtx, matrix.IDENTITY)
 
+    def __add_pat0_images(self):
+        """Adds the pat0 images to tex0 library"""
+        if self.mdl0.pat0_collection is not None:
+            for tex in self.mdl0.pat0_collection.get_used_textures():
+                if tex not in self.tex0_map:
+                    self.tex0_map[tex] = self.texture_library.get(tex)
+
     def _encode_material(self, generic_mat):
         m = None
         if self.replacement_model:
@@ -155,30 +176,26 @@ class Converter:
         converter.batch_decode(tex0s, self.image_dir)
         return True
 
-    @staticmethod
-    def __normalize_image_path_map(image_path_map):
+    def __normalize_image_path_map(self, image_path_map):
+        used_tex = self.mdl0.get_used_textures()
         normalized = {}
         for x in image_path_map:
             path = image_path_map[x]
-            normalized[os.path.splitext(os.path.basename(path))[0]] = path
-        normalized.update(image_path_map)
+            if self.image_dir is None:
+                self.image_dir = os.path.dirname(path)
+            tex_name = os.path.splitext(os.path.basename(path))[0]
+            if tex_name in used_tex:    # only add it if used
+                normalized[tex_name] = path
+                used_tex.remove(tex_name)
+        for x in used_tex:  # detect any missing that we can find
+            path = os.path.join(self.image_dir, x + '.png')
+            if os.path.exists(path):
+                normalized[x] = path
         return normalized
 
     def _import_images(self, image_path_map):
-        normalized = False
-        image_paths = {}
-        for map in self.image_library:  # only add images that are used
-            path = image_path_map.get(map)
-            if path is None:
-                if not normalized:
-                    image_path_map = self.__normalize_image_path_map(image_path_map)
-                    path = image_path_map.get(map)
-                    normalized = True
-                if path is None:
-                    continue
-            image_paths[map] = path
         try:
-            return self._try_import_textures(self.brres, image_paths)
+            return self._try_import_textures(self.brres, image_path_map)
         except NoImgConverterError as e:
             AutoFix.get().exception(e)
 
