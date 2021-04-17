@@ -19,7 +19,7 @@ install:
   - python -m pip install -r requirements.txt
 
 build_script:
-  - export PYTHONPATH=$PYTHONPATH:$pwd
+  - export PYTHONPATH=$pwd:$pwd/abmatt/build
   - cd abmatt/build
   - echo $APPVEYOR_BUILD_VERSION
   - python build.py $APPVEYOR_BUILD_VERSION
@@ -55,7 +55,7 @@ for:
 
   build_script:
     # NSIS
-    - SET PYTHONPATH=%CD%
+    - SET PYTHONPATH=%CD%;%CD%\abmatt\build
     - ps choco install nsis.install
     - set "PATH=%PATH%;C:\Program Files (x86)\NSIS"
     - curl -fsS https://nsis.sourceforge.io/mediawiki/images/7/7f/EnVar_plugin.zip -o plugin.zip
