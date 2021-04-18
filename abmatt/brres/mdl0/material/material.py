@@ -3,17 +3,20 @@
 #   Robert Nelson
 #  Structure for working with materials
 # ---------------------------------------------------------------------
+import json
 import re
 from copy import deepcopy
 
 from abmatt.autofix import AutoFix
-from abmatt.brres.lib.matching import validBool, indexListItem, validInt, validFloat, MATCHING, parse_color
+from abmatt.brres.lib.matching import validBool, indexListItem, validInt, validFloat, MATCHING, parse_color, it_eq
 from abmatt.brres.lib.node import Clipable
 from abmatt.brres.mdl0.material.layer import Layer
 from abmatt.brres.mdl0.material.light import LightChannel
 from abmatt.brres.mdl0.shader import Shader
 # Constants
 from abmatt.brres.mdl0.wiigraphics.bp import IndMatrix
+from abmatt.brres.pat0.pat0_material import Pat0MatAnimation
+from abmatt.brres.srt0.srt0_animation import SRTMatAnim
 
 ALPHA_LOGIC_AND = 0
 ALPHA_LOGIC_OR = 1
@@ -108,24 +111,29 @@ class Material(Clipable):
         super(Material, self).__init__(name, parent, binfile)
 
     def __deepcopy__(self, memodict={}):
-        raise NotImplementedError()  # too many issues with tightly linked parent
-        # don't copy references copied elsewhere
-        # srt0 = self.srt0
-        # self.srt0 = None
-        # pat0 = self.pat0
-        # self.pat0 = None
-        # shader = self.shader
-        # self.shader = None
-        # polygons = self.polygons
-        # self.polygons = None
-        # copy = super().__deepcopy__(memodict)
-        # self.srt0 = srt0
-        # self.pat0 = pat0
-        # self.shader = shader
-        # self.polygons = polygons
         copy = Material(self.name)
         copy.paste(self)
         return copy
+
+    def unlink_parent(self):
+        if self.parent:
+            self.parent.remove_material(self)
+            self.parent=None
+
+    def link_parent(self, parent):
+        if parent is self.parent:
+            return
+        self.unlink_parent()
+        self.parent = parent
+        self.on_brres_link(self.getBrres())
+
+    def on_brres_link(self, brres):
+        """When brres is linked update references"""
+        if brres is not None:
+            for layer in self.layers:
+                tex0 = layer.get_tex0(brres.texture_map)
+                if tex0 is not None:
+                    brres.add_tex0(tex0, replace=False)
 
     def set_default_color(self):
         self.set_color(self.DEFAULT_COLOR)
@@ -260,7 +268,7 @@ class Material(Clipable):
         return self.shader
 
     def getLightChannel(self):
-        return str(self.lightChannels[0])
+        return self.lightChannels[0].to_json()
 
     def getLightset(self):
         return self.lightset
@@ -280,13 +288,10 @@ class Material(Clipable):
             return parent.parent
 
     def getShaderColor(self):
-        ret = ""
-        for i in range(3):
-            ret += "Color{}: {}\t".format(i, self.getColor(i))
-        ret += "\n\t"
-        for i in range(4):
-            ret += "Const{}: {}\t".format(i, self.getConstantColor(i))
-        return ret
+        return {
+            'color': self.colors,
+            'constant': self.constant_colors
+        }
 
     def getMatrixMode(self):
         return self.MATRIXMODE[self.textureMatrixMode]
@@ -301,7 +306,7 @@ class Material(Clipable):
         return self.COMP_STRINGS[self.depth_function]
 
     def getDrawPriority(self):
-        return {x.get_draw_priority() for x in self.polygons}
+        return [x.get_draw_priority() for x in self.polygons]
 
     def getName(self):
         return self.name
@@ -337,9 +342,12 @@ class Material(Clipable):
 
     def getIndMatrixStr(self, id=0):
         matrix = self.indirect_matrices[id]
-        enabled = 'enabled' if matrix.enabled else 'disabled'
-        ret = '{}: {} Scale {}, {}'.format(id, enabled, matrix.scale, matrix.matrix)
-        return ret
+        return {
+            'id': id,
+            'enabled': matrix.enabled,
+            'scale': matrix.scale,
+            'matrix': matrix.matrix
+        }
 
     def getLayerCount(self):
         return len(self.layers)
@@ -353,7 +361,7 @@ class Material(Clipable):
     def get_str(self, key):
         for i in range(len(self.SETTINGS)):
             if key == self.SETTINGS[i]:
-                return self.SET_SETTING[i]
+                return self.GET_SETTING[i](self)
 
     # ---------------------------------------------------------------------------
     #   SETTERS
@@ -366,12 +374,13 @@ class Material(Clipable):
                 return func(self, value)
 
     def rename(self, value):
-        for x in self.parent.materials:
-            if x is not self and x.name == value:
-                AutoFix.get().error('The name {} is already taken!'.format(value))
-                return False
+        if self.parent:
+            for x in self.parent.materials:
+                if x is not self and x.name == value:
+                    AutoFix.get().error('The name {} is already taken!'.format(value))
+                    return False
         result = super().rename(value)
-        if result:
+        if result and self.parent:
             self.parent.on_material_rename(self, value)
         return result
 
@@ -382,32 +391,38 @@ class Material(Clipable):
             self.setDrawXLU(val)
             self.mark_modified()
 
-    # def setShader(self, shader):
-    #     if shader.offset != self.shaderOffset + self.offset:
-    #         self.shaderOffset = shader.offset - self.offset
-    #         self.shaderStages = shader.countDirectStages()
-    #         self.indirectStages = shader.countIndirectStages()
-    #
-    #     self.shader = shader
-    #     return self.isModified
+    def __parse_json_color_str(self, x):
+        colors = x.get('color')
+        for i in range(len(colors)):
+            if i > 2:
+                break
+            self.colors[i] = colors[i]
+        constants = x.get('constant')
+        for i in range(len(constants)):
+            if i > 3:
+                break
+            self.constant_colors[i] = constants[i]
 
     def setShaderColorStr(self, str):
-        i = str.find(':')
-        if i < 0:
-            raise ValueError(self.SHADERCOLOR_ERROR.format(str))
-        key = str[:i]
-        value = str[i + 1:]
-        isConstant = True if 'constant' in key else False
-        if not key[-1].isdigit():
-            raise ValueError(self.SHADERCOLOR_ERROR.format(str))
-        index = int(key[-1])
-        if not 0 <= index <= 3 or (not isConstant) and index == 3:
-            raise ValueError(self.SHADERCOLOR_ERROR.format(str))
-        intVals = parse_color(value)
-        if not intVals:
-            raise ValueError(self.SHADERCOLOR_ERROR.format(str))
-        list = self.constant_colors if isConstant else self.colors
-        list[index] = intVals
+        if type(str) == dict:     # dictionary of colors
+            self.__parse_json_color_str(str)
+        else:
+            i = str.find(':')
+            if i < 0:
+                raise ValueError(self.SHADERCOLOR_ERROR.format(str))
+            key = str[:i]
+            value = str[i + 1:]
+            isConstant = True if 'constant' in key else False
+            if not key[-1].isdigit():
+                raise ValueError(self.SHADERCOLOR_ERROR.format(str))
+            index = int(key[-1])
+            if not 0 <= index <= 3 or (not isConstant) and index == 3:
+                raise ValueError(self.SHADERCOLOR_ERROR.format(str))
+            intVals = parse_color(value)
+            if not intVals:
+                raise ValueError(self.SHADERCOLOR_ERROR.format(str))
+            list = self.constant_colors if isConstant else self.colors
+            list[index] = intVals
         self.mark_modified()
 
     def set_color(self, color, color_num=0):
@@ -433,12 +448,15 @@ class Material(Clipable):
             self.mark_modified()
 
     def setLightChannelStr(self, lcStr):
-        i = lcStr.find(':')
-        if i < 0:
-            raise ValueError(LightChannel.LC_ERROR)
-        key = lcStr[:i]
-        value = lcStr[i + 1:]
-        self.lightChannels[0][key] = value
+        if type(lcStr) == dict:
+            self.lightChannels[0].parse_json(lcStr)
+        else:
+            i = lcStr.find(':')
+            if i < 0:
+                raise ValueError(LightChannel.LC_ERROR)
+            key = lcStr[:i]
+            value = lcStr[i + 1:]
+            self.lightChannels[0][key] = value
         self.mark_modified()
 
     def setLightsetStr(self, str):
@@ -451,10 +469,10 @@ class Material(Clipable):
 
     def setFogsetStr(self, str):
         val = int(str)
-        if val != 0:
+        if val != 0 and val != -1:
             raise ValueError("Invalid fogset " + str + ", expected 0")
-        if self.fogset != 0:
-            self.fogset = 0
+        if self.fogset != val:
+            self.fogset = val
             self.mark_modified()
 
     def enable_constant_alpha(self, enable=True):
@@ -609,9 +627,16 @@ class Material(Clipable):
             self.mark_modified()
 
     def setDrawPriorityStr(self, str):
-        i = validInt(str, 0, 255)
-        for x in self.polygons:
-            x.set_draw_priority(i)
+        if str[0].isdigit():
+            i = validInt(str, 0, 255)
+            for x in self.polygons:
+                x.set_draw_priority(i)
+        else:
+            priorities = str.strip('()[]').split(',')
+            for i in range(len(priorities)):
+                if i >= len(self.polygons):
+                    break
+                self.polygons[i].set_draw_priority(validInt(priorities[i].strip(), 0))
 
     def setDrawXLU(self, enabled):
         if enabled != self.xlu:
@@ -659,28 +684,38 @@ class Material(Clipable):
         if modify_flag:
             self.mark_modified()
 
+    def __parse_json_ind_matrix(self, data):
+        i = data.get('id') if 'id' in data else 0
+        matrix = self.indirect_matrices[i]
+        matrix.enabled = data['enabled']
+        matrix.scale = data['scale']
+        matrix.matrix = data['matrix']
+
     def setIndirectMatrixStr(self, str_value):
-        matrix_index = 0
-        colon_index = str_value.find(':')
-        if colon_index > -1:
-            matrix_index = validInt(str_value[0], 0, 3)
-            str_value = str_value[colon_index + 1:]
-        if ',' not in str_value:
-            try:
-                enable = validBool(str_value)
-                self.setIndMatrixEnable(matrix_index, enable)
-                return
-            except ValueError as e:
+        if type(str_value) == dict:
+            self.__parse_json_ind_matrix(str_value)
+        else:
+            matrix_index = 0
+            colon_index = str_value.find(':')
+            if colon_index > -1:
+                matrix_index = validInt(str_value[0], 0, 3)
+                str_value = str_value[colon_index + 1:]
+            if ',' not in str_value:
+                try:
+                    enable = validBool(str_value)
+                    self.setIndMatrixEnable(matrix_index, enable)
+                    return
+                except ValueError as e:
+                    raise ValueError(self.MATRIX_ERR.format(str_value))
+            str_values = str_value.replace('scale', '').split(',')
+            if len(str_values) != 7:
                 raise ValueError(self.MATRIX_ERR.format(str_value))
-        str_values = str_value.replace('scale', '').split(',')
-        if len(str_values) != 7:
-            raise ValueError(self.MATRIX_ERR.format(str_value))
-        scale = validInt(str_values.pop(0).strip(':'), -17, 47)
-        matrix = [validFloat(x.strip('()'), -1, 1) for x in str_values]
-        ind_matrix = self.indirect_matrices[matrix_index]
-        ind_matrix.matrix = matrix
-        ind_matrix.scale = scale
-        ind_matrix.enabled = True
+            scale = validInt(str_values.pop(0).strip(':'), -17, 47)
+            matrix = [validFloat(x.strip('()'), -1, 1) for x in str_values]
+            ind_matrix = self.indirect_matrices[matrix_index]
+            ind_matrix.matrix = matrix
+            ind_matrix.scale = scale
+            ind_matrix.enabled = True
         self.mark_modified()
 
     def setLayerCountStr(self, str_value):
@@ -762,7 +797,9 @@ class Material(Clipable):
         """Adds a new srt0 with one layer reference"""
         if self.srt0:
             return self.srt0
-        anim = self.parent.add_srt0(self)
+        anim = SRTMatAnim(self.name)
+        if self.parent is not None:
+            self.parent.add_srt0(anim)
         self.set_srt0(anim)
         anim.addLayer()
         self.mark_modified()
@@ -800,7 +837,9 @@ class Material(Clipable):
         """Adds a new pat0"""
         if self.pat0:
             return self.pat0
-        anim = self.parent.add_pat0(self)
+        anim = Pat0MatAnimation(self.name, self.parent)
+        if self.parent is not None:
+            self.parent.add_pat0(anim)
         self.set_pat0(anim)
         self.mark_modified()
         return anim
@@ -995,9 +1034,7 @@ class Material(Clipable):
 
     def __eq__(self, item):
         return self is item or (item is not None and type(self) == type(item) and \
-                                self.name == item.name and item is not None and self.xlu == item.xlu and \
-                                self.shaderStages == item.shaderStages and \
-                                self.indirectStages == item.indirectStages and \
+                                self.name == item.name and self.xlu == item.xlu and \
                                 self.cullmode == item.cullmode and \
                                 self.compareBeforeTexture == item.compareBeforeTexture and \
                                 self.lightset == item.lightset and \
@@ -1021,9 +1058,9 @@ class Material(Clipable):
                                 self.blend_dest == item.blend_dest and \
                                 self.constant_alpha_enabled == item.constant_alpha_enabled and \
                                 self.constant_alpha == item.constant_alpha and \
-                                self.colors == item.colors and \
-                                self.constant_colors == item.constant_colors and \
-                                self.ras1_ss == item.ras1_ss and \
+                                it_eq(self.colors, item.colors) and \
+                                it_eq(self.constant_colors, item.constant_colors) and \
+                                it_eq(self.ras1_ss, item.ras1_ss) and \
                                 self.indirect_matrices == item.indirect_matrices and \
                                 self.lightChannels == item.lightChannels and \
                                 self.srt0 == item.srt0 and \
@@ -1087,12 +1124,10 @@ class Material(Clipable):
         item_layers = item.layers
         num_layers = len(item_layers)
         self.setLayerCount(num_layers)
-        brres = self.getBrres()
         for i in range(num_layers):
             my_layer = my_layers[i]
             item_layer = item_layers[i]
             my_layer.paste(item_layer)
             my_layer.setName(item_layer.name)
             my_layer.tex0_ref = item_layer.get_tex0()
-            if brres is not None:
-                brres.add_tex0(my_layer.tex0_ref, replace=False)
+        self.on_brres_link(self.getBrres())

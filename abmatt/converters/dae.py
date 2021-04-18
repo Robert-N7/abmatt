@@ -203,8 +203,11 @@ class Dae:
                 inv_bind_matrices.reshape((-1, 4, 4))
         vertex_weights = first(skin, 'vertex_weights')
         vertex_weight_count = [int(x) for x in first(vertex_weights, 'vcount').text.split()]
-        vertex_weight_indices = np.array([int(x) for x in first(vertex_weights, 'v').text.split()], int)
-        vertex_weight_indices = vertex_weight_indices.reshape((-1, 2))
+        try:
+            vertex_weight_indices = np.array([int(x) for x in first(vertex_weights, 'v').text.split()], int)
+            vertex_weight_indices = vertex_weight_indices.reshape((-1, 2))
+        except AttributeError:
+            vertex_weight_indices = None
         input_count = 0
         for input in vertex_weights.iter('input'):
             offset = int(input.attrib['offset'])
@@ -218,7 +221,10 @@ class Dae:
             elif semantic == 'WEIGHT':
                 weight_xml = self.get_referenced_element(input, 'source')
                 data_type, weight_xml_data = self.trace_technique_common(weight_xml)
-                weights = np.array([float(x) for x in weight_xml_data.text.split()], float)
+                try:
+                    weights = np.array([float(x) for x in weight_xml_data.text.split()], float)
+                except AttributeError:
+                    weights = np.array(1.0)
             else:
                 raise ValueError('Unknown Semantic {} in controller {}'.format(semantic, name))
             input_count += 1

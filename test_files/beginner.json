@@ -1,0 +1,5635 @@
+{
+   "WT_EleArrow_ALL": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 0,
+         "ref1": 0,
+         "comp0": "always",
+         "comp1": "always",
+         "comparebeforetexture": 1,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "inside",
+         "shadercolor": {
+            "color": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "WT_EleArrow_ALL",
+         "layercount": 1
+      },
+      "layers": {
+         "lc_EleArrowALL": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "clamp",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "lc_EleArrowALL"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 1
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color0_rgb",
+               "constantcolorselection": "color0_rgb",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "rastercolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color0_alpha",
+               "alphaconstantselection": "color0_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      },
+      "srt0": {
+         "settings": {
+            "framecount": 120,
+            "loop": true,
+            "layerenable": [
+               true,
+               false,
+               false,
+               false,
+               false,
+               false,
+               false,
+               false
+            ]
+         },
+         "texture_animations": [
+            {
+               "xscale": [
+                  {
+                     "frame": 0.0,
+                     "value": 1.0,
+                     "delta": 0.0
+                  }
+               ],
+               "yscale": [
+                  {
+                     "frame": 0.0,
+                     "value": 1.0,
+                     "delta": 0.0
+                  }
+               ],
+               "rot": [
+                  {
+                     "frame": 0.0,
+                     "value": 0.0,
+                     "delta": 0.0
+                  }
+               ],
+               "xtranslation": [
+                  {
+                     "frame": 0.0,
+                     "value": 0.0,
+                     "delta": -0.008333000354468822
+                  },
+                  {
+                     "frame": 120.0,
+                     "value": -1.0,
+                     "delta": -0.008333000354468822
+                  }
+               ],
+               "ytranslation": [
+                  {
+                     "frame": 0.0,
+                     "value": 0.0,
+                     "delta": 0.0
+                  }
+               ]
+            }
+         ]
+      }
+   },
+   "a_MainRoad_m": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 0,
+         "ref1": 0,
+         "comp0": "always",
+         "comp1": "always",
+         "comparebeforetexture": 1,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "inside",
+         "shadercolor": {
+            "color": [
+               [
+                  76,
+                  76,
+                  86,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  128
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "a_MainRoad_m",
+         "layercount": 2
+      },
+      "layers": {
+         "mainROAD_all_mip": {
+            "scale": [
+               1.0,
+               6.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linearmipmaplinear",
+            "magfilter": "linear",
+            "lodbias": -1.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "mainROAD_all_mip"
+         },
+         "beginner_course_kage_04": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord1",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "beginner_course_kage_04"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 2
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 1,
+               "coordinateid": 1,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color3_aaa",
+               "constantcolorselection": "color3_aaa",
+               "colora": "color0",
+               "colorb": "rastercolor",
+               "colorc": "texturecolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby1",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color3_alpha",
+               "alphaconstantselection": "color3_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            },
+            "1": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color3_aaa",
+               "constantcolorselection": "color3_aaa",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "outputcolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color3_alpha",
+               "alphaconstantselection": "color3_alpha",
+               "alphaa": "outputalpha",
+               "alphab": "zero",
+               "alphac": "zero",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   },
+   "a_SAND_m": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 0,
+         "ref1": 0,
+         "comp0": "always",
+         "comp1": "always",
+         "comparebeforetexture": 1,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "inside",
+         "shadercolor": {
+            "color": [
+               [
+                  76,
+                  76,
+                  46,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  128
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "a_SAND_m",
+         "layercount": 2
+      },
+      "layers": {
+         "Sand_070717b": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linearmipmaplinear",
+            "magfilter": "linear",
+            "lodbias": -3.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "Sand_070717b"
+         },
+         "beginner_course_kage_04": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord1",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "beginner_course_kage_04"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 2
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 1,
+               "coordinateid": 1,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color3_aaa",
+               "constantcolorselection": "color3_aaa",
+               "colora": "color0",
+               "colorb": "rastercolor",
+               "colorc": "texturecolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby1",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color3_alpha",
+               "alphaconstantselection": "color3_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            },
+            "1": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color3_aaa",
+               "constantcolorselection": "color3_aaa",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "outputcolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color3_alpha",
+               "alphaconstantselection": "color3_alpha",
+               "alphaa": "outputalpha",
+               "alphab": "zero",
+               "alphac": "zero",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   },
+   "a_bc_enseki_m": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 0,
+         "ref1": 0,
+         "comp0": "always",
+         "comp1": "always",
+         "comparebeforetexture": 1,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "inside",
+         "shadercolor": {
+            "color": [
+               [
+                  86,
+                  86,
+                  96,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  128
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "a_bc_enseki_m",
+         "layercount": 2
+      },
+      "layers": {
+         "lc_comp1a_070709_128x256a": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": -3.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "lc_comp1a_070709_128x256a"
+         },
+         "beginner_course_kage_04": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord1",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "beginner_course_kage_04"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 2
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 1,
+               "coordinateid": 1,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color3_aaa",
+               "constantcolorselection": "color3_aaa",
+               "colora": "color0",
+               "colorb": "rastercolor",
+               "colorc": "texturecolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby1",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color3_alpha",
+               "alphaconstantselection": "color3_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            },
+            "1": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color3_aaa",
+               "constantcolorselection": "color3_aaa",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "outputcolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color3_alpha",
+               "alphaconstantselection": "color3_alpha",
+               "alphaa": "outputalpha",
+               "alphab": "zero",
+               "alphac": "zero",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   },
+   "a_bc_kankyakuseat_m": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 0,
+         "ref1": 0,
+         "comp0": "always",
+         "comp1": "always",
+         "comparebeforetexture": 1,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "inside",
+         "shadercolor": {
+            "color": [
+               [
+                  36,
+                  36,
+                  46,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  128
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "a_bc_kankyakuseat_m",
+         "layercount": 2
+      },
+      "layers": {
+         "bc_kankyaku_mip": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "mirror",
+            "vwrap": "repeat",
+            "minfilter": "linearmipmaplinear",
+            "magfilter": "linear",
+            "lodbias": -0.800000011920929,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "bc_kankyaku_mip"
+         },
+         "beginner_course_kage_04": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord1",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "beginner_course_kage_04"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 2
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 1,
+               "coordinateid": 1,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color3_aaa",
+               "constantcolorselection": "color3_aaa",
+               "colora": "color0",
+               "colorb": "rastercolor",
+               "colorc": "texturecolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color3_alpha",
+               "alphaconstantselection": "color3_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            },
+            "1": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color3_aaa",
+               "constantcolorselection": "color3_aaa",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "outputcolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color3_alpha",
+               "alphaconstantselection": "color3_alpha",
+               "alphaa": "outputalpha",
+               "alphab": "zero",
+               "alphac": "zero",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   },
+   "a_kusa_soto": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 0,
+         "ref1": 0,
+         "comp0": "always",
+         "comp1": "always",
+         "comparebeforetexture": 1,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "inside",
+         "shadercolor": {
+            "color": [
+               [
+                  86,
+                  86,
+                  96,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  128
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "a_kusa_soto",
+         "layercount": 2
+      },
+      "layers": {
+         "t_kusa_070712c": {
+            "scale": [
+               25.0,
+               25.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linearmipmaplinear",
+            "magfilter": "linear",
+            "lodbias": -3.200000047683716,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "t_kusa_070712c"
+         },
+         "beginner_course_kage_04": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord1",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "beginner_course_kage_04"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 2
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 1,
+               "coordinateid": 1,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color3_aaa",
+               "constantcolorselection": "color3_aaa",
+               "colora": "color0",
+               "colorb": "rastercolor",
+               "colorc": "texturecolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby1",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color3_alpha",
+               "alphaconstantselection": "color3_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            },
+            "1": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color3_aaa",
+               "constantcolorselection": "color3_aaa",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "outputcolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color3_alpha",
+               "alphaconstantselection": "color3_alpha",
+               "alphaa": "outputalpha",
+               "alphab": "zero",
+               "alphac": "zero",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   },
+   "a_kusa_waki_m": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 0,
+         "ref1": 0,
+         "comp0": "always",
+         "comp1": "always",
+         "comparebeforetexture": 1,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "inside",
+         "shadercolor": {
+            "color": [
+               [
+                  86,
+                  86,
+                  96,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  128
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "a_kusa_waki_m",
+         "layercount": 2
+      },
+      "layers": {
+         "t_waki_070712a_mip": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linearmipmaplinear",
+            "magfilter": "linear",
+            "lodbias": -3.200000047683716,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "t_waki_070712a_mip"
+         },
+         "beginner_course_kage_04": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord1",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "beginner_course_kage_04"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 2
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 1,
+               "coordinateid": 1,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color3_aaa",
+               "constantcolorselection": "color3_aaa",
+               "colora": "color0",
+               "colorb": "rastercolor",
+               "colorc": "texturecolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby1",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color3_alpha",
+               "alphaconstantselection": "color3_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            },
+            "1": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color3_aaa",
+               "constantcolorselection": "color3_aaa",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "outputcolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color3_alpha",
+               "alphaconstantselection": "color3_alpha",
+               "alphaa": "outputalpha",
+               "alphab": "zero",
+               "alphac": "zero",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   },
+   "bc_kankyaku_m": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 128,
+         "ref1": 255,
+         "comp0": "greaterorequal",
+         "comp1": "lessorequal",
+         "comparebeforetexture": 0,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "inside",
+         "shadercolor": {
+            "color": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               204,
+               204,
+               204,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "bc_kankyaku_m",
+         "layercount": 1
+      },
+      "layers": {
+         "lc_kakyutest.1": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "lc_kakyutest.1"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 1
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color0_rgb",
+               "constantcolorselection": "color0_rgb",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "rastercolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color0_alpha",
+               "alphaconstantselection": "color0_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      },
+      "pat0": {
+         "settings": {
+            "enabled": 1,
+            "fixed_texture": 0,
+            "frame_count": 39,
+            "loop": 1
+         },
+         "frames": [
+            {
+               "frame": 0.0,
+               "texture": "lc_kakyutest.1"
+            },
+            {
+               "frame": 10.0,
+               "texture": "lc_kakyutest.2"
+            },
+            {
+               "frame": 20.0,
+               "texture": "lc_kakyutest.3"
+            },
+            {
+               "frame": 30.0,
+               "texture": "lc_kakyutest.2"
+            }
+         ]
+      }
+   },
+   "bc_spot_m": {
+      "settings": {
+         "xlu": 1,
+         "ref0": 0,
+         "ref1": 0,
+         "comp0": "always",
+         "comp1": "always",
+         "comparebeforetexture": 1,
+         "blend": 1,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "inside",
+         "shadercolor": {
+            "color": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 0,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "bc_spot_m",
+         "layercount": 1
+      },
+      "layers": {
+         "bc_spot1": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "mirror",
+            "vwrap": "mirror",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "bc_spot1"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 1
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color0_rgb",
+               "constantcolorselection": "color0_rgb",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "rastercolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color0_alpha",
+               "alphaconstantselection": "color0_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   },
+   "bc_tree_one_m": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 128,
+         "ref1": 255,
+         "comp0": "greaterorequal",
+         "comp1": "lessorequal",
+         "comparebeforetexture": 0,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "none",
+         "shadercolor": {
+            "color": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "bc_tree_one_m",
+         "layercount": 1
+      },
+      "layers": {
+         "t_tree_otubo": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "clamp",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "t_tree_otubo"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 1
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color0_rgb",
+               "constantcolorselection": "color0_rgb",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "rastercolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color0_alpha",
+               "alphaconstantselection": "color0_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   },
+   "block3_m": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 0,
+         "ref1": 0,
+         "comp0": "always",
+         "comp1": "always",
+         "comparebeforetexture": 1,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "none",
+         "shadercolor": {
+            "color": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "block3_m",
+         "layercount": 1
+      },
+      "layers": {
+         "lc_block_wall_mip": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linearmipmaplinear",
+            "magfilter": "linear",
+            "lodbias": -2.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "lc_block_wall_mip"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 1
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color0_rgb",
+               "constantcolorselection": "color0_rgb",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "rastercolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color0_alpha",
+               "alphaconstantselection": "color0_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   },
+   "ef_dushBoard": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 0,
+         "ref1": 0,
+         "comp0": "always",
+         "comp1": "always",
+         "comparebeforetexture": 1,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "inside",
+         "shadercolor": {
+            "color": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  128
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "register",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "register",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": -1,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 97,
+            "scale": -3,
+            "matrix": [
+               [
+                  0.6396484375,
+                  0.0,
+                  0.0
+               ],
+               [
+                  0.0,
+                  0.6396484375,
+                  0.0
+               ]
+            ]
+         },
+         "name": "ef_dushBoard",
+         "layercount": 3
+      },
+      "layers": {
+         "ef_rainbowRed2": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "envcamera",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "stq",
+            "inputform": "abc1",
+            "type": "regular",
+            "coordinates": "normals",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 1,
+            "name": "ef_rainbowRed2"
+         },
+         "ef_arrowBumpS": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "mirror",
+            "vwrap": "repeat",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "ef_arrowBumpS"
+         },
+         "ef_arrowGradS": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "ef_arrowGradS"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               1,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               1,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 2
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 2,
+               "coordinateid": 2,
+               "textureswapselection": 0,
+               "rastercolor": "zero",
+               "rasterswapselection": 0,
+               "colorconstantselection": "3_4",
+               "constantcolorselection": "3_4",
+               "colora": "zero",
+               "colorb": "colorselection",
+               "colorc": "texturecolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby1",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color0_alpha",
+               "alphaconstantselection": "color0_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            },
+            "1": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "zero",
+               "rasterswapselection": 0,
+               "colorconstantselection": "5_8",
+               "constantcolorselection": "5_8",
+               "colora": "texturecolor",
+               "colorb": "zero",
+               "colorc": "zero",
+               "colord": "outputcolor",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby1",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color3_alpha",
+               "alphaconstantselection": "color3_alpha",
+               "alphaa": "texturealpha",
+               "alphab": "zero",
+               "alphac": "alphaselection",
+               "alphad": "outputalpha",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "stu",
+               "indirectmatrixselection": "matrix0",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      },
+      "srt0": {
+         "settings": {
+            "framecount": 200,
+            "loop": true,
+            "layerenable": [
+               true,
+               true,
+               true,
+               false,
+               false,
+               false,
+               false,
+               false
+            ]
+         },
+         "texture_animations": [
+            {
+               "xscale": [
+                  {
+                     "frame": 0.0,
+                     "value": 1.0,
+                     "delta": 0.0
+                  }
+               ],
+               "yscale": [
+                  {
+                     "frame": 0.0,
+                     "value": 1.0,
+                     "delta": 0.0
+                  }
+               ],
+               "rot": [
+                  {
+                     "frame": 0.0,
+                     "value": 45.0,
+                     "delta": 0.0
+                  }
+               ],
+               "xtranslation": [
+                  {
+                     "frame": 0.0,
+                     "value": 0.0,
+                     "delta": 0.004999999888241291
+                  },
+                  {
+                     "frame": 200.0,
+                     "value": 1.0,
+                     "delta": 0.004999999888241291
+                  }
+               ],
+               "ytranslation": [
+                  {
+                     "frame": 0.0,
+                     "value": 0.0,
+                     "delta": 0.0
+                  }
+               ]
+            },
+            {
+               "xscale": [
+                  {
+                     "frame": 0.0,
+                     "value": 2.0,
+                     "delta": 0.0
+                  }
+               ],
+               "yscale": [
+                  {
+                     "frame": 0.0,
+                     "value": 1.0,
+                     "delta": 0.0
+                  }
+               ],
+               "rot": [
+                  {
+                     "frame": 0.0,
+                     "value": 0.0,
+                     "delta": 0.0
+                  }
+               ],
+               "xtranslation": [
+                  {
+                     "frame": 0.0,
+                     "value": 0.0,
+                     "delta": 0.0
+                  }
+               ],
+               "ytranslation": [
+                  {
+                     "frame": 0.0,
+                     "value": 0.0,
+                     "delta": 0.029999999329447746
+                  },
+                  {
+                     "frame": 200.0,
+                     "value": 6.0,
+                     "delta": 0.029999999329447746
+                  }
+               ]
+            },
+            {
+               "xscale": [
+                  {
+                     "frame": 0.0,
+                     "value": 2.0,
+                     "delta": 0.0
+                  }
+               ],
+               "yscale": [
+                  {
+                     "frame": 0.0,
+                     "value": 1.0,
+                     "delta": 0.0
+                  }
+               ],
+               "rot": [
+                  {
+                     "frame": 0.0,
+                     "value": 0.0,
+                     "delta": 0.0
+                  }
+               ],
+               "xtranslation": [
+                  {
+                     "frame": 0.0,
+                     "value": 0.0,
+                     "delta": 0.0
+                  }
+               ],
+               "ytranslation": [
+                  {
+                     "frame": 0.0,
+                     "value": 0.0,
+                     "delta": 0.029999999329447746
+                  },
+                  {
+                     "frame": 200.0,
+                     "value": 6.0,
+                     "delta": 0.029999999329447746
+                  }
+               ]
+            }
+         ]
+      }
+   },
+   "enkei_yama_m": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 128,
+         "ref1": 255,
+         "comp0": "greaterorequal",
+         "comp1": "lessorequal",
+         "comparebeforetexture": 0,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "inside",
+         "shadercolor": {
+            "color": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "enkei_yama_m",
+         "layercount": 1
+      },
+      "layers": {
+         "enkei_yama": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "enkei_yama"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 1
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color0_rgb",
+               "constantcolorselection": "color0_rgb",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "rastercolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color0_alpha",
+               "alphaconstantselection": "color0_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   },
+   "fence": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 128,
+         "ref1": 255,
+         "comp0": "greaterorequal",
+         "comp1": "lessorequal",
+         "comparebeforetexture": 0,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "inside",
+         "shadercolor": {
+            "color": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "fence",
+         "layercount": 1
+      },
+      "layers": {
+         "lc_ami": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "mirror",
+            "minfilter": "linearmipmaplinear",
+            "magfilter": "linear",
+            "lodbias": -1.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "lc_ami"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 1
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color0_rgb",
+               "constantcolorselection": "color0_rgb",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "rastercolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color0_alpha",
+               "alphaconstantselection": "color0_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   },
+   "hana_m": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 128,
+         "ref1": 255,
+         "comp0": "greaterorequal",
+         "comp1": "lessorequal",
+         "comparebeforetexture": 0,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "none",
+         "shadercolor": {
+            "color": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "hana_m",
+         "layercount": 1
+      },
+      "layers": {
+         "hana": {
+            "scale": [
+               2.0,
+               2.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "mirror",
+            "vwrap": "mirror",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "hana"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 1
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color0_rgb",
+               "constantcolorselection": "color0_rgb",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "rastercolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color0_alpha",
+               "alphaconstantselection": "color0_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   },
+   "kinoko_m": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 0,
+         "ref1": 0,
+         "comp0": "always",
+         "comp1": "always",
+         "comparebeforetexture": 1,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "inside",
+         "shadercolor": {
+            "color": [
+               [
+                  0,
+                  0,
+                  0,
+                  96
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               95,
+               111,
+               204,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "kinoko_m",
+         "layercount": 2
+      },
+      "layers": {
+         "lc_kinoko_mip": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linearmipmaplinear",
+            "magfilter": "linear",
+            "lodbias": -2.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "lc_kinoko_mip"
+         },
+         "drm_env13": {
+            "scale": [
+               -1.0,
+               0.800000011920929
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "envcamera",
+            "uwrap": "repeat",
+            "vwrap": "clamp",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "stq",
+            "inputform": "abc1",
+            "type": "regular",
+            "coordinates": "normals",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 1,
+            "name": "drm_env13"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 2
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color0_rgb",
+               "constantcolorselection": "color0_rgb",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "rastercolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color0_alpha",
+               "alphaconstantselection": "color0_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            },
+            "1": {
+               "enabled": 1,
+               "mapid": 1,
+               "coordinateid": 1,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color0_rgb",
+               "constantcolorselection": "color0_rgb",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "alpha0",
+               "colord": "outputcolor",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby1",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color0_alpha",
+               "alphaconstantselection": "color0_alpha",
+               "alphaa": "outputalpha",
+               "alphab": "zero",
+               "alphac": "zero",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   },
+   "kusa_kanban_m": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 128,
+         "ref1": 255,
+         "comp0": "greaterorequal",
+         "comp1": "lessorequal",
+         "comparebeforetexture": 0,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "none",
+         "shadercolor": {
+            "color": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "kusa_kanban_m",
+         "layercount": 1
+      },
+      "layers": {
+         "lc_kusa_kanban_mip": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linearmipmaplinear",
+            "magfilter": "linear",
+            "lodbias": -3.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "lc_kusa_kanban_mip"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 1
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color0_rgb",
+               "constantcolorselection": "color0_rgb",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "rastercolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color0_alpha",
+               "alphaconstantselection": "color0_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   },
+   "lake_m": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 0,
+         "ref1": 0,
+         "comp0": "always",
+         "comp1": "always",
+         "comparebeforetexture": 1,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "inside",
+         "shadercolor": {
+            "color": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "lake_m",
+         "layercount": 1
+      },
+      "layers": {
+         "lc_lake": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "lc_lake"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 1
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color0_rgb",
+               "constantcolorselection": "color0_rgb",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "rastercolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color0_alpha",
+               "alphaconstantselection": "color0_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   },
+   "lugcap_m": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 0,
+         "ref1": 0,
+         "comp0": "always",
+         "comp1": "always",
+         "comparebeforetexture": 1,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "inside",
+         "shadercolor": {
+            "color": [
+               [
+                  0,
+                  0,
+                  0,
+                  90
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "lugcap_m",
+         "layercount": 2
+      },
+      "layers": {
+         "luigi_capall_070607a": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "mirror",
+            "vwrap": "mirror",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "luigi_capall_070607a"
+         },
+         "drm_env04": {
+            "scale": [
+               1.0,
+               1.100000023841858
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "envcamera",
+            "uwrap": "clamp",
+            "vwrap": "clamp",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "stq",
+            "inputform": "abc1",
+            "type": "regular",
+            "coordinates": "normals",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 1,
+            "name": "drm_env04"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 2
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color0_rgb",
+               "constantcolorselection": "color0_rgb",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "rastercolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color0_alpha",
+               "alphaconstantselection": "color0_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            },
+            "1": {
+               "enabled": 1,
+               "mapid": 1,
+               "coordinateid": 1,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color0_rgb",
+               "constantcolorselection": "color0_rgb",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "alpha0",
+               "colord": "outputcolor",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby1",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color0_alpha",
+               "alphaconstantselection": "color0_alpha",
+               "alphaa": "outputalpha",
+               "alphab": "zero",
+               "alphac": "zero",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   },
+   "popkanban_m": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 0,
+         "ref1": 0,
+         "comp0": "always",
+         "comp1": "always",
+         "comparebeforetexture": 1,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "inside",
+         "shadercolor": {
+            "color": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "popkanban_m",
+         "layercount": 1
+      },
+      "layers": {
+         "lc_popAll_128x1024_mip": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linearmipmaplinear",
+            "magfilter": "linear",
+            "lodbias": -2.200000047683716,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "lc_popAll_128x1024_mip"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 1
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color0_rgb",
+               "constantcolorselection": "color0_rgb",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "rastercolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color0_alpha",
+               "alphaconstantselection": "color0_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   },
+   "tatemono_m": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 0,
+         "ref1": 0,
+         "comp0": "always",
+         "comp1": "always",
+         "comparebeforetexture": 1,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "inside",
+         "shadercolor": {
+            "color": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "tatemono_m",
+         "layercount": 1
+      },
+      "layers": {
+         "lc_tatemonoall_071123mip_a": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linearmipmaplinear",
+            "magfilter": "linear",
+            "lodbias": -1.5,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "lc_tatemonoall_071123mip_a"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 1
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color0_rgb",
+               "constantcolorselection": "color0_rgb",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "rastercolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color0_alpha",
+               "alphaconstantselection": "color0_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   },
+   "yama_m": {
+      "settings": {
+         "xlu": 0,
+         "ref0": 0,
+         "ref1": 0,
+         "comp0": "always",
+         "comp1": "always",
+         "comparebeforetexture": 1,
+         "blend": 0,
+         "blendsrc": "sourcealpha",
+         "blendlogic": "copy",
+         "blenddest": "inversesourcealpha",
+         "constantalpha": -1,
+         "cullmode": "inside",
+         "shadercolor": {
+            "color": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ],
+            "constant": [
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "lightchannel": {
+            "materialColorEnabled": 1,
+            "materialAlphaEnabled": 1,
+            "ambientColorEnabled": 1,
+            "ambientAlphaEnabled": 1,
+            "rasterColorEnabled": 1,
+            "rasterAlphaEnabled": 1,
+            "materialColor": [
+               255,
+               255,
+               255,
+               255
+            ],
+            "ambientColor": [
+               0,
+               0,
+               0,
+               255
+            ],
+            "colorLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            },
+            "alphaLightControl": {
+               "materialSourceVertex": "vertex",
+               "enabled": "0",
+               "ambient": "register",
+               "diffuse": "clamped",
+               "attenuation": "spotlight"
+            }
+         },
+         "lightset": -1,
+         "fogset": 0,
+         "matrixmode": "maya",
+         "enabledepthtest": 1,
+         "enabledepthupdate": 1,
+         "depthfunction": "lessorequal",
+         "drawpriority": [
+            0
+         ],
+         "indirectmatrix": {
+            "id": 0,
+            "enabled": 0,
+            "scale": 0,
+            "matrix": [
+               [
+                  0,
+                  0,
+                  0
+               ],
+               [
+                  0,
+                  0,
+                  0
+               ]
+            ]
+         },
+         "name": "yama_m",
+         "layercount": 1
+      },
+      "layers": {
+         "yama": {
+            "scale": [
+               1.0,
+               1.0
+            ],
+            "rotation": 0.0,
+            "translation": [
+               0.0,
+               0.0
+            ],
+            "scn0cameraref": -1,
+            "scn0lightref": -1,
+            "mapmode": "texcoord",
+            "uwrap": "repeat",
+            "vwrap": "repeat",
+            "minfilter": "linear",
+            "magfilter": "linear",
+            "lodbias": 0.0,
+            "anisotrophy": "one",
+            "clampbias": 0,
+            "texelinterpolate": 0,
+            "projection": "st",
+            "inputform": "ab11",
+            "type": "regular",
+            "coordinates": "texcoord0",
+            "embosssource": 5,
+            "embosslight": 0,
+            "normalize": 0,
+            "name": "yama"
+         }
+      },
+      "shader": {
+         "settings": {
+            "indirectmap": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "indirectcoord": [
+               7,
+               7,
+               7,
+               7
+            ],
+            "stagecount": 1
+         },
+         "stages": {
+            "0": {
+               "enabled": 1,
+               "mapid": 0,
+               "coordinateid": 0,
+               "textureswapselection": 0,
+               "rastercolor": "lightchannel0",
+               "rasterswapselection": 0,
+               "colorconstantselection": "color0_rgb",
+               "constantcolorselection": "color0_rgb",
+               "colora": "zero",
+               "colorb": "texturecolor",
+               "colorc": "rastercolor",
+               "colord": "zero",
+               "colorbias": "zero",
+               "coloroperation": "add",
+               "colorclamp": 1,
+               "colorscale": "multiplyby2",
+               "colordestination": "outputcolor",
+               "constantalphaselection": "color0_alpha",
+               "alphaconstantselection": "color0_alpha",
+               "alphaa": "zero",
+               "alphab": "texturealpha",
+               "alphac": "rasteralpha",
+               "alphad": "zero",
+               "alphabias": "zero",
+               "alphaoperation": "add",
+               "alphaclamp": 1,
+               "alphascale": "multiplyby1",
+               "alphadestination": "outputalpha",
+               "indirectstage": 0,
+               "indirectformat": "f_8_bit_offsets",
+               "indirectalpha": "off",
+               "indirectbias": "none",
+               "indirectmatrixselection": "nomatrix",
+               "indirectswrap": "nowrap",
+               "indirecttwrap": "nowrap",
+               "indirectuseprevstage": 0,
+               "indirectunmodifiedlod": 0
+            }
+         }
+      }
+   }
+}

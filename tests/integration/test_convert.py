@@ -23,6 +23,5 @@ class TestConvert(IntegTest):
     def test_from_skp_dae(self):
         self.assertTrue(self._abmatt('convert test_files/skp_simple.dae to brres_files/test.brres -o'))
 
-
 if __name__ == '__main__':
     unittest.main()

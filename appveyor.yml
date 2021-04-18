@@ -6,27 +6,36 @@ environment:
   matrix:
     - TOXENV: py36
       fast_finish: true
-      PYTHON: "3.6"
+      PYTHON_V: "3.6"
+      PYTHON: "C:\\Python36-x64"
     - TOXENV: py39
       fast_finish: true
-      PYTHON: "3.9"
+      PYTHON_V: "3.9"
+      PYTHON: "C:\\Python39-x64"
 
-stack: python %PYTHON%
+stack: python %PYTHON_V%
 
 install:
   - python --version
   - python -m pip install tox
   - python -m pip install -r requirements.txt
+  # install wszst
+  - curl https://szs.wiimm.de/download/szs-v2.24a-r8414-x86_64.tar.gz -o wszst.tar.gz
+  - tar -xf wszst.tar.gz
+  - cd szs*
+  - export PATH=$PATH:$(pwd)/bin
+  - echo $PATH
+  - cd ..
 
 build_script:
-  - export PYTHONPATH=$PYTHONPATH:$pwd
+  - export PYTHONPATH=$(pwd):$(pwd)/abmatt/build
   - cd abmatt/build
   - echo $APPVEYOR_BUILD_VERSION
   - python build.py $APPVEYOR_BUILD_VERSION
   - cd ../..
 
 test_script:
-  - py -m tox -e %TOXENV%
+  - python -m tox -e $TOXENV
 
 artifacts:
   - path: 'abmatt\dist\abmatt_*.tar.gz'
@@ -38,32 +47,31 @@ for:
     only:
       - image: Visual Studio 2019
 
-  environment:
-    matrix:
-      - TOXENV: py36
-        fast_finish: true
-        PYTHON: "C:\\Python36"
-      - TOXENV: py39
-        fast_finish: true
-        PYTHON: "C:\\Python39"
-
   install:
-    - SET PATH=%PYTHON%;%PATH%
-    - py --version
-    - py -m pip install tox
-    - py -m pip install -r requirements.txt
+    # install wszst
+    - curl https://szs.wiimm.de/download/szs-v2.24a-r8414-cygwin64.zip -o wszst.zip
+    - 7z x wszst.zip
+    - cd szs*
+    - SET PATH=%PYTHON%;%PYTHON%\Scripts;%PATH%;%CD%\bin
+    - cd ..
+    - python --version
+    - python -m pip install tox
+    - python -m pip install -r requirements.txt
 
   build_script:
     # NSIS
-    - SET PYTHONPATH=%CD%
+    - SET PYTHONPATH=%CD%;%CD%\abmatt\build
     - ps choco install nsis.install
     - set "PATH=%PATH%;C:\Program Files (x86)\NSIS"
     - curl -fsS https://nsis.sourceforge.io/mediawiki/images/7/7f/EnVar_plugin.zip -o plugin.zip
     - 7z x plugin.zip -o"C:\Program Files (x86)\NSIS"
     - cd abmatt/build
     - echo %APPVEYOR_BUILD_VERSION%
-    - py build.py %APPVEYOR_BUILD_VERSION%
+    - python build.py %APPVEYOR_BUILD_VERSION%
     - cd ../..
+
+  test_script:
+    - python -m tox -e %TOXENV%
 
   artifacts:
     - path: 'abmatt\dist\abmatt_*.zip'

@@ -51,17 +51,10 @@ class PasteError(Exception):
 
 
 def getShadersFromMaterials(materials, for_modification=True):
-    """Gets unique shaders from material list, where materials may come from different models,
+    """Gets shaders from material list, where materials may come from different models,
         may have to detach if shared with material not in list
     """
-    shaders = []
-    models_checked = []
-    for x in materials:
-        mdl = x.parent
-        if mdl not in models_checked:
-            models_checked.append(mdl)
-            shaders.extend(mdl.getShaders(materials, for_modification))
-    return shaders
+    return [x.shader for x in materials]
 
 
 def getParents(group):

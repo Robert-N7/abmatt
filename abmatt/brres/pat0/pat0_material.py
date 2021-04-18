@@ -26,8 +26,9 @@ class Pat0MatAnimation(Clipable):
 
 
     def __eq__(self, other):
-        return self.enabled == other.enabled and self.framecount == other.framecount and \
-            self.loop == other.loop and self.frames == other.frames
+        return other is not None and type(other) == Pat0MatAnimation \
+            and self.enabled == other.enabled and self.framecount == other.framecount \
+            and self.loop == other.loop and self.frames == other.frames
 
     def __deepcopy__(self, memodict={}):
         tex = self.brres_textures

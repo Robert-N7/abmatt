@@ -2,7 +2,7 @@
 from copy import copy
 
 from abmatt.autofix import Bug, AutoFix
-from abmatt.brres.lib.matching import parseValStr, indexListItem, validBool, fuzzy_strings
+from abmatt.brres.lib.matching import parseValStr, indexListItem, validBool, fuzzy_strings, it_eq
 from abmatt.brres.lib.node import Clipable
 
 
@@ -36,7 +36,7 @@ class Layer(Clipable):
     def __init__(self, name, parent, binfile=None):
         """ Initializes, name, and parent material """
         self.enable_identity_matrix = True
-        self.tex0_ref = None    # this can be filled with the reference to the brres texture
+        self.tex0_ref = None  # this can be filled with the reference to the brres texture
         self.texture_matrix = [1.0, 0, 0, 0,
                                0, 1.0, 0, 0,
                                0, 0, 1.0, 0]
@@ -47,29 +47,30 @@ class Layer(Clipable):
         :type other: Layer
         :return: true if equal
         """
-        return type(other) == Layer and self.enable == other.enable and self.name == other.name and self.scale == other.scale \
-            and self.rotation == other.rotation and self.translation == other.translation \
-            and self.scn0_light_ref == other.scn0_light_ref and self.scn0_camera_ref == other.scn0_camera_ref \
-            and self.map_mode == other.map_mode and self.vwrap == other.vwrap and self.uwrap == other.uwrap \
-            and self.minfilter == other.minfilter and self.magfilter == other.magfilter \
-            and self.lod_bias == other.lod_bias and self.max_anisotrophy == other.max_anisotrophy \
-            and self.texel_interpolate == other.texel_interpolate and self.clamp_bias == other.clamp_bias \
-            and self.normalize == other.normalize and self.projection == other.projection \
-            and self.inputform == other.inputform and self.type == other.type \
-            and self.coordinates == other.coordinates and self.emboss_source == other.emboss_source \
-            and self.emboss_light == other.emboss_light and self.texture_matrix == other.texture_matrix
+        return type(other) == Layer and self.enable == other.enable and self.name == other.name \
+               and it_eq(self.scale, other.scale) \
+               and self.rotation == other.rotation and it_eq(self.translation, other.translation) \
+               and self.scn0_light_ref == other.scn0_light_ref and self.scn0_camera_ref == other.scn0_camera_ref \
+               and self.map_mode == other.map_mode and self.vwrap == other.vwrap and self.uwrap == other.uwrap \
+               and self.minfilter == other.minfilter and self.magfilter == other.magfilter \
+               and self.lod_bias == other.lod_bias and self.max_anisotrophy == other.max_anisotrophy \
+               and self.texel_interpolate == other.texel_interpolate and self.clamp_bias == other.clamp_bias \
+               and self.normalize == other.normalize and self.projection == other.projection \
+               and self.inputform == other.inputform and self.type == other.type \
+               and self.coordinates == other.coordinates and self.emboss_source == other.emboss_source \
+               and self.emboss_light == other.emboss_light
 
     def begin(self):
         self.enable = True
-        self.scale = [1, 1]
-        self.rotation = 0
-        self.translation = [0, 0]
+        self.scale = [1.0, 1.0]
+        self.rotation = 0.0
+        self.translation = [0.0, 0.0]
         self.scn0_light_ref = self.scn0_camera_ref = -1
         self.map_mode = 0
         self.vwrap = self.uwrap = 1
         self.minfilter = 1
         self.magfilter = 1
-        self.lod_bias = 0
+        self.lod_bias = 0.0
         self.max_anisotrophy = 0
         self.texel_interpolate = self.clamp_bias = False
         self.normalize = 0
@@ -98,7 +99,6 @@ class Layer(Clipable):
                 return None
         self.tex0_ref = texture_map.get(self.name)
         return self.tex0_ref
-
 
     def get_str(self, item):
         for i in range(len(self.SETTINGS)):
@@ -384,11 +384,11 @@ class Layer(Clipable):
         """ from lsb, enable, scaledefault, rotationdefault, transdefault """
         self.enable = nibble & 1
         if nibble >> 1 & 1:
-            self.scale = (1, 1)
+            self.scale = (1.0, 1.0)
         if nibble >> 2 & 1:
-            self.rotation = 0
+            self.rotation = 0.0
         if nibble >> 3 & 1:
-            self.translation = (0, 0)
+            self.translation = (0.0, 0.0)
         return self.enable
 
     def setName(self, value):
@@ -459,7 +459,7 @@ class Layer(Clipable):
         if not tex:
             # check if we have some reference
             if self.tex0_ref:
-                if texture_map:     # add the texture if it's not in the map
+                if texture_map:  # add the texture if it's not in the map
                     self.parent.getBrres().add_tex0(self.tex0_ref)
                 tex = self.tex0_ref
         else:
@@ -496,6 +496,6 @@ class Layer(Clipable):
                     b = Bug(4, 4, '{} mipmaps disabled but TEX0 has {}'.format(
                         self.name, tex.num_mips), 'Set minfilter to LinearMipmapLinear')
                     if self.MINFILTER_AUTO:
-                        self.set_minfilter(5) # linearmipmaplinear
+                        self.set_minfilter(5)  # linearmipmaplinear
                         b.resolve()
                         self.mark_modified()

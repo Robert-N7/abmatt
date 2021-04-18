@@ -1,7 +1,7 @@
 from copy import deepcopy, copy
 
 from abmatt.autofix import Bug, AutoFix
-from abmatt.brres.lib.matching import validFloat, splitKeyVal, validInt, validBool, MATCHING
+from abmatt.brres.lib.matching import validFloat, splitKeyVal, validInt, validBool, MATCHING, parseValStr
 from abmatt.brres.lib.node import Clipable
 
 
@@ -289,7 +289,8 @@ class SRTMatAnim(Clipable):
         super(SRTMatAnim, self).__init__(name, parent, binfile)
 
     def __eq__(self, other):
-        return self.framecount == other.framecount and self.loop == other.loop \
+        return other is not None and type(other) == SRTMatAnim \
+               and self.framecount == other.framecount and self.loop == other.loop \
                and self.texEnabled == other.texEnabled and self.tex_animations == other.tex_animations
 
     def mark_unmodified(self):
@@ -318,12 +319,21 @@ class SRTMatAnim(Clipable):
                 self.loop = loop
                 self.mark_modified()
         elif key == 'layerenable':
-            key, value = splitKeyVal(value)
-            key = validInt(key, 0, 8)
-            value = validBool(value)
-            if value != self.texIsEnabled(key):
-                self.texEnable(key) if value else self.texDisable(key)
-                self.mark_modified()
+            if value.startswith('[') or value.startswith('('):  # list/iterable
+                items = parseValStr(value)
+                for i in range(len(items)):
+                    val = validBool(items[i])
+                    if val:
+                        self.texEnable(i)
+                    else:
+                        self.texDisable(i)
+            else:
+                key, value = splitKeyVal(value)
+                key = validInt(key, 0, 8)
+                value = validBool(value)
+                if value != self.texIsEnabled(key):
+                    self.texEnable(key) if value else self.texDisable(key)
+                    self.mark_modified()
 
     # ------------------ PASTE ---------------------------
     def paste(self, item):

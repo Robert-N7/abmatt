@@ -329,8 +329,6 @@ class Brres(Clipable, Packable):
         ret = set()
         for x in self.models:
             ret |= x.get_used_textures()
-        for x in self.pat0:
-            ret |= x.get_used_textures()
         return ret
 
     # --------------------- Animations ----------------------------------------------

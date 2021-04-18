@@ -232,7 +232,6 @@ class Mdl0(SubFile):
                 self.__remove_and_rebuild_index(polygon.get_uv_group(i), self.uvs, uv_groups)
         self.mark_modified()
 
-
     def add_material(self, material):
         """
         Adds material to model
@@ -243,10 +242,15 @@ class Mdl0(SubFile):
             if material.parent is not self:
                 raise RuntimeError(f'Material {material.name} is already used by {material.parent.name}')
         else:
-            material.parent = self
+            material.link_parent(self)
         if self.get_material_by_name(material.name):
             raise RuntimeError(f'Material with name {material.name} is already in model!')
         self.materials.append(material)
+        # animations
+        if material.srt0:
+            self.add_srt0(material.srt0)
+        if material.pat0:
+            self.add_pat0(material.pat0)
         self.mark_modified()
         return material
 
@@ -261,7 +265,6 @@ class Mdl0(SubFile):
         if material.pat0:
             self.pat0_collection.remove(material.pat0)
         self.mark_modified()
-
 
     def get_polys_using_material(self, material):
         return [x for x in self.objects if x.get_material() == material]
@@ -318,8 +321,7 @@ class Mdl0(SubFile):
                     srt0_collection.remove(x)
                     b.resolve()
 
-    def add_srt0(self, material):
-        anim = SRTMatAnim(material.name)
+    def add_srt0(self, anim):
         if not self.srt0_collection:
             self.srt0_collection = self.parent.add_srt_collection(SRTCollection(self.name, self.parent))
         self.srt0_collection.add(anim)
@@ -353,10 +355,9 @@ class Mdl0(SubFile):
                     pat0_collection.remove(x)
                     b.resolve()
 
-    def add_pat0(self, material):
+    def add_pat0(self, anim):
         if not self.pat0_collection:
             self.pat0_collection = self.parent.add_pat0_collection(Pat0Collection(self.name, self.parent))
-        anim = Pat0MatAnimation(material.name, self.parent)
         self.pat0_collection.add(anim)
         return anim
 
@@ -391,16 +392,6 @@ class Mdl0(SubFile):
 
     def get_materials_by_name(self, name):
         return MATCHING.findAll(name, self.materials)
-
-    # ------------------------------- Shaders -------------------------------------------
-    def getShaders(self, material_list, for_modification=True):
-        return self.shaders.getShaders(material_list, for_modification)
-
-    # ----------------------------- Tex Links -------------------------------------
-    # def get_texture_link(self, name):
-    #     for x in self.textureLinks:
-    #         if x.name == name:
-    #             return x
 
     def add_texture_link(self, name):
         if name != 'Null' and not self.parent.getTexture(name):
@@ -443,30 +434,16 @@ class Mdl0(SubFile):
         self.paste_group(self.materials, item.materials)
 
     def __deepcopy__(self, memodict={}):
+        raise NotImplementedError()     # hasn't been tested and it seems dangerous
         copy = super().__deepcopy__(memodict)
         sections = [copy.definitions, copy.bones, copy.vertices, copy.normals,
                     copy.colors, copy.uvs,
                     # copy.furVectors, copy.furLayers,
-                    copy.materials, copy.shaders, copy.objects,
+                    copy.materials, copy.objects,
                     ]
         for x in sections:
             for y in x:
                 y.link_parent(copy)
-        shaders = copy.shaders
-        srt0_group = self.srt0_collection
-        pat0_group = self.pat0_collection
-        for x in copy.materials:
-            shader = shaders[x.name]
-            x.shader = shader
-            shader.material_name = x
-            if srt0_group:
-                srt0 = srt0_group[x.name]
-                if srt0:
-                    x.srt0 = srt0
-            if pat0_group:
-                pat0 = pat0_group[x.name]
-                if pat0:
-                    x.pat0 = pat0
         return copy
 
     def link_parent(self, parent):
@@ -475,6 +452,8 @@ class Mdl0(SubFile):
         if self.pat0_collection:
             for x in self.pat0_collection:
                 x.brres_textures = brres_textures
+        for x in self.materials:
+            x.on_brres_link(parent)
 
     def on_material_rename(self, material, new_name):
         if material.srt0:
@@ -558,7 +537,7 @@ class Mdl0(SubFile):
         self.check_group(self.normals, normals)
         self.check_group(self.uvs, uvs)
         self.check_group(self.colors, colors)
-        if not len(self.bones):     # no bones???
+        if not len(self.bones):  # no bones???
             name = expected_name if expected_name else 'default'
             AutoFix.get().warn('No bones in model, adding bone {}'.format(name))
             self.add_bone(name)
@@ -586,6 +565,8 @@ class Mdl0(SubFile):
         for x in self.materials:
             for y in x.layers:
                 textures.add(y.name)
+        if self.pat0_collection is not None:
+            textures |= self.pat0_collection.get_used_textures()
         return textures
 
     # ---------------START PACKING STUFF -------------------------------------

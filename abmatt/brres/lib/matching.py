@@ -78,6 +78,21 @@ def validInt(str, min=-0x7fffffff, max=0x7fffffff):
     return i
 
 
+def it_eq(x, y):
+    """determines if iterable is equal"""
+    x_type = type(x)
+    y_type = type(y)
+    if x_type != tuple and x_type != list or y_type != tuple and y_type != list:
+        return x == y   # default comparison
+    if len(x) != len(y):
+        return False
+    # recursively compare, in case of nested iterables
+    for i in range(len(x)):
+        if not it_eq(x[i], y[i]):
+            return False
+    return True
+
+
 def parse_color(color_str):
     """parses color string"""
     if not color_str:
@@ -99,6 +114,7 @@ def parse_color(color_str):
 
 def validBool(str):
     """ Checks if its a valid boolean string """
+    str = str.lower()
     if str == "false" or not str or str == "0" or "disable" in str or str == "none":
         return False
     elif str == "true" or str == "1" or "enable" in str:
@@ -120,8 +136,11 @@ def indexListItem(list, item, compareIndex=-2):
 
 
 def parseValStr(value):
-    """ Parses tuple formed string with no spaces """
-    return value.strip('()').split(",")
+    """ Parses tuple/list formed string"""
+    values = value.strip('\'[]()').split(",")
+    for i in range(len(values)):
+        values[i] = values[i].strip()
+    return values
 
 
 """ Matching class """

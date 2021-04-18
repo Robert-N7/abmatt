@@ -5,7 +5,7 @@ import os
 import re
 import sys
 
-from config import Config
+from abmatt.config import Config
 from get_bit_width import get_bit_width
 
 

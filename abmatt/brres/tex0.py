@@ -94,8 +94,7 @@ class Tex0(SubFile):
         width = self.width if self.is_power_of_two(self.width) else self.nearest_power_of_two(self.width)
         height = self.height if self.is_power_of_two(self.height) else self.nearest_power_of_two(self.height)
         if self.converter:
-            self.converter.set_dimensions(self, width, height)
-            self.mark_modified()
+            self.paste(self.converter.set_dimensions(self, width, height))
             return True
         return False
 

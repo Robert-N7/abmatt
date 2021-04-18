@@ -1,6 +1,7 @@
 ''' Dealing with Wii graphics, the constants courtesy of Brawlbox
     https://github.com/libertyernie/brawltools
 '''
+from abmatt.brres.lib.matching import it_eq
 
 
 class BPCommand(object):
@@ -605,9 +606,10 @@ class IndMatrix():
     def __eq__(self, other):
         """
         :type other: IndMatrix
-        :return: True if equal
+        :return: True if equal or both disabled
         """
-        return self.enabled == other.enabled and self.scale == other.scale and self.matrix == other.matrix
+        return self.enabled == other.enabled and (not self.enabled or \
+               self.scale == other.scale and it_eq(self.matrix, other.matrix))
 
     def __init__(self, scale=46, enable=False):
         """ Indirect 2x3 matrix that blit processor loads
