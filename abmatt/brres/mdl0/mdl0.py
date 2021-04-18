@@ -373,7 +373,7 @@ class Mdl0(SubFile):
         old_name = self.name
         result = super().rename(name)
         if result:
-            self.parent.on_model_rename(self, old_name, name)
+            self.parent.on_model_rename(old_name, name)
             self.is_map_model = True if 'map' in name else False
         return result
 
