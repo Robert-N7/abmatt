@@ -21,7 +21,8 @@ install:
   - curl https://szs.wiimm.de/download/szs-v2.24a-r8414-x86_64.tar.gz -o wszst.tar.gz
   - tar -xf wszst.tar.gz
   - cd szs*
-  - export PATH=$(PATH):$(pwd)/bin
+  - export PATH=$PATH:$(pwd)/bin
+  - echo $PATH
   - cd ..
 
 build_script:
@@ -32,7 +33,7 @@ build_script:
   - cd ../..
 
 test_script:
-  - py -m tox -e %TOXENV%
+  - python -m tox -e %TOXENV%
 
 artifacts:
   - path: 'abmatt\dist\abmatt_*.tar.gz'
@@ -54,15 +55,15 @@ for:
         PYTHON: "C:\\Python39"
 
   install:
-    - py --version
-    - py -m pip install tox
-    - py -m pip install -r requirements.txt
     # install wszst
     - curl https://szs.wiimm.de/download/szs-v2.24a-r8414-cygwin64.zip -o wszst.zip
     - 7z x wszst.zip
     - cd szs*
     - SET PATH=%PYTHON%;%PATH%;%CD%\bin
     - cd ..
+    - python --version
+    - python -m pip install tox
+    - python -m pip install -r requirements.txt
 
   build_script:
     # NSIS
@@ -73,8 +74,11 @@ for:
     - 7z x plugin.zip -o"C:\Program Files (x86)\NSIS"
     - cd abmatt/build
     - echo %APPVEYOR_BUILD_VERSION%
-    - py build.py %APPVEYOR_BUILD_VERSION%
+    - python build.py %APPVEYOR_BUILD_VERSION%
     - cd ../..
+
+  test_script:
+    - python -m tox -e %TOXENV%
 
   artifacts:
     - path: 'abmatt\dist\abmatt_*.zip'
