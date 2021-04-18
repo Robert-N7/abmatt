@@ -61,9 +61,10 @@ for:
     - cd szs*
     - SET PATH=%PYTHON%;%PYTHON%\Scripts;%PATH%;%CD%\bin
     - cd ..
-    - cmd %PYTHON% --version
-    - cmd %PYTHON% -m pip install tox
-    - cmd %PYTHON% -m pip install -r requirements.txt
+    - cmd |
+      %PYTHON% --version
+      %PYTHON% -m pip install tox
+      %PYTHON% -m pip install -r requirements.txt
 
   build_script:
     # NSIS
