@@ -79,13 +79,14 @@ def main(args):
     else:
         version = config['version']
     run_update_version([version], config)
-    x = ImportChecker(os.path.dirname(os.path.dirname(__file__)))
+    abspath = os.path.abspath(__file__)
+    x = ImportChecker(os.path.dirname(os.path.dirname(abspath)))
     x.check_imports()
     processes = []
     thread = Thread(target=build_distribution, args=(config, version))
     thread.start()
     venv_dir = os.path.dirname(os.path.dirname(sys.executable))
-    abmatt_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    abmatt_dir = os.path.dirname(os.path.dirname(os.path.dirname(abspath)))
     start_dir = os.path.join(abmatt_dir, 'tests')
     start_path = os.path.join(start_dir, 'integration/start.py')
     # if config['run_unit_tests'].lower() == 'true':

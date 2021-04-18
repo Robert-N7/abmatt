@@ -17,9 +17,15 @@ install:
   - python --version
   - python -m pip install tox
   - python -m pip install -r requirements.txt
+  # install wszst
+  - curl https://szs.wiimm.de/download/szs-v2.24a-r8414-x86_64.tar.gz -o wszst.tar.gz
+  - tar -xf wszst.tar.gz
+  - cd szs*
+  - export PATH=$(PATH):$(pwd)/bin
+  - cd ..
 
 build_script:
-  - export PYTHONPATH=$pwd:$pwd/abmatt/build
+  - export PYTHONPATH=$(pwd):$(pwd)/abmatt/build
   - cd abmatt/build
   - echo $APPVEYOR_BUILD_VERSION
   - python build.py $APPVEYOR_BUILD_VERSION
@@ -48,10 +54,15 @@ for:
         PYTHON: "C:\\Python39"
 
   install:
-    - SET PATH=%PYTHON%;%PATH%
     - py --version
     - py -m pip install tox
     - py -m pip install -r requirements.txt
+    # install wszst
+    - curl https://szs.wiimm.de/download/szs-v2.24a-r8414-cygwin64.zip -o wszst.zip
+    - 7z x wszst.zip
+    - cd szs*
+    - SET PATH=%PYTHON%;%PATH%;%CD%\bin
+    - cd ..
 
   build_script:
     # NSIS
