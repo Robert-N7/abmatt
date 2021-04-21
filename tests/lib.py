@@ -1,9 +1,12 @@
 import os
 import unittest
 
+import numpy as np
+
 from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
 from abmatt.brres.lib.matching import it_eq
+from abmatt.converters.geometry import decode_geometry_group
 
 
 def get_base_path():
@@ -30,6 +33,10 @@ class AbmattTest(unittest.TestCase):
     @staticmethod
     def _get_test_fname(filename):
         return os.path.join(AbmattTest.base_path, 'test_files', filename)
+
+    @staticmethod
+    def _get_tmp(extension):
+        return os.path.join(AbmattTest.base_path, 'test_files', 'tmp' + extension)
 
     @staticmethod
     def _get_brres(filename):
@@ -97,3 +104,31 @@ class TestBeginner(AbmattTest):
     def setUpClass(cls):
         cls.brres = Brres(cls._get_brres_fname('beginner_course.brres'))
 
+
+class TestPositions:
+    def test_positions_equal(self, vertices1, vertices2):
+        """Checks if the vertices are the same"""
+        if type(vertices1) != list:
+            vertices1 = [vertices1]
+        if type(vertices2) != list:
+            vertices2 = [vertices2]
+        if len(vertices1) != len(vertices2):
+            print('Mismatched group lengths')
+            return False
+        err = False
+        # Check each vertex group
+        for k in range(len(vertices1)):
+            points1 = decode_geometry_group(vertices1[k])
+            points2 = decode_geometry_group(vertices2[k])
+            if points1.shape != points2.shape:
+                print('point shapes are different')
+                return False
+            if not len(points1):
+                continue
+            width = len(points1[0])
+            for i in range(len(points1)):
+                for j in range(width):
+                    if not np.isclose(points1[i][j], points2[i][j]):
+                        print('Point mismatch at {}, {}, {} Expected {}, found {} '.format(k, i, j, points1[i][j], points2[i][j]))
+                        err = True
+        return not err
