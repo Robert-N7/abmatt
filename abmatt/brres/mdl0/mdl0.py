@@ -65,7 +65,7 @@ class Mdl0(SubFile):
     VERSION_SECTIONCOUNT = {8: 11, 9: 11, 10: 14, 11: 14}
     EXPECTED_VERSION = 11
 
-    SETTINGS = ('name')  # todo, more settings
+    SETTINGS = ('name')
     DETECT_MODEL_NAME = True
     RENAME_UNKNOWN_REFS = True
     REMOVE_UNKNOWN_REFS = True
@@ -373,7 +373,7 @@ class Mdl0(SubFile):
         old_name = self.name
         result = super().rename(name)
         if result:
-            self.parent.on_model_rename(self, old_name, name)
+            self.parent.on_model_rename(old_name, name)
             self.is_map_model = True if 'map' in name else False
         return result
 

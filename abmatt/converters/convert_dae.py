@@ -80,9 +80,9 @@ class DaeConverter2(Converter):
         name = polygon.name
         node = ColladaNode(name)
         geo = decode_polygon(polygon, self.influences)
-        if geo.colors and self.flags & self.NoColors:
+        if geo.colors and self.flags & self.NO_COLORS:
             geo.colors = None
-        if geo.normals and self.flags & self.NoNormals:
+        if geo.normals and self.flags & self.NO_NORMALS:
             geo.normals = None
         node.geometries.append(geo)
         node.controller = get_controller(geo)
@@ -114,19 +114,23 @@ class DaeConverter2(Converter):
 
     def __parse_controller(self, controller, matrix, material_geometry_map):
         geometry, influences = controller.get_bound_geometry(self.bones, self.influences, matrix)
-        self.__add_geometry(geometry, material_geometry_map)
+        if type(geometry) == list:
+            for x in geometry:
+                self.__add_geometry(x, material_geometry_map)
+        else:
+            self.__add_geometry(geometry, material_geometry_map)
 
-    def __encode_geometry(self, geometry, bone=None):
+    def __encode_geometry(self, geometry):
         if not self.dae.y_up:
             geometry.swap_y_z_axis()
-        if self.flags & self.NoColors:
+        if self.flags & self.NO_COLORS:
             geometry.colors = None
-        if self.flags & self.NoNormals:
+        if self.flags & self.NO_NORMALS:
             geometry.normals = None
         replace = 'Mesh'
         if geometry.name.endswith(replace) and len(replace) < len(geometry.name):
             geometry.name = geometry.name[:len(replace) * -1]
-        geometry.encode(self.mdl0, bone)
+        geometry.encode(self.mdl0)
 
     def __add_bone(self, node, parent_bone=None, matrix=None):
         name = node.attrib['id']
@@ -137,7 +141,9 @@ class DaeConverter2(Converter):
                 self.bones_by_name[name] = bone
             self.set_bone_matrix(bone, matrix)
             for n in node.nodes:
-                self.__add_bone(n, bone, matrix=n.get_matrix())
+                m = n.get_matrix()
+                if m is not None and not self.is_identity_matrix(m):
+                    self.__add_bone(n, bone, matrix=m)
 
     def __add_geometry(self, geometry, material_geometry_map):
         geo = material_geometry_map.get(geometry.material_name)
@@ -151,21 +157,16 @@ class DaeConverter2(Converter):
     def __parse_nodes(self, nodes, material_geometry_map, matrix=None):
         for node in nodes:
             current_node_matrix = combine_matrices(matrix, node.matrix)
-            bone_added = False
             if node.controller:
                 self.controllers.append((node.controller, current_node_matrix))
-                # self.__parse_controller(node.controller, current_node_matrix, material_geometry_map)
             elif node.geometries:
                 for x in node.geometries:
                     if current_node_matrix is not None:
                         x.apply_matrix(current_node_matrix)
                     self.__add_geometry(x, material_geometry_map)
-                    # self.__encode_geometry(x)
             elif node.attrib.get('type') == 'JOINT':
                 self.__add_bone(node, matrix=current_node_matrix)
-                bone_added = True
-            if not bone_added:
-                self.__parse_nodes(node.nodes, {}, current_node_matrix)
+            self.__parse_nodes(node.nodes, material_geometry_map, current_node_matrix)
 
     def __combine_bones_map(self):
         """Adds the bones by name to bones (in case naming is different than id)"""

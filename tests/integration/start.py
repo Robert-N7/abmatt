@@ -3,7 +3,7 @@ import sys
 
 from tests.integration.lib import bcolors
 
-os.system('pytest .')
+os.system('python -m pytest .')
 # err_count = 0
 # for file in os.listdir('.'):
 #     if 'test' in file and file.endswith('.py'):

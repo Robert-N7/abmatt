@@ -4,10 +4,6 @@ image:
 
 environment:
   matrix:
-    - TOXENV: py36
-      fast_finish: true
-      PYTHON_V: "3.6"
-      PYTHON: "C:\\Python36-x64"
     - TOXENV: py39
       fast_finish: true
       PYTHON_V: "3.9"

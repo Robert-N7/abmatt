@@ -10,3 +10,6 @@ class DaeConverterTest(AbmattTest):
         converter = DaeConverter2(Brres('tmp.brres', readFile=False), dae_file)
         converter.load_model()
         self._test_mats_equal(converter.brres.models[0].materials, brres.models[0].materials)
+
+    def test_convert_single_bone(self):
+        pass    # Todo

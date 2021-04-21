@@ -93,6 +93,8 @@ class Tex0(SubFile):
     def set_power_of_two(self):
         width = self.width if self.is_power_of_two(self.width) else self.nearest_power_of_two(self.width)
         height = self.height if self.is_power_of_two(self.height) else self.nearest_power_of_two(self.height)
+        if width > self.MAX_IMG_SIZE or height > self.MAX_IMG_SIZE:
+            width, height = self.get_scaled_size(width, height)
         if self.converter:
             self.paste(self.converter.set_dimensions(self, width, height))
             return True

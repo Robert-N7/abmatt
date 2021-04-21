@@ -204,6 +204,8 @@ class Command:
                 flags |= 1
             elif lower == 'no-colors':
                 flags |= 2
+            elif lower == 'single-bone':
+                flags |= 4
             elif not self.name:
                 self.name = os.path.normpath(param)
             else:

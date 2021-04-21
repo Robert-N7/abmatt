@@ -17,8 +17,9 @@ from abmatt.image_converter import EncodeError, NoImgConverterError, ImgConverte
 
 
 class Converter:
-    NoNormals = 0x1
-    NoColors = 0x2
+    NO_NORMALS = 0x1
+    NO_COLORS = 0x2
+    SINGLE_BONE  = 0x4
     DETECT_FILE_UNITS = True
     OVERWRITE_IMAGES = False
 
