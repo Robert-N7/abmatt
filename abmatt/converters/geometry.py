@@ -167,7 +167,6 @@ class Geometry:
     def __encode_vertices(self, polygon, vertices, mdl0):
         vert = Vertex(self.name, mdl0)
         mdl0.add_to_group(mdl0.vertices, vert)
-        linked_bone = self.linked_bone
         points = vertices.points
         if polygon.has_weighted_matrix():
             AutoFix.get().warn(f'Polygon weighting is experimental, {polygon.name} will likely be incorrect.')
@@ -182,6 +181,7 @@ class Geometry:
                     new_inf_map[remapper[i]] = old_inf_map[i]
                 self.influences.influences = new_inf_map
         else:
+            linked_bone = self.linked_bone
             rotation_matrix = get_rotation_matrix(np.array(linked_bone.get_transform_matrix(), dtype=float))
             for i in range(len(points)):
                 points[i] = np.dot(rotation_matrix, points[i])

@@ -135,10 +135,10 @@ class Dae:
         for child in xml_node:
             if child.tag == 'instance_controller':
                 geom = self.get_referenced_element(child, 'url')
-                node.controller = self.decode_controller(geom, self.__get_bound_material(child))
+                node.controller = self.decode_controller(geom, self.__get_bound_materials(child))
             elif child.tag == 'instance_geometry':
-                target = self.__get_bound_material(child)
-                node.geometries.append(self.decode_geometry(self.get_referenced_element(child, 'url'), target))
+                target = self.__get_bound_materials(child)
+                node.geometries.extend(self.decode_geometries(self.get_referenced_element(child, 'url'), target))
             elif child.tag == 'matrix':
                 node.matrix = np.array([float(x) for x in child.text.split()]).reshape((4, 4))
             elif child.tag == 'extra':
@@ -184,13 +184,13 @@ class Dae:
             self.add_node(n, xml_node)
         return xml_node
 
-    def decode_controller(self, xml_controller, bind_material=None):
+    def decode_controller(self, xml_controller, bind_materials=None):
         name = get_id(xml_controller)
         skin = first(xml_controller, 'skin')
         ref = self.get_referenced_element(skin, 'source')
         if ref.tag != 'geometry':  # fix for badly formed xml
             ref = self.search_library_by_id(self.geometries, skin.attrib['source'][1:])
-        geometry = self.decode_geometry(ref, bind_material)
+        geometries = self.decode_geometries(ref, bind_materials)
         bind_shape_matrix = np.array([float(x) for x in first(skin, 'bind_shape_matrix').text.split()],
                                      dtype=float).reshape((4, 4))
         joints = first(skin, 'joints')
@@ -230,7 +230,7 @@ class Dae:
             input_count += 1
         assert input_count == 2
         return Controller(name, bind_shape_matrix, inv_bind_matrices, joint_names, weights, vertex_weight_count,
-                          vertex_weight_indices, geometry)
+                          vertex_weight_indices, geometries)
 
     def add_skin_controller(self, controller):
         controller_id = controller.name + '-controller'
@@ -276,70 +276,76 @@ class Dae:
                           parent=vertex_weights)
         return xml_controller
 
-    def decode_geometry(self, xml_geometry, material_name=None):
+    def decode_geometries(self, xml_geometry, mat_names=None):
         mesh = first(xml_geometry, 'mesh')
-        tri_node = first(mesh, 'triangles')
-        if not material_name:
-            material_name = tri_node.attrib.get('material')
-            if not material_name:
-                for attrib in xml_geometry.attrib:
-                    material_name = xml_geometry.attrib[attrib] + '-mat'
-                    break
-        inputs = []
-        stride = 0
-        uniqueOffsets = []
-        indices = []
-        for input in tri_node.iter('input'):
-            offset = int(input.attrib['offset'])
-            if offset not in uniqueOffsets:   # duplicate
-                uniqueOffsets.append(offset)
-            inputs.append(input)
-        for x in tri_node.iter('p'):
-            indices.extend([int(index) for index in x.text.split()])
-        vertices = normals = colors = None
-        texcoords = []
-        data_inputs = []
-        data_types = []
-        offsets = []
-        for input in inputs:
-            offset = int(input.attrib['offset'])
-            source = self.get_referenced_element(input, 'source')
-            if source.tag != 'source':
-                for x in source.iter('input'):
-                    source = self.get_referenced_element(x, 'source')
+        geometries = []
+        geo_name = xml_geometry.attrib.get('name')
+        if not geo_name:
+            geo_name = get_id(xml_geometry)
+        geo_count = 0
+        for tri_node in mesh.iter('triangles'):
+            if not mat_names:
+                material_name = tri_node.attrib.get('material')
+                if not material_name:
+                    for attrib in xml_geometry.attrib:
+                        material_name = xml_geometry.attrib[attrib] + '-mat'
+                        break
+            else:
+                material_name = mat_names[geo_count]
+            inputs = []
+            stride = 0
+            uniqueOffsets = []
+            indices = []
+            for input in tri_node.iter('input'):
+                offset = int(input.attrib['offset'])
+                if offset not in uniqueOffsets:   # duplicate
+                    uniqueOffsets.append(offset)
+                inputs.append(input)
+            for x in tri_node.iter('p'):
+                indices.extend([int(index) for index in x.text.split()])
+            vertices = normals = colors = None
+            texcoords = []
+            data_inputs = []
+            data_types = []
+            offsets = []
+            for input in inputs:
+                offset = int(input.attrib['offset'])
+                source = self.get_referenced_element(input, 'source')
+                if source.tag != 'source':
+                    for x in source.iter('input'):
+                        source = self.get_referenced_element(x, 'source')
+                        data_inputs.append(self.__decode_source(source))
+                        data_types.append(x.attrib['semantic'])
+                        offsets.append(offset)
+                        stride += 1
+                else:
                     data_inputs.append(self.__decode_source(source))
-                    data_types.append(x.attrib['semantic'])
+                    data_types.append(input.attrib['semantic'])
                     offsets.append(offset)
                     stride += 1
-            else:
-                data_inputs.append(self.__decode_source(source))
-                data_types.append(input.attrib['semantic'])
-                offsets.append(offset)
-                stride += 1
-        triangles = np.array(indices, np.uint16).reshape((-1, 3, len(uniqueOffsets)))
-        count = tri_node.attrib.get('count')
-        if count is not None and int(count) != triangles.shape[0]:
-            raise ValueError('Failed to parse {} triangles of unexpected shape, expected {} and got {}'.format(material_name, count, triangles.shape[0]))
+            triangles = np.array(indices, np.uint16).reshape((-1, 3, len(uniqueOffsets)))
+            count = tri_node.attrib.get('count')
+            if count is not None and int(count) != triangles.shape[0]:
+                raise ValueError('Failed to parse {} triangles of unexpected shape, expected {} and got {}'.format(mat_names, count, triangles.shape[0]))
 
-        for i in range(len(data_inputs)):
-            decode_type = data_types[i]
-            face_indices = np.copy(triangles[:, :, offsets[i]])
-            if decode_type == 'TEXCOORD':
-                texcoords.append(PointCollection(data_inputs[i], face_indices))
-            elif decode_type == 'POSITION':
-                vertices = PointCollection(data_inputs[i], face_indices)
-            elif decode_type == 'NORMAL':
-                normals = PointCollection(data_inputs[i], face_indices)
-            elif decode_type == 'COLOR':
-                colors = ColorCollection(data_inputs[i], face_indices, normalize=True)
-            else:
-                raise ValueError('Unknown semantic {}'.format(decode_type))
-        name = xml_geometry.attrib.get('name')
-        if not name:
-            name = get_id(xml_geometry)
-        geometry = Geometry(name, material_name, vertices=vertices, texcoords=texcoords, normals=normals, colors=colors,
-                            triangles=None)
-        return geometry
+            for i in range(len(data_inputs)):
+                decode_type = data_types[i]
+                face_indices = np.copy(triangles[:, :, offsets[i]])
+                if decode_type == 'TEXCOORD':
+                    texcoords.append(PointCollection(data_inputs[i], face_indices))
+                elif decode_type == 'POSITION':
+                    vertices = PointCollection(data_inputs[i], face_indices)
+                elif decode_type == 'NORMAL':
+                    normals = PointCollection(data_inputs[i], face_indices)
+                elif decode_type == 'COLOR':
+                    colors = ColorCollection(data_inputs[i], face_indices, normalize=True)
+                else:
+                    raise ValueError('Unknown semantic {}'.format(decode_type))
+            name = geo_name if geo_count <= 0 else geo_name + '_' + str(geo_count)
+            geometries.append(Geometry(name, material_name, vertices=vertices, texcoords=texcoords, normals=normals, colors=colors,
+                                       triangles=None))
+            geo_count += 1
+        return geometries
 
     def add_geometry(self, geometry):
         """
@@ -665,10 +671,11 @@ class Dae:
             return image_path
 
     @staticmethod
-    def __get_bound_material(node):
+    def __get_bound_materials(node):
         try:
-            bound_material = first(first(first(node, 'bind_material'), 'technique_common'), 'instance_material')
-            return bound_material.attrib['target'][1:]
+            tech_common = first(first(node, 'bind_material'), 'technique_common')
+            return [x.attrib['target'][1:] for x in tech_common.iter('instance_material')]
+
         except AttributeError:
             return None
 

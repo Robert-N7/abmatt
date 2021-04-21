@@ -9,7 +9,7 @@ with open('README.md') as file:
     long_description = file.read()
 
 
-REQUIREMENTS = ['fuzzywuzzy', 'python-Levenshtein', 'numpy', 'pillow', 'colorama', 'PyQt5']
+REQUIREMENTS = ['fuzzywuzzy', 'python-Levenshtein', 'numpy', 'pillow', 'colorama', 'PyQt5', 'lxml']
 
 # some more details
 CLASSIFIERS = [

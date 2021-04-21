@@ -17,7 +17,7 @@ class ObjConverter(Converter):
         material_geometry_map = {}
         # first collect geometries
         for geometry in obj_geometries:
-            normals = None if self.NoNormals & self.flags else geometry.normals
+            normals = None if self.NO_NORMALS & self.flags else geometry.normals
             texcoords = [geometry.texcoords] if geometry.has_texcoords else None
             geo = Geometry(geometry.name, geometry.material_name, geometry.vertices, texcoords, normals,
                            triangles=geometry.triangles, linked_bone=bone)

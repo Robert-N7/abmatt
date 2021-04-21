@@ -42,14 +42,18 @@ class Controller:
             influence = Influence()
             influence[my_bone_map[0].name] = Weight(my_bone_map[0], 1.0)
             influence = all_influences.create_or_find(influence)
-            self.geometry.apply_matrix(matrices[0])
+            if type(self.geometry) == list:
+                for x in self.geometry:
+                    x.apply_matrix(matrices[0])
+            else:
+                self.geometry.apply_matrix(matrices[0])
             return InfluenceCollection({0: influence})
         influences = {}
         indices = self.vertex_weight_indices
         vertex_weight_counts = self.vertex_weight_counts
         j = 0
         # Now construct influences
-        vertices = self.geometry.vertices
+        # vertices = self.geometry.vertices
         for vertex_index in range(len(vertex_weight_counts)):
             weight_count = vertex_weight_counts[vertex_index]
             influence = Influence()
@@ -66,8 +70,14 @@ class Controller:
 
     def get_bound_geometry(self, bone_map, all_influences, matrix=None):
         matrix = combine_matrices(matrix, self.bind_shape_matrix)
-        self.geometry.apply_matrix(matrix)
-        self.geometry.influences = influences = self.get_influences(bone_map, all_influences)
+        influences = self.get_influences(bone_map, all_influences)
+        if type(self.geometry == list):
+            for x in self.geometry:
+                x.apply_matrix(matrix)
+                x.influences = influences
+        else:
+            self.geometry.apply_matrix(matrix)
+            self.geometry.influences = influences
         return self.geometry, influences
 
 
