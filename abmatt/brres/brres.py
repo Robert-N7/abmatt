@@ -367,7 +367,8 @@ class Brres(Clipable, Packable):
                 self.remove_unused_textures(unused)
                 b.resolve()
                 self.mark_modified()
-        for x in self.textures:
+        for name in [tex.name for tex in self.textures]:
+            x = [tex for tex in self.textures if tex.name == name][0]
             x.check()
 
     def remove_unused_textures(self, unused_textures):
