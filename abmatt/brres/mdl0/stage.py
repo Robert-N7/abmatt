@@ -244,7 +244,7 @@ class Stage(Clipable):
         self.bias = BIAS_ZERO
         self.oper = OPER_ADD
         self.clamp = True
-        self.scale = SCALE_NONE
+        self.scale = SCALE_BY_TWO
         self.dest = DEST_OUTPUT
         # alphas
         self.constant_a = CONSTANT_ALPHA_COLOR0_ALPHA
