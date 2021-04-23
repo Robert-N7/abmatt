@@ -9,7 +9,7 @@ from abmatt.converters.controller import get_controller
 from abmatt.converters.convert_lib import Converter
 from abmatt.converters.dae import Dae, ColladaNode
 from abmatt.converters.geometry import decode_polygon
-from abmatt.converters.influence import InfluenceManager
+from abmatt.converters.influence import InfluenceManager, Joint
 from abmatt.converters.material import Material
 from abmatt.converters.matrix import combine_matrices, srt_to_matrix
 
@@ -135,11 +135,14 @@ class DaeConverter2(Converter):
     def __add_bone(self, node, parent_bone=None, matrix=None):
         name = node.attrib['id']
         if name not in self.bones:
-            self.bones[name] = bone = self.mdl0.add_bone(name, parent_bone)
+            if len(self.bones) and self.flags & self.SINGLE_BONE:  # Only add one if single bone enabled
+                return
+            else:
+                self.bones[name] = bone = self.mdl0.add_bone(name, parent_bone)
+                self.set_bone_matrix(bone, matrix)
             name = node.attrib.get('name')
             if name is not None and name not in self.bones_by_name:
                 self.bones_by_name[name] = bone
-            self.set_bone_matrix(bone, matrix)
             for n in node.nodes:
                 m = n.get_matrix()
                 if m is not None and not self.is_identity_matrix(m):
@@ -154,9 +157,17 @@ class DaeConverter2(Converter):
         else:
             material_geometry_map[geometry.material_name] = [geometry]
 
+    def __calc_node_matrix(self, node):
+        return node.matrix
+        # if self.dae.y_up:
+        #     return node.matrix
+        # rotation_matrix = np.array([[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+        # return np.matmul(rotation_matrix, node.matrix)
+
     def __parse_nodes(self, nodes, material_geometry_map, matrix=None):
         for node in nodes:
-            current_node_matrix = combine_matrices(matrix, node.matrix)
+            m = self.__calc_node_matrix(node)
+            current_node_matrix = combine_matrices(matrix, m)
             if node.controller:
                 self.controllers.append((node.controller, current_node_matrix))
             elif node.geometries:

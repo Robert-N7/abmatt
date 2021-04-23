@@ -289,10 +289,10 @@ class Mdl0(SubFile):
         self.boneMatrixCount += 1
         return b
 
-    def add_definition(self, material, polygon, bone=None, priority=0):
+    def add_definition(self, material, polygon, visible_bone=None, priority=0):
         material.add_poly_ref(polygon)
         polygon.material = material
-        polygon.visible_bone = bone
+        polygon.visible_bone = visible_bone
         polygon.draw_priority = priority
         self.rebuild_head = True
 

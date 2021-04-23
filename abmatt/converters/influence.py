@@ -4,10 +4,11 @@ from abmatt.converters.matrix import apply_matrix, apply_matrix_single
 
 
 class Joint:
-    def __init__(self, name, matrix=None):
+    def __init__(self, name, matrix=None, parent=None):
         self.name = name
         self.matrix = matrix if matrix is not None else np.identity(4)
         self.children = None
+        self.parent = parent
 
     def get_transform_matrix(self):
         return self.matrix
@@ -16,7 +17,7 @@ class Joint:
         return np.linalg.inv(self.matrix)
 
     def get_bone_parent(self):
-        raise NotImplementedError()
+        return self.parent
 
     @staticmethod
     def get_world_position(bone):
@@ -178,8 +179,8 @@ class InfluenceCollection:
         return not (len(self.influences) == 1 and not self.influences[0].is_mixed())
 
     def get_single_bone_bind(self):
-        for weight in self.influences[0]:
-            return weight.bone
+        if not self.is_mixed():
+            return self.influences[0].get_single_bone_bind()
 
     def apply_world_position(self, vertices):
         if len(self.influences) < len(vertices):

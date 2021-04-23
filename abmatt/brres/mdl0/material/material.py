@@ -160,7 +160,7 @@ class Material(Clipable):
                 name = name + '1'
                 is_digit = True
             else:
-                name = re.sub('\d+$', lambda x: str(int(x.group(0)) + 1), name)
+                name = re.sub(r'\d+$', lambda x: str(int(x.group(0)) + 1), name)
 
     def begin(self):
         self.shaderStages = 0

@@ -453,14 +453,14 @@ class Dae:
         technique = XMLNode('technique')
         technique.attrib['sid'] = 'COMMON'
         shader = XMLNode('phong', parent=technique)
-        shader.append(self.__get_default_shader_color('emission'))
+        shader.append(self.__get_default_shader_color('emission', (0.02, 0.02, 0.02, 1.0)))
         i = 0
         maps = set()
+        i += self.__add_shader_map(shader, 'ambient', material.ambient_map, i, (0.8,  0.8, 0.8, 1.0))
+        self.__add_sampler(profile_common, material.ambient_map, maps)
         i += self.__add_shader_map(shader, 'diffuse', material.diffuse_map, i)
         self.__add_sampler(profile_common, material.diffuse_map, maps)
-        i += self.__add_shader_map(shader, 'ambient', material.ambient_map, i)
-        self.__add_sampler(profile_common, material.ambient_map, maps)
-        self.__add_shader_map(shader, 'specular', material.specular_map, i)
+        self.__add_shader_map(shader, 'specular', material.specular_map, i, (0.3, 0.3, 0.3, 1))
         self.__add_sampler(profile_common, material.specular_map, maps)
         shader.append(self.__get_default_shader_float('shininess', 1.071773))
         shader.append(self.__get_default_shader_color('reflective'))
@@ -634,9 +634,9 @@ class Dae:
         return bind_mat
 
     @staticmethod
-    def __add_shader_map(shader, map_type='diffuse', map=None, texcoord=0):
+    def __add_shader_map(shader, map_type='diffuse', map=None, texcoord=0, default_if_none=(0.3, 0.3, 0.3, 1)):
         if map is None:
-            map = (0.3, 0.3, 0.3, 1)
+            map = default_if_none
         if type(map) == tuple:
             shader.append(Dae.__get_default_shader_color(map_type, map))
             return False

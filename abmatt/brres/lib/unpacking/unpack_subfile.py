@@ -23,7 +23,7 @@ class UnpackSubfile(Unpacker):
         subfile.version, outerOffset = binfile.read("Ii", 8)
         try:
             subfile.numSections = subfile._getNumSections()
-        except ValueError:
+        except KeyError:
             raise UnpackingError(binfile,
                                  "{} {} unsupported version {}".format(subfile.MAGIC, subfile.name, subfile.version))
         binfile.store(subfile.numSections)  # store section offsets

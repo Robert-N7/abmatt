@@ -77,7 +77,8 @@ class Converter:
         self.cwd = os.getcwd()
         self.import_textures_map = {}
         self.mdl_file = os.path.abspath(self.mdl_file)
-        self.material_library = MaterialLibrary.get().materials
+        library = MaterialLibrary.get()
+        self.material_library = library.materials if library else None
         brres_dir, brres_name = os.path.split(self.brres.name)
         base_name = os.path.splitext(brres_name)[0]
         self.is_map = True if 'map' in base_name else False
@@ -154,7 +155,8 @@ class Converter:
         if self.replacement_model:
             m = self.replacement_model.get_material_by_name(generic_mat.name)
         if m is None:
-            m = self.material_library.get(generic_mat)
+            if self.material_library:
+                m = self.material_library.get(generic_mat)
             if m is None and self.replacement_model:
                 m = fuzzy_match(generic_mat.name, self.replacement_model.materials)
         if m is not None:

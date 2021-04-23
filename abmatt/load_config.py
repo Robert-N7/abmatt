@@ -175,7 +175,8 @@ For more Help or if you want to contribute visit https://github.com/Robert-N7/ab
 
 def parse_args(argv, app_dir):
     interactive = overwrite = debug = False
-    cmd_string = type = ""
+    type = ""
+    cmd_args = None
     command = destination = brres_file = command_file = model = value = key = ""
     autofix = loudness = None
     name = None
@@ -183,7 +184,7 @@ def parse_args(argv, app_dir):
     for i in range(len(argv)):
         if argv[i][0] == '-':
             if i != 0:
-                cmd_string = ' '.join(argv[:i])
+                cmd_args = argv[:i]
                 argv = argv[i:]
             break
 
@@ -234,13 +235,13 @@ def parse_args(argv, app_dir):
             print(USAGE)
             sys.exit(2)
     if args:
-        if cmd_string:
-            cmd_string += ' ' + ' '.join(args)
+        if cmd_args:
+            cmd_args.extend(args)
         else:
-            cmd_string = ' '.join(args)
+            cmd_args = args
     if do_help:
-        if not command and cmd_string:
-            command = cmd_string.split()[0]
+        if not command and cmd_args:
+            command = cmd_args[0]
         hlp(command)
         sys.exit()
 
@@ -251,21 +252,22 @@ def parse_args(argv, app_dir):
     Command.APP_DIR = app_dir
     Command.DEBUG = debug
     cmds = []
-    if cmd_string:
-        cmds.append(Command(cmd_string))
+    if cmd_args:
+        cmds.append(Command(arg_list=cmd_args))
     if command:
-        cmd = command + ' ' + type
+        args = [command, type]
         if key:
-            cmd += ' ' + key
             if value:
-                cmd += ':' + value
+                args.append(key + ':' + value)
+            else:
+                args.append(key)
         if not name and key != 'keys':
             name = '*'
         if name or model:
-            cmd += ' for ' + name
+            args.extend(['for', name])
             if model:
-                cmd += ' in model ' + model
-        cmds.append(Command(cmd))
+                args.extend(['in', 'model', model])
+        cmds.append(Command(arg_list=args))
     if destination:
         Command.DESTINATION = destination
         Brres.DESTINATION = destination

@@ -39,9 +39,9 @@ def matrix_to_srt(matrix):
 
 
 def get_rotation_matrix(matrix, get_scale=False):
-    scale = [round(vector_magnitude(matrix[:, 0]), 3),
-             round(vector_magnitude(matrix[:, 1]), 3),
-             round(vector_magnitude(matrix[:, 2]), 3)]
+    scale = [round(vector_magnitude(matrix[:, 0]), 4),
+             round(vector_magnitude(matrix[:, 1]), 4),
+             round(vector_magnitude(matrix[:, 2]), 4)]
     rotation_matrix = np.swapaxes([[matrix[j, i] / scale[i] for j in range(3)] for i in range(3)],
                                   0, 1)
     if get_scale:
@@ -119,3 +119,44 @@ def combine_matrices(matrix1, matrix2):
 
 def vector_magnitude(vector):
     return math.sqrt(sum(x ** 2 for x in vector))
+
+
+def get_transform_matrix(scale, rotation, translation):
+    """Gets the transform matrix based on scale, rotation, translation"""
+    deg2rad = math.pi / 180
+    cosx = math.cos(rotation[0] * deg2rad)
+    sinx = math.sin(rotation[0] * deg2rad)
+    cosy = math.cos(rotation[1] * deg2rad)
+    siny = math.sin(rotation[1] * deg2rad)
+    cosz = math.cos(rotation[2] * deg2rad)
+    sinz = math.sin(rotation[2] * deg2rad)
+
+    return np.array([[scale[0] * cosy * cosz, scale[0] * sinz * cosy, -scale[0] * siny, 0.0],
+                     [scale[1] * (sinx * cosz * siny - cosx * sinz), scale[1] * (sinx * sinz * siny + cosz * cosx),
+                      scale[1] * sinx * cosy, 0.0],
+                     [scale[2] * (sinx * sinz + cosx * cosz * siny), scale[2] * (cosx * sinz * siny - sinx * cosz),
+                      scale[2] * cosx * cosy, 0.0],
+                     [translation[0], translation[1], translation[2], 1.0]], float)
+
+
+def get_inv_transform_matrix(scale, rotation, translation):
+    deg2rad = math.pi / 180
+    cosx = math.cos(rotation[0] * deg2rad)
+    sinx = math.sin(rotation[0] * deg2rad)
+    cosy = math.cos(rotation[1] * deg2rad)
+    siny = math.sin(rotation[1] * deg2rad)
+    cosz = math.cos(rotation[2] * deg2rad)
+    sinz = math.sin(rotation[2] * deg2rad)
+    scale = (1. / scale[0], 1. / scale[1], 1. / scale[2])
+    translation = np.array(translation) * -1
+    rs = np.array([[scale[0] * cosy * cosz, scale[1] * (sinx * siny * cosz - cosx * sinz),
+                    scale[2] * (cosx * siny * cosz + sinx * sinz), 0.0],
+                   [scale[0] * cosy * sinz, scale[1] * (sinx * siny * sinz + cosx * cosz),
+                    scale[2] * (cosx * siny * sinz - sinx * cosz), 0.0],
+                   [-scale[0] * siny, scale[1] * sinx * cosy, scale[2] * cosx * cosy, 0.0]], float)
+    return np.append(rs,
+                     [[(translation[0] * rs[0, 0]) + (translation[1] * rs[1, 0]) + (translation[2] * rs[2, 0]),
+                      (translation[0] * rs[0, 1]) + (translation[1] * rs[1, 1]) + (translation[2] * rs[2, 1]),
+                      (translation[0] * rs[0, 2]) + (translation[1] * rs[1, 2]) + (translation[2] * rs[2, 2]), 1.0]],
+                     axis=0
+                     )

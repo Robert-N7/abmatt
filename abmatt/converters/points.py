@@ -5,7 +5,7 @@ from numpy.lib._iotools import ConverterError
 
 from abmatt.brres.mdl0 import point
 from abmatt.converters.convert_lib import Converter
-from abmatt.converters.matrix import apply_matrix
+from abmatt.converters.matrix import apply_matrix, combine_matrices
 
 
 class PointCollection:
@@ -19,6 +19,7 @@ class PointCollection:
         """
         self.points = points
         self.face_indices = face_indices
+        self.matrix = None
         # if not minimum or not maximum:
         #     self.minimum, self.maximum = self.__calc_min_max(points)
         # else:
@@ -68,8 +69,17 @@ class PointCollection:
         transforms points using the matrix (last row is ignored)
         matrix: 4x4 ndarray matrix
         """
-        self.points = apply_matrix(matrix, self.points)
+        self.matrix = combine_matrices(matrix, self.matrix)
+        # self.points = apply_matrix(matrix, self.points)
         # self.minimum, self.maximum = self.__calc_min_max(self.points)
+
+    def apply_rotation_matrix(self, rotation_matrix):
+        if rotation_matrix is not None and not np.allclose(rotation_matrix, np.identity(3)):
+            if self.matrix is not None:
+                self.points = apply_matrix(self.matrix, self.points)
+                self.matrix = None
+            for i in range(len(self.points)):
+                self.points[i] = np.dot(rotation_matrix, self.points[i])
 
     @staticmethod
     def get_format_divisor(minimum, maximum):
@@ -96,6 +106,8 @@ class PointCollection:
         :type mdl0_points: Points
         :type self: PointCollection
         """
+        if self.matrix is not None:
+            self.points = apply_matrix(self.matrix, self.points)
         self.minimum, self.maximum = self.__calc_min_max(self.points)
         mdl0_points.minimum = self.minimum
         mdl0_points.maximum = self.maximum

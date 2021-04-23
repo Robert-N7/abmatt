@@ -14,6 +14,8 @@ class MaterialLibrary(ClipableObserver):
     @staticmethod
     def get():
         if not MaterialLibrary.LIBRARY:
+            if MaterialLibrary.LIBRARY_PATH is None:
+                return None
             MaterialLibrary.LIBRARY = MaterialLibrary(MaterialLibrary.LIBRARY_PATH)
         return MaterialLibrary.LIBRARY
 
@@ -26,7 +28,7 @@ class MaterialLibrary(ClipableObserver):
         try:
             self.brres = Brres(path)
         except FileNotFoundError as e:
-            AutoFix.get().info(f'Material library "{path}" not found, Creating file.')
+            AutoFix.get().info(f'Material library "{path}" not found.')
             self.brres = Brres(path, readFile=False)
             self.brres.add_mdl0(Mdl0('lib', self.brres))
         self.on_brres_update()

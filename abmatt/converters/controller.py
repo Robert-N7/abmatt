@@ -37,33 +37,42 @@ class Controller:
         # construct my own bone map
         # my_bone_map = [bone_map[name] for name in self.bones]
         weights = self.weights
-        my_bone_map, matrices = self.__order_bones(bone_map)
-        if len(self.bones) == 1 and np.allclose(weights, 1.0):     # No influence needed
-            influence = Influence()
-            influence[my_bone_map[0].name] = Weight(my_bone_map[0], 1.0)
-            influence = all_influences.create_or_find(influence)
-            if type(self.geometry) == list:
-                for x in self.geometry:
-                    x.apply_matrix(matrices[0])
+        try:
+            my_bone_map, matrices = self.__order_bones(bone_map)
+            if len(self.bones) == 1 and np.allclose(weights, 1.0):     # No influence needed
+                influence = Influence()
+                influence[my_bone_map[0].name] = Weight(my_bone_map[0], 1.0)
+                influence = all_influences.create_or_find(influence)
+                # if type(self.geometry) == list:
+                #     for x in self.geometry:
+                #         x.apply_matrix(matrices[0])
+                # else:
+                #     self.geometry.apply_matrix(matrices[0])
+                return InfluenceCollection({0: influence})
             else:
-                self.geometry.apply_matrix(matrices[0])
-            return InfluenceCollection({0: influence})
-        influences = {}
-        indices = self.vertex_weight_indices
-        vertex_weight_counts = self.vertex_weight_counts
-        j = 0
-        # Now construct influences
-        # vertices = self.geometry.vertices
-        for vertex_index in range(len(vertex_weight_counts)):
-            weight_count = vertex_weight_counts[vertex_index]
+                influences = {}
+                indices = self.vertex_weight_indices
+                vertex_weight_counts = self.vertex_weight_counts
+                j = 0
+                # Now construct influences
+                # vertices = self.geometry.vertices
+                for vertex_index in range(len(vertex_weight_counts)):
+                    weight_count = vertex_weight_counts[vertex_index]
+                    influence = Influence()
+                    for i in range(weight_count):
+                        bone = my_bone_map[indices[j, 0]]
+                        influence[bone.name] = Weight(bone, weights[indices[j, 1]])
+                        j += 1
+                    influences[vertex_index] = all_influences.create_or_find(influence)
+                    # apply_matrix(matrices[] vertices[vertex_index]
+                return InfluenceCollection(influences)
+        except KeyError:  # Bone wasn't found, use default influence
             influence = Influence()
-            for i in range(weight_count):
-                bone = my_bone_map[indices[j, 0]]
-                influence[bone.name] = Weight(bone, weights[indices[j, 1]])
-                j += 1
-            influences[vertex_index] = all_influences.create_or_find(influence)
-            # apply_matrix(matrices[] vertices[vertex_index]
-        return InfluenceCollection(influences)
+            x = None
+            for x in bone_map:
+                break
+            influence[x] = Weight(bone_map[x], 1.0)
+            return InfluenceCollection({0: all_influences.create_or_find(influence)})
 
     def has_multiple_weights(self):
         return not np.min(self.vertex_weight_counts) == np.max(self.vertex_weight_counts) == 1.0

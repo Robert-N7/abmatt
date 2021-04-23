@@ -11,7 +11,8 @@ from abmatt.brres.mdl0.vertex import Vertex
 from abmatt.converters.colors import ColorCollection
 from abmatt.converters.convert_lib import Converter
 from abmatt.converters.influence import InfluenceCollection
-from abmatt.converters.matrix import get_rotation_matrix, apply_matrix
+from abmatt.converters.matrix import get_rotation_matrix, apply_matrix, combine_matrices, euler_to_rotation_matrix, \
+    get_inv_transform_matrix
 from abmatt.converters.points import PointCollection
 from abmatt.converters.triangle import TriangleSet
 
@@ -68,6 +69,8 @@ class Geometry:
             self.vertices.apply_affine_matrix(matrix)
 
     def get_linked_bone(self):
+        if not self.linked_bone and self.influences and not self.influences.is_mixed():
+            self.linked_bone = self.influences.get_single_bone_bind()
         return self.linked_bone
 
     def ipp(self):
@@ -75,17 +78,17 @@ class Geometry:
         self.index += 1
         return j
 
-    def encode(self, mdl, bone=None):
-        if not bone:
-            bone = self.get_linked_bone()
-            if not bone:
-                if not mdl.bones:
-                    mdl.add_bone(mdl.name)
-                self.linked_bone = bone = mdl.bones[0]
-        self.linked_bone.has_geometry = True
+    def encode(self, mdl, visible_bone=None):
+        if not visible_bone:
+            if not mdl.bones:
+                mdl.add_bone(mdl.name)
+            visible_bone = mdl.bones[0]
+            # if not linked_bone:
+            #     self.linked_bone = visible_bone
+        visible_bone.has_geometry = True
         p = Polygon(self.name, mdl)
         self.fmt_str = '>'
-        if self.__encode_influences(p, self.influences, mdl):
+        if self.__encode_influences(p, self.influences, mdl, visible_bone):
             p.weight_index = self.ipp()
         if self.__encode_vertices(p, self.vertices, mdl):
             p.vertex_index = self.ipp()
@@ -106,7 +109,7 @@ class Geometry:
         p.encode_str = self.fmt_str
         mdl.add_to_group(mdl.objects, p)
         material = mdl.get_material_by_name(self.material_name)
-        mdl.add_definition(material, p, bone)
+        mdl.add_definition(material, p, visible_bone)
         if self.colors:
             material.enable_vertex_color()
         return p
@@ -153,7 +156,7 @@ class Geometry:
         data, face_count, facepoint_count = triset.get_tri_strips(self.fmt_str)
         return data, face_count, facepoint_count
 
-    def __encode_influences(self, polygon, influences, mdl0):
+    def __encode_influences(self, polygon, influences, mdl0, default_bone):
         if influences is not None:
             if influences.is_mixed():
                 polygon.bone_table = [i for i in range(len(mdl0.bones))]
@@ -161,7 +164,8 @@ class Geometry:
                 self.fmt_str += 'B'
                 return True
             else:
-                polygon.bone = self.linked_bone
+                bone = self.get_linked_bone()
+                polygon.bone = bone if bone else default_bone
         # face_indices = influences.get_face_indices(vertex_face_indices)
 
     def __encode_vertices(self, polygon, vertices, mdl0):
@@ -181,16 +185,32 @@ class Geometry:
                     new_inf_map[remapper[i]] = old_inf_map[i]
                 self.influences.influences = new_inf_map
         else:
-            linked_bone = self.linked_bone
-            rotation_matrix = get_rotation_matrix(np.array(linked_bone.get_transform_matrix(), dtype=float))
-            for i in range(len(points)):
-                points[i] = np.dot(rotation_matrix, points[i])
-            inv_matrix = np.array(linked_bone.get_inv_transform_matrix(), dtype=float)
-            vertices.points = apply_matrix(inv_matrix, vertices.points)
+            linked_bone = self.get_linked_bone()
+            # todo Clean this up and fix!
+            rotation_matrix = self.__get_bone_rotation_matrix(linked_bone)
+            # vertices.apply_rotation_matrix(rotation_matrix)
+            # inv_matrix = np.array(linked_bone.get_inv_transform_matrix(), dtype=float)
+            inv_matrix = self.__get_inv_matrix(linked_bone)
+            # i_matrix = np.identity(4)
+            # i_matrix[:, 3] = inv_matrix[:, 3]
+            vertices.apply_affine_matrix(inv_matrix)
             vertices.encode_data(vert, False)
         polygon.vertices = vert
         self.fmt_str += get_index_format(vert)
         return True
+
+    def __get_inv_matrix(self, bone, matrix=None):
+        if bone is None:
+            return matrix
+        inv_matrix = get_inv_transform_matrix(bone.scale, bone.rotation, bone.translation)
+        matrix = combine_matrices(inv_matrix, matrix)
+        return self.__get_inv_matrix(bone.get_bone_parent(), matrix)
+
+    def __get_bone_rotation_matrix(self, bone, matrix=None):
+        if bone is None:
+            return matrix
+        matrix = combine_matrices(get_rotation_matrix(np.array(bone.get_transform_matrix(), dtype=float)), matrix)
+        return self.__get_bone_rotation_matrix(bone.get_bone_parent(), matrix)
 
     def __encode_normals(self, polygon, normals, mdl0):
         if normals:
@@ -367,7 +387,7 @@ def decode_pos_mtx_indices(all_influences, weight_groups, vertices, pos_mtx_indi
     :param pos_mtx_indices: np array of face_point indices corresponding to those in vertices
     :return: InfluenceCollection
     """
-    influences = {}     # map vertex indices to influences used by this geometry
+    influences = {}  # map vertex indices to influences used by this geometry
     vert_indices = vertices.face_indices
     points = vertices.points
     # Order the indices of each group so we can slice up the indices
@@ -383,7 +403,8 @@ def decode_pos_mtx_indices(all_influences, weight_groups, vertices, pos_mtx_indi
         pos_mtx_slice = pos_mtx_indices[start:end].flatten()
         # get the ordered indices corresponding to vertices
         vertex_indices, indices = np.unique(vertex_slice, return_index=True)
-        weight_indices = weights[pos_mtx_slice[indices]]   # get the matrix corresponding to vert index, resolve to weight_id
+        weight_indices = weights[
+            pos_mtx_slice[indices]]  # get the matrix corresponding to vert index, resolve to weight_id
 
         # map each vertex id to an influence and apply it
         for i in range(len(vertex_indices)):
