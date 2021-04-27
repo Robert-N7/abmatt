@@ -5,7 +5,9 @@ import numpy as np
 
 from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
+from abmatt.brres.lib import matching
 from abmatt.brres.lib.matching import it_eq
+from abmatt.converters.colors import ColorCollection
 from abmatt.converters.geometry import decode_geometry_group
 
 
@@ -90,6 +92,8 @@ class AbmattTest(unittest.TestCase):
                     for j in range(len(my_layers)):
                         if my_layers[j] != updated_layers[j]:
                             print('Layer ' + my_layers[j].name + ' different from updated ' + updated_layers[j].name)
+                            if my_layers[j].minfilter != updated_layers[j].minfilter:
+                                print('Minfilter different')
         return not err
 
 
@@ -107,27 +111,61 @@ class TestBeginner(AbmattTest):
 
 class CheckPositions:
     @staticmethod
-    def __pre_process(vertices1, vertices2):
+    def __pre_process(vertices1, vertices2, group_type):
         if type(vertices1) != list and type(vertices1) != np.array:
             vertices1 = [vertices1]
         if type(vertices2) != list and type(vertices2) != np.array:
             vertices2 = [vertices2]
         mismatched_len = False
         if len(vertices1) != len(vertices2):
-            print('Groups are different lengths! {}, {}'.format(len(vertices1), len(vertices2)))
+            print('{} Groups are different lengths! {}, {}'.format(group_type, len(vertices1), len(vertices2)))
             mismatched_len = True
-        return sorted(vertices1, key=lambda x: x.name), sorted(vertices2, key=lambda x: x.name), mismatched_len
+        # Try to sort by name
+        v1 = sorted(vertices1, key=lambda x: x.name)
+        v2 = sorted(vertices2, key=lambda x: x.name)
+        if not matching.fuzzy_match(v1[0].name, v2):    # no match! try matching shapes
+            print('Groups dont have matching names!')
+            v1 = sorted(vertices1, key=lambda x: x.count)
+            v2 = sorted(vertices2, key=lambda x: x.count)
+        return v1, v2, mismatched_len
+
+    @staticmethod
+    def colors_equal(colr1, colr2, rtol=1.e-5, atol=1.e-8):
+        c1, c2, err = CheckPositions.__pre_process(colr1, colr2, 'colors')
+        if not err:
+            for i in range(len(c1)):
+                colr1 = c1[i]
+                colr2 = c2[i]
+                if colr1.format != colr2.format:
+                    print('Colors {}, {} have mismatching formats'.format(colr1.name, colr2.name))
+                decoded_c1 = ColorCollection.decode_data(colr1)
+                decoded_c2 = ColorCollection.decode_data(colr2)
+                if len(decoded_c1) != len(decoded_c2):
+                    print('Colors {}, {} dont have matching lengths!'.format(colr1.name, colr2.name))
+                if len(decoded_c1) != colr1.count:
+                    print('Color {} length does not match count!'.format(colr1.name))
+                if len(decoded_c2) != colr2.count:
+                    print('Color {} length does not match count!'.format(colr2.name))
+                current_err = False
+                for j in range(min(len(decoded_c2), len(decoded_c1))):
+                    if not np.isclose(decoded_c1[j], decoded_c2[j], rtol, atol).all():
+                        print('Colors mismatch at {}, Expected {} found {}'.format(j, decoded_c1[j], decoded_c2[j]))
+                        current_err = err = True
+                if current_err:
+                    print('Colors {}, {} mismatch'.format(colr1.name, colr2.name))
+        return not err
 
     @staticmethod
     def model_equal(mdl1, mdl2, rtol=1.e-5, atol=1.e-8):
         return CheckPositions.bones_equal(mdl1.bones, mdl2.bones, rtol, atol) \
             and CheckPositions.positions_equal(mdl1.vertices, mdl2.vertices, rtol, atol) \
             and CheckPositions.positions_equal(mdl1.uvs, mdl2.uvs, rtol, atol) \
-            and CheckPositions.positions_equal(mdl1.normals, mdl2.normals, rtol, atol)
+            and CheckPositions.positions_equal(mdl1.normals, mdl2.normals, rtol, atol) \
+            and CheckPositions.colors_equal(mdl1.colors, mdl2.colors, rtol, atol)
 
     @staticmethod
     def bones_equal(bone_list1, bone_list2, rtol=1.e-5, atol=1.e-8):
-        bone_list1, bone_list2, err = CheckPositions.__pre_process(bone_list1, bone_list2)
+        bone_list1, bone_list2, err = CheckPositions.__pre_process(bone_list1, bone_list2, 'bones')
         if not err:
             for i in range(len(bone_list1)):
                 m1 = bone_list1[i].get_transform_matrix()
@@ -142,7 +180,7 @@ class CheckPositions:
     @staticmethod
     def positions_equal(vertices1, vertices2, rtol=1.e-5, atol=1.e-8):
         """Checks if the vertices are the same"""
-        vertices1, vertices2, err = CheckPositions.__pre_process(vertices1, vertices2)
+        vertices1, vertices2, err = CheckPositions.__pre_process(vertices1, vertices2, 'points')
         if not err:
             # Check each vertex group
             for k in range(len(vertices1)):

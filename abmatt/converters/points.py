@@ -100,7 +100,7 @@ class PointCollection:
     def flip_points(self):
         self.points[:, -1] = self.points[:, -1] * -1 + 1
 
-    def encode_data(self, mdl0_points, get_index_remapper=False):
+    def encode_data(self, mdl0_points, get_index_remapper=False, encoder=None):
         """Encodes the point collection as geometry data, returns the data width (component count)
         :param get_index_remapper: set to true to get the index remapping, (useful for influences)
         :type mdl0_points: Points
@@ -111,7 +111,12 @@ class PointCollection:
         self.minimum, self.maximum = self.__calc_min_max(self.points)
         mdl0_points.minimum = self.minimum
         mdl0_points.maximum = self.maximum
-        form, divisor = self.get_format_divisor(self.minimum, self.maximum)
+        if encoder is not None:
+            encoder.before_encode(self)
+            form = encoder.get_format()
+            divisor = encoder.get_divisor()
+        else:
+            form, divisor = self.get_format_divisor(self.minimum, self.maximum)
         points = self.points
         point_width = len(points[0])
         mdl0_points.comp_count = mdl0_points.comp_count_from_width(point_width)
@@ -142,15 +147,21 @@ class PointCollection:
         if divisor:
             multiplyBy = 2 ** divisor
             self.encode_points(multiplyBy, dtype)
-        points, face_indices, index_remapper = self.__consolidate_points()
-        self.points = points
-        self.face_indices = face_indices
+        if not encoder or encoder.should_consolidate():
+            points, face_indices, index_remapper = self.__consolidate_points()
+            self.points = points
+            self.face_indices = face_indices
+        else:
+            index_remapper = None
+            points = self.points
         mdl0_points.count = len(points)
         if mdl0_points.count > 0xffff:
             raise Converter.ConvertError(f'{mdl0_points.name} has too many points! ({mdl0_points.count})')
         for x in points:
             data.append(x)
         self.points = points
+        if encoder:
+            encoder.after_encode(mdl0_points)
         if get_index_remapper:
             return form, divisor, index_remapper
         return form, divisor
@@ -165,13 +176,10 @@ class PointCollection:
 
 
 def remap_face_points(face_indices, index_remapper):
-    face_height = len(face_indices)
-    face_width = len(face_indices[0])
-    for i in range(face_height):
-        x = face_indices[i]
-        for j in range(face_width):
-            x[j] = index_remapper[x[j]]
-    return face_indices
+    cpy = np.copy(face_indices)
+    for k, v in index_remapper.items():
+        cpy[face_indices == k] = v
+    return cpy
 
 
 def consolidate_data(points, face_indices):

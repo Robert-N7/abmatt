@@ -9,19 +9,20 @@ from abmatt.brres.mdl0.material import material
 
 
 def analyze_material(mat):
-    for s in mat.shader.stages:
-        if s.ind_format != stage.IND_F_8_BIT_OFFSETS:
-            print('Indirect format change!')
-        if s.ind_alpha != stage.IND_ALPHA_OFF:
-            print('Indirect Alpha!')
-        if s.ind_s_wrap != stage.IND_WRAP_NONE:
-            print('S WRAP!')
-        if s.ind_t_wrap != stage.IND_WRAP_NONE:
-            print('T WRAP!')
-        if s.ind_use_prev:
-            print('Use prev!')
-        if s.ind_unmodify_lod:
-            print('Unmodify lod!')
+    pass
+    # for s in mat.shader.stages:
+    #     if s.ind_format != stage.IND_F_8_BIT_OFFSETS:
+    #         print('Indirect format change!')
+    #     if s.ind_alpha != stage.IND_ALPHA_OFF:
+    #         print('Indirect Alpha!')
+    #     if s.ind_s_wrap != stage.IND_WRAP_NONE:
+    #         print('S WRAP!')
+    #     if s.ind_t_wrap != stage.IND_WRAP_NONE:
+    #         print('T WRAP!')
+    #     if s.ind_use_prev:
+    #         print('Use prev!')
+    #     if s.ind_unmodify_lod:
+    #         print('Unmodify lod!')
         # DOES NOT CHANGE
         # if stage.map_id != stage.coord_id:
         #     print(f'{mat.name} shader has map id that does not match coord id')

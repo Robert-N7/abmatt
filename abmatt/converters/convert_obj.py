@@ -27,6 +27,7 @@ class ObjConverter(Converter):
                 material_geometry_map[mat].combine(geo)
             else:
                 material_geometry_map[mat] = geo
+                self.geometries.append(geo)
         return material_geometry_map
 
     def load_model(self, model_name=None):
@@ -34,12 +35,14 @@ class ObjConverter(Converter):
         bone = mdl.add_bone(mdl.name)
         obj = Obj(self.mdl_file)
         material_geometry_map = self.__collect_geometries(obj.geometries, bone)
+
+        self._before_encoding()
         for material in material_geometry_map:
             try:
                 self.__encode_material(obj.materials[material])
             except KeyError:
                 self._encode_material(Material(material))
-            material_geometry_map[material].encode(mdl)
+            super()._encode_geometry(material_geometry_map[material])
         self.import_textures_map = self.__convert_set_to_map(obj.images)
         return self._end_loading()
 

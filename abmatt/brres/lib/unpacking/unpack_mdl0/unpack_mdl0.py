@@ -123,10 +123,8 @@ class UnpackMdl0(UnpackSubfile):
         # ignore fur sections for v8 mdl0s
         group = []
         if binfile.recall():  # from offset header
-            # section_klass = mdl0.SECTION_CLASSES[section_index]
             folder = Folder(binfile, name)
             folder.unpack(binfile)
-            # section = mdl0.sections[section_index]
             while len(folder.entries):
                 name = folder.recallEntryI()
                 k = section_klass(name, self.node, binfile=binfile)

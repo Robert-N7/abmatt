@@ -35,6 +35,8 @@ class DaeConverter2(Converter):
         self.__parse_nodes(dae.get_scene(), material_geometry_map, matrix)
         self.__combine_bones_map()
         self.__parse_controllers(material_geometry_map)
+
+        self._before_encoding()
         self.influences.encode_bone_weights(self.mdl0)
         for material in material_geometry_map:
             if material not in material_names:
@@ -130,7 +132,7 @@ class DaeConverter2(Converter):
         replace = 'Mesh'
         if geometry.name.endswith(replace) and len(replace) < len(geometry.name):
             geometry.name = geometry.name[:len(replace) * -1]
-        geometry.encode(self.mdl0)
+        super()._encode_geometry(geometry)
 
     def __add_bone(self, node, parent_bone=None, matrix=None):
         name = node.attrib['id']
@@ -150,12 +152,13 @@ class DaeConverter2(Converter):
 
     def __add_geometry(self, geometry, material_geometry_map):
         geo = material_geometry_map.get(geometry.material_name)
-        add_geo = True
         if geo is not None:
             if not geo[0].combine(geometry):
                 geo.append(geometry)
+                self.geometries.append(geometry)
         else:
             material_geometry_map[geometry.material_name] = [geometry]
+            self.geometries.append(geometry)
 
     def __calc_node_matrix(self, node):
         return node.matrix

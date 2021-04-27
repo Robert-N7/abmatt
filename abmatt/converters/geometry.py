@@ -22,6 +22,8 @@ class Geometry:
                  influences=None, linked_bone=None):
         self.name = name
         self.index = 0
+        self.encoder = None
+        self.encoded = None
         self.vertices = vertices
         if texcoords is None:
             self.texcoords = []
@@ -48,7 +50,7 @@ class Geometry:
         if self.normals:
             self.normals.combine(geometry.normals)
         if self.colors:
-            self.colors.combine(geometry.colors)
+            self.colors.combine(geometry.colors, True)
         if self.triangles is not None and geometry.triangles is not None:
             self.triangles = np.append(self.triangles, geometry.triangles, 0)
         return True
@@ -78,7 +80,7 @@ class Geometry:
         self.index += 1
         return j
 
-    def encode(self, mdl, visible_bone=None):
+    def encode(self, mdl, visible_bone=None, encoder=None):
         if not visible_bone:
             if not mdl.bones:
                 mdl.add_bone(mdl.name)
@@ -86,7 +88,10 @@ class Geometry:
             # if not linked_bone:
             #     self.linked_bone = visible_bone
         visible_bone.has_geometry = True
-        p = Polygon(self.name, mdl)
+        self.encoded = p = Polygon(self.name, mdl)
+        if encoder is not None:
+            self.encoder = encoder
+            encoder.before_encode(self)
         self.fmt_str = '>'
         if self.__encode_influences(p, self.influences, mdl, visible_bone):
             p.weight_index = self.ipp()
@@ -107,11 +112,13 @@ class Geometry:
             return data
         p.data = data
         p.encode_str = self.fmt_str
-        mdl.add_to_group(mdl.objects, p)
+        mdl.objects.append(p)
         material = mdl.get_material_by_name(self.material_name)
         mdl.add_definition(material, p, visible_bone)
         if self.colors:
             material.enable_vertex_color()
+        if encoder:
+            encoder.after_encode(p)
         return p
 
     @staticmethod
@@ -170,14 +177,15 @@ class Geometry:
 
     def __encode_vertices(self, polygon, vertices, mdl0):
         vert = Vertex(self.name, mdl0)
-        mdl0.add_to_group(mdl0.vertices, vert)
+        mdl0.vertices.append(vert)
         points = vertices.points
+        encoder = self.encoder.vertex_encoder if self.encoder is not None else None
         if polygon.has_weighted_matrix():
             AutoFix.get().warn(f'Polygon weighting is experimental, {polygon.name} will likely be incorrect.')
             for i in range(len(vertices)):
                 influence = self.influences[i]
                 points[i] = influence.apply_to(points[i], decode=False)
-            vertex_format, vertex_divisor, remapper = vertices.encode_data(vert, True)
+            vertex_format, vertex_divisor, remapper = vertices.encode_data(vert, True, encoder)
             if remapper is not None:
                 new_inf_map = {}
                 old_inf_map = self.influences.influences
@@ -194,7 +202,7 @@ class Geometry:
             # i_matrix = np.identity(4)
             # i_matrix[:, 3] = inv_matrix[:, 3]
             vertices.apply_affine_matrix(inv_matrix)
-            vertices.encode_data(vert, False)
+            vertices.encode_data(vert, False, encoder)
         polygon.vertices = vert
         self.fmt_str += get_index_format(vert)
         return True
@@ -214,9 +222,10 @@ class Geometry:
 
     def __encode_normals(self, polygon, normals, mdl0):
         if normals:
+            encoder = self.encoder.normal_encoder if self.encoder else None
             normal = Normal(self.name, mdl0)
-            normal_format = normals.encode_data(normal)[0]
-            mdl0.add_to_group(mdl0.normals, normal)
+            normal_format = normals.encode_data(normal, encoder=encoder)[0]
+            mdl0.normals.append(normal)
             polygon.normal_type = normal.comp_count
             polygon.normals = normal
             self.fmt_str += get_index_format(normal)
@@ -224,9 +233,12 @@ class Geometry:
 
     def __encode_colors(self, polygon, colors, mdl0):
         if colors:
-            color = Color(self.name, mdl0)
-            colors.encode_data(color)
-            mdl0.add_to_group(mdl0.colors, color)
+            encoder = self.encoder.color_encoder if self.encoder else None
+            color = colors.get_encoded_color()
+            if color is None:
+                color = Color(self.name, mdl0)
+                mdl0.colors.append(color)
+                colors.encode_data(color, encoder=encoder)
             self.fmt_str += get_index_format(color)
             polygon.colors[0] = color
             polygon.color_count = 1
@@ -234,15 +246,20 @@ class Geometry:
 
     def __encode_texcoords(self, polygon, texcoords, mdl0):
         if texcoords:
+            uv_encoders = self.encoder.uv_encoders if self.encoder is not None else None
             uv_i = len(mdl0.uvs)
             polygon.uv_count = len(texcoords)
             tri_indexer = len(self.fmt_str) - 1
             for i in range(polygon.uv_count):
+                try:
+                    encoder = uv_encoders[i] if uv_encoders else None
+                except IndexError:
+                    encoder = None
                 x = texcoords[i]
                 tex = TexCoord(self.name + '#{}'.format(i), mdl0)
                 # convert xy to st
                 x.flip_points()
-                x.encode_data(tex)
+                x.encode_data(tex, encoder=encoder)
                 tex.index = uv_i + i
                 mdl0.uvs.append(tex)
                 self.fmt_str += get_index_format(tex)
@@ -257,7 +274,7 @@ class Geometry:
         if self.normals:
             tris.append(self.normals.face_indices)
         if self.colors:
-            tris.append(self.colors.face_indices)
+            tris.append(self.colors.get_face_indices())
         for texcoord in self.texcoords:
             tris.append(texcoord.face_indices)
         return np.stack(tris, -1)

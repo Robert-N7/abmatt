@@ -101,6 +101,7 @@ class PackBrres(Packer):
             assert len(file_group)
             index_group = folders[folder_index]
             for file in file_group:
+                binfile.section_offsets.append((binfile.offset, file.name))  # - debug
                 index_group.createEntryRefI()  # create the dataptr
                 file.pack(binfile)
             folder_index += 1

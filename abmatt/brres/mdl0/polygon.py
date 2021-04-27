@@ -23,13 +23,11 @@ class Polygon(Clipable):
     def paste(self, item):
         raise NotImplementedError()
 
-
     def __init__(self, name, parent, binfile=None):
         self.tex_divisor = [0] * 8
         self.tex_e = [1] * 8
         self.material = None
         self.priority = 0
-        self.tri_groups = None
         self.visible_bone = None
         super(Polygon, self).__init__(name, parent, binfile)
 
@@ -96,7 +94,6 @@ class Polygon(Clipable):
             except IndexError:
                 AutoFix.get().error(f'Polygon {self.name} in {self.parent.parent.name} tri index {index} out of range.')
 
-
     def add_bone_table(self, table):
         self.bone_table = table
         self.bone = None
@@ -156,6 +153,8 @@ class Polygon(Clipable):
         vertices = self.get_vertex_group()
         if vertices:
             verts.add(vertices.name)
+            if self.bone:
+                vertices.check_vertices(self.bone)
         normals = self.get_normal_group()
         if normals:
             norms.add(normals.name)

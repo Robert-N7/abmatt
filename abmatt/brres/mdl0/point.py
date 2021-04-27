@@ -39,6 +39,11 @@ class Point(Node):
         self.stride = 0
         self.count = 0
 
+    def get_decoded(self):
+        if self.decoded_data is None:
+            self.decoded_data = decode_geometry_group(self)
+        return self.decoded_data
+
     def get_format(self):
         return self.format
 

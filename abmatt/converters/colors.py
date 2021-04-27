@@ -9,7 +9,7 @@ class ColorCollection:
 
     def __init__(self, rgba_colors, face_indices, encode_format=None, normalize=False):
         """
-        :param rgba_colors: [[r,g,b,a], ...] between 0-1, normalizes to 0-255
+        :param rgba_colors: [[r,g,b,a], ...] between 0-1 denormalized, normalizes to 0-255
         :param face_indices: ndarray, list of indexes for each triangle [[tri_index0, tri_index1, tri_index2], ...]
         :param encode_format: (0=rgb565|1=rgb8|2=rgb32|3=rgba4|4=rgba6|5=rgba8)
         """
@@ -18,18 +18,44 @@ class ColorCollection:
             self.normalize()
         self.face_indices = face_indices
         self.encode_format = encode_format
+        self.combined_into = None
+        self.encoded = None
+        self.combined_index = slice(0, len(self.face_indices))
+
+    def get_face_indices(self):
+        if self.combined_into:
+            return self.combined_into.face_indices[self.combined_index]
+        else:
+            return self.face_indices[self.combined_index]
 
     def __len__(self):
         return len(self.rgba_colors)
 
     def get_encode_format(self):
+        """Default encode format, RGB8 or RGBA8"""
         if (self.rgba_colors[:, 3] == 255).all():
             return 1
         return 5
 
-    def encode_data(self, color):
-        rgba_colors = self.rgba_colors = self.consolidate()
-        form = self.encode_format if self.encode_format is not None else self.get_encode_format()
+    def get_encoded_color(self):
+        if self.combined_into:
+            return self.combined_into.get_encoded_color()
+        return self.encoded
+
+    def encode_data(self, color, encoder=None):
+        if self.combined_into:
+            raise RuntimeError('This color is combined and should not be encoded!')
+        self.encoded = color
+        if encoder is not None:
+            encoder.before_encode(self)
+        if encoder is None or encoder.should_consolidate():
+            rgba_colors = self.rgba_colors = self.consolidate()
+        else:
+            rgba_colors = self.rgba_colors
+        if encoder is not None:
+            form = self.encode_format = encoder.get_format()
+        else:
+            form = self.encode_format if self.encode_format is not None else self.get_encode_format()
         color.format = form
         if form < 3:
             color.stride = form + 2
@@ -50,6 +76,8 @@ class ColorCollection:
             color.data = self.encode_rgba6(rgba_colors)
         else:
             raise ValueError('Color {} format {} out of range'.format(color.name, form))
+        if encoder:
+            encoder.after_encode(color)
         return form
 
     @staticmethod
@@ -64,7 +92,7 @@ class ColorCollection:
         elif form == 2 or form == 5:
             data = ColorCollection.decode_rgba8(data, num_colors)
             if form == 2:
-                data[:][3] = 0xff
+                data[:, 3] = 0xff
         elif form == 3:
             data = ColorCollection.decode_rgba4(data, num_colors)
         elif form == 4:
@@ -165,7 +193,23 @@ class ColorCollection:
         """Opposite of normalize. returns ndarray converted from 0-255 to 0-1"""
         return self.rgba_colors.astype(np.float) / 255
 
-    def combine(self, color):
-        color.face_indices += len(self)
-        self.rgba_colors = np.append(self.rgba_colors, color.rgba_colors, 0)
-        self.face_indices = np.append(self.face_indices, color.face_indices, 0)
+    def combine(self, color, combine_geometry=False):
+        if color.combined_into:
+            raise RuntimeError('Color is already combined!')
+        if self.combined_into:
+            if self.combined_into == color:
+                raise RuntimeError('Circular combining of colors!')
+            self.combined_into.combine(color, combine_geometry)
+        else:
+            if combine_geometry:    # Make this apart of the tris
+                if self.combined_index.stop != len(self.face_indices):
+                    raise RuntimeError('Cannot combine color geometry in previously combined color!')
+            if (self.rgba_colors != color.rgba_colors).all():
+                color.face_indices += len(self)
+                self.rgba_colors = np.append(self.rgba_colors, color.rgba_colors, 0)
+            color.combined_index = slice(len(self.face_indices), len(self.face_indices) + len(color.face_indices))
+            color.combined_into = self
+            self.face_indices = np.append(self.face_indices, color.face_indices, 0)
+
+            if combine_geometry:
+                self.combined_index.stop = len(self.face_indices)
