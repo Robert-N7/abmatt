@@ -1,6 +1,6 @@
 ====================================================================================
 ANOOB'S BRRES MATERIAL TOOL
-Version: 0.9.42
+Version: 0.9.6
 Author: Robert Nelson
 OS: linux
 Github: https://github.com/Robert-N7/abmatt
