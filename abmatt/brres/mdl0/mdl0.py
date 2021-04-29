@@ -3,6 +3,7 @@
 import math
 
 from abmatt.autofix import AutoFix, Bug
+from abmatt.brres.lib import decoder
 from abmatt.brres.lib.matching import fuzzy_match, MATCHING
 from abmatt.brres.lib.node import Node
 from abmatt.brres.lib.packing.pack_mdl0.pack_mdl0 import PackMdl0
@@ -94,11 +95,17 @@ class Mdl0(SubFile):
         self.materials = []
         # self.shaders = ShaderList()
         self.objects = []
+        self.influences = None
         # self.paletteLinks = []
         # self.textureLinks = []
         self.version = 11
         self.is_map_model = True if 'map' in name else False
         super(Mdl0, self).__init__(name, parent, binfile)
+
+    def get_influences(self):
+        if self.influences is None:
+            self.influences = decoder.decode_mdl0_influences(self)
+        return self.influences
 
     def begin(self):
         self.boneTable = []
@@ -262,13 +269,14 @@ class Mdl0(SubFile):
         b = Bone(name, self, has_geometry=has_geometry,
                  scale_equal=scale_equal, fixed_scale=fixed_scale,
                  fixed_rotation=fixed_rotation, fixed_translation=fixed_translation)
+        b.index = len(self.bones)
         self.bones.append(b)
         if self.boneTable is None:
             self.boneTable = []
         b.weight_id = len(self.boneTable)
         self.boneTable.append(self.boneMatrixCount)
         if parent_bone:
-            parent_index = parent_bone.index  # todo check this
+            parent_index = parent_bone.index
             parent_bone.link_child(b)
         else:
             parent_index = 0

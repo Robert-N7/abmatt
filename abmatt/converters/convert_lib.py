@@ -32,6 +32,8 @@ class Converter:
             d, f = os.path.split(mdl_file)
             filename = os.path.join(d, os.path.splitext(f)[0] + '.brres')
             brres = Brres.get_brres(filename, True)
+        elif type(brres) == str:
+            brres = Brres.get_brres(brres, True)
         self.brres = brres
         self.texture_library = brres.get_texture_map()
         self.mdl_file = mdl_file
@@ -54,9 +56,9 @@ class Converter:
         else:
             self.mdl0 = mdl0
         self.cwd = os.getcwd()
-        dir, name = os.path.split(self.mdl_file)
-        if dir:
-            os.chdir(dir)
+        work_dir, name = os.path.split(self.mdl_file)
+        if work_dir:
+            os.chdir(work_dir)
         base_name, ext = os.path.splitext(name)
         self.image_dir = base_name + '_maps'
         self.json_file = base_name + '.json'
@@ -84,10 +86,10 @@ class Converter:
         brres_dir, brres_name = os.path.split(self.brres.name)
         base_name = os.path.splitext(brres_name)[0]
         self.is_map = True if 'map' in base_name else False
-        dir, name = os.path.split(self.mdl_file)
-        self.json_file = os.path.join(dir, os.path.splitext(name)[0]) + '.json'
-        if dir:
-            os.chdir(dir)  # change to the dir to help find relative paths
+        work_dir, name = os.path.split(self.mdl_file)
+        self.json_file = os.path.join(work_dir, os.path.splitext(name)[0]) + '.json'
+        if work_dir:
+            os.chdir(work_dir)  # change to the dir to help find relative paths
         return self._init_mdl0(brres_name, os.path.splitext(name)[0], model_name)
 
     def _before_encoding(self):
@@ -134,11 +136,20 @@ class Converter:
         return model_name
 
     @staticmethod
-    def set_bone_matrix(bone, matrix):
+    def calc_srt_from_bone_matrix(bone):
+        tr_matrix = np.array(bone.get_transform_matrix())
+        if bone.b_parent:
+            inv_matrix = np.array(bone.b_parent.get_inv_transform_matrix())
+            tr_matrix = np.around(np.matmul(inv_matrix, tr_matrix), 6)
+        # bone.local_transform_matrix = matrix
+        return matrix_to_srt(tr_matrix)
+
+    @staticmethod
+    def set_bone_matrix(bone, bone_matrix):
         """Untested set translation/scale/rotation with matrix"""
-        bone.transform_matrix = matrix[:3]  # don't include fourth row
-        bone.inverse_matrix = np.linalg.inv(matrix)[:3]
-        scale, rotation, translation = matrix_to_srt(matrix)
+        bone.transform_matrix = bone_matrix[:3]  # don't include fourth row
+        bone.inverse_matrix = np.linalg.inv(bone_matrix)[:3]
+        scale, rotation, translation = Converter.calc_srt_from_bone_matrix(bone)
         bone.scale = scale
         bone.fixed_scale = np.allclose(scale, 1)
         bone.scale_equal = scale[2] == scale[1] == scale[0]

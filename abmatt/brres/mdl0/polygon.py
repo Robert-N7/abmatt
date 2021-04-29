@@ -1,6 +1,7 @@
 """Objects (Polygons)"""
 
 from abmatt.autofix import AutoFix, Bug
+from abmatt.brres.lib import decoder
 from abmatt.brres.lib.node import Clipable
 
 INDEX_FORMAT_NONE = 0
@@ -27,6 +28,7 @@ class Polygon(Clipable):
         self.tex_divisor = [0] * 8
         self.tex_e = [1] * 8
         self.material = None
+        self.decoded = None
         self.priority = 0
         self.visible_bone = None
         super(Polygon, self).__init__(name, parent, binfile)
@@ -51,7 +53,7 @@ class Polygon(Clipable):
         self.uv_count = 0
         self.data = None
         self.flags = 0
-        self.bone = None
+        self.linked_bone = None
         self.visible_bone = self.parent.bones[0]
         self.bone_table = None
         self.fur_vector = None
@@ -59,6 +61,11 @@ class Polygon(Clipable):
         self.vertex_e = 1
         self.normal_index3 = self.normal_e = 0
         self.color0_e = self.color1_e = 1
+
+    def get_decoded(self):
+        if self.decoded is None:
+            self.decoded = decoder.decode_polygon(self, self.parent.get_influences())
+        return self.decoded
 
     # These indices correspond to the triangle column index, not the group index!
     def get_weight_index(self):
@@ -96,7 +103,7 @@ class Polygon(Clipable):
 
     def add_bone_table(self, table):
         self.bone_table = table
-        self.bone = None
+        self.linked_bone = None
 
     def get_vertex_group(self):
         return self.vertices
@@ -145,16 +152,16 @@ class Polygon(Clipable):
             self.mark_modified()
         return my_material
 
-    def get_bone(self):
-        return self.visible_bone
+    def get_linked_bone(self):
+        return self.linked_bone
 
     def check(self, verts, norms, uvs, colors, materials):  # as we go along, gather verts norms uvs colors materials
         modified = False
         vertices = self.get_vertex_group()
         if vertices:
             verts.add(vertices.name)
-            if self.bone:
-                vertices.check_vertices(self.bone)
+            if self.linked_bone:
+                vertices.check_vertices(self.linked_bone)
         normals = self.get_normal_group()
         if normals:
             norms.add(normals.name)

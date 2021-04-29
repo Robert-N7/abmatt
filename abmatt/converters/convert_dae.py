@@ -9,12 +9,12 @@ from abmatt.converters.controller import get_controller
 from abmatt.converters.convert_lib import Converter
 from abmatt.converters.dae import Dae, ColladaNode
 from abmatt.converters.geometry import decode_polygon
-from abmatt.converters.influence import InfluenceManager, Joint
+from abmatt.converters.influence import InfluenceManager, Joint, InfluenceCollection, Influence, Weight
 from abmatt.converters.material import Material
 from abmatt.converters.matrix import combine_matrices, srt_to_matrix
 
 
-class DaeConverter2(Converter):
+class DaeConverter(Converter):
 
     def load_model(self, model_name=None):
         self._start_loading(model_name)
@@ -50,6 +50,7 @@ class DaeConverter2(Converter):
 
     def save_model(self, mdl0=None):
         base_name, mdl0 = self._start_saving(mdl0)
+        self.bones = {}
         mesh = Dae(initial_scene_name=base_name)
         self.decoded_mats = [self.__decode_material(x, mesh) for x in mdl0.materials]
         # polygons
@@ -66,10 +67,13 @@ class DaeConverter2(Converter):
         return srt_to_matrix(bone.scale, bone.rotation, bone.translation)
 
     def __decode_bone(self, mdl0_bone, collada_parent=None, matrix=None):
+        if len(self.bones) > 0 and self.flags & self.SINGLE_BONE:
+            return
         name = mdl0_bone.name
         node = ColladaNode(name, {'type': 'JOINT'})
         matrix = self.__get_matrix(mdl0_bone)
         node.matrix = matrix
+        self.bones[mdl0_bone.name] = mdl0_bone
         if collada_parent:
             collada_parent.nodes.append(node)
         if mdl0_bone.child:
@@ -86,9 +90,17 @@ class DaeConverter2(Converter):
             geo.colors = None
         if geo.normals and self.flags & self.NO_NORMALS:
             geo.normals = None
+        if self.flags & self.SINGLE_BONE:
+            geo.influences = self.__get_single_bone_influence()
         node.geometries.append(geo)
         node.controller = get_controller(geo)
         return node
+
+    def __get_single_bone_influence(self):
+        for x in self.bones:
+            pass
+        bone = self.bones[x]
+        return InfluenceCollection({0: Influence(bone_weights={bone.name: Weight(bone, 1.0)})})
 
     def __decode_material(self, material, mesh):
         diffuse_map = ambient_map = specular_map = None
@@ -145,10 +157,7 @@ class DaeConverter2(Converter):
             name = node.attrib.get('name')
             if name is not None and name not in self.bones_by_name:
                 self.bones_by_name[name] = bone
-            for n in node.nodes:
-                m = n.get_matrix()
-                if m is not None and not self.is_identity_matrix(m):
-                    self.__add_bone(n, bone, matrix=m)
+            return bone
 
     def __add_geometry(self, geometry, material_geometry_map):
         geo = material_geometry_map.get(geometry.material_name)
@@ -167,10 +176,11 @@ class DaeConverter2(Converter):
         # rotation_matrix = np.array([[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
         # return np.matmul(rotation_matrix, node.matrix)
 
-    def __parse_nodes(self, nodes, material_geometry_map, matrix=None):
+    def __parse_nodes(self, nodes, material_geometry_map, matrix=None, parent_bone=None):
         for node in nodes:
             m = self.__calc_node_matrix(node)
             current_node_matrix = combine_matrices(matrix, m)
+            new_parent_bone=None
             if node.controller:
                 self.controllers.append((node.controller, current_node_matrix))
             elif node.geometries:
@@ -179,8 +189,8 @@ class DaeConverter2(Converter):
                         x.apply_matrix(current_node_matrix)
                     self.__add_geometry(x, material_geometry_map)
             elif node.attrib.get('type') == 'JOINT':
-                self.__add_bone(node, matrix=current_node_matrix)
-            self.__parse_nodes(node.nodes, material_geometry_map, current_node_matrix)
+                new_parent_bone = self.__add_bone(node, parent_bone=parent_bone, matrix=current_node_matrix)
+            self.__parse_nodes(node.nodes, material_geometry_map, current_node_matrix, new_parent_bone)
 
     def __combine_bones_map(self):
         """Adds the bones by name to bones (in case naming is different than id)"""
@@ -194,7 +204,7 @@ class DaeConverter2(Converter):
 
 
 def main():
-    cmdline_convert(sys.argv[1:], '.dae', DaeConverter2)
+    cmdline_convert(sys.argv[1:], '.dae', DaeConverter)
 
 
 if __name__ == '__main__':

@@ -8,7 +8,7 @@ from abmatt.brres import Brres
 from abmatt.brres.lib import matching
 from abmatt.brres.mdl0.normal import Normal
 from abmatt.brres.mdl0.vertex import Vertex
-from abmatt.converters.convert_dae import DaeConverter2
+from abmatt.converters.convert_dae import DaeConverter
 from abmatt.converters.encoder import GeometryEncoder, PointEncoder, ModelEncoder, ColorEncoder
 from abmatt.brres.mdl0.polygon import Polygon
 from abmatt.brres.mdl0.bone import Bone
@@ -22,11 +22,11 @@ def create_mirror(brres_file_name, working_folder='tmp'):
     original = Brres(brres_file_name)
     base_name = os.path.splitext(os.path.basename(brres_file_name))[0]
     dae_file = os.path.join(working_folder, base_name + '.dae')
-    DaeConverter2(original, mdl_file=dae_file, encode=False).convert()
+    DaeConverter(original, mdl_file=dae_file, encode=False).convert()
     new_file_name = os.path.join(working_folder, base_name + '.brres')
     shutil.copyfile(brres_file_name, new_file_name)
     new_brres = Brres(new_file_name)
-    DaeConverter2(new_brres, mdl_file=dae_file, encode=True, encoder=MirrorEncoder(original.models[0])).convert()
+    DaeConverter(new_brres, mdl_file=dae_file, encode=True, encoder=MirrorEncoder(original.models[0])).convert()
     new_brres.save(overwrite=True)
     return original, new_brres
 

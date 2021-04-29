@@ -1,8 +1,9 @@
-from struct import unpack_from, pack
+from struct import pack, unpack_from
 
 import numpy as np
 
 from abmatt.autofix import AutoFix
+from abmatt.brres.lib.decoder import decode_geometry_group, ColorDecoder
 from abmatt.brres.mdl0.color import Color
 from abmatt.brres.mdl0.normal import Normal
 from abmatt.brres.mdl0.polygon import Polygon
@@ -11,8 +12,6 @@ from abmatt.brres.mdl0.vertex import Vertex
 from abmatt.converters.colors import ColorCollection
 from abmatt.converters.convert_lib import Converter
 from abmatt.converters.influence import InfluenceCollection
-from abmatt.converters.matrix import get_rotation_matrix, apply_matrix, combine_matrices, euler_to_rotation_matrix, \
-    get_inv_transform_matrix
 from abmatt.converters.points import PointCollection
 from abmatt.converters.triangle import TriangleSet
 
@@ -35,6 +34,13 @@ class Geometry:
         self.influences = influences
         self.triangles = triangles
         self.linked_bone = linked_bone
+
+    def __eq__(self, other):
+        return other is not None and type(other) == Geometry and self.name == other.name and \
+               self.vertices == other.vertices and self.texcoords == other.texcoords and self.colors == other.colors \
+               and self.normals == other.normals and self.material_name == other.material_name and \
+               self.influences == other.influences and self.triangles == other.triangles and \
+               self.linked_bone == other.linked_bone
 
     def combine(self, geometry):
         """Combines geometries if they match up
@@ -67,7 +73,7 @@ class Geometry:
         self.influences.apply_world_position(self.vertices)
 
     def apply_matrix(self, matrix):
-        if matrix is not None and not np.allclose(matrix, np.identity(4)):
+        if matrix is not None:
             self.vertices.apply_affine_matrix(matrix)
 
     def get_linked_bone(self):
@@ -172,7 +178,7 @@ class Geometry:
                 return True
             else:
                 bone = self.get_linked_bone()
-                polygon.bone = bone if bone else default_bone
+                polygon.linked_bone = bone if bone else default_bone
         # face_indices = influences.get_face_indices(vertex_face_indices)
 
     def __encode_vertices(self, polygon, vertices, mdl0):
@@ -194,31 +200,12 @@ class Geometry:
                 self.influences.influences = new_inf_map
         else:
             linked_bone = self.get_linked_bone()
-            # todo Clean this up and fix!
-            rotation_matrix = self.__get_bone_rotation_matrix(linked_bone)
-            # vertices.apply_rotation_matrix(rotation_matrix)
-            # inv_matrix = np.array(linked_bone.get_inv_transform_matrix(), dtype=float)
-            inv_matrix = self.__get_inv_matrix(linked_bone)
-            # i_matrix = np.identity(4)
-            # i_matrix[:, 3] = inv_matrix[:, 3]
-            vertices.apply_affine_matrix(inv_matrix)
+            if linked_bone is not None:
+                vertices.apply_affine_matrix(np.array(linked_bone.get_inv_transform_matrix()))
             vertices.encode_data(vert, False, encoder)
         polygon.vertices = vert
         self.fmt_str += get_index_format(vert)
         return True
-
-    def __get_inv_matrix(self, bone, matrix=None):
-        if bone is None:
-            return matrix
-        inv_matrix = get_inv_transform_matrix(bone.scale, bone.rotation, bone.translation)
-        matrix = combine_matrices(inv_matrix, matrix)
-        return self.__get_inv_matrix(bone.get_bone_parent(), matrix)
-
-    def __get_bone_rotation_matrix(self, bone, matrix=None):
-        if bone is None:
-            return matrix
-        matrix = combine_matrices(get_rotation_matrix(np.array(bone.get_transform_matrix(), dtype=float)), matrix)
-        return self.__get_bone_rotation_matrix(bone.get_bone_parent(), matrix)
 
     def __encode_normals(self, polygon, normals, mdl0):
         if normals:
@@ -298,6 +285,73 @@ def get_index_format(item):
         return 'B'
 
 
+def decode_polygon(polygon, influences):
+    """ Decodes an mdl0 polygon
+            :returns geometry
+        """
+    # build the decoder_string decoder
+    pos_matrix_index = polygon.get_weight_index()
+    tex_matrix_index = polygon.get_uv_matrix_index(0)
+    vertex_index = polygon.get_vertex_index()
+    vertices = polygon.get_vertex_group()
+    normals = polygon.get_normal_group()
+    normal_index = polygon.get_normal_index()
+    colors = polygon.get_color_group()
+    color_index = polygon.get_color0_index()
+    texcoords = []
+    texcoord_index = polygon.get_uv_index(0)
+    for i in range(polygon.count_uvs()):
+        texcoords.append(polygon.get_uv_group(i))
+
+    face_point_indices, weights = decode_indices(polygon, polygon.encode_str)
+    face_point_indices = np.array(face_point_indices, dtype=np.uint)
+    face_point_indices[:, [0, 1]] = face_point_indices[:, [1, 0]]
+    # decoded_verts =
+    g_verts = PointCollection(decode_geometry_group(vertices), face_point_indices[:, :, vertex_index])
+    linked_bone = polygon.get_linked_bone()
+    if pos_matrix_index >= 0:  # apply influences to vertices
+        influence_collection = decode_pos_mtx_indices(influences, weights, g_verts,
+                                                      face_point_indices[:, :, pos_matrix_index] // 3)
+    else:
+        influence = influences[linked_bone.weight_id]
+        g_verts.apply_affine_matrix(np.array(linked_bone.get_transform_matrix()), apply=True)
+        influence_collection = InfluenceCollection({0: influence})
+    if tex_matrix_index > 0:
+        for x in polygon.has_tex_matrix:
+            if x:
+                indices = face_point_indices[:, :, tex_matrix_index]
+                tex_matrix_index += 1
+
+    geometry = Geometry(polygon.name, polygon.get_material().name, g_verts,
+                        triangles=face_point_indices[:, :, vertex_index:], influences=influence_collection,
+                        linked_bone=linked_bone)
+    # create the point collections
+    if normals:
+        geometry.normals = PointCollection(decode_geometry_group(normals), face_point_indices[:, :, normal_index])
+    if colors:
+        geometry.colors = ColorCollection(ColorDecoder.decode_data(colors), face_point_indices[:, :, color_index])
+    for tex in texcoords:
+        x = decode_geometry_group(tex)
+        pc = PointCollection(x, face_point_indices[:, :, texcoord_index],
+                             tex.minimum, tex.maximum)
+        pc.flip_points()
+        geometry.texcoords.append(pc)
+        texcoord_index += 1
+    return geometry
+
+
+def get_stride(decoder_string):
+    stride = 0
+    for x in decoder_string:
+        if x == 'H':
+            stride += 2
+        elif x == 'B':
+            stride += 1
+        elif x != '>':
+            raise ValueError('Unknown decoder format {}'.format(x))
+    return stride
+
+
 def decode_tri_strip(decoder, decoder_byte_len, data, start_offset, num_facepoints, face_point_indices):
     face_points = []
     flip = False
@@ -322,25 +376,6 @@ def decode_tris(decoder, decoder_byte_len, data, start_offset, num_facepoints, f
             start_offset += decoder_byte_len
         face_point_indices.append(tri)
     return start_offset
-
-
-def decode_geometry_group(geometry):
-    arr = np.array(geometry.data, np.float)
-    if geometry.divisor:
-        arr = arr / (2 ** geometry.divisor)
-    return arr
-
-
-def get_stride(decoder_string):
-    stride = 0
-    for x in decoder_string:
-        if x == 'H':
-            stride += 2
-        elif x == 'B':
-            stride += 1
-        elif x != '>':
-            raise ValueError('Unknown decoder format {}'.format(x))
-    return stride
 
 
 def decode_indices(polygon, fmt_str):
@@ -435,62 +470,3 @@ def decode_pos_mtx_indices(all_influences, weight_groups, vertices, pos_mtx_indi
 
     assert len(influences) == len(points)
     return InfluenceCollection(influences)
-
-
-def decode_polygon(polygon, influences):
-    """ Decodes an mdl0 polygon
-            :returns geometry
-        """
-    # build the decoder_string decoder
-    pos_matrix_index = polygon.get_weight_index()
-    tex_matrix_index = polygon.get_uv_matrix_index(0)
-    vertex_index = polygon.get_vertex_index()
-    vertices = polygon.get_vertex_group()
-    normals = polygon.get_normal_group()
-    normal_index = polygon.get_normal_index()
-    colors = polygon.get_color_group()
-    color_index = polygon.get_color0_index()
-    texcoords = []
-    texcoord_index = polygon.get_uv_index(0)
-    for i in range(polygon.count_uvs()):
-        texcoords.append(polygon.get_uv_group(i))
-
-    face_point_indices, weights = decode_indices(polygon, polygon.encode_str)
-    face_point_indices = np.array(face_point_indices, dtype=np.uint)
-    face_point_indices[:, [0, 1]] = face_point_indices[:, [1, 0]]
-    # decoded_verts =
-    g_verts = PointCollection(decode_geometry_group(vertices), face_point_indices[:, :, vertex_index])
-    linked_bone = polygon.get_bone()
-    if pos_matrix_index >= 0:  # apply influences to vertices
-        influence_collection = decode_pos_mtx_indices(influences, weights, g_verts,
-                                                      face_point_indices[:, :, pos_matrix_index] // 3)
-    else:
-        influence = influences[linked_bone.weight_id]
-        rotation_matrix = get_rotation_matrix(np.array(linked_bone.get_inv_transform_matrix(), dtype=float))
-        decoded_verts = influence.apply_to_all(g_verts.points, decode=True)
-        if not np.allclose(rotation_matrix, np.identity(3)):
-            for i in range(len(decoded_verts)):
-                decoded_verts[i] = np.dot(rotation_matrix, decoded_verts[i])
-        influence_collection = InfluenceCollection({0: influence})
-    if tex_matrix_index > 0:
-        for x in polygon.has_tex_matrix:
-            if x:
-                indices = face_point_indices[:, :, tex_matrix_index]
-                tex_matrix_index += 1
-
-    geometry = Geometry(polygon.name, polygon.get_material().name, g_verts,
-                        triangles=face_point_indices[:, :, vertex_index:], influences=influence_collection,
-                        linked_bone=linked_bone)
-    # create the point collections
-    if normals:
-        geometry.normals = PointCollection(decode_geometry_group(normals), face_point_indices[:, :, normal_index])
-    if colors:
-        geometry.colors = ColorCollection(ColorCollection.decode_data(colors), face_point_indices[:, :, color_index])
-    for tex in texcoords:
-        x = decode_geometry_group(tex)
-        pc = PointCollection(x, face_point_indices[:, :, texcoord_index],
-                             tex.minimum, tex.maximum)
-        pc.flip_points()
-        geometry.texcoords.append(pc)
-        texcoord_index += 1
-    return geometry

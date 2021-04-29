@@ -24,7 +24,7 @@ class PackMdl0(PackSubfile):
         binfile.start()  # header
         binfile.write('I', 0x40)
         binfile.writeOuterOffset()
-        binfile.linked_offsets.extend([binfile.offset + 8, binfile.offset + 12])    #- debug
+        # binfile.linked_offsets.extend([binfile.offset + 8, binfile.offset + 12])    #- debug
         binfile.write("7I", mdl0.scaling_rule, mdl0.texture_matrix_mode,
                       mdl0.facepoint_count, mdl0.faceCount, 0, len(mdl0.bones), 0x01000000)
         binfile.mark()  # bone table offset
@@ -91,7 +91,7 @@ class PackMdl0(PackSubfile):
 
     def packTextureLinks(self, binfile, folder):
         """Packs texture link section, returning map of names:offsets be filled in by mat/layer refs"""
-        binfile.section_offsets.append((binfile.offset, folder.name))       #- debug
+        # binfile.section_offsets.append((binfile.offset, folder.name))       #- debug
         tex_map = {}
         links = self.sections[11]
         for x in links:
@@ -100,7 +100,7 @@ class PackMdl0(PackSubfile):
         return tex_map
 
     def pack_definitions(self, binfile, folder):
-        self.binfile.section_offsets.append((binfile.offset, folder.name))    #- debug
+        # self.binfile.section_offsets.append((binfile.offset, folder.name))    #- debug
         for x in self.sections[0]:
             folder.createEntryRefI()
             x.pack(binfile)
@@ -108,7 +108,7 @@ class PackMdl0(PackSubfile):
 
     def pack_materials(self, binfile, folder, texture_link_map):
         """packs materials, requires texture link map to offsets that need to be filled"""
-        self.binfile.section_offsets.append((binfile.offset, folder.name))     #- debug
+        # self.binfile.section_offsets.append((binfile.offset, folder.name))     #- debug
         mat_packers = self.mat_packers
         section = self.sections[8]
         for i in range(len(section)):
@@ -120,7 +120,7 @@ class PackMdl0(PackSubfile):
                 raise PackingError(binfile, 'Unused texture link {}!'.format(x))
 
     def pack_shaders(self, binfile, folder):
-        self.binfile.section_offsets.append((binfile.offset, folder.name))     #- debug
+        # self.binfile.section_offsets.append((binfile.offset, folder.name))     #- debug
         shaders = self.shaders
         shader_mats = self.shader_mats
         mat_packers = self.mat_packers
@@ -137,7 +137,7 @@ class PackMdl0(PackSubfile):
         """ Packs a model section (generic) """
         section = self.sections[section_index]
         if section:
-            binfile.section_offsets.append((binfile.offset, folder.name))  #- debug
+            # binfile.section_offsets.append((binfile.offset, folder.name))  #- debug
             # now pack the data
             for i in range(len(section)):
                 x = section[i]

@@ -37,10 +37,10 @@ class BinFile:
         self.c_length = None  # for tracking current length
 
         #- debug
-        self.linked_offsets = []
-        self.section_offsets = []
-        self.polygon_offsets = []
-        self.target = []
+        # self.linked_offsets = []
+        # self.section_offsets = []
+        # self.polygon_offsets = []
+        # self.target = []
         #- end debug
 
         self.isWriteMode = (mode == 'w')
@@ -142,7 +142,7 @@ class BinFile:
         offset = self.offset
         for i in range(num_refs):
             li.append(offset)
-            self.linked_offsets.append(offset)      #- debug
+            # self.linked_offsets.append(offset)      #- debug
             offset += 4
         self.advance(num_refs * 4)
 
@@ -272,7 +272,7 @@ class BinFile:
     # advance
     def advance(self, step):
         """ advances offset pointer, possibly padding with 0's in write mode """
-        self.linked_offsets.extend([i + self.offset for i in range(step)])  #- debug
+        # self.linked_offsets.extend([i + self.offset for i in range(step)])  #- debug
         self.offset += step
         if self.isWriteMode:
             m = self.offset - len(self.file)
@@ -315,9 +315,9 @@ class BinFile:
         read = unpack_from(self.bom + fmt, self.file, self.offset)
         self.advance(length)
         #- debug
-        to_remove = [x for x in self.target if self.offset >= x - 4 and self.offset - length <= x + 4]
-        for x in to_remove:
-            self.target.remove(x)
+        # to_remove = [x for x in self.target if self.offset >= x - 4 and self.offset - length <= x + 4]
+        # for x in to_remove:
+            # self.target.remove(x)
         #- end debug
         return read
 
@@ -350,10 +350,10 @@ class BinFile:
         self.file.extend(pack(self.bom + fmt, *args))
         self.offset = len(self.file)
         #- debug
-        to_remove = [x for x in self.target if self.offset >= x - 4]
-        for x in to_remove:
-            self.target.remove(x)
-        return
+        # to_remove = [x for x in self.target if self.offset >= x - 4]
+        # for x in to_remove:
+            # self.target.remove(x)
+        # return
         #- end debug
 
     def writeOffset(self, fmt, offset, args):
@@ -374,7 +374,7 @@ class BinFile:
             self.write(fmt, *x)
 
     def writeOuterOffset(self):
-        self.linked_offsets.append(self.offset)     #- debug
+        # self.linked_offsets.append(self.offset)     #- debug
         self.write('i', self.getOuterOffset())
 
     # Names
@@ -392,9 +392,6 @@ class BinFile:
         except struct.error:
             raise UnpackingError(self, 'Incorrect name offset')
         if name_lens > 256:
-            # For debug
-            # data = self.readOffset('64s', offset - 4)
-            # print(data)
             raise UnpackingError(self, "Incorrect name offset")
         else:
             self.nameRefMap[offset] = name = self.readOffset(str(name_lens) + "s", offset)[0].decode()
@@ -419,17 +416,17 @@ class BinFile:
         """packs in the names"""
         names = self.nameRefMap
         #- debug
-        out = []
-        for key in names:
-            reflist = names[key]
-            for x in reflist:
-                out.append(x[1])
-        out.extend(self.linked_offsets)
-        for x in self.lenMap:
-            out.append(self.lenMap[x])
-        self.linked_offsets = out
-        with open('names.txt', 'w') as f:
-            f.write(str(out))
+        # out = []
+        # for key in names:
+            # reflist = names[key]
+            # for x in reflist:
+                # out.append(x[1])
+        # out.extend(self.linked_offsets)
+        # for x in self.lenMap:
+            # out.append(self.lenMap[x])
+        # self.linked_offsets = out
+        # with open('names.txt', 'w') as f:
+            # f.write(str(out))
         #- end debug
 
         for key in sorted(names):
@@ -482,8 +479,8 @@ class FolderEntry:
 
     def pack(self, binfile):
         # print("{} : {} ID {} left {} right {}".format(binfile.offset, self.name, self.id, self.left, self.right))
-        binfile.linked_offsets.append(binfile.offset)     #- debug
-        binfile.linked_offsets.append(binfile.offset + 4)     #- debug
+        # binfile.linked_offsets.append(binfile.offset)     #- debug
+        # binfile.linked_offsets.append(binfile.offset + 4)     #- debug
 
         binfile.write("4H", self.id, 0, self.left, self.right)
         binfile.storeNameRef(self.name, True)

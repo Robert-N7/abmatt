@@ -12,10 +12,10 @@ class PackPoint(Packer):
         binfile.createRef()
         fmt = '{}{}'.format(point.point_width, point.format_str)
         data = point.data
-        offset = binfile.offset     #- debug
+        # offset = binfile.offset     #- debug
         for x in data:
             binfile.write(fmt, *x)
-        binfile.linked_offsets.extend([i for i in range(offset, binfile.offset)])   #- debug
+        # binfile.linked_offsets.extend([i for i in range(offset, binfile.offset)])   #- debug
         binfile.alignAndEnd()
 
     def pack(self, point, binfile):
@@ -31,7 +31,7 @@ class PackVertex(PackPoint):
     def pack(self, node, binfile):
         """ Packs into binfile """
         super(PackVertex, self).pack(node, binfile)
-        binfile.linked_offsets.extend([i for i in range(binfile.offset, binfile.offset + 24, 4)]) #- debug
+        # binfile.linked_offsets.extend([i for i in range(binfile.offset, binfile.offset + 24, 4)]) #- debug
         binfile.write('3f', *self.node.minimum)
         binfile.write('3f', *self.node.maximum)
         self.pack_data(binfile)
@@ -46,7 +46,7 @@ class PackNormal(PackPoint):
 class PackUV(PackPoint):
     def pack(self, node, binfile):
         super().pack(node, binfile)
-        binfile.linked_offsets.extend([i for i in range(binfile.offset, binfile.offset + 16, 4)])   #- debug
+        # binfile.linked_offsets.extend([i for i in range(binfile.offset, binfile.offset + 16, 4)])   #- debug
         binfile.write('2f', *self.node.minimum)
         binfile.write('2f', *self.node.maximum)
         self.pack_data(binfile)

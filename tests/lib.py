@@ -138,8 +138,8 @@ class CheckPositions:
                 colr2 = c2[i]
                 if colr1.format != colr2.format:
                     print('Colors {}, {} have mismatching formats'.format(colr1.name, colr2.name))
-                decoded_c1 = ColorCollection.decode_data(colr1)
-                decoded_c2 = ColorCollection.decode_data(colr2)
+                decoded_c1 = colr1.get_decoded()
+                decoded_c2 = colr2.get_decoded()
                 if len(decoded_c1) != len(decoded_c2):
                     print('Colors {}, {} dont have matching lengths!'.format(colr1.name, colr2.name))
                 if len(decoded_c1) != colr1.count:
@@ -168,24 +168,34 @@ class CheckPositions:
         bone_list1, bone_list2, err = CheckPositions.__pre_process(bone_list1, bone_list2, 'bones')
         if not err:
             for i in range(len(bone_list1)):
-                m1 = bone_list1[i].get_transform_matrix()
-                m2 = bone_list2[i].get_transform_matrix()
+                b1 = bone_list1[i]
+                b2 = bone_list2[i]
+                m1 = b1.get_transform_matrix()
+                m2 = b2.get_transform_matrix()
                 if not np.isclose(m1, m2, rtol, atol).all():
-                    print('Bone {} and {} have different matrices {}, and {}'.format(bone_list1[i].name,
-                                                                                     bone_list2[i].name,
-                                                                                     m1, m2))
+                    print('Bone have different matrices {}\n{}\n{}\n{}\n'.format(b1.name, m1, b2.name, m2))
                     err = True
+                srt1 = [b1.scale, b1.rotation, b1.translation]
+                srt2 = [b2.scale, b2.rotation, b2.translation]
+                if not np.isclose(srt1, srt2, rtol, atol).all():
+                    print('Bone have different srt {}\n{}\n{}\n{}\n'.format(b1.name, srt1, b2.name, srt2))
+                    err = True
+                if b1.b_parent or b2.b_parent:
+                    if b1.b_parent.name != b2.b_parent.name:
+                        print('Bones {}, {} have different parents {}, {}'.format(b1.name, b2.name,
+                                                                                  b1.b_parent.name, b2.b_parent.name))
+                        err = True
         return not err
 
     @staticmethod
-    def positions_equal(vertices1, vertices2, rtol=1.e-5, atol=1.e-8):
+    def positions_equal(vertices1, vertices2, rtol=1.e-3, atol=1.e-4):
         """Checks if the vertices are the same"""
         vertices1, vertices2, err = CheckPositions.__pre_process(vertices1, vertices2, 'points')
         if not err:
             # Check each vertex group
             for k in range(len(vertices1)):
-                points1 = decode_geometry_group(vertices1[k])
-                points2 = decode_geometry_group(vertices2[k])
+                points1 = np.array(sorted(vertices1[k].get_decoded(), key=lambda x: tuple(x)))
+                points2 = np.array(sorted(vertices2[k].get_decoded(), key=lambda x: tuple(x)))
                 if points1.shape != points2.shape:
                     print('points {} and {} have different shapes {} and {}'.format(vertices1[k].name,
                                                                                     vertices2[k].name,

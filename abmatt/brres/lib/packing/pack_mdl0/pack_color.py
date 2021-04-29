@@ -15,7 +15,7 @@ class PackColor(Packer):
         binfile.write('3I2BH', self.index, color.has_alpha, color.format, color.stride, color.flags, color.count)
         binfile.align()
         binfile.createRef()
-        offset = binfile.offset  #- debug
+        # offset = binfile.offset  #- debug
         binfile.writeRemaining(color.data)
-        binfile.linked_offsets.extend(i for i in range(offset, binfile.offset))     #- debug
+        # binfile.linked_offsets.extend(i for i in range(offset, binfile.offset))     #- debug
         binfile.alignAndEnd()

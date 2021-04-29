@@ -1,3 +1,5 @@
+import numpy as np
+
 from abmatt.autofix import AutoFix
 from abmatt.brres.mdl0.point import Point
 
@@ -10,7 +12,7 @@ class Vertex(Point):
     """ Vertex class for storing vertices data """
 
     def check_vertices(self, linked_bone):
-        if min(linked_bone.scale) >= 1 or linked_bone.rotation != 0.0:  # only checks if not scaled down and not rotated
+        if min(linked_bone.scale) >= 0.9999 and np.allclose(linked_bone.rotation, 0.0):  # only checks if not scaled down and not rotated
             # Check Y value
             if self.parent.name == 'course' and self.minimum[1] + linked_bone.translation[1] < 0:
                 AutoFix.get().warn('Vertex {} minimum y below axis {}'.format(self.name, self.minimum[1]))

@@ -57,7 +57,7 @@ class Influence:
         if parent:
             transform = self.__get_transformation_bind(parent)
             # translation += transform
-        # return tb ranslation
+            # return tb ranslation
             return np.dot(transform, np.array(bone.get_transform_matrix()))
         return np.array(bone.get_transform_matrix())
 
@@ -211,8 +211,6 @@ class InfluenceCollection:
         return groups
 
 
-
-
 class WeightedTri:
     def __init__(self, tripoints, influences):
         # self.vertices = [x[0] for x in tripoints]
@@ -222,7 +220,7 @@ class WeightedTri:
 
 class WeightedTriGroup:
     """Represents a set of weighted triangles with a maximum of 10 influences"""
-    MAX_INFLUENCES = 10     # can only have 10 matrices max
+    MAX_INFLUENCES = 10  # can only have 10 matrices max
 
     def __init__(self, triangles=None):
         self.triangles = []
@@ -267,40 +265,19 @@ class WeightedTriGroup:
             facepoint_indexer.append(tri)
         return matrices, np.array(facepoint_indexer, np.uint)
 
-def decode_mdl0_influences(mdl0):
-    influences = {}
-    bones = mdl0.bones
-    bonetable = mdl0.boneTable
-    # Get bonetable influences
-    for i in range(len(bonetable)):
-        index = bonetable[i]
-        if index >= 0:
-            bone = bones[index]
-            influences[i] = Influence(bone_weights={bone.name: Weight(bone, 1)}, influence_id=index)
-
-    # Get mixed influences
-    nodemix = mdl0.NodeMix
-    if nodemix is not None:
-        for inf in nodemix.mixed_weights:
-            weight_id = inf.weight_id
-            influences[weight_id] = influence = Influence(influence_id=weight_id)
-            for x in inf:
-                bone = bones[bonetable[x[0]]]
-                influence[bone.name] = Weight(bone, x[1])
-    return InfluenceCollection(influences)
-
 
 class InfluenceManager:
     """Manages all influences"""
+
     def __init__(self):
-        self.mixed_influences = []      # influences with mixed weights
-        self.single_influences = []     # influences with single weights
+        self.mixed_influences = []  # influences with mixed weights
+        self.single_influences = []  # influences with single weights
 
     def encode_bone_weights(self, mdl0):
         self.single_influences = sorted(self.single_influences, key=lambda x: x.get_single_bone_bind().index)
         self.__create_inf_ids()
         remaining_bones = self.__create_bone_table(mdl0)
-        if self.mixed_influences:    # create node mix
+        if self.mixed_influences:  # create node mix
             self.__create_node_mix(mdl0, remaining_bones)
 
     def create_or_find(self, influence):
@@ -319,7 +296,8 @@ class InfluenceManager:
         for x in remaining_bones:
             node_mix.add_fixed_weight(x.weight_id, x.index)
         for inf in self.mixed_influences:
-            node_mix.add_mixed_weight(inf.influence_id, [(x.bone.weight_id, x.weight) for x in inf.bone_weights.values()])
+            node_mix.add_mixed_weight(inf.influence_id,
+                                      [(x.linked_bone.weight_id, x.weight) for x in inf.bone_weights.values()])
         return node_mix
 
     def __create_inf_ids(self):
@@ -352,3 +330,26 @@ class InfluenceManager:
             index += 1
         mdl0.set_bonetable(bonetable)
         return remaining
+
+
+def decode_mdl0_influences(mdl0):
+    influences = {}
+    bones = mdl0.bones
+    bonetable = mdl0.boneTable
+    # Get bonetable influences
+    for i in range(len(bonetable)):
+        index = bonetable[i]
+        if index >= 0:
+            bone = bones[index]
+            influences[i] = Influence(bone_weights={bone.name: Weight(bone, 1)}, influence_id=index)
+
+    # Get mixed influences
+    nodemix = mdl0.NodeMix
+    if nodemix is not None:
+        for inf in nodemix.mixed_weights:
+            weight_id = inf.weight_id
+            influences[weight_id] = influence = Influence(influence_id=weight_id)
+            for x in inf:
+                bone = bones[bonetable[x[0]]]
+                influence[bone.name] = Weight(bone, x[1])
+    return InfluenceCollection(influences)

@@ -20,12 +20,13 @@ class PointCollection:
         self.points = points
         self.face_indices = face_indices
         self.matrix = None
-        # if not minimum or not maximum:
-        #     self.minimum, self.maximum = self.__calc_min_max(points)
-        # else:
         assert np.max(face_indices) < len(points)
         self.minimum = minimum
         self.maximum = maximum
+
+    def __eq__(self, other):
+        return other is not None and type(other) == PointCollection and np.allclose(self.points, other.points) and \
+               self.face_indices == other.face_indices
 
     def __iter__(self):
         return iter(self.points)
@@ -64,20 +65,22 @@ class PointCollection:
     def get_stride(self):
         return len(self.points[0])
 
-    def apply_affine_matrix(self, matrix):
+    def apply_affine_matrix(self, matrix, apply=True):
         """
         transforms points using the matrix (last row is ignored)
         matrix: 4x4 ndarray matrix
+        apply: apply immediately if true, otherwise store in matrix
         """
         self.matrix = combine_matrices(matrix, self.matrix)
-        # self.points = apply_matrix(matrix, self.points)
-        # self.minimum, self.maximum = self.__calc_min_max(self.points)
+        if apply:
+            self.points = apply_matrix(self.matrix, self.points)
+            self.matrix = None
 
     def apply_rotation_matrix(self, rotation_matrix):
         if rotation_matrix is not None and not np.allclose(rotation_matrix, np.identity(3)):
-            if self.matrix is not None:
-                self.points = apply_matrix(self.matrix, self.points)
-                self.matrix = None
+            # if self.matrix is not None:
+            #     self.points = apply_matrix(self.matrix, self.points)
+            #     self.matrix = None
             for i in range(len(self.points)):
                 self.points[i] = np.dot(rotation_matrix, self.points[i])
 
@@ -108,6 +111,7 @@ class PointCollection:
         """
         if self.matrix is not None:
             self.points = apply_matrix(self.matrix, self.points)
+            self.matrix = None
         self.minimum, self.maximum = self.__calc_min_max(self.points)
         mdl0_points.minimum = self.minimum
         mdl0_points.maximum = self.maximum

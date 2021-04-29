@@ -43,6 +43,15 @@ class ColladaNode:
         self.geometries = []
         self.nodes = []
 
+    def __eq__(self, other):
+        has_matrices = other.matrix is not None and self.matrix is not None
+        result = other is not None and type(other) == ColladaNode and \
+                 self.name == other.name and \
+                 (has_matrices and np.allclose(self.matrix, other.matrix, 0.001) or other.matrix == self.matrix) \
+                 and self.controller == other.controller and \
+                 self.geometries == other.geometries and self.nodes == other.nodes
+        return result
+
     def get_matrix(self):
         if self.matrix is None:
             self.matrix = np.identity(4)
@@ -63,6 +72,7 @@ class Dae:
         self.y_up = True
         self.unit_meter = 1
         self.elements_by_id = {}
+        self.node_ids = None
         if filename:
             with open(filename) as f:
                 self.xml = self.__read_xml(f)
@@ -85,10 +95,53 @@ class Dae:
         self.node_ids = set()
         nodes = []
         for x in self.scene:
-            node = self.decode_node(x)
-            if node is not None:
-                nodes.append(node)
+            if x.tag == 'node':
+                node = self.decode_node(x)
+                if node is not None:
+                    nodes.append(node)
         return nodes
+
+    @staticmethod
+    def get_all_nodes_recurse(nodes, node_condition=None, ret_list=None):
+        if ret_list is None:
+            ret_list = []
+        if nodes:
+            for node in nodes:
+                if node_condition is not None:
+                    if node_condition(node):
+                        ret_list.append(node)
+                else:
+                    ret_list.append(node)
+                Dae.get_all_nodes_recurse(node.nodes, node_condition, ret_list)
+        return ret_list
+
+    @staticmethod
+    def get_all_joints(nodes):
+        return Dae.get_all_nodes_recurse(nodes, node_condition=lambda x: x.attrib.get('type') == 'JOINT')
+
+    @staticmethod
+    def get_all_controllers(nodes):
+        return [x.controller for x in
+                Dae.get_all_nodes_recurse(nodes, node_condition=lambda x: x.controller is not None)]
+
+    @staticmethod
+    def get_all_geometries(nodes):
+        geometries = []
+        for x in Dae.get_all_nodes_recurse(nodes, node_condition=lambda x: x.geometries):
+            geometries.extend(x.geometries)
+        return geometries
+
+    def __eq__(self, other):
+        if other is None or type(other) != Dae:
+            return False
+        my_nodes = self.get_scene()
+        other_nodes = other.get_scene()
+        if self.node_ids != other.node_ids:
+            return False
+        return sorted(my_nodes, key=lambda x: x.name) == sorted(other_nodes, key=lambda x: x.name)
+        # return self.get_all_joints(my_nodes) == self.get_all_joints(other_nodes) and \
+        #        self.get_all_controllers(my_nodes) == other.get_all_controllers(other_nodes) and \
+        #        self.get_all_geometries(my_nodes) == other.get_all_geometries(other_nodes)
 
     def get_materials(self):
         return [self.decode_material(x) for x in self.materials]
@@ -110,7 +163,8 @@ class Dae:
         return images
 
     def get_element_by_id(self, id):
-        return self.elements_by_id.get(id)
+        element = self.elements_by_id.get(id)
+        return element
 
     @staticmethod
     def search_library_by_id(library, id):
@@ -127,11 +181,15 @@ class Dae:
         return data_type, self.get_referenced_element(ele, 'source')
 
     def decode_node(self, xml_node):
-        node = ColladaNode(first(xml_node, 'id'), xml_node.attrib)
+        name = xml_node.attrib.get('name')
+        if not name:
+            name = xml_node.attrib.get('id')
+        node = ColladaNode(name, xml_node.attrib)
         node_id = node.attrib.get('id')
         if node_id is not None and node_id in self.node_ids:
             return None
-        self.node_ids.add(node_id)
+        if node_id is not None:
+            self.node_ids.add(node_id)
         for child in xml_node:
             if child.tag == 'instance_controller':
                 geom = self.get_referenced_element(child, 'url')
@@ -298,7 +356,7 @@ class Dae:
             indices = []
             for input in tri_node.iter('input'):
                 offset = int(input.attrib['offset'])
-                if offset not in uniqueOffsets:   # duplicate
+                if offset not in uniqueOffsets:  # duplicate
                     uniqueOffsets.append(offset)
                 inputs.append(input)
             for x in tri_node.iter('p'):
@@ -326,7 +384,10 @@ class Dae:
             triangles = np.array(indices, np.uint16).reshape((-1, 3, len(uniqueOffsets)))
             count = tri_node.attrib.get('count')
             if count is not None and int(count) != triangles.shape[0]:
-                raise ValueError('Failed to parse {} triangles of unexpected shape, expected {} and got {}'.format(mat_names, count, triangles.shape[0]))
+                raise ValueError(
+                    'Failed to parse {} triangles of unexpected shape, expected {} and got {}'.format(mat_names, count,
+                                                                                                      triangles.shape[
+                                                                                                          0]))
 
             for i in range(len(data_inputs)):
                 decode_type = data_types[i]
@@ -342,8 +403,9 @@ class Dae:
                 else:
                     raise ValueError('Unknown semantic {}'.format(decode_type))
             name = geo_name if geo_count <= 0 else geo_name + '_' + str(geo_count)
-            geometries.append(Geometry(name, material_name, vertices=vertices, texcoords=texcoords, normals=normals, colors=colors,
-                                       triangles=None))
+            geometries.append(
+                Geometry(name, material_name, vertices=vertices, texcoords=texcoords, normals=normals, colors=colors,
+                         triangles=None))
             geo_count += 1
         return geometries
 
@@ -456,7 +518,7 @@ class Dae:
         shader.append(self.__get_default_shader_color('emission', (0.02, 0.02, 0.02, 1.0)))
         i = 0
         maps = set()
-        i += self.__add_shader_map(shader, 'ambient', material.ambient_map, i, (0.8,  0.8, 0.8, 1.0))
+        i += self.__add_shader_map(shader, 'ambient', material.ambient_map, i, (0.8, 0.8, 0.8, 1.0))
         self.__add_sampler(profile_common, material.ambient_map, maps)
         i += self.__add_shader_map(shader, 'diffuse', material.diffuse_map, i)
         self.__add_sampler(profile_common, material.diffuse_map, maps)
@@ -678,5 +740,3 @@ class Dae:
 
         except AttributeError:
             return None
-
-

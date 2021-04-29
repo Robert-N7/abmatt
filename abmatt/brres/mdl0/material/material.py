@@ -461,10 +461,10 @@ class Material(Clipable):
 
     def setLightsetStr(self, str):
         val = int(str)
-        if val != -1:
-            raise ValueError("Invalid lightset " + str + ", expected -1")
-        if self.lightset != -1:
-            self.lightset = -1
+        if val > 0:
+            AutoFix.get().error("Invalid lightset " + str + ", expected -1")
+        if self.lightset != val:
+            self.lightset = val
             self.mark_modified()
 
     def setFogsetStr(self, str):

@@ -17,6 +17,28 @@ class Controller:
         self.vertex_weight_indices = vertex_weight_indices
         self.geometry = geometry
 
+    def get_vertex_weights(self):
+        my_vertex_weight_map = []
+        i = 0
+        for x in self.vertex_weight_counts:
+            vert_weights = []
+            for _ in range(x):
+                bone_i, weight_i = self.vertex_weight_indices[i]
+                vert_weights.append((self.bones[bone_i], self.weights[weight_i]))
+                i += 1
+            my_vertex_weight_map.append(vert_weights)
+        return my_vertex_weight_map
+
+    def __eq__(self, other):
+        my_vertex_weight_map = self.get_vertex_weights()
+        other_vertex_weight_map = other.get_vertex_weights()
+
+        return other is not None and type(other) == Controller and \
+               np.allclose(self.bind_shape_matrix, other.bind_shape_matrix) and \
+               np.allclose(self.inv_bind_matrix, other.inv_bind_matrix) and self.bones == other.bones and \
+               my_vertex_weight_map == other_vertex_weight_map and \
+               self.geometry == other.geometry
+
     def __order_bones(self, bone_map):
         bones = self.bones
         controller_matrices = self.inv_bind_matrix.reshape((-1, 4, 4))
@@ -39,7 +61,7 @@ class Controller:
         weights = self.weights
         try:
             my_bone_map, matrices = self.__order_bones(bone_map)
-            if len(self.bones) == 1 and np.allclose(weights, 1.0):     # No influence needed
+            if len(self.bones) == 1 and np.allclose(weights, 1.0):  # No influence needed
                 influence = Influence()
                 influence[my_bone_map[0].name] = Weight(my_bone_map[0], 1.0)
                 influence = all_influences.create_or_find(influence)
@@ -100,7 +122,7 @@ def get_controller(geometry):
         bones = [inf[x].bone for x in inf]
         weights = [1]
         indexer = [0] * (2 * len(geometry.vertices))
-    else:   # build the weights per vertex
+    else:  # build the weights per vertex
         bones = []
         vert_counts = []
         indexer = []
@@ -110,7 +132,7 @@ def get_controller(geometry):
             vert_counts.append(len(inf))
             for bone_name in inf:
                 x = inf[bone_name]
-                bone = x.bone
+                bone = x.linked_bone
                 try:
                     bone_id = bones.index(bone)
                 except ValueError:

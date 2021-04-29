@@ -155,7 +155,7 @@ class PackMaterial(Packer):
             l.pack(binfile)
 
         binfile.alignToParent()
-        binfile.section_offsets.append((binfile.offset, material.name + '-matGX'))  #- debug
+        # binfile.section_offsets.append((binfile.offset, material.name + '-matGX'))  #- debug
         binfile.createRef(1)
         binfile.start()  # MatGX section
         self.pack_mat_gx(binfile)

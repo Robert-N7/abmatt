@@ -788,8 +788,8 @@ class Command:
 
     def run_convert(self):
         if self.ext == '.dae':
-            from abmatt.converters.convert_dae import DaeConverter2
-            klass = DaeConverter2
+            from abmatt.converters.convert_dae import DaeConverter
+            klass = DaeConverter
         elif self.ext == '.obj':
             from abmatt.converters.convert_obj import ObjConverter
             klass = ObjConverter
@@ -1345,7 +1345,8 @@ class Shell(Cmd, object):
         return possible
 
     def help_convert(self):
-        print('Converts dae or obj model to/from brres.\nUsage: convert <filename> [to <destination>]')
+        print('Converts dae or obj model to/from brres.\n'
+              'Usage: convert <filename> [to <destination>][--no-normals][--no-colors][--single-bone')
 
     def default(self, line):
         if line == 'x' or line == 'q':
