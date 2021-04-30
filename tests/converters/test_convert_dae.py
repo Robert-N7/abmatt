@@ -118,4 +118,5 @@ class DaeConverterTest(AbmattTest):
         self.assertTrue(CheckPositions().positions_equal(original.vertices,
                                                          converter.mdl0.vertices))
         self.assertNotEqual(original.bones, converter.mdl0.bones)  # should be scaled
+
     # endregion save_model

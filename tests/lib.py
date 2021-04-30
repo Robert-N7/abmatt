@@ -130,7 +130,7 @@ class CheckPositions:
         return v1, v2, mismatched_len
 
     @staticmethod
-    def colors_equal(colr1, colr2, rtol=1.e-5, atol=1.e-8):
+    def colors_equal(colr1, colr2, rtol=1.e-2, atol=1.e-3):
         c1, c2, err = CheckPositions.__pre_process(colr1, colr2, 'colors')
         if not err:
             for i in range(len(c1)):
@@ -156,7 +156,7 @@ class CheckPositions:
         return not err
 
     @staticmethod
-    def model_equal(mdl1, mdl2, rtol=1.e-5, atol=1.e-8):
+    def model_equal(mdl1, mdl2, rtol=1.e-2, atol=1.e-3):
         return CheckPositions.bones_equal(mdl1.bones, mdl2.bones, rtol, atol) \
             and CheckPositions.positions_equal(mdl1.vertices, mdl2.vertices, rtol, atol) \
             and CheckPositions.positions_equal(mdl1.uvs, mdl2.uvs, rtol, atol) \
@@ -164,7 +164,7 @@ class CheckPositions:
             and CheckPositions.colors_equal(mdl1.colors, mdl2.colors, rtol, atol)
 
     @staticmethod
-    def bones_equal(bone_list1, bone_list2, rtol=1.e-5, atol=1.e-8):
+    def bones_equal(bone_list1, bone_list2, rtol=1.e-2, atol=1.e-3):
         bone_list1, bone_list2, err = CheckPositions.__pre_process(bone_list1, bone_list2, 'bones')
         if not err:
             for i in range(len(bone_list1)):
@@ -188,7 +188,7 @@ class CheckPositions:
         return not err
 
     @staticmethod
-    def positions_equal(vertices1, vertices2, rtol=1.e-3, atol=1.e-4):
+    def positions_equal(vertices1, vertices2, rtol=1.e-2, atol=1.e-3):
         """Checks if the vertices are the same"""
         vertices1, vertices2, err = CheckPositions.__pre_process(vertices1, vertices2, 'points')
         if not err:
