@@ -180,6 +180,7 @@ def parse_args(argv, app_dir):
     command = destination = brres_file = command_file = model = value = key = ""
     autofix = loudness = None
     name = None
+    no_normals = no_colors = single_bone = False
     do_help = False
     for i in range(len(argv)):
         if argv[i][0] == '-':
@@ -189,11 +190,11 @@ def parse_args(argv, app_dir):
             break
 
     try:
-        opts, args = getopt.getopt(argv, "hd:oc:t:k:v:n:b:m:f:iul:g",
+        opts, args = getopt.gnu_getopt(argv, "hd:oc:t:k:v:n:b:m:f:iul:g",
                                    ["help", "destination=", "overwrite",
                                     "command=", "type=", "key=", "value=",
                                     "name=", "brres=", "model=", "file=", "interactive",
-                                    "loudness=", "debug"])
+                                    "loudness=", "debug", "single-bone", "no-colors", "no-normals"])
     except getopt.GetoptError as e:
         print(e)
         print(USAGE)
@@ -230,6 +231,12 @@ def parse_args(argv, app_dir):
             loudness = arg
         elif opt in ("-g", "--debug"):
             debug = True
+        elif opt == '--single-bone':
+            single_bone = True
+        elif opt == '--no-normals':
+            no_normals = True
+        elif opt == '--no-colors':
+            no_colors = True
         else:
             print("Unknown option '{}'".format(opt))
             print(USAGE)
@@ -253,6 +260,13 @@ def parse_args(argv, app_dir):
     Command.DEBUG = debug
     cmds = []
     if cmd_args:
+        if cmd_args[0] == 'convert':
+            if single_bone:
+                cmd_args.append('--single-bone')
+            if no_colors:
+                cmd_args.append('--no-colors')
+            if no_normals:
+                cmd_args.append('--no-normals')
         cmds.append(Command(arg_list=cmd_args))
     if command:
         args = [command, type]
@@ -267,6 +281,13 @@ def parse_args(argv, app_dir):
             args.extend(['for', name])
             if model:
                 args.extend(['in', 'model', model])
+        if command == 'convert':
+            if single_bone:
+                args.append('--single-bone')
+            if no_colors:
+                args.append('--no-colors')
+            if no_normals:
+                args.append('--no-normals')
         cmds.append(Command(arg_list=args))
     if destination:
         Command.DESTINATION = destination

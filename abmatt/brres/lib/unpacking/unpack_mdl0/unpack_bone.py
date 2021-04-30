@@ -20,14 +20,12 @@ class UnpackBone(Unpacker):
                     return x.node
             raise ValueError('Failed to find bone link to {}'.format(offset))
 
-    @staticmethod
-    def post_unpack(unpackers):
-        for b in unpackers:
-            node = b.node
-            node.b_parent = b.find_bone_at(b.b_parent, unpackers)
-            node.child = b.find_bone_at(b.child, unpackers)
-            node.next = b.find_bone_at(b.next, unpackers)
-            node.prev = b.find_bone_at(b.prev, unpackers)
+    def post_unpack(self, unpackers):
+        node = self.node
+        node.b_parent = self.find_bone_at(self.b_parent, unpackers)
+        node.child = self.find_bone_at(self.child, unpackers)
+        node.next = self.find_bone_at(self.next, unpackers)
+        node.prev = self.find_bone_at(self.prev, unpackers)
 
     def __parse_flags(self, node, flags):
         node.no_transform = flags & 1 != 0
