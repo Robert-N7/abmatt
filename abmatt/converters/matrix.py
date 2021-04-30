@@ -19,7 +19,7 @@ def apply_matrix(matrix, points):
     matrix = matrix[:3]
     # add a 1 after each point (for transformation)
     new_col = np.full((len(points), 1), 1, dtype=float)
-    return np.array([matrix.dot(x) for x in np.append(points, new_col, 1)])
+    return np.around(np.array([matrix.dot(x) for x in np.append(points, new_col, 1)]), 5)
 
 
 def srt_to_matrix(scale=(1, 1, 1), rotation=(0, 0, 0), translation=(0, 0, 0)):
@@ -39,9 +39,9 @@ def matrix_to_srt(matrix):
 
 
 def get_rotation_matrix(matrix, get_scale=False):
-    scale = [round(vector_magnitude(matrix[:, 0]), 3),
-             round(vector_magnitude(matrix[:, 1]), 3),
-             round(vector_magnitude(matrix[:, 2]), 3)]
+    scale = [round(vector_magnitude(matrix[:, 0]), 4),
+             round(vector_magnitude(matrix[:, 1]), 4),
+             round(vector_magnitude(matrix[:, 2]), 4)]
     rotation_matrix = np.swapaxes([[matrix[j, i] / scale[i] for j in range(3)] for i in range(3)],
                                   0, 1)
     if get_scale:
@@ -63,7 +63,7 @@ def euler_to_rotation_matrix(euler_angles):
                       [math.sin(z), math.cos(z), 0],
                       [0, 0, 1]], dtype=float)
     y_x = np.matmul(rot_y, rot_x)
-    matrix = np.matmul(rot_z, y_x)
+    matrix = np.around(np.matmul(rot_z, y_x), 5)
     return matrix
 
 
@@ -80,7 +80,7 @@ def rotation_matrix_to_euler(matrix):
         x = math.atan2(-matrix[1, 2], matrix[1, 1])
         y = math.atan2(-matrix[2, 0], sy)
         z = 0
-    return np.round(np.array([x, y, z]) * 180 / math.pi, 3)
+    return np.around(np.array([x, y, z]) * 180 / math.pi, 5)
 
 
 def scale_matrix(matrix, scale):
@@ -119,3 +119,47 @@ def combine_matrices(matrix1, matrix2):
 
 def vector_magnitude(vector):
     return math.sqrt(sum(x ** 2 for x in vector))
+
+
+def get_transform_matrix(scale, rotation, translation):
+    """Gets the transform matrix based on scale, rotation, translation"""
+    deg2rad = math.pi / 180
+    cosx = math.cos(rotation[0] * deg2rad)
+    sinx = math.sin(rotation[0] * deg2rad)
+    cosy = math.cos(rotation[1] * deg2rad)
+    siny = math.sin(rotation[1] * deg2rad)
+    cosz = math.cos(rotation[2] * deg2rad)
+    sinz = math.sin(rotation[2] * deg2rad)
+
+    return np.around(np.array([[scale[0] * cosy * cosz, scale[1] * (sinx * cosz * siny - cosx * sinz),
+                      scale[2] * (sinx * sinz + cosx * cosz * siny), translation[0]],
+                     [scale[0] * sinz * cosy, scale[1] * (sinx * sinz * siny + cosz * cosx),
+                      scale[2] * (cosx * sinz * siny - sinx * cosz), translation[1]],
+                     [-scale[0] * siny, scale[1] * sinx * cosy,
+                      scale[2] * cosx * cosy, translation[2]],
+                     [0.0, 0.0, 0.0, 1.0]], float), 5)
+
+
+def get_inv_transform_matrix(scale, rotation, translation):
+    deg2rad = math.pi / 180
+    cosx = math.cos(rotation[0] * deg2rad)
+    sinx = math.sin(rotation[0] * deg2rad)
+    cosy = math.cos(rotation[1] * deg2rad)
+    siny = math.sin(rotation[1] * deg2rad)
+    cosz = math.cos(rotation[2] * deg2rad)
+    sinz = math.sin(rotation[2] * deg2rad)
+    scale = (1. / scale[0], 1. / scale[1], 1. / scale[2])
+    translation = np.array(translation) * -1
+    rs = np.array([[scale[0] * cosy * cosz, scale[0] * cosy * sinz,
+                    -scale[0] * siny],
+                   [scale[1] * (sinx * siny * cosz - cosx * sinz), scale[1] * (sinx * siny * sinz + cosx * cosz),
+                    scale[1] * sinx * cosy],
+                   [scale[2] * (cosx * siny * cosz + sinx * sinz), scale[2] * (cosx * siny * sinz - sinx * cosz),
+                    scale[2] * cosx * cosy],
+                   [0.0, 0.0, 0.0]], float)
+    return np.around(np.append(rs,
+                     [[(translation[0] * rs[0, 0]) + (translation[0] * rs[0, 1]) + (translation[0] * rs[0, 2]),
+                      (translation[1] * rs[1, 0]) + (translation[1] * rs[1, 1]) + (translation[1] * rs[1, 2]),
+                      (translation[2] * rs[2, 0]) + (translation[2] * rs[2, 1]) + (translation[2] * rs[2, 2]), 1.0]],
+                     axis=1
+                     ), 7)

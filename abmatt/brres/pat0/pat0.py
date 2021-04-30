@@ -23,6 +23,9 @@ class Pat0Collection(Node):
             if x.name == material_name:
                 return x
 
+    def __len__(self):
+        return len(self.collection)
+
     def __iter__(self):
         for x in self.collection:
             yield x

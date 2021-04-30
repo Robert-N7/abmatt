@@ -69,7 +69,7 @@ class UnpackScn0(UnpackSubfile):
 
     def unpack_group(self, unpacker, klass, section_count):
         if self.binfile.recall():
-            return [unpacker(klass(), self.binfile) for i in range(section_count)]
+            return [unpacker(klass(), self.binfile).node for i in range(section_count)]
         return []
 
     def unpack(self, scn0, binfile):

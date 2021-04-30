@@ -90,8 +90,8 @@ class Brres(Clipable, Packable):
             raise ValueError('Unknown key "{}"'.format(key))
 
     def import_model(self, file_path):
-        from abmatt.converters.convert_dae import DaeConverter2
-        converter = DaeConverter2(self, file_path)
+        from abmatt.converters.convert_dae import DaeConverter
+        converter = DaeConverter(self, file_path)
         converter.load_model()
         self.mark_modified()
 

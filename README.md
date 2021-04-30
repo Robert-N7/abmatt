@@ -99,7 +99,7 @@ preset = 'preset' preset_name;
 save = 'save' [filename] ['as' destination] ['overwrite']
 copy = 'copy' type;
 paste = 'paste' type;
-convert = 'convert' filename ['to' destination] ['no-colors'] ['no-normals']
+convert = 'convert' filename ['to' destination] ['--no-colors'] ['--no-normals'] ['--single-bone']
 
 selection = name ['in' container]
 container = ['brres' filename] ['model' name];

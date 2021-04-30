@@ -20,7 +20,7 @@ class PackBone(Packer):
         elif bone.b_parent:     # first child
             binfile.createRefFrom(bone.b_parent.offset, 0, False)
         binfile.markLen()
-        binfile.write('i', binfile.getOuterOffset())
+        binfile.writeOuterOffset()
         binfile.storeNameRef(bone.name)
         binfile.write('5I', self.index, bone.weight_id, self.__get_flags(bone), bone.billboard, 0)
         binfile.write('3f', *bone.scale)

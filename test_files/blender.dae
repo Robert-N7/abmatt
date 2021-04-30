@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <asset>
+    <contributor>
+      <author>Blender User</author>
+      <authoring_tool>Blender 2.92.0 commit date:2021-02-24, commit time:16:25, hash:02948a2cab44</authoring_tool>
+    </contributor>
+    <created>2021-04-20T18:10:10</created>
+    <modified>2021-04-20T18:10:10</modified>
+    <unit name="meter" meter="1"/>
+    <up_axis>Z_UP</up_axis>
+  </asset>
+  <library_effects>
+    <effect id="Material_001-effect">
+      <profile_COMMON>
+        <newparam sid="smk_png-surface">
+          <surface type="2D">
+            <init_from>smk_png</init_from>
+          </surface>
+        </newparam>
+        <newparam sid="smk_png-sampler">
+          <sampler2D>
+            <source>smk_png-surface</source>
+          </sampler2D>
+        </newparam>
+        <technique sid="common">
+          <lambert>
+            <emission>
+              <color sid="emission">0 0 0 1</color>
+            </emission>
+            <diffuse>
+              <texture texture="smk_png-sampler" texcoord="UVMap"/>
+            </diffuse>
+            <index_of_refraction>
+              <float sid="ior">1.45</float>
+            </index_of_refraction>
+          </lambert>
+        </technique>
+      </profile_COMMON>
+    </effect>
+    <effect id="boost-effect">
+      <profile_COMMON>
+        <newparam sid="orl-square_jpg-surface">
+          <surface type="2D">
+            <init_from>orl-square_jpg</init_from>
+          </surface>
+        </newparam>
+        <newparam sid="orl-square_jpg-sampler">
+          <sampler2D>
+            <source>orl-square_jpg-surface</source>
+          </sampler2D>
+        </newparam>
+        <technique sid="common">
+          <lambert>
+            <emission>
+              <color sid="emission">0 0 0 1</color>
+            </emission>
+            <diffuse>
+              <texture texture="orl-square_jpg-sampler" texcoord="UVMap"/>
+            </diffuse>
+            <index_of_refraction>
+              <float sid="ior">1.45</float>
+            </index_of_refraction>
+          </lambert>
+        </technique>
+      </profile_COMMON>
+    </effect>
+  </library_effects>
+  <library_images>
+    <image id="orl-square_jpg" name="orl-square_jpg">
+      <init_from>orl-square.jpg</init_from>
+    </image>
+    <image id="smk_png" name="smk_png">
+      <init_from>smk.png</init_from>
+    </image>
+  </library_images>
+  <library_materials>
+    <material id="Material_001-material" name="Material.001">
+      <instance_effect url="#Material_001-effect"/>
+    </material>
+    <material id="boost-material" name="boost">
+      <instance_effect url="#boost-effect"/>
+    </material>
+  </library_materials>
+  <library_geometries>
+    <geometry id="a-mesh" name="a">
+      <mesh>
+        <source id="a-mesh-positions">
+          <float_array id="a-mesh-positions-array" count="24">-54.14513 756.7042 0.5 45.8304 756.7042 0.5 -54.14513 856.6797 0.5 45.8304 856.6797 0.5 -1000 -1000 0 1000 -1000 0 -1000 1000 0 1000 1000 0</float_array>
+          <technique_common>
+            <accessor source="#a-mesh-positions-array" count="8" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="a-mesh-normals">
+          <float_array id="a-mesh-normals-array" count="3">0 0 1</float_array>
+          <technique_common>
+            <accessor source="#a-mesh-normals-array" count="1" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="a-mesh-map-0">
+          <float_array id="a-mesh-map-0-array" count="24">1 0 0 1 0 0 1 0 0 1 0 0 1 0 1 1 0 1 1 0 1 1 0 1</float_array>
+          <technique_common>
+            <accessor source="#a-mesh-map-0-array" count="12" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="a-mesh-vertices">
+          <input semantic="POSITION" source="#a-mesh-positions"/>
+        </vertices>
+        <triangles material="Material_001-material" count="2">
+          <input semantic="VERTEX" source="#a-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#a-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#a-mesh-map-0" offset="2" set="0"/>
+          <p>5 0 3 6 0 4 4 0 5 5 0 9 7 0 10 6 0 11</p>
+        </triangles>
+        <triangles material="boost-material" count="2">
+          <input semantic="VERTEX" source="#a-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#a-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#a-mesh-map-0" offset="2" set="0"/>
+          <p>1 0 0 2 0 1 0 0 2 1 0 6 3 0 7 2 0 8</p>
+        </triangles>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  <library_controllers>
+    <controller id="Armature__F0000_001-skin" name="Armature">
+      <skin source="#a-mesh">
+        <bind_shape_matrix>20 0 0 -20210.05 0 -8.74228e-7 20 8.89977e-4 0 -20 -8.74228e-7 20360.31 0 0 0 1</bind_shape_matrix>
+        <source id="Armature__F0000_001-skin-joints">
+          <Name_array id="Armature__F0000_001-skin-joints-array" count="1">beginner_course</Name_array>
+          <technique_common>
+            <accessor source="#Armature__F0000_001-skin-joints-array" count="1" stride="1">
+              <param name="JOINT" type="name"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Armature__F0000_001-skin-bind_poses">
+          <float_array id="Armature__F0000_001-skin-bind_poses-array" count="16">1 0 0 0 0 0 1 0 0 -1 0 0 0 0 0 1</float_array>
+          <technique_common>
+            <accessor source="#Armature__F0000_001-skin-bind_poses-array" count="1" stride="16">
+              <param name="TRANSFORM" type="float4x4"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Armature__F0000_001-skin-weights">
+          <float_array id="Armature__F0000_001-skin-weights-array" count="4">1 1 1 1</float_array>
+          <technique_common>
+            <accessor source="#Armature__F0000_001-skin-weights-array" count="4" stride="1">
+              <param name="WEIGHT" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <joints>
+          <input semantic="JOINT" source="#Armature__F0000_001-skin-joints"/>
+          <input semantic="INV_BIND_MATRIX" source="#Armature__F0000_001-skin-bind_poses"/>
+        </joints>
+        <vertex_weights count="8">
+          <input semantic="JOINT" source="#Armature__F0000_001-skin-joints" offset="0"/>
+          <input semantic="WEIGHT" source="#Armature__F0000_001-skin-weights" offset="1"/>
+          <vcount>0 0 0 0 1 1 1 1 </vcount>
+          <v>0 0 0 1 0 2 0 3</v>
+        </vertex_weights>
+      </skin>
+    </controller>
+  </library_controllers>
+  <library_visual_scenes>
+    <visual_scene id="Scene" name="Scene">
+      <node id="Armature" name="Armature" type="NODE">
+        <matrix sid="transform">1 0 0 0 0 -4.37114e-8 -1 0 0 1 -4.37114e-8 0 0 0 0 1</matrix>
+        <node id="Armature_beginner_course" name="beginner_course" sid="beginner_course" type="JOINT">
+          <matrix sid="transform">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+          <extra>
+            <technique profile="blender">
+              <layer sid="layer" type="string">0</layer>
+              <tip_x sid="tip_x" type="float">0</tip_x>
+              <tip_y sid="tip_y" type="float">1</tip_y>
+              <tip_z sid="tip_z" type="float">0</tip_z>
+            </technique>
+          </extra>
+        </node>
+        <node id="_F0000_001" name="_F0000.001" type="NODE">
+          <matrix sid="transform">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+          <instance_controller url="#Armature__F0000_001-skin">
+            <skeleton>#Armature_beginner_course</skeleton>
+            <bind_material>
+              <technique_common>
+                <instance_material symbol="Material_001-material" target="#Material_001-material">
+                  <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+                </instance_material>
+                <instance_material symbol="boost-material" target="#boost-material">
+                  <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+                </instance_material>
+              </technique_common>
+            </bind_material>
+          </instance_controller>
+        </node>
+      </node>
+    </visual_scene>
+  </library_visual_scenes>
+  <scene>
+    <instance_visual_scene url="#Scene"/>
+  </scene>
+</COLLADA>

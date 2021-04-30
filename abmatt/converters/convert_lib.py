@@ -19,19 +19,21 @@ from abmatt.image_converter import EncodeError, NoImgConverterError, ImgConverte
 class Converter:
     NO_NORMALS = 0x1
     NO_COLORS = 0x2
-    SINGLE_BONE  = 0x4
+    SINGLE_BONE = 0x4
     DETECT_FILE_UNITS = True
     OVERWRITE_IMAGES = False
 
     class ConvertError(Exception):
         pass
 
-    def __init__(self, brres, mdl_file, flags=0, encode=True, mdl0=None):
+    def __init__(self, brres, mdl_file, flags=0, encode=True, mdl0=None, encoder=None):
         if not brres:
             # filename = Brres.getExpectedBrresFileName(mdl_file)
             d, f = os.path.split(mdl_file)
             filename = os.path.join(d, os.path.splitext(f)[0] + '.brres')
             brres = Brres.get_brres(filename, True)
+        elif type(brres) == str:
+            brres = Brres.get_brres(brres, True)
         self.brres = brres
         self.texture_library = brres.get_texture_map()
         self.mdl_file = mdl_file
@@ -39,8 +41,10 @@ class Converter:
         self.flags = flags
         self.image_dir = None
         self.image_library = set()
+        self.geometries = []
         self.replacement_model = None
         self.encode = encode
+        self.encoder = encoder
 
     def _start_saving(self, mdl0):
         AutoFix.get().info('Exporting to {}...'.format(self.mdl_file))
@@ -52,9 +56,9 @@ class Converter:
         else:
             self.mdl0 = mdl0
         self.cwd = os.getcwd()
-        dir, name = os.path.split(self.mdl_file)
-        if dir:
-            os.chdir(dir)
+        work_dir, name = os.path.split(self.mdl_file)
+        if work_dir:
+            os.chdir(work_dir)
         base_name, ext = os.path.splitext(name)
         self.image_dir = base_name + '_maps'
         self.json_file = base_name + '.json'
@@ -77,15 +81,20 @@ class Converter:
         self.cwd = os.getcwd()
         self.import_textures_map = {}
         self.mdl_file = os.path.abspath(self.mdl_file)
-        self.material_library = MaterialLibrary.get().materials
+        library = MaterialLibrary.get()
+        self.material_library = library.materials if library else None
         brres_dir, brres_name = os.path.split(self.brres.name)
         base_name = os.path.splitext(brres_name)[0]
         self.is_map = True if 'map' in base_name else False
-        dir, name = os.path.split(self.mdl_file)
-        self.json_file = os.path.join(dir, os.path.splitext(name)[0]) + '.json'
-        if dir:
-            os.chdir(dir)  # change to the dir to help find relative paths
+        work_dir, name = os.path.split(self.mdl_file)
+        self.json_file = os.path.join(work_dir, os.path.splitext(name)[0]) + '.json'
+        if work_dir:
+            os.chdir(work_dir)  # change to the dir to help find relative paths
         return self._init_mdl0(brres_name, os.path.splitext(name)[0], model_name)
+
+    def _before_encoding(self):
+        if self.encoder:
+            self.encoder.before_encoding(self.geometries)
 
     def _end_loading(self):
         mdl0 = self.mdl0
@@ -99,6 +108,8 @@ class Converter:
             mdl0.add_map_bones()
         os.chdir(self.cwd)
         AutoFix.get().info('\t... finished in {} secs'.format(round(time.time() - self.start, 2)))
+        if self.encoder:
+            self.encoder.after_encode(mdl0)
         return mdl0
 
     def _init_mdl0(self, brres_name, mdl_name, mdl0_name):
@@ -125,11 +136,20 @@ class Converter:
         return model_name
 
     @staticmethod
-    def set_bone_matrix(bone, matrix):
+    def calc_srt_from_bone_matrix(bone):
+        tr_matrix = np.array(bone.get_transform_matrix())
+        if bone.b_parent:
+            inv_matrix = np.array(bone.b_parent.get_inv_transform_matrix())
+            tr_matrix = np.around(np.matmul(inv_matrix, tr_matrix), 6)
+        # bone.local_transform_matrix = matrix
+        return matrix_to_srt(tr_matrix)
+
+    @staticmethod
+    def set_bone_matrix(bone, bone_matrix):
         """Untested set translation/scale/rotation with matrix"""
-        bone.transform_matrix = matrix[:3]  # don't include fourth row
-        bone.inverse_matrix = np.linalg.inv(matrix)[:3]
-        scale, rotation, translation = matrix_to_srt(matrix)
+        bone.transform_matrix = bone_matrix[:3]  # don't include fourth row
+        bone.inverse_matrix = np.linalg.inv(bone_matrix)[:3]
+        scale, rotation, translation = Converter.calc_srt_from_bone_matrix(bone)
         bone.scale = scale
         bone.fixed_scale = np.allclose(scale, 1)
         bone.scale_equal = scale[2] == scale[1] == scale[0]
@@ -137,6 +157,7 @@ class Converter:
         bone.fixed_rotation = np.allclose(rotation, 0)
         bone.translation = translation
         bone.fixed_translation = np.allclose(translation, 0)
+        bone.no_transform = bone.fixed_scale and bone.fixed_rotation and bone.fixed_translation
 
     @staticmethod
     def is_identity_matrix(mtx):
@@ -154,7 +175,8 @@ class Converter:
         if self.replacement_model:
             m = self.replacement_model.get_material_by_name(generic_mat.name)
         if m is None:
-            m = self.material_library.get(generic_mat)
+            if self.material_library:
+                m = self.material_library.get(generic_mat)
             if m is None and self.replacement_model:
                 m = fuzzy_match(generic_mat.name, self.replacement_model.materials)
         if m is not None:
@@ -185,7 +207,7 @@ class Converter:
             if self.image_dir is None:
                 self.image_dir = os.path.dirname(path)
             tex_name = os.path.splitext(os.path.basename(path))[0]
-            if tex_name in used_tex:    # only add it if used
+            if tex_name in used_tex:  # only add it if used
                 normalized[tex_name] = path
                 used_tex.remove(tex_name)
         for x in used_tex:  # detect any missing that we can find
@@ -210,6 +232,10 @@ class Converter:
                 AutoFix.get().warn('Failed to encode images')
         return image_paths
 
+    def _encode_geometry(self, geometry):
+        encoder = self.encoder.get_encoder(geometry) if self.encoder else None
+        return geometry.encode(self.mdl0, encoder=encoder)
+
     def convert(self):
         if self.encode:
             self.load_model()
@@ -218,7 +244,8 @@ class Converter:
 
     def __eq__(self, other):
         return type(self) == type(other) and self.brres is other.brres and self.mdl0 is other.mdl0 \
-               and self.mdl_file == other.mdl_file and self.encode == other.encode and self.flags == other.flags
+               and self.mdl_file == other.mdl_file and self.encode == other.encode and self.flags == other.flags \
+               and self.encoder == other.encoder
 
     def load_model(self, model_name=None):
         raise NotImplementedError()

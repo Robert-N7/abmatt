@@ -100,7 +100,7 @@ class PackMaterial(Packer):
         """ Packs the material """
         self.offset = binfile.start()
         binfile.markLen()
-        binfile.write("i", binfile.getOuterOffset())
+        binfile.writeOuterOffset()
         binfile.storeNameRef(material.name)
         binfile.write("2I4BI3b", self.index, material.xlu << 31, len(material.layers), len(material.lightChannels),
                       material.shaderStages, material.indirectStages, material.cullmode,
@@ -155,6 +155,7 @@ class PackMaterial(Packer):
             l.pack(binfile)
 
         binfile.alignToParent()
+        # binfile.section_offsets.append((binfile.offset, material.name + '-matGX'))  #- debug
         binfile.createRef(1)
         binfile.start()  # MatGX section
         self.pack_mat_gx(binfile)

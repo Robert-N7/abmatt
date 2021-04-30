@@ -6,7 +6,7 @@ from abmatt.brres.lib.packing.pack_subfile import PackSubfile
 def pack_header(binfile, name, node_id, real_id):
     binfile.start()
     binfile.markLen()
-    binfile.write('i', binfile.getOuterOffset())
+    binfile.writeOuterOffset()
     binfile.storeNameRef(name)
     binfile.write('2I', node_id, real_id)
 

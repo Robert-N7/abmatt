@@ -16,7 +16,7 @@ class PackingError(BaseException):
 
 # -------------------------------------------------------------------------------
 class BinFile:
-    """ BinFile class: for packing and unpacking binfileary files"""
+    """ BinFile class: for packing and unpacking binary files"""
     STRIDE_MAP = {'f':4, 'I':4, 'i':4, 'H':2, 'h':2, 'B':2, 'b':2}
 
     def __init__(self, filename, mode='r', bom='>'):
@@ -36,10 +36,12 @@ class BinFile:
         self.lenMap = {}  # used for tracking length of files
         self.c_length = None  # for tracking current length
 
-        # debugging
+        #- debug
         # self.linked_offsets = []
-        # self.target = [2183799]
-        # end debugging
+        # self.section_offsets = []
+        # self.polygon_offsets = []
+        # self.target = []
+        #- end debug
 
         self.isWriteMode = (mode == 'w')
         if not self.isWriteMode:
@@ -140,7 +142,7 @@ class BinFile:
         offset = self.offset
         for i in range(num_refs):
             li.append(offset)
-            # self.linked_offsets.append(offset)      # debugging
+            # self.linked_offsets.append(offset)      #- debug
             offset += 4
         self.advance(num_refs * 4)
 
@@ -270,6 +272,7 @@ class BinFile:
     # advance
     def advance(self, step):
         """ advances offset pointer, possibly padding with 0's in write mode """
+        # self.linked_offsets.extend([i + self.offset for i in range(step)])  #- debug
         self.offset += step
         if self.isWriteMode:
             m = self.offset - len(self.file)
@@ -311,6 +314,11 @@ class BinFile:
     def read(self, fmt, length):
         read = unpack_from(self.bom + fmt, self.file, self.offset)
         self.advance(length)
+        #- debug
+        # to_remove = [x for x in self.target if self.offset >= x - 4 and self.offset - length <= x + 4]
+        # for x in to_remove:
+            # self.target.remove(x)
+        #- end debug
         return read
 
     def readMatrix(self, width, height, fmt='f'):
@@ -341,12 +349,12 @@ class BinFile:
         """ Packs data onto end of file, shifting the offset"""
         self.file.extend(pack(self.bom + fmt, *args))
         self.offset = len(self.file)
-        # debugging
-        # for x in self.target:
-        #     if self.offset >= x - 4:
-        #         self.target.remove(x)
-        #         return
+        #- debug
+        # to_remove = [x for x in self.target if self.offset >= x - 4]
+        # for x in to_remove:
+            # self.target.remove(x)
         # return
+        #- end debug
 
     def writeOffset(self, fmt, offset, args):
         """ packs data at offset, must be less than file length """
@@ -365,6 +373,10 @@ class BinFile:
         for x in matrix:
             self.write(fmt, *x)
 
+    def writeOuterOffset(self):
+        # self.linked_offsets.append(self.offset)     #- debug
+        self.write('i', self.getOuterOffset())
+
     # Names
     def unpack_name(self, advance=True):
         """ Unpacks a single name from a pointer """
@@ -380,9 +392,6 @@ class BinFile:
         except struct.error:
             raise UnpackingError(self, 'Incorrect name offset')
         if name_lens > 256:
-            # For debugging
-            # data = self.readOffset('64s', offset - 4)
-            # print(data)
             raise UnpackingError(self, "Incorrect name offset")
         else:
             self.nameRefMap[offset] = name = self.readOffset(str(name_lens) + "s", offset)[0].decode()
@@ -406,15 +415,19 @@ class BinFile:
     def packNames(self):
         """packs in the names"""
         names = self.nameRefMap
-        # Debugging
+        #- debug
         # out = []
         # for key in names:
-        #     reflist = names[key]
-        #     for x in reflist:
-        #         out.append(x[1])
+            # reflist = names[key]
+            # for x in reflist:
+                # out.append(x[1])
         # out.extend(self.linked_offsets)
+        # for x in self.lenMap:
+            # out.append(self.lenMap[x])
+        # self.linked_offsets = out
         # with open('names.txt', 'w') as f:
-        #     f.write(str(out))
+            # f.write(str(out))
+        #- end debug
 
         for key in sorted(names):
             if key is not None and key != b'':
@@ -466,8 +479,8 @@ class FolderEntry:
 
     def pack(self, binfile):
         # print("{} : {} ID {} left {} right {}".format(binfile.offset, self.name, self.id, self.left, self.right))
-        # binfile.linked_offsets.append(binfile.offset)   # Debugging
-        # binfile.linked_offsets.append(binfile.offset + 4)
+        # binfile.linked_offsets.append(binfile.offset)     #- debug
+        # binfile.linked_offsets.append(binfile.offset + 4)     #- debug
 
         binfile.write("4H", self.id, 0, self.left, self.right)
         binfile.storeNameRef(self.name, True)
@@ -599,8 +612,7 @@ class Folder:
         binfile.start()
         self.offset = binfile.offset
         entries = self.calcEntries()
-        length = len(entries)
-        binfile.write("2I", self.byteSize(), length - 1)  # -1 to ignore reference entry
+        binfile.write("2I", self.byteSize(), len(entries) - 1)  # -1 to ignore reference entry
         for x in entries:
             x.pack(binfile)
         binfile.end()

@@ -1,3 +1,0 @@
-# save as ../brres_files/test.brres overwrite
-info for * in ../brres_files/test.brres
-# save overwrite

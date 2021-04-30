@@ -76,7 +76,9 @@ class PackShader(Packer):
     def pack(self, shader, binfile):
         """ Packs the shader """
         self.offset = binfile.start()
-        binfile.write("IiI4B", BYTESIZE, binfile.getOuterOffset(), self.index,
+        binfile.write("I", BYTESIZE)
+        binfile.writeOuterOffset()
+        binfile.write("I4B", self.index,
                       len(shader.stages), 0, 0, 0)
         layer_indices = [0xff] * 8
         for i in range(shader.getTexRefCount()):

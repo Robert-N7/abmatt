@@ -74,9 +74,9 @@ class UnpackPolygon(Unpacker):
                 uvs.append(None)
         poly.encode_str = self.encode_string
         if self.bone_id >= 0:
-            poly.bone = mdl0.bones[self.bone_id]
+            poly.linked_bone = mdl0.bones[mdl0.boneTable[self.bone_id]]
         else:
-            poly.bone = None
+            poly.linked_bone = None
 
     def i_pp(self):
         i = self.indexer

@@ -1,3 +1,4 @@
+from abmatt.autofix import AutoFix
 from abmatt.brres.lib.unpacking.interface import Unpacker
 from abmatt.brres.mdl0 import point
 from abmatt.brres.mdl0.normal import Normal
@@ -21,11 +22,13 @@ class UnpackPoint(Unpacker):
         binfile.advance(4)
         pt.index, pt.comp_count, pt.format, pt.divisor, pt.stride, pt.count = binfile.read('3I2BH', 16)
         if not self.is_valid_comp_count(pt.comp_count):
+            AutoFix.get().error('{} has invalid component count {}, using default {}'.format(pt.name, pt.comp_count,
+                                                                                             pt.default_comp_count))
             pt.comp_count = pt.default_comp_count
         if not is_valid_format(pt.format):
             # determine the format using the file length
-            t = binfile.offset
             binfile.recall(pop=False)
+            old_format = pt.format
             bytes_remaining = start + l - binfile.offset
             width = bytes_remaining // (pt.count * pt.comp_count)
             if width >= 4:
@@ -34,6 +37,8 @@ class UnpackPoint(Unpacker):
                 pt.format = point.FMT_INT16
             else:
                 pt.format = point.FMT_INT8
+            AutoFix.get().error('{} has invalid format {}, using format {}'.format(pt.name, old_format,
+                                                                                   point.FMT_STR[pt.format]))
         # print(self)
 
     def unpack_data(self, point, binfile):

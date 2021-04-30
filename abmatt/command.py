@@ -113,12 +113,16 @@ class Command:
         "tex0": Tex0.SETTINGS
     }
 
-    def __init__(self, text):
+    def __init__(self, text=None, arg_list=None):
         """ parses the text as a command """
         self.has_type_id = self.hasSelection = False
         self.name = self.key = None
-        self.txt = text.strip('\r\n')
-        x = [x.strip() for x in text.split()]
+        if text is not None:
+            self.txt = text.strip('\r\n')
+            x = [x.strip() for x in text.split()]
+        else:
+            x = arg_list
+            self.txt = ' '.join(arg_list)
         if not x:
             raise ParsingException(self.txt, 'No Command detected')
         cmd = self.setCmd(x.pop(0).lower())
@@ -200,16 +204,19 @@ class Command:
                     self.name = os.path.normpath(params.pop(0))
                 except IndexError:
                     raise ParsingException('Expected brres filename after keyword "in"')
-            elif lower == 'no-normals':
-                flags |= 1
-            elif lower == 'no-colors':
-                flags |= 2
-            elif lower == 'single-bone':
-                flags |= 4
-            elif not self.name:
-                self.name = os.path.normpath(param)
             else:
-                raise ParsingException('Unknown parameter {}'.format(param))
+                if lower.startswith('--'):
+                    lower = lower.lstrip('-')
+                if lower == 'no-normals':
+                    flags |= 1
+                elif lower == 'no-colors':
+                    flags |= 2
+                elif lower == 'single-bone':
+                    flags |= 4
+                elif not self.name:
+                    self.name = os.path.normpath(param)
+                else:
+                    raise ParsingException('Unknown parameter {}'.format(param))
         self.ext = None
         supported_formats = ('.dae', '.obj')
         self.is_import = False
@@ -781,8 +788,8 @@ class Command:
 
     def run_convert(self):
         if self.ext == '.dae':
-            from abmatt.converters.convert_dae import DaeConverter2
-            klass = DaeConverter2
+            from abmatt.converters.convert_dae import DaeConverter
+            klass = DaeConverter
         elif self.ext == '.obj':
             from abmatt.converters.convert_obj import ObjConverter
             klass = ObjConverter
@@ -1338,7 +1345,8 @@ class Shell(Cmd, object):
         return possible
 
     def help_convert(self):
-        print('Converts dae or obj model to/from brres.\nUsage: convert <filename> [to <destination>]')
+        print('Converts dae or obj model to/from brres.\n'
+              'Usage: convert <filename> [to <destination>][--no-normals][--no-colors][--single-bone')
 
     def default(self, line):
         if line == 'x' or line == 'q':

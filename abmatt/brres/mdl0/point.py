@@ -1,4 +1,5 @@
 from abmatt.autofix import AutoFix
+from abmatt.brres.lib.decoder import decode_geometry_group
 from abmatt.brres.lib.node import Node
 
 FMT_UINT8 = 0
@@ -10,6 +11,10 @@ FMT_STR = 'BbHhf'
 
 
 class Point(Node):
+    def __init__(self, name, parent, binfile=None):
+        self.decoded = None
+        super().__init__(name, parent, binfile)
+
     @property
     def default_comp_count(self):
         raise NotImplementedError()
@@ -38,6 +43,17 @@ class Point(Node):
         self.divisor = 0
         self.stride = 0
         self.count = 0
+
+    def get_decoded(self):
+        if self.decoded is None:
+            self.decoded = decode_geometry_group(self)
+        return self.decoded
+
+    def __iter__(self):
+        return iter(self.get_decoded())
+
+    def __next__(self):
+        return next(self.decoded)
 
     def get_format(self):
         return self.format

@@ -10,21 +10,25 @@ class PackPolygon(Packer):
     # --------------------------------------------------
     # PACKING
     def pack(self, poly, binfile):
-        binfile.start()
+        start = binfile.start()
+        # binfile.polygon_offsets.append((start, poly.name))   #- debug
         binfile.markLen()
-        binfile.write('i', binfile.getOuterOffset())
+        binfile.writeOuterOffset()
         hi, lo = self.get_cp_vertex_format()
         xf_specs = self.get_xf_vertex_specs()
-        binfile.write('i3I', self.get_bone_id(poly.bone), lo, hi, xf_specs)
+        binfile.write('i3I', self.get_bone_id(poly.linked_bone), lo, hi, xf_specs)
         binfile.write('3I', 0xe0, 0x80, 0)
         vt_dec_offset = binfile.offset - 4
         data_len = len(poly.data)
+        # binfile.linked_offsets.extend([binfile.offset, binfile.offset + 4])   #- debug
         binfile.write('3I', data_len, data_len, 0)
         vt_offset = binfile.offset - 4
         binfile.write('2I', self.get_xf_array_flags(), poly.flags)
         binfile.storeNameRef(poly.name)
+        # binfile.linked_offsets.extend([binfile.offset + 4, binfile.offset + 8])     #- debug
         binfile.write('3I2h', self.index, poly.facepoint_count, poly.face_count,
                       self.get_item_id(poly.get_vertex_group()), self.get_item_id(poly.get_normal_group()))
+        # binfile.linked_offsets.append(binfile.offset)   #- debug
         binfile.write('2h', self.get_item_id(poly.get_color_group(0)), self.get_item_id(poly.get_color_group(1)))
         binfile.write('8h', *[self.get_item_id(x) for x in poly.get_uvs()])
         if poly.parent.version >= 10:
@@ -53,8 +57,11 @@ class PackPolygon(Packer):
         # vertex data
         vt_ref = binfile.offset - vt_offset + 8
         binfile.writeOffset('I', vt_offset, vt_ref)
+        #- debug    Allows us to ignore differences in construction of triangles
+        # binfile.linked_offsets.extend([i for i in range(binfile.offset, binfile.offset + len(poly.data))])
+        #- end debug
         binfile.writeRemaining(poly.data)
-        binfile.alignAndEnd()
+        binfile.end()
 
     def get_cp_vertex_format(self):
         poly = self.node

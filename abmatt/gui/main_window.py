@@ -13,7 +13,7 @@ from abmatt.autofix import AutoFix
 from abmatt.brres.brres import Brres
 from abmatt.brres.lib.node import ClipableObserver
 from abmatt.command import Command
-from abmatt.converters.convert_dae import DaeConverter2
+from abmatt.converters.convert_dae import DaeConverter
 from abmatt.converters.convert_obj import ObjConverter
 from abmatt.gui.brres_treeview import BrresTreeView
 from abmatt.gui.converter import ConvertManager
@@ -309,7 +309,7 @@ class Window(QMainWindow, ClipableObserver):
         base_name, ext = os.path.splitext(name)
         lower = ext.lower()
         if lower == '.dae':
-            converter = DaeConverter2(brres, fname, mdl0=mdl0)
+            converter = DaeConverter(brres, fname, mdl0=mdl0)
         elif lower == '.obj':
             converter = ObjConverter(brres, fname, mdl0=mdl0)
         # elif lower in ('.png', '.jpg', '.bmp', '.tga'):
@@ -364,7 +364,7 @@ class Window(QMainWindow, ClipableObserver):
             if lower == '.obj':
                 klass = ObjConverter
             elif lower == '.dae':
-                klass = DaeConverter2
+                klass = DaeConverter
             else:
                 self.statusBar().showMessage('Unknown extension {}'.format(ext))
                 return
