@@ -292,7 +292,7 @@ class MapImporter(QWidget):
         try:
             tex0 = ImgConverter().INSTANCE.encode(path, self.brres, tex_format=fmt, num_mips=mips)
             if not tex0:
-                tex0 = self.brres.getTexture(os.path.splitext(os.path.basename(path))[0])
+                tex0 = self.brres.get_texture(os.path.splitext(os.path.basename(path))[0])
             self.import_handler.on_import(tex0)
         except EncodeError as e:
             AutoFix.get().error(e)

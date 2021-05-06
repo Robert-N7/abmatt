@@ -1,5 +1,4 @@
 import unittest
-from copy import deepcopy
 
 from abmatt.brres.mdl0.material.material import Material
 from abmatt.converters.convert_mats_to_json import MatsToJsonConverter

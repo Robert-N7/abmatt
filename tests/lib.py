@@ -7,8 +7,6 @@ from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
 from abmatt.brres.lib import matching
 from abmatt.brres.lib.matching import it_eq
-from abmatt.converters.colors import ColorCollection
-from abmatt.converters.geometry import decode_geometry_group
 
 
 def get_base_path():
@@ -37,8 +35,13 @@ class AbmattTest(unittest.TestCase):
         return os.path.join(AbmattTest.base_path, 'test_files', filename)
 
     @staticmethod
-    def _get_tmp(extension):
-        return os.path.join(AbmattTest.base_path, 'test_files', 'tmp' + extension)
+    def _get_tmp(extension, remove_if_exists=True):
+        if not extension.startswith('.'):
+            extension = '.' + extension
+        f = os.path.join(AbmattTest.base_path, 'test_files', 'tmp' + extension)
+        if remove_if_exists and os.path.exists(f):
+            os.remove(f)
+        return f
 
     @staticmethod
     def _get_brres(filename):
@@ -120,6 +123,8 @@ class CheckPositions:
         if len(vertices1) != len(vertices2):
             print('{} Groups are different lengths! {}, {}'.format(group_type, len(vertices1), len(vertices2)))
             mismatched_len = True
+        if len(vertices1) == 0:
+            return vertices1, vertices2, mismatched_len
         # Try to sort by name
         v1 = sorted(vertices1, key=lambda x: x.name)
         v2 = sorted(vertices2, key=lambda x: x.name)
@@ -175,8 +180,8 @@ class CheckPositions:
                 if not np.isclose(m1, m2, rtol, atol).all():
                     print('Bone have different matrices {}\n{}\n{}\n{}\n'.format(b1.name, m1, b2.name, m2))
                     err = True
-                srt1 = [b1.scale, b1.rotation, b1.translation]
-                srt2 = [b2.scale, b2.rotation, b2.translation]
+                srt1 = [b1.scale, [x % 360 for x in b1.rotation], b1.translation]
+                srt2 = [b2.scale, [x % 360 for x in b1.rotation], b2.translation]
                 if not np.isclose(srt1, srt2, rtol, atol).all():
                     print('Bone have different srt {}\n{}\n{}\n{}\n'.format(b1.name, srt1, b2.name, srt2))
                     err = True
@@ -194,8 +199,8 @@ class CheckPositions:
         if not err:
             # Check each vertex group
             for k in range(len(vertices1)):
-                points1 = np.array(sorted(vertices1[k].get_decoded(), key=lambda x: tuple(x)))
-                points2 = np.array(sorted(vertices2[k].get_decoded(), key=lambda x: tuple(x)))
+                points1 = np.array(sorted(vertices1[k].get_decoded(), key=lambda x: tuple(np.around(x, 2))))
+                points2 = np.array(sorted(vertices2[k].get_decoded(), key=lambda x: tuple(np.around(x, 2))))
                 if points1.shape != points2.shape:
                     print('points {} and {} have different shapes {} and {}'.format(vertices1[k].name,
                                                                                     vertices2[k].name,

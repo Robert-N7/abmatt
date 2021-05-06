@@ -49,6 +49,14 @@ def get_rotation_matrix(matrix, get_scale=False):
     return rotation_matrix
 
 
+def rotate_z_up_to_y_up(matrix):
+    rotation_mtx = np.array([[1, 0, 0, 0],
+                             [0, 0, 1, 0],
+                             [0, -1, 0, 0],
+                             [0, 0, 0, 1]])
+    return np.matmul(rotation_mtx, matrix)
+
+
 def euler_to_rotation_matrix(euler_angles):
     x, y, z = np.array(euler_angles, float) * math.pi / 180
     rot_x = np.array([[1, 0, 0],
@@ -132,12 +140,12 @@ def get_transform_matrix(scale, rotation, translation):
     sinz = math.sin(rotation[2] * deg2rad)
 
     return np.around(np.array([[scale[0] * cosy * cosz, scale[1] * (sinx * cosz * siny - cosx * sinz),
-                      scale[2] * (sinx * sinz + cosx * cosz * siny), translation[0]],
-                     [scale[0] * sinz * cosy, scale[1] * (sinx * sinz * siny + cosz * cosx),
-                      scale[2] * (cosx * sinz * siny - sinx * cosz), translation[1]],
-                     [-scale[0] * siny, scale[1] * sinx * cosy,
-                      scale[2] * cosx * cosy, translation[2]],
-                     [0.0, 0.0, 0.0, 1.0]], float), 5)
+                                scale[2] * (sinx * sinz + cosx * cosz * siny), translation[0]],
+                               [scale[0] * sinz * cosy, scale[1] * (sinx * sinz * siny + cosz * cosx),
+                                scale[2] * (cosx * sinz * siny - sinx * cosz), translation[1]],
+                               [-scale[0] * siny, scale[1] * sinx * cosy,
+                                scale[2] * cosx * cosy, translation[2]],
+                               [0.0, 0.0, 0.0, 1.0]], float), 5)
 
 
 def get_inv_transform_matrix(scale, rotation, translation):
@@ -158,8 +166,11 @@ def get_inv_transform_matrix(scale, rotation, translation):
                     scale[2] * cosx * cosy],
                    [0.0, 0.0, 0.0]], float)
     return np.around(np.append(rs,
-                     [[(translation[0] * rs[0, 0]) + (translation[0] * rs[0, 1]) + (translation[0] * rs[0, 2]),
-                      (translation[1] * rs[1, 0]) + (translation[1] * rs[1, 1]) + (translation[1] * rs[1, 2]),
-                      (translation[2] * rs[2, 0]) + (translation[2] * rs[2, 1]) + (translation[2] * rs[2, 2]), 1.0]],
-                     axis=1
-                     ), 7)
+                               [[(translation[0] * rs[0, 0]) + (translation[0] * rs[0, 1]) + (
+                                           translation[0] * rs[0, 2]),
+                                 (translation[1] * rs[1, 0]) + (translation[1] * rs[1, 1]) + (
+                                             translation[1] * rs[1, 2]),
+                                 (translation[2] * rs[2, 0]) + (translation[2] * rs[2, 1]) + (
+                                             translation[2] * rs[2, 2]), 1.0]],
+                               axis=1
+                               ), 7)

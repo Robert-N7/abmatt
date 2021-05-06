@@ -3,9 +3,6 @@ import sys
 
 from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
-from abmatt.brres.mdl0.shader import Shader
-from abmatt.brres.mdl0 import stage
-from abmatt.brres.mdl0.material import material
 
 
 def analyze_material(mat):
@@ -93,9 +90,25 @@ def analyze_material(mat):
 
 
 def perform_analysis(brres):
+    print('Analyzing {}'.format(brres.name))
     for model in brres.models:
-        for material in model.materials:
-            analyze_material(material)
+        pass
+        # for mat in model.materials:
+            # if len(mat.polygons) > 1:
+            #     print('Mat {} used more than once by {}'.format(mat.name, [x.name for x in mat.polygons]))
+        # for poly in model.objects:
+        #
+        #     has_uv_mtx = False
+        #     for x in poly.uv_mtx_indices:
+        #         if x >= 0:
+        #             has_uv_mtx = True
+        #             break
+        #     if has_uv_mtx:
+        #         decode_polygon(poly, decode_mdl0_influences(model))
+    # DaeConverter(brres, os.path.join(os.getcwd(), 'tmp', 'tmp.dae'), encode=False).convert()
+    # for model in brres.models:
+    #     for material in model.materials:
+    #         analyze_material(material)
 
 
 def gather_brres_files(root, brres_files):
@@ -105,10 +118,13 @@ def gather_brres_files(root, brres_files):
     :param brres_files: list to gather files in
     """
     for file in os.listdir(root):
-        if os.path.isdir(file):
-            gather_brres_files(os.path.join(root, file), brres_files)
+        path = os.path.join(root, file)
+        if file.startswith('.'):
+            continue
+        if os.path.isdir(path):
+            gather_brres_files(path, brres_files)
         elif file.endswith('.brres'):
-            brres_files.append(os.path.join(root, file))
+            brres_files.append(path)
     return brres_files
 
 

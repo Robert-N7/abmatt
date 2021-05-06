@@ -132,7 +132,7 @@ def get_controller(geometry):
             vert_counts.append(len(inf))
             for bone_name in inf:
                 x = inf[bone_name]
-                bone = x.linked_bone
+                bone = x.bone
                 try:
                     bone_id = bones.index(bone)
                 except ValueError:

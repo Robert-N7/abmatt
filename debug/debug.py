@@ -13,10 +13,11 @@ def enable_debug(file, enable=True):
     with open(file) as f:
         for line in f.readlines():
             replace = False
-            s = line.strip().lower()
+            s_upper = line.strip()
+            s = s_upper.lower()
             if s.startswith('#- debug') or s.startswith('# - debug'):
                 start_debug = True
-            elif s.endswith('#- debug') or s.endswith('# - debug'):
+            elif s.find('#- debug') > 0 or s.find('# - debug') > 0:
                 replace = should_replace(s.startswith('#'), not enable)
             elif s.startswith('#- end debug') or s.startswith('# - end debug'):
                 start_debug = False
@@ -31,7 +32,9 @@ def enable_debug(file, enable=True):
                         rep += ' '
                     lines.append(line.replace(rep, '', 1))
                 else:
-                    insert_at = line.find(s)
+                    insert_at = line.find(s_upper)
+                    if insert_at == -1:
+                        raise ValueError(insert_at)
                     lines.append(line[:insert_at] + '# ' + line[insert_at:])
                 replaced_line = True
     if replaced_line:
@@ -72,7 +75,10 @@ def main(argv):
     if enable_debugging and disable_debugging:
         print('Must specify "enable" or "disable"')
     if not files and not directories:
-        directories.append(os.getcwd())
+        path = os.path.abspath(os.getcwd())
+        if os.path.basename(path) == 'debug':
+            path = os.path.dirname(path)
+        directories.append(path)
     for f in files:
         print('Searching for {}'.format(f))
         if not os.path.exists(f):

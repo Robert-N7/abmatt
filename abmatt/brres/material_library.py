@@ -29,7 +29,7 @@ class MaterialLibrary(ClipableObserver):
             self.brres = Brres(path)
         except FileNotFoundError as e:
             AutoFix.get().info(f'Material library "{path}" not found.')
-            self.brres = Brres(path, readFile=False)
+            self.brres = Brres(path, read_file=False)
             self.brres.add_mdl0(Mdl0('lib', self.brres))
         self.on_brres_update()
 

@@ -91,7 +91,7 @@ class UnpackMaterial(Unpacker):
             else:
                 f = flags[i] >> 4
                 i -= 1
-            material.layers[li].setLayerFlags(f)
+            material.layers[li].set_layer_flags(f)
         [material.textureMatrixMode] = binfile.read('I', 4)
         # Texture matrix
         binfile.advance(160)

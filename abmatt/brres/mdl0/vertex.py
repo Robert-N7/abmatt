@@ -11,6 +11,10 @@ class Vertex(Point):
     __MAX_COORD = 131071
     """ Vertex class for storing vertices data """
 
+    def __deepcopy__(self, memodict=None):
+        copy = Vertex(self.name, None)
+        return copy.paste(self)
+
     def check_vertices(self, linked_bone):
         if min(linked_bone.scale) >= 0.9999 and np.allclose(linked_bone.rotation, 0.0):  # only checks if not scaled down and not rotated
             # Check Y value

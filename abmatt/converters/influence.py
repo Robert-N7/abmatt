@@ -1,6 +1,6 @@
 import numpy as np
 
-from abmatt.converters.matrix import apply_matrix, apply_matrix_single
+from abmatt.converters.matrix import apply_matrix_single, apply_matrix
 
 
 class Joint:
@@ -42,7 +42,7 @@ class Influence:
         self.influence_id = influence_id
 
     def __str__(self):
-        return ' '.join(self.bone_weights.keys())
+        return str(self.bone_weights)
 
     # def calc_matrix(self, bone, matrix=None, inverse=False):
     #     if bone is None:
@@ -149,8 +149,11 @@ class Weight:
         self.bone = bone
         self.weight = weight
 
+    def __str__(self):
+        return str((self.bone.name, self.weight))
+
     def __eq__(self, other):
-        return self.bone == other.bone and self.weight == other.weight
+        return self.bone.name == other.bone.name and np.allclose(self.weight, other.weight, 1e-3)
 
 
 class InfluenceCollection:
@@ -269,16 +272,27 @@ class WeightedTriGroup:
 class InfluenceManager:
     """Manages all influences"""
 
-    def __init__(self):
+    def __init__(self, influence_collection=None):
         self.mixed_influences = []  # influences with mixed weights
         self.single_influences = []  # influences with single weights
+        if influence_collection:
+            for x in influence_collection:
+                inf = influence_collection[x]
+                if inf.is_mixed():
+                    self.mixed_influences.append(inf)
+                else:
+                    self.single_influences.append(inf)
 
     def encode_bone_weights(self, mdl0):
-        self.single_influences = sorted(self.single_influences, key=lambda x: x.get_single_bone_bind().index)
-        self.__create_inf_ids()
-        remaining_bones = self.__create_bone_table(mdl0)
+        bone_sorted_single_bind_infs = sorted(self.single_influences, key=lambda x: x.get_single_bone_bind().index)
+        self.__create_inf_ids(bone_sorted_single_bind_infs)
+        bones_with_infs = [x.get_single_bone_bind() for x in bone_sorted_single_bind_infs]
+        remaining_bones = self.__create_bone_table(mdl0, bones_with_infs)
         if self.mixed_influences:  # create node mix
-            self.__create_node_mix(mdl0, remaining_bones)
+            bones_to_infs = {}
+            for x in bone_sorted_single_bind_infs:
+                bones_to_infs[x.get_single_bone_bind().index] = x
+            self.__create_node_mix(mdl0, remaining_bones, bones_to_infs)
 
     def create_or_find(self, influence):
         inf_list = self.mixed_influences if influence.is_mixed() else self.single_influences
@@ -288,21 +302,27 @@ class InfluenceManager:
         inf_list.append(influence)
         return influence
 
-    def __create_node_mix(self, mdl0, remaining_bones):
+    def __create_node_mix(self, mdl0, remaining_bones, bones_to_infs):
         """Creates the mdl0 node mix"""
         node_mix = mdl0.NodeMix
-        for x in self.single_influences:
-            node_mix.add_fixed_weight(x.influence_id, x.get_single_bone_bind().index)
-        for x in remaining_bones:
-            node_mix.add_fixed_weight(x.weight_id, x.index)
+        used_weights = set()
         for inf in self.mixed_influences:
+            for x in inf.bone_weights.values():
+                used_weights.add(x.bone.weight_id)
             node_mix.add_mixed_weight(inf.influence_id,
-                                      [(x.linked_bone.weight_id, x.weight) for x in inf.bone_weights.values()])
+                                      [(x.bone.weight_id, x.weight) for x in inf.bone_weights.values()])
+        for bone in mdl0.bones:
+            if bone not in remaining_bones:
+                weight_id = bones_to_infs[bone.index].influence_id
+            else:
+                weight_id = bone.weight_id
+            if weight_id in used_weights:
+                node_mix.add_fixed_weight(weight_id, bone.index)
         return node_mix
 
-    def __create_inf_ids(self):
+    def __create_inf_ids(self, bone_sorted_singles):
         index = 0
-        for x in self.single_influences:
+        for x in bone_sorted_singles:
             x.influence_id = index
             index += 1
         for x in self.mixed_influences:
@@ -310,8 +330,7 @@ class InfluenceManager:
             index += 1
         return index
 
-    def __create_bone_table(self, mdl0):
-        single_binds = [x.get_single_bone_bind() for x in self.single_influences]
+    def __create_bone_table(self, mdl0, single_binds):
         bonetable = []
         for i in range(len(single_binds)):
             bone = single_binds[i]
@@ -330,26 +349,3 @@ class InfluenceManager:
             index += 1
         mdl0.set_bonetable(bonetable)
         return remaining
-
-
-def decode_mdl0_influences(mdl0):
-    influences = {}
-    bones = mdl0.bones
-    bonetable = mdl0.boneTable
-    # Get bonetable influences
-    for i in range(len(bonetable)):
-        index = bonetable[i]
-        if index >= 0:
-            bone = bones[index]
-            influences[i] = Influence(bone_weights={bone.name: Weight(bone, 1)}, influence_id=index)
-
-    # Get mixed influences
-    nodemix = mdl0.NodeMix
-    if nodemix is not None:
-        for inf in nodemix.mixed_weights:
-            weight_id = inf.weight_id
-            influences[weight_id] = influence = Influence(influence_id=weight_id)
-            for x in inf:
-                bone = bones[bonetable[x[0]]]
-                influence[bone.name] = Weight(bone, x[1])
-    return InfluenceCollection(influences)

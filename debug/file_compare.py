@@ -50,8 +50,8 @@ if __name__ == "__main__":
         file1 = args[0]
         file2 = args[1]
     else:
-        file1 = '../brres_files/beginner_course.brres'
-        file2 = '../brres_files/test.brres'
+        file1 = '../tmp/cow.brres'
+        file2 = '../tmp/original_cow.brres'
     compare_start0 = 0  # 2183680
     compare_start1 = 0  # 2183264
     compare_length = 41000000

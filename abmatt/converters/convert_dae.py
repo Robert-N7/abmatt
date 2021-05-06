@@ -5,26 +5,26 @@ import numpy as np
 
 from abmatt.autofix import AutoFix
 from abmatt.converters.arg_parse import cmdline_convert
+from abmatt.converters import influence
+from abmatt.converters import convert_lib
+from abmatt.converters import dae as collada
+from abmatt.converters import matrix as mtx
 from abmatt.converters.controller import get_controller
-from abmatt.converters.convert_lib import Converter
-from abmatt.converters.dae import Dae, ColladaNode
-from abmatt.converters.geometry import decode_polygon
-from abmatt.converters.influence import InfluenceManager, Joint, InfluenceCollection, Influence, Weight
 from abmatt.converters.material import Material
-from abmatt.converters.matrix import combine_matrices, srt_to_matrix
+from abmatt.converters.matrix import rotate_z_up_to_y_up
 
 
-class DaeConverter(Converter):
+class DaeConverter(convert_lib.Converter):
 
     def load_model(self, model_name=None):
         self._start_loading(model_name)
         self.bones = {}
         self.bones_by_name = {}
-        self.dae = dae = Dae(self.mdl_file)
+        self.dae = dae = collada.Dae(self.mdl_file)
         materials = self.__parse_materials(dae.get_materials())
         material_names = {x.name for x in materials}
         self.controllers = []
-        self.influences = InfluenceManager()   # this is to track all influences, consolidating from each controller
+        self.influences = influence.InfluenceManager()   # this is to track all influences, consolidating from each controller
         # geometry
         matrix = np.identity(4)
         if self.DETECT_FILE_UNITS:
@@ -40,7 +40,7 @@ class DaeConverter(Converter):
         self.influences.encode_bone_weights(self.mdl0)
         for material in material_geometry_map:
             if material not in material_names:
-                self._encode_material(Material(material))
+                self._encode_material(material.Material(material))
                 material_names.add(material)
             geometries = material_geometry_map[material]
             for x in geometries:
@@ -51,7 +51,7 @@ class DaeConverter(Converter):
     def save_model(self, mdl0=None):
         base_name, mdl0 = self._start_saving(mdl0)
         self.bones = {}
-        mesh = Dae(initial_scene_name=base_name)
+        mesh = collada.Dae(initial_scene_name=base_name)
         self.decoded_mats = [self.__decode_material(x, mesh) for x in mdl0.materials]
         # polygons
         polygons = mdl0.objects
@@ -64,13 +64,13 @@ class DaeConverter(Converter):
 
     @staticmethod
     def __get_matrix(bone):
-        return srt_to_matrix(bone.scale, bone.rotation, bone.translation)
+        return mtx.srt_to_matrix(bone.scale, bone.rotation, bone.translation)
 
     def __decode_bone(self, mdl0_bone, collada_parent=None, matrix=None):
         if len(self.bones) > 0 and self.flags & self.SINGLE_BONE:
             return
         name = mdl0_bone.name
-        node = ColladaNode(name, {'type': 'JOINT'})
+        node = collada.ColladaNode(name, {'type': 'JOINT'})
         matrix = self.__get_matrix(mdl0_bone)
         node.matrix = matrix
         self.bones[mdl0_bone.name] = mdl0_bone
@@ -84,8 +84,8 @@ class DaeConverter(Converter):
 
     def __decode_geometry(self, polygon):
         name = polygon.name
-        node = ColladaNode(name)
-        geo = decode_polygon(polygon, self.influences)
+        node = collada.ColladaNode(name)
+        geo = polygon.get_decoded()
         if geo.colors and self.flags & self.NO_COLORS:
             geo.colors = None
         if geo.normals and self.flags & self.NO_NORMALS:
@@ -100,7 +100,8 @@ class DaeConverter(Converter):
         for x in self.bones:
             pass
         bone = self.bones[x]
-        return InfluenceCollection({0: Influence(bone_weights={bone.name: Weight(bone, 1.0)})})
+        return influence.InfluenceCollection({0: influence.Influence(
+            bone_weights={bone.name: influence.Weight(bone, 1.0)})})
 
     def __decode_material(self, material, mesh):
         diffuse_map = ambient_map = specular_map = None
@@ -152,6 +153,8 @@ class DaeConverter(Converter):
             if len(self.bones) and self.flags & self.SINGLE_BONE:  # Only add one if single bone enabled
                 return
             else:
+                if not self.dae.y_up:
+                    matrix = rotate_z_up_to_y_up(matrix)
                 self.bones[name] = bone = self.mdl0.add_bone(name, parent_bone)
                 self.set_bone_matrix(bone, matrix)
             name = node.attrib.get('name')
@@ -173,13 +176,13 @@ class DaeConverter(Converter):
         return node.matrix
         # if self.dae.y_up:
         #     return node.matrix
-        # rotation_matrix = np.array([[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+        # rotation_matrix = np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, -1, 0, 0], [0, 0, 0, 1]])
         # return np.matmul(rotation_matrix, node.matrix)
 
     def __parse_nodes(self, nodes, material_geometry_map, matrix=None, parent_bone=None):
         for node in nodes:
             m = self.__calc_node_matrix(node)
-            current_node_matrix = combine_matrices(matrix, m)
+            current_node_matrix = mtx.combine_matrices(matrix, m)
             new_parent_bone=None
             if node.controller:
                 self.controllers.append((node.controller, current_node_matrix))

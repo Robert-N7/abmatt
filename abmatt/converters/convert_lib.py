@@ -11,7 +11,6 @@ from abmatt.brres.mdl0.material import material
 from abmatt.brres.mdl0.mdl0 import Mdl0
 from abmatt.converters import matrix
 from abmatt.converters.convert_mats_to_json import MatsToJsonConverter
-from abmatt.converters.influence import decode_mdl0_influences
 from abmatt.converters.matrix import matrix_to_srt
 from abmatt.image_converter import EncodeError, NoImgConverterError, ImgConverter
 
@@ -22,9 +21,6 @@ class Converter:
     SINGLE_BONE = 0x4
     DETECT_FILE_UNITS = True
     OVERWRITE_IMAGES = False
-
-    class ConvertError(Exception):
-        pass
 
     def __init__(self, brres, mdl_file, flags=0, encode=True, mdl0=None, encoder=None):
         if not brres:
@@ -37,7 +33,7 @@ class Converter:
         self.brres = brres
         self.texture_library = brres.get_texture_map()
         self.mdl_file = mdl_file
-        self.mdl0 = mdl0
+        self.mdl0 = mdl0 if type(mdl0) == Mdl0 else brres.get_model(mdl0)
         self.flags = flags
         self.image_dir = None
         self.image_library = set()
@@ -55,6 +51,10 @@ class Converter:
                 self.mdl0 = mdl0 = self.brres.models[0]
         else:
             self.mdl0 = mdl0
+        if type(mdl0) == str:
+            self.mdl0 = mdl0 = self.brres.get_model(mdl0)
+        if mdl0 is None:
+            raise RuntimeError('No mdl0 file found to export!')
         self.cwd = os.getcwd()
         work_dir, name = os.path.split(self.mdl_file)
         if work_dir:
@@ -62,7 +62,7 @@ class Converter:
         base_name, ext = os.path.splitext(name)
         self.image_dir = base_name + '_maps'
         self.json_file = base_name + '.json'
-        self.influences = decode_mdl0_influences(mdl0)
+        self.influences = mdl0.get_influences()
         self.tex0_map = {}
         return base_name, mdl0
 
@@ -94,7 +94,7 @@ class Converter:
 
     def _before_encoding(self):
         if self.encoder:
-            self.encoder.before_encoding(self.geometries)
+            self.encoder.before_encoding(self)
 
     def _end_loading(self):
         mdl0 = self.mdl0
@@ -119,7 +119,7 @@ class Converter:
         else:
             if mdl0_name is None:
                 mdl0_name = self.__get_mdl0_name(brres_name, mdl_name)
-            self.replacement_model = self.brres.getModel(mdl0_name)
+            self.replacement_model = self.brres.get_model(mdl0_name)
         self.mdl0 = Mdl0(mdl0_name, self.brres)
         return self.mdl0
 
@@ -210,10 +210,11 @@ class Converter:
             if tex_name in used_tex:  # only add it if used
                 normalized[tex_name] = path
                 used_tex.remove(tex_name)
-        for x in used_tex:  # detect any missing that we can find
-            path = os.path.join(self.image_dir, x + '.png')
-            if os.path.exists(path):
-                normalized[x] = path
+        if self.image_dir is not None:
+            for x in used_tex:  # detect any missing that we can find
+                path = os.path.join(self.image_dir, x + '.png')
+                if os.path.exists(path):
+                    normalized[x] = path
         return normalized
 
     def _import_images(self, image_path_map):

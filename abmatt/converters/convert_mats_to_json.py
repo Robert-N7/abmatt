@@ -2,7 +2,7 @@ from abmatt.brres.mdl0.material.material import Material
 import json
 
 from abmatt.brres.pat0.pat0_material import Pat0MatAnimation
-from abmatt.brres.srt0.srt0_animation import SRTKeyFrameList
+from abmatt.brres.key_frame_list import KeyFrameList
 
 
 class MatsToJsonConverter:
@@ -86,7 +86,7 @@ class MatsToJsonConverter:
     @staticmethod
     def __load_srt0_tex_anim_frame_list(frame_list, data):
         frame_list.entries = [
-            SRTKeyFrameList.SRTKeyFrame(x['value'], x['frame'], x['delta'])
+            KeyFrameList.KeyFrame(x['value'], x['frame'], x['delta'])
             for x in data
         ]
 
@@ -110,7 +110,7 @@ class MatsToJsonConverter:
     def __load_layers(self, layers, data):
         i = 0
         for layer_name in data:
-            layers[i].setName(layer_name)
+            layers[i].set_name(layer_name)
             self.__load_settings(layers[i], data[layer_name])
             i += 1
 

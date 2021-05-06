@@ -106,7 +106,7 @@ class Srt0(SubFile):
         if count >= 1:
             self.framecount = count
             for x in self.matAnimations:
-                x.setFrameCount(count)
+                x.set_frame_count(count)
         else:
             raise ValueError("Frame count {} is not valid".format(count))
 

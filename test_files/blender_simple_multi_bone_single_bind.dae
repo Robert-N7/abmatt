@@ -1,0 +1,727 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <asset>
+    <contributor>
+      <author>Blender User</author>
+      <authoring_tool>Blender 2.92.0 commit date:2021-02-24, commit time:16:25, hash:02948a2cab44</authoring_tool>
+    </contributor>
+    <created>2021-05-04T18:33:00</created>
+    <modified>2021-05-04T18:33:00</modified>
+    <unit name="meter" meter="1"/>
+    <up_axis>Z_UP</up_axis>
+  </asset>
+  <library_images>
+    <image id="Material1-image" name="Material1">
+      <init_from>simple\material_1.png</init_from>
+    </image>
+    <image id="Wax_02-image" name="Wax_02">
+      <init_from>simple\Wax_02.png</init_from>
+    </image>
+    <image id="Material2-image" name="Material2">
+      <init_from>simple\material_2.png</init_from>
+    </image>
+  </library_images>
+  <library_cameras>
+    <camera id="Camera-camera" name="Camera">
+      <optics>
+        <technique_common>
+          <perspective>
+            <xfov sid="xfov">39.59775</xfov>
+            <aspect_ratio>1.777778</aspect_ratio>
+            <znear sid="znear">0.1</znear>
+            <zfar sid="zfar">100</zfar>
+          </perspective>
+        </technique_common>
+      </optics>
+      <extra>
+        <technique profile="blender">
+          <shiftx sid="shiftx" type="float">0</shiftx>
+          <shifty sid="shifty" type="float">0</shifty>
+          <dof_distance sid="dof_distance" type="float">10</dof_distance>
+        </technique>
+      </extra>
+    </camera>
+  </library_cameras>
+  <library_lights>
+    <light id="Light-light" name="Light">
+      <technique_common>
+        <point>
+          <color sid="color">1000 1000 1000</color>
+          <constant_attenuation>1</constant_attenuation>
+          <linear_attenuation>0</linear_attenuation>
+          <quadratic_attenuation>0.00111109</quadratic_attenuation>
+        </point>
+      </technique_common>
+      <extra>
+        <technique profile="blender">
+          <type sid="type" type="int">0</type>
+          <flag sid="flag" type="int">0</flag>
+          <mode sid="mode" type="int">1</mode>
+          <gamma sid="blender_gamma" type="float">1</gamma>
+          <red sid="red" type="float">1</red>
+          <green sid="green" type="float">1</green>
+          <blue sid="blue" type="float">1</blue>
+          <shadow_r sid="blender_shadow_r" type="float">0</shadow_r>
+          <shadow_g sid="blender_shadow_g" type="float">0</shadow_g>
+          <shadow_b sid="blender_shadow_b" type="float">0</shadow_b>
+          <energy sid="blender_energy" type="float">1000</energy>
+          <dist sid="blender_dist" type="float">29.99998</dist>
+          <spotsize sid="spotsize" type="float">75</spotsize>
+          <spotblend sid="spotblend" type="float">0.15</spotblend>
+          <att1 sid="att1" type="float">0</att1>
+          <att2 sid="att2" type="float">1</att2>
+          <falloff_type sid="falloff_type" type="int">2</falloff_type>
+          <clipsta sid="clipsta" type="float">0.04999995</clipsta>
+          <clipend sid="clipend" type="float">30.002</clipend>
+          <bias sid="bias" type="float">1</bias>
+          <soft sid="soft" type="float">3</soft>
+          <bufsize sid="bufsize" type="int">2880</bufsize>
+          <samp sid="samp" type="int">3</samp>
+          <buffers sid="buffers" type="int">1</buffers>
+          <area_shape sid="area_shape" type="int">1</area_shape>
+          <area_size sid="area_size" type="float">0.1</area_size>
+          <area_sizey sid="area_sizey" type="float">0.1</area_sizey>
+          <area_sizez sid="area_sizez" type="float">1</area_sizez>
+        </technique>
+      </extra>
+    </light>
+  </library_lights>
+  <library_effects>
+    <effect id="Material1_002-effect" name="Material1">
+      <profile_COMMON>
+        <newparam sid="Material1-surface">
+          <surface type="2D">
+            <init_from>Material1-image</init_from>
+          </surface>
+        </newparam>
+        <newparam sid="Material1-sampler">
+          <sampler2D>
+            <source>Material1-surface</source>
+          </sampler2D>
+        </newparam>
+        <technique sid="COMMON">
+          <phong>
+            <emission>
+              <color sid="emission">0.02 0.02 0.02 1</color>
+            </emission>
+            <ambient>
+              <color sid="ambient">0.8 0.8 0.8 1</color>
+            </ambient>
+            <diffuse>
+              <texture texture="Material1-sampler" texcoord="CHANNEL0"/>
+            </diffuse>
+            <specular>
+              <color sid="specular">0.3 0.3 0.3 1</color>
+            </specular>
+            <shininess>
+              <float sid="shininess">1.071773</float>
+            </shininess>
+            <reflective>
+              <color sid="reflective">0 0 0 1</color>
+            </reflective>
+            <reflectivity>
+              <float sid="reflectivity">1</float>
+            </reflectivity>
+            <transparent opaque="RGB_ZERO">
+              <color sid="transparent">1 1 1 1</color>
+            </transparent>
+            <transparency>
+              <float sid="transparency">0</float>
+            </transparency>
+          </phong>
+        </technique>
+      </profile_COMMON>
+    </effect>
+    <effect id="Wax_02_002-effect" name="Wax_02">
+      <profile_COMMON>
+        <newparam sid="Wax_02-surface">
+          <surface type="2D">
+            <init_from>Wax_02-image</init_from>
+          </surface>
+        </newparam>
+        <newparam sid="Wax_02-sampler">
+          <sampler2D>
+            <source>Wax_02-surface</source>
+          </sampler2D>
+        </newparam>
+        <technique sid="COMMON">
+          <phong>
+            <emission>
+              <color sid="emission">0.02 0.02 0.02 1</color>
+            </emission>
+            <ambient>
+              <color sid="ambient">0.8 0.8 0.8 1</color>
+            </ambient>
+            <diffuse>
+              <texture texture="Wax_02-sampler" texcoord="CHANNEL0"/>
+            </diffuse>
+            <specular>
+              <color sid="specular">0.3 0.3 0.3 1</color>
+            </specular>
+            <shininess>
+              <float sid="shininess">1.071773</float>
+            </shininess>
+            <reflective>
+              <color sid="reflective">0 0 0 1</color>
+            </reflective>
+            <reflectivity>
+              <float sid="reflectivity">1</float>
+            </reflectivity>
+            <transparent opaque="RGB_ZERO">
+              <color sid="transparent">1 1 1 1</color>
+            </transparent>
+            <transparency>
+              <float sid="transparency">0</float>
+            </transparency>
+          </phong>
+        </technique>
+      </profile_COMMON>
+    </effect>
+    <effect id="Material2_002-effect" name="Material2">
+      <profile_COMMON>
+        <newparam sid="Material2-surface">
+          <surface type="2D">
+            <init_from>Material2-image</init_from>
+          </surface>
+        </newparam>
+        <newparam sid="Material2-sampler">
+          <sampler2D>
+            <source>Material2-surface</source>
+          </sampler2D>
+        </newparam>
+        <technique sid="COMMON">
+          <phong>
+            <emission>
+              <color sid="emission">0.02 0.02 0.02 1</color>
+            </emission>
+            <ambient>
+              <color sid="ambient">0.8 0.8 0.8 1</color>
+            </ambient>
+            <diffuse>
+              <texture texture="Material2-sampler" texcoord="CHANNEL0"/>
+            </diffuse>
+            <specular>
+              <color sid="specular">0.3 0.3 0.3 1</color>
+            </specular>
+            <shininess>
+              <float sid="shininess">1.071773</float>
+            </shininess>
+            <reflective>
+              <color sid="reflective">0 0 0 1</color>
+            </reflective>
+            <reflectivity>
+              <float sid="reflectivity">1</float>
+            </reflectivity>
+            <transparent opaque="RGB_ZERO">
+              <color sid="transparent">1 1 1 1</color>
+            </transparent>
+            <transparency>
+              <float sid="transparency">0</float>
+            </transparency>
+          </phong>
+        </technique>
+      </profile_COMMON>
+    </effect>
+  </library_effects>
+  <library_materials>
+    <material id="Material2_002-material" name="Material2.002">
+      <instance_effect url="#Material2_002-effect"/>
+    </material>
+    <material id="Wax_02_002-material" name="Wax_02.002">
+      <instance_effect url="#Wax_02_002-effect"/>
+    </material>
+    <material id="Material1_002-material" name="Material1.002">
+      <instance_effect url="#Material1_002-effect"/>
+    </material>
+  </library_materials>
+  <library_geometries>
+    <geometry id="Yellow-mesh" name="Yellow">
+      <mesh>
+        <source id="Yellow-mesh-positions">
+          <float_array id="Yellow-mesh-positions-array" count="27">4000 0 -4000 0 0 0 0 0 -4000 4000 0 0 0 3703.52 -4000 4000 0 -4000 4000 3703.52 -4000 4000 2000 0 0 2000 0</float_array>
+          <technique_common>
+            <accessor source="#Yellow-mesh-positions-array" count="9" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Yellow-mesh-normals">
+          <float_array id="Yellow-mesh-normals-array" count="9">0 0 -1 0 0.9200393 0.3918263 0 -1 0</float_array>
+          <technique_common>
+            <accessor source="#Yellow-mesh-normals-array" count="3" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Yellow-mesh-map-0">
+          <float_array id="Yellow-mesh-map-0-array" count="36">-2 0 0 0 0 1.851807 -2 0 0 1.851807 -2 1.851807 0 2.565674 0 0.391846 2 0.391846 0 2.565674 2 0.391846 2 2.565674 -2 2 0 0 0 2 0 0 -2 2 -2 0</float_array>
+          <technique_common>
+            <accessor source="#Yellow-mesh-map-0-array" count="18" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Yellow-mesh-vertices">
+          <input semantic="POSITION" source="#Yellow-mesh-positions"/>
+        </vertices>
+        <triangles material="Material2_002-material" count="6">
+          <input semantic="VERTEX" source="#Yellow-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Yellow-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#Yellow-mesh-map-0" offset="2" set="0"/>
+          <p>5 0 0 2 0 1 4 0 2 5 0 3 4 0 4 6 0 5 4 1 6 8 1 7 7 1 8 4 1 9 7 1 10 6 1 11 0 2 12 1 2 13 2 2 14 1 2 15 0 2 16 3 2 17</p>
+        </triangles>
+      </mesh>
+    </geometry>
+    <geometry id="GreenCloud-mesh" name="GreenCloud">
+      <mesh>
+        <source id="GreenCloud-mesh-positions">
+          <float_array id="GreenCloud-mesh-positions-array" count="12">4000 2000 0 0 0 0 4000 0 0 0 2000 0</float_array>
+          <technique_common>
+            <accessor source="#GreenCloud-mesh-positions-array" count="4" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="GreenCloud-mesh-normals">
+          <float_array id="GreenCloud-mesh-normals-array" count="3">0 0 1</float_array>
+          <technique_common>
+            <accessor source="#GreenCloud-mesh-normals-array" count="1" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="GreenCloud-mesh-map-0">
+          <float_array id="GreenCloud-mesh-map-0-array" count="12">2 1 0 0 2 0 0 0 2 1 0 1</float_array>
+          <technique_common>
+            <accessor source="#GreenCloud-mesh-map-0-array" count="6" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="GreenCloud-mesh-vertices">
+          <input semantic="POSITION" source="#GreenCloud-mesh-positions"/>
+        </vertices>
+        <triangles material="Wax_02_002-material" count="2">
+          <input semantic="VERTEX" source="#GreenCloud-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#GreenCloud-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#GreenCloud-mesh-map-0" offset="2" set="0"/>
+          <p>0 0 0 1 0 1 2 0 2 1 0 3 0 0 4 3 0 5</p>
+        </triangles>
+      </mesh>
+    </geometry>
+    <geometry id="BlackNWhite2-mesh" name="BlackNWhite2">
+      <mesh>
+        <source id="BlackNWhite2-mesh-positions">
+          <float_array id="BlackNWhite2-mesh-positions-array" count="12">4000 -1.4e-4 -4000 4000 2000 -6e-5 4000 5e-5 -7e-5 4000 3703.52 -4000</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite2-mesh-positions-array" count="4" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite2-mesh-normals">
+          <float_array id="BlackNWhite2-mesh-normals-array" count="6">1 0 0 1 0 0</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite2-mesh-normals-array" count="2" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite2-mesh-map-0">
+          <float_array id="BlackNWhite2-mesh-map-0-array" count="12">2 0 0 1 0 0 0 1 2 0 2 1.851807</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite2-mesh-map-0-array" count="6" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite2-mesh-map-1">
+          <float_array id="BlackNWhite2-mesh-map-1-array" count="12">1 0.046875 0 0.546875 0 0.046875 0 0.546875 1 0.046875 1 0.96875</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite2-mesh-map-1-array" count="6" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite2-mesh-colors-BlackNWhite2-COLOR" name="BlackNWhite2-COLOR">
+          <float_array id="BlackNWhite2-mesh-colors-BlackNWhite2-COLOR-array" count="24">0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 1 0 0 0 1</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite2-mesh-colors-BlackNWhite2-COLOR-array" count="6" stride="4">
+              <param name="R" type="float"/>
+              <param name="G" type="float"/>
+              <param name="B" type="float"/>
+              <param name="A" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="BlackNWhite2-mesh-vertices">
+          <input semantic="POSITION" source="#BlackNWhite2-mesh-positions"/>
+        </vertices>
+        <triangles material="Material1_002-material" count="2">
+          <input semantic="VERTEX" source="#BlackNWhite2-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#BlackNWhite2-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#BlackNWhite2-mesh-map-0" offset="2" set="0"/>
+          <input semantic="TEXCOORD" source="#BlackNWhite2-mesh-map-1" offset="2" set="1"/>
+          <input semantic="COLOR" source="#BlackNWhite2-mesh-colors-BlackNWhite2-COLOR" offset="3" set="0"/>
+          <p>0 0 0 0 1 0 1 1 2 0 2 2 1 1 3 3 0 1 4 4 3 1 5 5</p>
+        </triangles>
+      </mesh>
+    </geometry>
+    <geometry id="BlackNWhite1-mesh" name="BlackNWhite1">
+      <mesh>
+        <source id="BlackNWhite1-mesh-positions">
+          <float_array id="BlackNWhite1-mesh-positions-array" count="12">0 3703.52 -4000 0 0 4e-5 0 2000 4e-5 0 0 -4000</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite1-mesh-positions-array" count="4" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite1-mesh-normals">
+          <float_array id="BlackNWhite1-mesh-normals-array" count="3">-1 0 0</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite1-mesh-normals-array" count="1" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite1-mesh-map-0">
+          <float_array id="BlackNWhite1-mesh-map-0-array" count="12">-2 1.851807 0 0 0 1 0 0 -2 1.851807 -2 0</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite1-mesh-map-0-array" count="6" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite1-mesh-map-1">
+          <float_array id="BlackNWhite1-mesh-map-1-array" count="12">0 0.96875 1 0.046875 1 0.546875 1 0.046875 0 0.96875 0 0.046875</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite1-mesh-map-1-array" count="6" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite1-mesh-colors-BlackNWhite1-COLOR" name="BlackNWhite1-COLOR">
+          <float_array id="BlackNWhite1-mesh-colors-BlackNWhite1-COLOR-array" count="24">0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 1 0 0 0 1</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite1-mesh-colors-BlackNWhite1-COLOR-array" count="6" stride="4">
+              <param name="R" type="float"/>
+              <param name="G" type="float"/>
+              <param name="B" type="float"/>
+              <param name="A" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="BlackNWhite1-mesh-vertices">
+          <input semantic="POSITION" source="#BlackNWhite1-mesh-positions"/>
+        </vertices>
+        <triangles material="Material1_002-material" count="2">
+          <input semantic="VERTEX" source="#BlackNWhite1-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#BlackNWhite1-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#BlackNWhite1-mesh-map-0" offset="2" set="0"/>
+          <input semantic="TEXCOORD" source="#BlackNWhite1-mesh-map-1" offset="2" set="1"/>
+          <input semantic="COLOR" source="#BlackNWhite1-mesh-colors-BlackNWhite1-COLOR" offset="3" set="0"/>
+          <p>0 0 0 0 1 0 1 1 2 0 2 2 1 0 3 3 0 0 4 4 3 0 5 5</p>
+        </triangles>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  <library_controllers>
+    <controller id="Armature_Yellow-skin" name="Armature">
+      <skin source="#Yellow-mesh">
+        <bind_shape_matrix>1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</bind_shape_matrix>
+        <source id="Armature_Yellow-skin-joints">
+          <Name_array id="Armature_Yellow-skin-joints-array" count="1">simple</Name_array>
+          <technique_common>
+            <accessor source="#Armature_Yellow-skin-joints-array" count="1" stride="1">
+              <param name="JOINT" type="name"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Armature_Yellow-skin-bind_poses">
+          <float_array id="Armature_Yellow-skin-bind_poses-array" count="16">1 0 0 0 0 -1.62921e-7 1 0 0 -1 -1.62921e-7 0 0 0 0 1</float_array>
+          <technique_common>
+            <accessor source="#Armature_Yellow-skin-bind_poses-array" count="1" stride="16">
+              <param name="TRANSFORM" type="float4x4"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Armature_Yellow-skin-weights">
+          <float_array id="Armature_Yellow-skin-weights-array" count="9">1 1 1 1 1 1 1 1 1</float_array>
+          <technique_common>
+            <accessor source="#Armature_Yellow-skin-weights-array" count="9" stride="1">
+              <param name="WEIGHT" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <joints>
+          <input semantic="JOINT" source="#Armature_Yellow-skin-joints"/>
+          <input semantic="INV_BIND_MATRIX" source="#Armature_Yellow-skin-bind_poses"/>
+        </joints>
+        <vertex_weights count="9">
+          <input semantic="JOINT" source="#Armature_Yellow-skin-joints" offset="0"/>
+          <input semantic="WEIGHT" source="#Armature_Yellow-skin-weights" offset="1"/>
+          <vcount>1 1 1 1 1 1 1 1 1 </vcount>
+          <v>0 0 0 1 0 2 0 3 0 4 0 5 0 6 0 7 0 8</v>
+        </vertex_weights>
+      </skin>
+    </controller>
+    <controller id="Armature_GreenCloud-skin" name="Armature">
+      <skin source="#GreenCloud-mesh">
+        <bind_shape_matrix>1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</bind_shape_matrix>
+        <source id="Armature_GreenCloud-skin-joints">
+          <Name_array id="Armature_GreenCloud-skin-joints-array" count="1">simple002_Green</Name_array>
+          <technique_common>
+            <accessor source="#Armature_GreenCloud-skin-joints-array" count="1" stride="1">
+              <param name="JOINT" type="name"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Armature_GreenCloud-skin-bind_poses">
+          <float_array id="Armature_GreenCloud-skin-bind_poses-array" count="16">1 0 0 -2314.532 0 -1.62921e-7 1 -1036.097 0 -1 -1.62921e-7 4.5e-5 0 0 0 1</float_array>
+          <technique_common>
+            <accessor source="#Armature_GreenCloud-skin-bind_poses-array" count="1" stride="16">
+              <param name="TRANSFORM" type="float4x4"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Armature_GreenCloud-skin-weights">
+          <float_array id="Armature_GreenCloud-skin-weights-array" count="4">1 1 1 1</float_array>
+          <technique_common>
+            <accessor source="#Armature_GreenCloud-skin-weights-array" count="4" stride="1">
+              <param name="WEIGHT" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <joints>
+          <input semantic="JOINT" source="#Armature_GreenCloud-skin-joints"/>
+          <input semantic="INV_BIND_MATRIX" source="#Armature_GreenCloud-skin-bind_poses"/>
+        </joints>
+        <vertex_weights count="4">
+          <input semantic="JOINT" source="#Armature_GreenCloud-skin-joints" offset="0"/>
+          <input semantic="WEIGHT" source="#Armature_GreenCloud-skin-weights" offset="1"/>
+          <vcount>1 1 1 1 </vcount>
+          <v>0 0 0 1 0 2 0 3</v>
+        </vertex_weights>
+      </skin>
+    </controller>
+    <controller id="Armature_BlackNWhite2-skin" name="Armature">
+      <skin source="#BlackNWhite2-mesh">
+        <bind_shape_matrix>1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</bind_shape_matrix>
+        <source id="Armature_BlackNWhite2-skin-joints">
+          <Name_array id="Armature_BlackNWhite2-skin-joints-array" count="1">simple011</Name_array>
+          <technique_common>
+            <accessor source="#Armature_BlackNWhite2-skin-joints-array" count="1" stride="1">
+              <param name="JOINT" type="name"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Armature_BlackNWhite2-skin-bind_poses">
+          <float_array id="Armature_BlackNWhite2-skin-bind_poses-array" count="16">-0.03006374 -0.999548 -1.62847e-7 1916.695 0 -1.62921e-7 1 -1324.162 -0.999548 0.03006374 0 3983.109 0 0 0 1</float_array>
+          <technique_common>
+            <accessor source="#Armature_BlackNWhite2-skin-bind_poses-array" count="1" stride="16">
+              <param name="TRANSFORM" type="float4x4"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Armature_BlackNWhite2-skin-weights">
+          <float_array id="Armature_BlackNWhite2-skin-weights-array" count="4">1 1 1 1</float_array>
+          <technique_common>
+            <accessor source="#Armature_BlackNWhite2-skin-weights-array" count="4" stride="1">
+              <param name="WEIGHT" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <joints>
+          <input semantic="JOINT" source="#Armature_BlackNWhite2-skin-joints"/>
+          <input semantic="INV_BIND_MATRIX" source="#Armature_BlackNWhite2-skin-bind_poses"/>
+        </joints>
+        <vertex_weights count="4">
+          <input semantic="JOINT" source="#Armature_BlackNWhite2-skin-joints" offset="0"/>
+          <input semantic="WEIGHT" source="#Armature_BlackNWhite2-skin-weights" offset="1"/>
+          <vcount>1 1 1 1 </vcount>
+          <v>0 0 0 1 0 2 0 3</v>
+        </vertex_weights>
+      </skin>
+    </controller>
+    <controller id="Armature_BlackNWhite1-skin" name="Armature">
+      <skin source="#BlackNWhite1-mesh">
+        <bind_shape_matrix>1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</bind_shape_matrix>
+        <source id="Armature_BlackNWhite1-skin-joints">
+          <Name_array id="Armature_BlackNWhite1-skin-joints-array" count="1">simple001_BNW</Name_array>
+          <technique_common>
+            <accessor source="#Armature_BlackNWhite1-skin-joints-array" count="1" stride="1">
+              <param name="JOINT" type="name"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Armature_BlackNWhite1-skin-bind_poses">
+          <float_array id="Armature_BlackNWhite1-skin-bind_poses-array" count="16">-0.03006398 -0.999548 -1.62847e-7 2157.175 0 -1.62921e-7 1 -1324.162 -0.999548 0.03006398 0 -64.88272 0 0 0 1</float_array>
+          <technique_common>
+            <accessor source="#Armature_BlackNWhite1-skin-bind_poses-array" count="1" stride="16">
+              <param name="TRANSFORM" type="float4x4"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Armature_BlackNWhite1-skin-weights">
+          <float_array id="Armature_BlackNWhite1-skin-weights-array" count="4">1 1 1 1</float_array>
+          <technique_common>
+            <accessor source="#Armature_BlackNWhite1-skin-weights-array" count="4" stride="1">
+              <param name="WEIGHT" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <joints>
+          <input semantic="JOINT" source="#Armature_BlackNWhite1-skin-joints"/>
+          <input semantic="INV_BIND_MATRIX" source="#Armature_BlackNWhite1-skin-bind_poses"/>
+        </joints>
+        <vertex_weights count="4">
+          <input semantic="JOINT" source="#Armature_BlackNWhite1-skin-joints" offset="0"/>
+          <input semantic="WEIGHT" source="#Armature_BlackNWhite1-skin-weights" offset="1"/>
+          <vcount>1 1 1 1 </vcount>
+          <v>0 0 0 1 0 2 0 3</v>
+        </vertex_weights>
+      </skin>
+    </controller>
+  </library_controllers>
+  <library_visual_scenes>
+    <visual_scene id="Scene" name="Scene">
+      <node id="Armature" name="Armature" type="NODE">
+        <matrix sid="transform">1 0 0 0 0 -1.62921e-7 -1 0 0 1 -1.62921e-7 0 0 0 0 1</matrix>
+        <node id="Armature_simple" name="simple" sid="simple" type="JOINT">
+          <matrix sid="transform">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+          <node id="Armature_simple001_BNW" name="simple001_BNW" sid="simple001_BNW" type="JOINT">
+            <matrix sid="transform">-0.03006403 0 -0.999548 0 0 0.9999999 0 1324.162 0.999548 0 -0.03006403 -2158.151 0 0 0 1</matrix>
+            <node id="Armature_simple011" name="simple011" sid="simple011" type="JOINT">
+              <matrix sid="transform">1 0 2.38419e-7 240.4789 0 0.9999999 0 -6.10352e-4 -2.38419e-7 0 1 -4047.992 0 0 0 1</matrix>
+              <extra>
+                <technique profile="blender">
+                  <layer sid="layer" type="string">0</layer>
+                  <roll sid="roll" type="float">-1.600865</roll>
+                  <tip_x sid="tip_x" type="float">0</tip_x>
+                  <tip_y sid="tip_y" type="float">2531.999</tip_y>
+                  <tip_z sid="tip_z" type="float">0</tip_z>
+                </technique>
+              </extra>
+            </node>
+            <extra>
+              <technique profile="blender">
+                <layer sid="layer" type="string">0</layer>
+                <roll sid="roll" type="float">-1.600865</roll>
+                <tip_x sid="tip_x" type="float">0</tip_x>
+                <tip_y sid="tip_y" type="float">2531.999</tip_y>
+                <tip_z sid="tip_z" type="float">0</tip_z>
+              </technique>
+            </extra>
+          </node>
+          <node id="Armature_simple002_Green" name="simple002_Green" sid="simple002_Green" type="JOINT">
+            <matrix sid="transform">1 0 0 2314.532 0 1 0 1036.097 0 0 1 -4.5e-5 0 0 0 1</matrix>
+            <extra>
+              <technique profile="blender">
+                <layer sid="layer" type="string">0</layer>
+                <tip_x sid="tip_x" type="float">0</tip_x>
+                <tip_y sid="tip_y" type="float">2531.999</tip_y>
+                <tip_z sid="tip_z" type="float">0</tip_z>
+              </technique>
+            </extra>
+          </node>
+          <extra>
+            <technique profile="blender">
+              <layer sid="layer" type="string">0</layer>
+              <tip_x sid="tip_x" type="float">0</tip_x>
+              <tip_y sid="tip_y" type="float">2531.999</tip_y>
+              <tip_z sid="tip_z" type="float">0</tip_z>
+            </technique>
+          </extra>
+        </node>
+        <node id="BlackNWhite1" name="BlackNWhite1" type="NODE">
+          <matrix sid="transform">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+          <instance_controller url="#Armature_BlackNWhite1-skin">
+            <skeleton>#Armature_simple</skeleton>
+            <bind_material>
+              <technique_common>
+                <instance_material symbol="Material1_002-material" target="#Material1_002-material">
+                  <bind_vertex_input semantic="BlackNWhite1-UV0" input_semantic="TEXCOORD" input_set="0"/>
+                  <bind_vertex_input semantic="BlackNWhite1-UV1" input_semantic="TEXCOORD" input_set="1"/>
+                </instance_material>
+              </technique_common>
+            </bind_material>
+          </instance_controller>
+        </node>
+        <node id="BlackNWhite2" name="BlackNWhite2" type="NODE">
+          <matrix sid="transform">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+          <instance_controller url="#Armature_BlackNWhite2-skin">
+            <skeleton>#Armature_simple</skeleton>
+            <bind_material>
+              <technique_common>
+                <instance_material symbol="Material1_002-material" target="#Material1_002-material">
+                  <bind_vertex_input semantic="BlackNWhite2-UV0" input_semantic="TEXCOORD" input_set="0"/>
+                  <bind_vertex_input semantic="BlackNWhite2-UV1" input_semantic="TEXCOORD" input_set="1"/>
+                </instance_material>
+              </technique_common>
+            </bind_material>
+          </instance_controller>
+        </node>
+        <node id="GreenCloud" name="GreenCloud" type="NODE">
+          <matrix sid="transform">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+          <instance_controller url="#Armature_GreenCloud-skin">
+            <skeleton>#Armature_simple</skeleton>
+            <bind_material>
+              <technique_common>
+                <instance_material symbol="Wax_02_002-material" target="#Wax_02_002-material">
+                  <bind_vertex_input semantic="GreenCloud-UV0" input_semantic="TEXCOORD" input_set="0"/>
+                </instance_material>
+              </technique_common>
+            </bind_material>
+          </instance_controller>
+        </node>
+        <node id="Yellow" name="Yellow" type="NODE">
+          <matrix sid="transform">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+          <instance_controller url="#Armature_Yellow-skin">
+            <skeleton>#Armature_simple</skeleton>
+            <bind_material>
+              <technique_common>
+                <instance_material symbol="Material2_002-material" target="#Material2_002-material">
+                  <bind_vertex_input semantic="Yellow-UV0" input_semantic="TEXCOORD" input_set="0"/>
+                </instance_material>
+              </technique_common>
+            </bind_material>
+          </instance_controller>
+        </node>
+      </node>
+      <node id="Camera" name="Camera" type="NODE">
+        <matrix sid="transform">0.6859207 -0.3240135 0.6515582 7.358891 0.7276763 0.3054208 -0.6141704 -6.925791 0 0.8953956 0.4452714 4.958309 0 0 0 1</matrix>
+        <instance_camera url="#Camera-camera"/>
+      </node>
+      <node id="Light" name="Light" type="NODE">
+        <matrix sid="transform">-0.2908646 -0.7711008 0.5663932 4.076245 0.9551712 -0.1998834 0.2183912 1.005454 -0.05518906 0.6045247 0.7946723 5.903862 0 0 0 1</matrix>
+        <instance_light url="#Light-light"/>
+      </node>
+    </visual_scene>
+  </library_visual_scenes>
+  <scene>
+    <instance_visual_scene url="#Scene"/>
+  </scene>
+</COLLADA>

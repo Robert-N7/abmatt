@@ -6,7 +6,7 @@ import numpy as np
 from abmatt.autofix import AutoFix
 from abmatt.converters.arg_parse import cmdline_convert
 from abmatt.converters.convert_lib import Converter
-from abmatt.converters.geometry import Geometry, decode_polygon
+from abmatt.converters.geometry import Geometry
 from abmatt.converters.material import Material
 from abmatt.converters.obj import Obj, ObjGeometry, ObjMaterial
 
@@ -56,7 +56,7 @@ class ObjConverter(Converter):
             obj_materials[obj_mat.name] = obj_mat
         obj_geometries = obj.geometries
         for x in polygons:
-            geometry = decode_polygon(x, self.influences)
+            geometry = x.get_decoded()
             material = geometry.material_name
             obj_geometries.append(self.__decode_geometry(geometry, material))
         self._end_saving(obj)
@@ -65,7 +65,7 @@ class ObjConverter(Converter):
     def __convert_map_to_layer(material, map):
         base_name = os.path.splitext(os.path.basename(map))[0]
         if not material.getLayerByName(base_name):
-            return material.addLayer(base_name)
+            return material.add_layer(base_name)
 
     def __convert_set_to_map(self, obj_images):
         path_map = {}

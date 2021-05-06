@@ -25,7 +25,6 @@ class Bone(Node):
         self.has_billboard_parent = False
         super().__init__(name, parent, binfile)
 
-
     def begin(self):
         self.index = 0
         self.weight_id = 0       # id in bone_table

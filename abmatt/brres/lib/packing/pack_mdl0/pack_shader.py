@@ -81,7 +81,7 @@ class PackShader(Packer):
         binfile.write("I4B", self.index,
                       len(shader.stages), 0, 0, 0)
         layer_indices = [0xff] * 8
-        for i in range(shader.getTexRefCount()):
+        for i in range(shader.get_tex_ref_count()):
             layer_indices[i] = i
         binfile.write("8B", *layer_indices)
         binfile.align()
@@ -89,7 +89,7 @@ class PackShader(Packer):
             bp.pack_bp_mask(binfile, SWAP_MASK)
             kcel.pack(binfile)
         # indirect data
-        bp.pack_ras1_iref(binfile, shader.indTexMaps, shader.indTexCoords)
+        bp.pack_ras1_iref(binfile, shader.ind_tex_maps, shader.ind_tex_coords)
         binfile.align()
         self.pack_stages(binfile)
         binfile.advanceAndEnd(BYTESIZE)

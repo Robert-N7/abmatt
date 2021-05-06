@@ -1,0 +1,1072 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
+  <asset>
+    <contributor>
+      <author/>
+      <authoring_tool>FBX COLLADA exporter</authoring_tool>
+      <comments/>
+    </contributor>
+    <created>2021-04-30T03:40:17Z</created>
+    <keywords/>
+    <modified>2021-04-30T03:40:17Z</modified>
+    <revision/>
+    <subject/>
+    <title/>
+    <unit meter="1.000000" name="centimeter"/>
+    <up_axis>Y_UP</up_axis>
+  </asset>
+  <library_images>
+    <image id="MapFBXASC032FBXASC0352-image" name="MapFBXASC032FBXASC0352">
+      <init_from>mtx.skp_simple_Textures\Material1.PNG</init_from>
+    </image>
+    <image id="MapFBXASC032FBXASC0351-image" name="MapFBXASC032FBXASC0351">
+      <init_from>mtx.skp_simple_Textures\Wax_02.PNG</init_from>
+    </image>
+    <image id="MapFBXASC032FBXASC0353-image" name="MapFBXASC032FBXASC0353">
+      <init_from>mtx.skp_simple_Textures\Material2.PNG</init_from>
+    </image>
+  </library_images>
+  <library_materials>
+    <material id="Material1" name="Material1">
+      <instance_effect url="#Material1-fx"/>
+    </material>
+    <material id="Wax_02" name="Wax_02">
+      <instance_effect url="#Wax_02-fx"/>
+    </material>
+    <material id="Material2" name="Material2">
+      <instance_effect url="#Material2-fx"/>
+    </material>
+  </library_materials>
+  <library_effects>
+    <effect id="Material1-fx" name="Material1">
+      <profile_COMMON>
+        <technique sid="standard">
+          <phong>
+            <emission>
+              <color sid="emission">0.000000  0.000000 0.000000 1.000000</color>
+            </emission>
+            <ambient>
+              <color sid="ambient">0.800000  0.800000 0.800000 1.000000</color>
+            </ambient>
+            <diffuse>
+              <texture texture="MapFBXASC032FBXASC0352-image" texcoord="CHANNEL0">
+                <extra>
+                  <technique profile="MAYA">
+                    <wrapU sid="wrapU0">TRUE</wrapU>
+                    <wrapV sid="wrapV0">TRUE</wrapV>
+                    <blend_mode>ADD</blend_mode>
+                  </technique>
+                </extra>
+              </texture>
+            </diffuse>
+            <specular>
+              <color sid="specular">0.000133  0.000133 0.000133 1.000000</color>
+            </specular>
+            <shininess>
+              <float sid="shininess">1.071773</float>
+            </shininess>
+            <transparency>
+              <float sid="transparency">0.600000</float>
+            </transparency>
+          </phong>
+        </technique>
+      </profile_COMMON>
+    </effect>
+    <effect id="Wax_02-fx" name="Wax_02">
+      <profile_COMMON>
+        <technique sid="standard">
+          <phong>
+            <emission>
+              <color sid="emission">0.000000  0.000000 0.000000 1.000000</color>
+            </emission>
+            <ambient>
+              <color sid="ambient">0.800000  0.800000 0.800000 1.000000</color>
+            </ambient>
+            <diffuse>
+              <texture texture="MapFBXASC032FBXASC0351-image" texcoord="CHANNEL0">
+                <extra>
+                  <technique profile="MAYA">
+                    <wrapU sid="wrapU0">TRUE</wrapU>
+                    <wrapV sid="wrapV0">TRUE</wrapV>
+                    <blend_mode>ADD</blend_mode>
+                  </technique>
+                </extra>
+              </texture>
+            </diffuse>
+            <specular>
+              <color sid="specular">0.000133  0.000133 0.000133 1.000000</color>
+            </specular>
+            <shininess>
+              <float sid="shininess">1.071773</float>
+            </shininess>
+            <transparency>
+              <float sid="transparency">0.600000</float>
+            </transparency>
+          </phong>
+        </technique>
+      </profile_COMMON>
+    </effect>
+    <effect id="Material2-fx" name="Material2">
+      <profile_COMMON>
+        <technique sid="standard">
+          <phong>
+            <emission>
+              <color sid="emission">0.000000  0.000000 0.000000 1.000000</color>
+            </emission>
+            <ambient>
+              <color sid="ambient">0.800000  0.800000 0.800000 1.000000</color>
+            </ambient>
+            <diffuse>
+              <texture texture="MapFBXASC032FBXASC0353-image" texcoord="CHANNEL0">
+                <extra>
+                  <technique profile="MAYA">
+                    <wrapU sid="wrapU0">TRUE</wrapU>
+                    <wrapV sid="wrapV0">TRUE</wrapV>
+                    <blend_mode>ADD</blend_mode>
+                  </technique>
+                </extra>
+              </texture>
+            </diffuse>
+            <specular>
+              <color sid="specular">0.000133  0.000133 0.000133 1.000000</color>
+            </specular>
+            <shininess>
+              <float sid="shininess">1.071773</float>
+            </shininess>
+            <transparency>
+              <float sid="transparency">0.600000</float>
+            </transparency>
+          </phong>
+        </technique>
+      </profile_COMMON>
+    </effect>
+  </library_effects>
+  <library_geometries>
+    <geometry id="BlackNWhite1-lib" name="BlackNWhite1Mesh">
+      <mesh>
+        <source id="BlackNWhite1-POSITION">
+          <float_array id="BlackNWhite1-POSITION-array" count="12">
+0.000000 4000.000000 3703.520020
+0.000000 0.000000 0.000000
+0.000000 0.000000 2000.000000
+0.000000 4000.000000 0.000000
+</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite1-POSITION-array" count="4" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite1-Normal0">
+          <float_array id="BlackNWhite1-Normal0-array" count="18">
+-1.000000 0.000000 0.000000
+-1.000000 0.000000 0.000000
+-1.000000 0.000000 0.000000
+-1.000000 0.000000 0.000000
+-1.000000 0.000000 0.000000
+-1.000000 0.000000 0.000000
+</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite1-Normal0-array" count="6" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite1-UV0">
+          <float_array id="BlackNWhite1-UV0-array" count="16">
+2.000000 0.000000
+0.000000 1.000000
+0.000000 0.000000
+2.000000 1.851760
+-2.000000 1.851760
+0.000000 0.000000
+0.000000 1.000000
+-2.000000 0.000000
+</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite1-UV0-array" count="8" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite1-UV1">
+          <float_array id="BlackNWhite1-UV1-array" count="16">
+1.000000 0.046115
+0.000000 0.546115
+0.000000 0.046115
+1.000000 0.971995
+0.000000 0.971995
+1.000000 0.046115
+1.000000 0.546115
+0.000000 0.046115
+</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite1-UV1-array" count="8" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite1-VERTEX_COLOR0">
+          <float_array id="BlackNWhite1-VERTEX_COLOR0-array" count="24">
+0.000000 0.000000 0.000000 1.000000
+1.000000 1.000000 1.000000 1.000000
+1.000000 1.000000 1.000000 1.000000
+1.000000 1.000000 1.000000 1.000000
+0.000000 0.000000 0.000000 1.000000
+0.000000 0.000000 0.000000 1.000000
+</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite1-VERTEX_COLOR0-array" count="6" stride="4">
+              <param name="R" type="double"/>
+              <param name="G" type="double"/>
+              <param name="B" type="double"/>
+              <param name="A" type="double"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="BlackNWhite1-VERTEX">
+          <input semantic="POSITION" source="#BlackNWhite1-POSITION"/>
+        </vertices>
+        <triangles count="2" material="Material1">
+          <input semantic="VERTEX" offset="0" source="#BlackNWhite1-VERTEX"/>
+          <input semantic="NORMAL" offset="1" source="#BlackNWhite1-Normal0"/>
+          <input semantic="TEXCOORD" offset="2" set="0" source="#BlackNWhite1-UV0"/>
+          <input semantic="COLOR" offset="3" set="0" source="#BlackNWhite1-VERTEX_COLOR0"/>
+          <input semantic="TEXCOORD" offset="4" set="1" source="#BlackNWhite1-UV1"/>
+          <p> 0 0 4 0 4 1 1 5 1 5 2 2 6 2 6 1 3 5 3 5 0 4 4 4 4 3 5 7 5 7</p>
+        </triangles>
+      </mesh>
+    </geometry>
+    <geometry id="GreenCloud-lib" name="GreenCloudMesh">
+      <mesh>
+        <source id="GreenCloud-POSITION">
+          <float_array id="GreenCloud-POSITION-array" count="12">
+4000.000000 2000.000000 0.000000
+0.000000 0.000000 0.000000
+4000.000000 0.000000 0.000000
+0.000000 2000.000000 0.000000
+</float_array>
+          <technique_common>
+            <accessor source="#GreenCloud-POSITION-array" count="4" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="GreenCloud-Normal0">
+          <float_array id="GreenCloud-Normal0-array" count="18">
+0.000000 0.000000 1.000000
+0.000000 0.000000 1.000000
+0.000000 0.000000 1.000000
+0.000000 0.000000 1.000000
+0.000000 0.000000 1.000000
+0.000000 0.000000 1.000000
+</float_array>
+          <technique_common>
+            <accessor source="#GreenCloud-Normal0-array" count="6" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="GreenCloud-UV0">
+          <float_array id="GreenCloud-UV0-array" count="8">
+2.000000 1.000000
+0.000000 0.000000
+2.000000 0.000000
+0.000000 1.000000
+</float_array>
+          <technique_common>
+            <accessor source="#GreenCloud-UV0-array" count="4" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="GreenCloud-VERTEX">
+          <input semantic="POSITION" source="#GreenCloud-POSITION"/>
+        </vertices>
+        <triangles count="2" material="Wax_02">
+          <input semantic="VERTEX" offset="0" source="#GreenCloud-VERTEX"/>
+          <input semantic="NORMAL" offset="1" source="#GreenCloud-Normal0"/>
+          <input semantic="TEXCOORD" offset="2" set="0" source="#GreenCloud-UV0"/>
+          <p> 0 0 0 1 1 1 2 2 2 1 3 1 0 4 0 3 5 3</p>
+        </triangles>
+      </mesh>
+    </geometry>
+    <geometry id="Yellow-lib" name="YellowMesh">
+      <mesh>
+        <source id="Yellow-POSITION">
+          <float_array id="Yellow-POSITION-array" count="36">
+4000.000000 4000.000000 0.000000
+0.000000 0.000000 0.000000
+0.000000 4000.000000 0.000000
+4000.000000 0.000000 0.000000
+0.000000 4000.000000 3703.520020
+4000.000000 4000.000000 0.000000
+0.000000 4000.000000 0.000000
+4000.000000 4000.000000 3703.520020
+4000.000000 0.000000 2000.000000
+0.000000 4000.000000 3703.520020
+0.000000 0.000000 2000.000000
+4000.000000 4000.000000 3703.520020
+</float_array>
+          <technique_common>
+            <accessor source="#Yellow-POSITION-array" count="12" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Yellow-Normal0">
+          <float_array id="Yellow-Normal0-array" count="54">
+0.000000 0.000000 -1.000000
+0.000000 0.000000 -1.000000
+0.000000 0.000000 -1.000000
+0.000000 0.000000 -1.000000
+0.000000 0.000000 -1.000000
+0.000000 0.000000 -1.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 -0.391826 0.920039
+0.000000 -0.391826 0.920039
+0.000000 -0.391826 0.920039
+0.000000 -0.391826 0.920039
+0.000000 -0.391826 0.920039
+0.000000 -0.391826 0.920039
+</float_array>
+          <technique_common>
+            <accessor source="#Yellow-Normal0-array" count="18" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Yellow-UV0">
+          <float_array id="Yellow-UV0-array" count="24">
+-2.000000 2.000000
+0.000000 0.000000
+0.000000 2.000000
+-2.000000 0.000000
+0.000000 1.851760
+-2.000000 0.000000
+0.000000 0.000000
+-2.000000 1.851760
+2.000000 0.391826
+0.000000 2.565647
+0.000000 0.391826
+2.000000 2.565647
+</float_array>
+          <technique_common>
+            <accessor source="#Yellow-UV0-array" count="12" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Yellow-VERTEX">
+          <input semantic="POSITION" source="#Yellow-POSITION"/>
+        </vertices>
+        <triangles count="6" material="Material2">
+          <input semantic="VERTEX" offset="0" source="#Yellow-VERTEX"/>
+          <input semantic="NORMAL" offset="1" source="#Yellow-Normal0"/>
+          <input semantic="TEXCOORD" offset="2" set="0" source="#Yellow-UV0"/>
+          <p> 0 0 0 1 1 1 2 2 2 1 3 1 0 4 0 3 5 3 4 6 4 5 7 5 6 8 6 5 9 5 4 10 4 7 11 7 8 12 8 9 13 9 10 14 10 9 15 9 8 16 8 11 17 11</p>
+        </triangles>
+      </mesh>
+    </geometry>
+    <geometry id="BlackNWhite2-lib" name="BlackNWhite2Mesh">
+      <mesh>
+        <source id="BlackNWhite2-POSITION">
+          <float_array id="BlackNWhite2-POSITION-array" count="12">
+4000.000000 4000.000000 0.000000
+4000.000000 0.000000 2000.000000
+4000.000000 0.000000 0.000000
+4000.000000 4000.000000 3703.520020
+</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite2-POSITION-array" count="4" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite2-Normal0">
+          <float_array id="BlackNWhite2-Normal0-array" count="18">
+1.000000 0.000000 0.000000
+1.000000 0.000000 0.000000
+1.000000 0.000000 0.000000
+1.000000 0.000000 0.000000
+1.000000 0.000000 0.000000
+1.000000 0.000000 0.000000
+</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite2-Normal0-array" count="6" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite2-UV0">
+          <float_array id="BlackNWhite2-UV0-array" count="8">
+2.000000 0.000000
+0.000000 1.000000
+0.000000 0.000000
+2.000000 1.851760
+</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite2-UV0-array" count="4" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite2-UV1">
+          <float_array id="BlackNWhite2-UV1-array" count="8">
+1.000000 0.046115
+0.000000 0.546115
+0.000000 0.046115
+1.000000 0.971995
+</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite2-UV1-array" count="4" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite2-VERTEX_COLOR0">
+          <float_array id="BlackNWhite2-VERTEX_COLOR0-array" count="24">
+0.000000 0.000000 0.000000 1.000000
+1.000000 1.000000 1.000000 1.000000
+1.000000 1.000000 1.000000 1.000000
+1.000000 1.000000 1.000000 1.000000
+0.000000 0.000000 0.000000 1.000000
+0.000000 0.000000 0.000000 1.000000
+</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite2-VERTEX_COLOR0-array" count="6" stride="4">
+              <param name="R" type="double"/>
+              <param name="G" type="double"/>
+              <param name="B" type="double"/>
+              <param name="A" type="double"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="BlackNWhite2-VERTEX">
+          <input semantic="POSITION" source="#BlackNWhite2-POSITION"/>
+        </vertices>
+        <triangles count="2" material="Material1">
+          <input semantic="VERTEX" offset="0" source="#BlackNWhite2-VERTEX"/>
+          <input semantic="NORMAL" offset="1" source="#BlackNWhite2-Normal0"/>
+          <input semantic="TEXCOORD" offset="2" set="0" source="#BlackNWhite2-UV0"/>
+          <input semantic="COLOR" offset="3" set="0" source="#BlackNWhite2-VERTEX_COLOR0"/>
+          <input semantic="TEXCOORD" offset="4" set="1" source="#BlackNWhite2-UV1"/>
+          <p> 0 0 0 0 0 1 1 1 1 1 2 2 2 2 2 1 3 1 3 1 0 4 0 4 0 3 5 3 5 3</p>
+        </triangles>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  <library_controllers>
+    <controller id="BlackNWhite1Controller">
+      <skin source="#BlackNWhite1-lib">
+        <bind_shape_matrix>1.000000 -0.000000 0.000000 0.000000 0.000000 1.000000 -0.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 0.000000 1.000000
+</bind_shape_matrix>
+        <source id="BlackNWhite1Controller-Joints">
+          <Name_array id="BlackNWhite1Controller-Joints-array" count="1">
+ simple001_BNW</Name_array>
+          <technique_common>
+            <accessor source="#BlackNWhite1Controller-Joints-array" count="1">
+              <param type="name"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite1Controller-Matrices">
+          <float_array id="BlackNWhite1Controller-Matrices-array" count="16">
+
+-0.030064 -0.999548 -0.000000 2157.175428 0.000000 -0.000000 1.000000 -1324.162259 -0.999548 0.030064 0.000000 -64.882972 0.000000 0.000000 0.000000 1.000000</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite1Controller-Matrices-array" count="1" stride="16">
+              <param type="float4x4"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite1Controller-Weights">
+          <float_array id="BlackNWhite1Controller-Weights-array" count="5">
+
+1.000000 1.000000 1.000000 1.000000 1.000000</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite1Controller-Weights-array" count="5">
+              <param type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <joints>
+          <input semantic="JOINT" source="#BlackNWhite1Controller-Joints"/>
+          <input semantic="INV_BIND_MATRIX" source="#BlackNWhite1Controller-Matrices"/>
+        </joints>
+        <vertex_weights count="4">
+          <input semantic="JOINT" offset="0" source="#BlackNWhite1Controller-Joints"/>
+          <input semantic="WEIGHT" offset="1" source="#BlackNWhite1Controller-Weights"/>
+          <vcount>1 1 1 1</vcount>
+          <v>0 1 0 2 0 3 0 4</v>
+        </vertex_weights>
+      </skin>
+    </controller>
+    <controller id="GreenCloudController">
+      <skin source="#GreenCloud-lib">
+        <bind_shape_matrix>1.000000 -0.000000 0.000000 0.000000 0.000000 1.000000 -0.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 0.000000 1.000000
+</bind_shape_matrix>
+        <source id="GreenCloudController-Joints">
+          <Name_array id="GreenCloudController-Joints-array" count="3">
+ simple002_Green simple simple011</Name_array>
+          <technique_common>
+            <accessor source="#GreenCloudController-Joints-array" count="3">
+              <param type="name"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="GreenCloudController-Matrices">
+          <float_array id="GreenCloudController-Matrices-array" count="48">
+
+1.000000 0.000000 0.000000 -2314.532227 -0.000000 1.000000 0.000000 -1036.097168 0.000000 -0.000000 1.000000 0.000045 0.000000 0.000000 0.000000 1.000000
+1.000000 0.000000 0.000000 -0.000000 -0.000000 1.000000 0.000000 -0.000000 0.000000 -0.000000 1.000000 -0.000000 0.000000 0.000000 0.000000 1.000000
+-0.030064 0.888602 0.457693 -233.174179 -0.000000 0.457900 -0.889004 -2203.056697 -0.999548 -0.026727 -0.013766 4047.772023 0.000000 0.000000 0.000000 1.000000</float_array>
+          <technique_common>
+            <accessor source="#GreenCloudController-Matrices-array" count="3" stride="16">
+              <param type="float4x4"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="GreenCloudController-Weights">
+          <float_array id="GreenCloudController-Weights-array" count="10">
+
+1.000000 0.562500 0.187500 0.250000 1.000000 0.143020 0.047673 0.809306 0.750000 0.250000</float_array>
+          <technique_common>
+            <accessor source="#GreenCloudController-Weights-array" count="10">
+              <param type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <joints>
+          <input semantic="JOINT" source="#GreenCloudController-Joints"/>
+          <input semantic="INV_BIND_MATRIX" source="#GreenCloudController-Matrices"/>
+        </joints>
+        <vertex_weights count="4">
+          <input semantic="JOINT" offset="0" source="#GreenCloudController-Joints"/>
+          <input semantic="WEIGHT" offset="1" source="#GreenCloudController-Weights"/>
+          <vcount>3 1 3 2</vcount>
+          <v>0 1 1 2 2 3 1 4 0 5 1 6 2 7 0 8 1 9</v>
+        </vertex_weights>
+      </skin>
+    </controller>
+    <controller id="YellowController">
+      <skin source="#Yellow-lib">
+        <bind_shape_matrix>1.000000 -0.000000 0.000000 0.000000 0.000000 1.000000 -0.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 0.000000 1.000000
+</bind_shape_matrix>
+        <source id="YellowController-Joints">
+          <Name_array id="YellowController-Joints-array" count="1">
+ simple</Name_array>
+          <technique_common>
+            <accessor source="#YellowController-Joints-array" count="1">
+              <param type="name"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="YellowController-Matrices">
+          <float_array id="YellowController-Matrices-array" count="16">
+
+1.000000 0.000000 0.000000 -0.000000 -0.000000 -0.000000 1.000000 -0.000000 0.000000 -1.000000 -0.000000 -0.000000 0.000000 0.000000 0.000000 1.000000</float_array>
+          <technique_common>
+            <accessor source="#YellowController-Matrices-array" count="1" stride="16">
+              <param type="float4x4"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="YellowController-Weights">
+          <float_array id="YellowController-Weights-array" count="13">
+
+1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000 1.000000</float_array>
+          <technique_common>
+            <accessor source="#YellowController-Weights-array" count="13">
+              <param type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <joints>
+          <input semantic="JOINT" source="#YellowController-Joints"/>
+          <input semantic="INV_BIND_MATRIX" source="#YellowController-Matrices"/>
+        </joints>
+        <vertex_weights count="12">
+          <input semantic="JOINT" offset="0" source="#YellowController-Joints"/>
+          <input semantic="WEIGHT" offset="1" source="#YellowController-Weights"/>
+          <vcount>1 1 1 1 1 1 1 1 1 1 1 1</vcount>
+          <v>0 1 0 2 0 3 0 4 0 5 0 6 0 7 0 8 0 9 0 10 0 11 0 12</v>
+        </vertex_weights>
+      </skin>
+    </controller>
+    <controller id="BlackNWhite2Controller">
+      <skin source="#BlackNWhite2-lib">
+        <bind_shape_matrix>1.000000 -0.000000 0.000000 0.000000 0.000000 1.000000 -0.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 0.000000 1.000000
+</bind_shape_matrix>
+        <source id="BlackNWhite2Controller-Joints">
+          <Name_array id="BlackNWhite2Controller-Joints-array" count="1">
+ simple011</Name_array>
+          <technique_common>
+            <accessor source="#BlackNWhite2Controller-Joints-array" count="1">
+              <param type="name"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite2Controller-Matrices">
+          <float_array id="BlackNWhite2Controller-Matrices-array" count="16">
+
+-0.030064 -0.457693 0.888602 -233.173198 0.000000 0.889004 0.457900 -2203.056398 -0.999548 0.013766 -0.026727 4047.771078 0.000000 0.000000 0.000000 1.000000</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite2Controller-Matrices-array" count="1" stride="16">
+              <param type="float4x4"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite2Controller-Weights">
+          <float_array id="BlackNWhite2Controller-Weights-array" count="5">
+
+1.000000 1.000000 1.000000 1.000000 1.000000</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite2Controller-Weights-array" count="5">
+              <param type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <joints>
+          <input semantic="JOINT" source="#BlackNWhite2Controller-Joints"/>
+          <input semantic="INV_BIND_MATRIX" source="#BlackNWhite2Controller-Matrices"/>
+        </joints>
+        <vertex_weights count="4">
+          <input semantic="JOINT" offset="0" source="#BlackNWhite2Controller-Joints"/>
+          <input semantic="WEIGHT" offset="1" source="#BlackNWhite2Controller-Weights"/>
+          <vcount>1 1 1 1</vcount>
+          <v>0 1 0 2 0 3 0 4</v>
+        </vertex_weights>
+      </skin>
+    </controller>
+  </library_controllers>
+  <library_animations>
+    <animation id="BlackNWhite1-anim" name="BlackNWhite1">
+      <animation>
+        <source id="BlackNWhite1-Matrix-animation-input">
+          <float_array id="BlackNWhite1-Matrix-animation-input-array" count="0">
+</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite1-Matrix-animation-input-array" count="0">
+              <param name="TIME" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite1-Matrix-animation-output-transform">
+          <float_array id="BlackNWhite1-Matrix-animation-output-transform-array" count="0">
+</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite1-Matrix-animation-output-transform-array" count="0" stride="16">
+              <param type="float4x4"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite1-Interpolations">
+          <Name_array id="BlackNWhite1-Interpolations-array" count="0">
+</Name_array>
+          <technique_common>
+            <accessor source="#BlackNWhite1-Interpolations-array" count="0">
+              <param type="name"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <sampler id="BlackNWhite1-Matrix-animation-transform">
+          <input semantic="INPUT" source="#BlackNWhite1-Matrix-animation-input"/>
+          <input semantic="OUTPUT" source="#BlackNWhite1-Matrix-animation-output-transform"/>
+          <input semantic="INTERPOLATION" source="#BlackNWhite1-Interpolations"/>
+        </sampler>
+        <channel source="#BlackNWhite1-Matrix-animation-transform" target="BlackNWhite1/matrix"/>
+      </animation>
+    </animation>
+    <animation id="simple-anim" name="simple">
+      <animation>
+        <source id="simple-Matrix-animation-input">
+          <float_array id="simple-Matrix-animation-input-array" count="0">
+</float_array>
+          <technique_common>
+            <accessor source="#simple-Matrix-animation-input-array" count="0">
+              <param name="TIME" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="simple-Matrix-animation-output-transform">
+          <float_array id="simple-Matrix-animation-output-transform-array" count="0">
+</float_array>
+          <technique_common>
+            <accessor source="#simple-Matrix-animation-output-transform-array" count="0" stride="16">
+              <param type="float4x4"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="simple-Interpolations">
+          <Name_array id="simple-Interpolations-array" count="0">
+</Name_array>
+          <technique_common>
+            <accessor source="#simple-Interpolations-array" count="0">
+              <param type="name"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <sampler id="simple-Matrix-animation-transform">
+          <input semantic="INPUT" source="#simple-Matrix-animation-input"/>
+          <input semantic="OUTPUT" source="#simple-Matrix-animation-output-transform"/>
+          <input semantic="INTERPOLATION" source="#simple-Interpolations"/>
+        </sampler>
+        <channel source="#simple-Matrix-animation-transform" target="simple/matrix"/>
+      </animation>
+    </animation>
+    <animation id="simple001_BNW-anim" name="simple001_BNW">
+      <animation>
+        <source id="simple001_BNW-Matrix-animation-input">
+          <float_array id="simple001_BNW-Matrix-animation-input-array" count="0">
+</float_array>
+          <technique_common>
+            <accessor source="#simple001_BNW-Matrix-animation-input-array" count="0">
+              <param name="TIME" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="simple001_BNW-Matrix-animation-output-transform">
+          <float_array id="simple001_BNW-Matrix-animation-output-transform-array" count="0">
+</float_array>
+          <technique_common>
+            <accessor source="#simple001_BNW-Matrix-animation-output-transform-array" count="0" stride="16">
+              <param type="float4x4"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="simple001_BNW-Interpolations">
+          <Name_array id="simple001_BNW-Interpolations-array" count="0">
+</Name_array>
+          <technique_common>
+            <accessor source="#simple001_BNW-Interpolations-array" count="0">
+              <param type="name"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <sampler id="simple001_BNW-Matrix-animation-transform">
+          <input semantic="INPUT" source="#simple001_BNW-Matrix-animation-input"/>
+          <input semantic="OUTPUT" source="#simple001_BNW-Matrix-animation-output-transform"/>
+          <input semantic="INTERPOLATION" source="#simple001_BNW-Interpolations"/>
+        </sampler>
+        <channel source="#simple001_BNW-Matrix-animation-transform" target="simple001_BNW/matrix"/>
+      </animation>
+    </animation>
+    <animation id="simple011-anim" name="simple011">
+      <animation>
+        <source id="simple011-Matrix-animation-input">
+          <float_array id="simple011-Matrix-animation-input-array" count="0">
+</float_array>
+          <technique_common>
+            <accessor source="#simple011-Matrix-animation-input-array" count="0">
+              <param name="TIME" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="simple011-Matrix-animation-output-transform">
+          <float_array id="simple011-Matrix-animation-output-transform-array" count="0">
+</float_array>
+          <technique_common>
+            <accessor source="#simple011-Matrix-animation-output-transform-array" count="0" stride="16">
+              <param type="float4x4"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="simple011-Interpolations">
+          <Name_array id="simple011-Interpolations-array" count="0">
+</Name_array>
+          <technique_common>
+            <accessor source="#simple011-Interpolations-array" count="0">
+              <param type="name"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <sampler id="simple011-Matrix-animation-transform">
+          <input semantic="INPUT" source="#simple011-Matrix-animation-input"/>
+          <input semantic="OUTPUT" source="#simple011-Matrix-animation-output-transform"/>
+          <input semantic="INTERPOLATION" source="#simple011-Interpolations"/>
+        </sampler>
+        <channel source="#simple011-Matrix-animation-transform" target="simple011/matrix"/>
+      </animation>
+    </animation>
+    <animation id="simple002_Green-anim" name="simple002_Green">
+      <animation>
+        <source id="simple002_Green-Matrix-animation-input">
+          <float_array id="simple002_Green-Matrix-animation-input-array" count="0">
+</float_array>
+          <technique_common>
+            <accessor source="#simple002_Green-Matrix-animation-input-array" count="0">
+              <param name="TIME" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="simple002_Green-Matrix-animation-output-transform">
+          <float_array id="simple002_Green-Matrix-animation-output-transform-array" count="0">
+</float_array>
+          <technique_common>
+            <accessor source="#simple002_Green-Matrix-animation-output-transform-array" count="0" stride="16">
+              <param type="float4x4"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="simple002_Green-Interpolations">
+          <Name_array id="simple002_Green-Interpolations-array" count="0">
+</Name_array>
+          <technique_common>
+            <accessor source="#simple002_Green-Interpolations-array" count="0">
+              <param type="name"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <sampler id="simple002_Green-Matrix-animation-transform">
+          <input semantic="INPUT" source="#simple002_Green-Matrix-animation-input"/>
+          <input semantic="OUTPUT" source="#simple002_Green-Matrix-animation-output-transform"/>
+          <input semantic="INTERPOLATION" source="#simple002_Green-Interpolations"/>
+        </sampler>
+        <channel source="#simple002_Green-Matrix-animation-transform" target="simple002_Green/matrix"/>
+      </animation>
+    </animation>
+    <animation id="GreenCloud-anim" name="GreenCloud">
+      <animation>
+        <source id="GreenCloud-Matrix-animation-input">
+          <float_array id="GreenCloud-Matrix-animation-input-array" count="0">
+</float_array>
+          <technique_common>
+            <accessor source="#GreenCloud-Matrix-animation-input-array" count="0">
+              <param name="TIME" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="GreenCloud-Matrix-animation-output-transform">
+          <float_array id="GreenCloud-Matrix-animation-output-transform-array" count="0">
+</float_array>
+          <technique_common>
+            <accessor source="#GreenCloud-Matrix-animation-output-transform-array" count="0" stride="16">
+              <param type="float4x4"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="GreenCloud-Interpolations">
+          <Name_array id="GreenCloud-Interpolations-array" count="0">
+</Name_array>
+          <technique_common>
+            <accessor source="#GreenCloud-Interpolations-array" count="0">
+              <param type="name"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <sampler id="GreenCloud-Matrix-animation-transform">
+          <input semantic="INPUT" source="#GreenCloud-Matrix-animation-input"/>
+          <input semantic="OUTPUT" source="#GreenCloud-Matrix-animation-output-transform"/>
+          <input semantic="INTERPOLATION" source="#GreenCloud-Interpolations"/>
+        </sampler>
+        <channel source="#GreenCloud-Matrix-animation-transform" target="GreenCloud/matrix"/>
+      </animation>
+    </animation>
+    <animation id="Yellow-anim" name="Yellow">
+      <animation>
+        <source id="Yellow-Matrix-animation-input">
+          <float_array id="Yellow-Matrix-animation-input-array" count="0">
+</float_array>
+          <technique_common>
+            <accessor source="#Yellow-Matrix-animation-input-array" count="0">
+              <param name="TIME" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Yellow-Matrix-animation-output-transform">
+          <float_array id="Yellow-Matrix-animation-output-transform-array" count="0">
+</float_array>
+          <technique_common>
+            <accessor source="#Yellow-Matrix-animation-output-transform-array" count="0" stride="16">
+              <param type="float4x4"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Yellow-Interpolations">
+          <Name_array id="Yellow-Interpolations-array" count="0">
+</Name_array>
+          <technique_common>
+            <accessor source="#Yellow-Interpolations-array" count="0">
+              <param type="name"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <sampler id="Yellow-Matrix-animation-transform">
+          <input semantic="INPUT" source="#Yellow-Matrix-animation-input"/>
+          <input semantic="OUTPUT" source="#Yellow-Matrix-animation-output-transform"/>
+          <input semantic="INTERPOLATION" source="#Yellow-Interpolations"/>
+        </sampler>
+        <channel source="#Yellow-Matrix-animation-transform" target="Yellow/matrix"/>
+      </animation>
+    </animation>
+    <animation id="BlackNWhite2-anim" name="BlackNWhite2">
+      <animation>
+        <source id="BlackNWhite2-Matrix-animation-input">
+          <float_array id="BlackNWhite2-Matrix-animation-input-array" count="0">
+</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite2-Matrix-animation-input-array" count="0">
+              <param name="TIME" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite2-Matrix-animation-output-transform">
+          <float_array id="BlackNWhite2-Matrix-animation-output-transform-array" count="0">
+</float_array>
+          <technique_common>
+            <accessor source="#BlackNWhite2-Matrix-animation-output-transform-array" count="0" stride="16">
+              <param type="float4x4"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="BlackNWhite2-Interpolations">
+          <Name_array id="BlackNWhite2-Interpolations-array" count="0">
+</Name_array>
+          <technique_common>
+            <accessor source="#BlackNWhite2-Interpolations-array" count="0">
+              <param type="name"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <sampler id="BlackNWhite2-Matrix-animation-transform">
+          <input semantic="INPUT" source="#BlackNWhite2-Matrix-animation-input"/>
+          <input semantic="OUTPUT" source="#BlackNWhite2-Matrix-animation-output-transform"/>
+          <input semantic="INTERPOLATION" source="#BlackNWhite2-Interpolations"/>
+        </sampler>
+        <channel source="#BlackNWhite2-Matrix-animation-transform" target="BlackNWhite2/matrix"/>
+      </animation>
+    </animation>
+  </library_animations>
+  <library_visual_scenes>
+    <visual_scene id="simple_multi_bone_multi_bind" name="simple_multi_bone_multi_bind">
+      <node name="BlackNWhite1" id="BlackNWhite1" sid="BlackNWhite1">
+        <instance_controller url="#BlackNWhite1Controller">
+          <bind_material>
+            <technique_common>
+              <instance_material symbol="Material1" target="#Material1"/>
+            </technique_common>
+          </bind_material>
+        </instance_controller>
+        <extra>
+          <technique profile="FCOLLADA">
+            <visibility>1.000000</visibility>
+          </technique>
+        </extra>
+      </node>
+      <node name="simple" id="simple" sid="simple" type="JOINT">
+        <matrix sid="matrix">1.000000 0.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 0.000000 1.000000 0.000000 0.000000 0.000000 0.000000 1.000000</matrix>
+        <extra>
+          <technique profile="FCOLLADA">
+            <visibility>1.000000</visibility>
+          </technique>
+        </extra>
+        <node name="simple001_BNW" id="simple001_BNW" sid="simple001_BNW" type="JOINT">
+          <matrix sid="matrix">-0.030064 0.000000 -0.999548 0.000000 0.000000 1.000000 0.000000 1324.162231 0.999548 0.000000 -0.030064 -2158.150879 0.000000 0.000000 0.000000 1.000000</matrix>
+          <extra>
+            <technique profile="FCOLLADA">
+              <visibility>1.000000</visibility>
+            </technique>
+          </extra>
+          <node name="simple011" id="simple011" sid="simple011" type="JOINT">
+            <matrix sid="matrix">0.458390 -0.888602 0.016290 240.479248 0.888602 0.457900 -0.026727 0.000122 0.016290 0.026727 0.999510 -4047.991943 0.000000 0.000000 0.000000 1.000000</matrix>
+            <extra>
+              <technique profile="FCOLLADA">
+                <visibility>1.000000</visibility>
+              </technique>
+            </extra>
+          </node>
+        </node>
+        <node name="simple002_Green" id="simple002_Green" sid="simple002_Green" type="JOINT">
+          <matrix sid="matrix">1.000000 0.000000 0.000000 2314.532227 0.000000 1.000000 0.000000 1036.097168 0.000000 0.000000 1.000000 -0.000045 0.000000 0.000000 0.000000 1.000000</matrix>
+          <extra>
+            <technique profile="FCOLLADA">
+              <visibility>1.000000</visibility>
+            </technique>
+          </extra>
+        </node>
+      </node>
+      <node name="GreenCloud" id="GreenCloud" sid="GreenCloud">
+        <instance_controller url="#GreenCloudController">
+          <bind_material>
+            <technique_common>
+              <instance_material symbol="Wax_02" target="#Wax_02"/>
+            </technique_common>
+          </bind_material>
+        </instance_controller>
+        <extra>
+          <technique profile="FCOLLADA">
+            <visibility>1.000000</visibility>
+          </technique>
+        </extra>
+      </node>
+      <node name="Yellow" id="Yellow" sid="Yellow">
+        <instance_controller url="#YellowController">
+          <bind_material>
+            <technique_common>
+              <instance_material symbol="Material2" target="#Material2"/>
+            </technique_common>
+          </bind_material>
+        </instance_controller>
+        <extra>
+          <technique profile="FCOLLADA">
+            <visibility>1.000000</visibility>
+          </technique>
+        </extra>
+      </node>
+      <node name="BlackNWhite2" id="BlackNWhite2" sid="BlackNWhite2">
+        <instance_controller url="#BlackNWhite2Controller">
+          <bind_material>
+            <technique_common>
+              <instance_material symbol="Material1" target="#Material1"/>
+            </technique_common>
+          </bind_material>
+        </instance_controller>
+        <extra>
+          <technique profile="FCOLLADA">
+            <visibility>1.000000</visibility>
+          </technique>
+        </extra>
+      </node>
+      <extra>
+        <technique profile="MAX3D">
+          <frame_rate>30.000000</frame_rate>
+        </technique>
+        <technique profile="FCOLLADA">
+          <start_time>0.000000</start_time>
+          <end_time>3.333333</end_time>
+        </technique>
+      </extra>
+    </visual_scene>
+  </library_visual_scenes>
+  <scene>
+    <instance_visual_scene url="#simple_multi_bone_multi_bind"/>
+  </scene>
+</COLLADA>

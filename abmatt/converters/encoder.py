@@ -1,6 +1,6 @@
 class ModelEncoder():
     """Abstract class that specifies how to encode model"""
-    def before_encoding(self, geometries):
+    def before_encoding(self, converter):
         return
 
     def get_encoder(self, geometry):

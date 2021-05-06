@@ -1,28 +1,13 @@
 from copy import deepcopy
 
-from abmatt.brres.lib.binfile import Folder, UnpackingError
+from abmatt.brres.lib.binfile import Folder
 from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.brres.lib.unpacking.unpack_key_frames import unpack_key_frames
 from abmatt.brres.lib.unpacking.unpack_subfile import UnpackSubfile
 from abmatt.brres.srt0.srt0_animation import SRTMatAnim, SRTTexAnim
 
 
 class UnpackSrt0Tex(Unpacker):
-    def unpack_key_frame_list(self, anim, binfile):
-        offset = binfile.offset
-        binfile.offset = binfile.read('I', 0)[0] + offset
-        anim.entries = []
-        # header
-        size, uk, fs = binfile.read("2Hf", 8)
-        # print('FrameScale: {} i v d'.format(fs))
-        # str = ''
-        if size <= 0:
-            raise UnpackingError(binfile, 'SRT0 Key frame list has no entries!')
-        for i in range(size):
-            index, value, delta = binfile.read("3f", 12)
-            # str += '({},{},{}), '.format(index, value, delta)
-            anim.entries.append(anim.SRTKeyFrame(value, index, delta))
-        binfile.offset = offset + 4
-        return anim
 
     def unpackScale(self, binfile, flags):
         """ unpacks scale data """
@@ -32,22 +17,22 @@ class UnpackSrt0Tex(Unpacker):
         if flags[3]:  # isotropic
             if flags[4]:  # scale fixed
                 [val] = binfile.read("f", 4)
-                srt0.animations['xscale'].setFixed(val)
-                srt0.animations['yscale'].setFixed(val)
+                srt0.animations['xscale'].set_fixed(val)
+                srt0.animations['yscale'].set_fixed(val)
             else:
-                keyframelist = self.unpack_key_frame_list(srt0.animations['xscale'], binfile)
+                keyframelist = unpack_key_frames(srt0.animations['xscale'], binfile)
                 srt0.animations['yscale'] = deepcopy(keyframelist)
         else:  # not isotropic
             if flags[4]:  # xscale-fixed
                 [val] = binfile.read("f", 4)
-                srt0.animations['xscale'].setFixed(val)
+                srt0.animations['xscale'].set_fixed(val)
             else:
-                self.unpack_key_frame_list(srt0.animations['xscale'], binfile)
+                unpack_key_frames(srt0.animations['xscale'], binfile)
             if flags[5]:  # y-scale-fixed
                 [val] = binfile.read("f", 4)
-                srt0.animations['yscale'].setFixed(val)
+                srt0.animations['yscale'].set_fixed(val)
             else:
-                self.unpack_key_frame_list(srt0.animations['yscale'], binfile)
+                unpack_key_frames(srt0.animations['yscale'], binfile)
 
     def unpackTranslation(self, binfile, flags):
         srt0 = self.node
@@ -56,23 +41,23 @@ class UnpackSrt0Tex(Unpacker):
             return
         if flags[7]:  # x-trans-fixed
             [val] = binfile.read("f", 4)
-            srt0.animations['xtranslation'].setFixed(val)
+            srt0.animations['xtranslation'].set_fixed(val)
         else:
-            self.unpack_key_frame_list(srt0.animations['xtranslation'], binfile)
+            unpack_key_frames(srt0.animations['xtranslation'], binfile)
         if flags[8]:  # y-trans-fixed
             [val] = binfile.read("f", 4)
-            srt0.animations['ytranslation'].setFixed(val)
+            srt0.animations['ytranslation'].set_fixed(val)
         else:
-            self.unpack_key_frame_list(srt0.animations['ytranslation'], binfile)
+            unpack_key_frames(srt0.animations['ytranslation'], binfile)
 
     def unpackRotation(self, binfile, flags):
         """ unpacks rotation """
         if not flags[1]:  # rotation default
             if flags[6]:  # rotation fixed
                 [val] = binfile.read("f", 4)
-                self.node.animations['rot'].setFixed(val)
+                self.node.animations['rot'].set_fixed(val)
             else:
-                self.unpack_key_frame_list(self.node.animations['rot'], binfile)
+                unpack_key_frames(self.node.animations['rot'], binfile)
 
     def parseIntCode(self, code):
         """ Parses the integer code to the class variables """

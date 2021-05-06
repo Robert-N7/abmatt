@@ -291,13 +291,13 @@ class MaterialLibraryGui(MaterialBrowser):
 
 class MaterialSmallEditor(QFrame, ClipableObserver, Tex0WidgetSubscriber):
     def on_map_add(self, tex0, index):
-        self.material.addLayer(tex0.name)
+        self.material.add_layer(tex0.name)
 
     def on_map_remove(self, tex0, index):
-        self.material.removeLayerI(index)
+        self.material.remove_layer_i(index)
 
     def on_map_replace(self, tex0, index):
-        self.material.layers[index].setName(tex0.name)
+        self.material.layers[index].set_name(tex0.name)
 
     def on_map_change(self, tex0, index):
         pass
@@ -373,11 +373,11 @@ class MaterialSmallEditor(QFrame, ClipableObserver, Tex0WidgetSubscriber):
 
     def on_cull_change(self, i):
         if self.material:
-            self.material.setCullModeStr(self.cull_combo.currentText())
+            self.material.set_cull_mode_str(self.cull_combo.currentText())
 
     def on_node_update(self, material):
         self.name_edit.setText(material.name)
-        self.cull_combo.setCurrentText(material.getCullMode())
+        self.cull_combo.setCurrentText(material.get_cull_mode())
         trans = material.get_transparency_threshold()
         if trans != self.transparency.value():
             self.transparency.setValue(trans)

@@ -172,11 +172,7 @@ def compare_brres_files(filenames, ignore_offsets=None, start_at=None, target=No
 
 
 if __name__ == '__main__':
-    # -0 bone rotation
-    # min/max of vertices off a tiny bit
     ignore_offsets = [[], []]
-        # 1463, 1467, 179145, 180489, 181065, 181897, 208553, 209161, 216457, 234313, 234921, 351551, 397759, 399615, 402131, 402143],
-        #              [1463, 1467, 181481, 182825, 183401, 184201, 212201, 212809, 220201, 235625, 236233, 352863, 399071, 400927, 403443, 403455]]
-    target = [[179145, 180489, 181065, 181897, 208553, 209161], [181417, 182761, 183337, 184137, 212137, 212745]]
+    target = [[910, 911, 9288, 9289, 9290, 9291], [910, 911, 9288, 9289, 9290, 9291]]
     start_at = [0, 0]
     compare_brres_files(sys.argv[1:], ignore_offsets, start_at, target)

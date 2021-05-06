@@ -24,6 +24,11 @@ class NodeMix(Node):
     def __bool__(self):
         return bool(self.mixed_weights)
 
+    def __str__(self):
+        s = '{Mixed: ' + ', '.join([str(x) for x in self.mixed_weights])
+        s += ',\nFixed: ' + ', '.join([str(x) for x in self.fixed_weights]) + '}'
+        return s
+
     def add_mixed_weight(self, weight_id, weights):
         """
         :param weight_id:   the id that is referenced by facepoints
@@ -69,6 +74,8 @@ class NodeMix(Node):
         def __next__(self):
             return next(self.weights)
 
+        def __str__(self):
+            return str(self.weight_id) + ':' + str(self.weights)
         # def inf_eq(self, influence):
         #     weights = self.weights
         #     if len(weights) != len(influence):
@@ -97,6 +104,9 @@ class NodeMix(Node):
         def __init__(self, weight_id, bone_id):
             self.weight_id = weight_id
             self.bone_id = bone_id
+
+        def __str__(self):
+            return str(self.weight_id) + ':' + str(self.bone_id)
 
         def to_inf(self):
             return [(self.bone_id, 1.0)]
@@ -129,6 +139,9 @@ class NodeTree(Node):
 
     def add_entry(self, bone_index, parent_index):
         self.nodes.append((bone_index, parent_index))
+
+    def __str__(self):
+        return str(self.nodes)
 
     def unpack(self, binfile):
         nodes = self.nodes

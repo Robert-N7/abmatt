@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from abmatt.autofix import AutoFix
 from abmatt.brres.lib.decoder import decode_geometry_group
 from abmatt.brres.lib.node import Node
@@ -14,6 +16,15 @@ class Point(Node):
     def __init__(self, name, parent, binfile=None):
         self.decoded = None
         super().__init__(name, parent, binfile)
+
+    def paste(self, item):
+        self.comp_count = item.comp_count
+        self.divisor = item.divisor
+        self.format = item.format
+        self.stride = item.stride
+        self.data = deepcopy(item.data)
+        self.count = item.count
+        return self
 
     @property
     def default_comp_count(self):

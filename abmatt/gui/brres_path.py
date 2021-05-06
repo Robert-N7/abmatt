@@ -87,11 +87,11 @@ class BrresPath:
         brres = Brres.get_brres(brres_path)
         new_brres = False
         if not brres:
-            brres = Brres(brres_path, readFile=False)
+            brres = Brres(brres_path, read_file=False)
             new_brres = True
         if brres:
             if model_name:
-                mdl0 = brres.getModel(model_name)
+                mdl0 = brres.get_model(model_name)
                 if mdl0:
                     if material_name:
                         material = mdl0.get_material_by_name(material_name)

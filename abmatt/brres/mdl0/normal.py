@@ -6,6 +6,10 @@ TYPE_NORMAL_OR_BINORMAL_OR_TANGENT = 2
 
 
 class Normal(Point):
+    def __deepcopy__(self, memodict=None):
+        copy = Normal(self.name, None)
+        return copy.paste(self)
+
     @property
     def point_width(self):
         if self.comp_count == TYPE_NORMAL_BINORMAL_TANGENT:

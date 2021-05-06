@@ -33,7 +33,7 @@ class UnpackPat0Animation(Unpacker):
         pat0.fixedTexture = flags >> 1 & 1
         # if self.fixedTexture:
         #     print('{} Fixed texture!'.format(self.name))
-        pat0.hasTexture = flags >> 2 & 1
+        pat0.has_texture = flags >> 2 & 1
         pat0.hasPalette = flags >> 3 & 1
 
     def unpack(self, pat0, binfile):

@@ -39,7 +39,7 @@ class UnpackBrres(Unpacker):
         for key in model_anim_map:
             collection = SRTCollection(key, brres, model_anim_map[key])
             anim_collections.append(collection)
-            mdl = brres.getModel(key)
+            mdl = brres.get_model(key)
             if not mdl:
                 AutoFix.get().info('No model found matching srt0 animation {} in {}'.format(key, brres.name), 3)
             else:
@@ -55,7 +55,7 @@ class UnpackBrres(Unpacker):
         for key in model_anim_map:
             collection = Pat0Collection(key, brres, model_anim_map[key])
             anim_collections.append(collection)
-            mdl = brres.getModel(key)
+            mdl = brres.get_model(key)
             if not mdl:
                 AutoFix.get().info('No model found matching pat0 animation {} in {}'.format(key, brres.name), 3)
             else:

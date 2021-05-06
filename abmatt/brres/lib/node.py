@@ -4,6 +4,13 @@ from copy import deepcopy
 from abmatt.autofix import AutoFix
 
 
+def get_name_mapping(group):
+    mapper = {}
+    for x in group:
+        mapper[x.name] = x
+    return mapper
+
+
 def get_item_by_index(group, index):
     try:
         item = group[index]
@@ -26,24 +33,18 @@ class Packable:
 
 class Node:
     """A node with name and parent"""
+
     def __init__(self, name, parent, binfile=None):
         self.parent = parent
         self.name = name
-        if binfile is not None:
-            # this provides a way to handle unpacking elsewhere
-            pass
-        else:
+        if binfile is None:
             self.begin()
 
     def begin(self):
         pass
 
-    def __deepcopy__(self, memodict={}):
-        parent = self.parent
-        self.parent = None
-        x = deepcopy(self)
-        self.parent = parent
-        return x
+    def __deepcopy__(self, memodict=None):
+        raise NotImplementedError()
 
     def __str__(self):
         return self.name
@@ -54,10 +55,11 @@ class Node:
 
 class ClipableObserver:
     """Receives updates from clipable"""
+
     def on_node_update(self, node):
         pass
 
-    def on_child_update(self, child):   # might not have children
+    def on_child_update(self, child):  # might not have children
         pass
 
     def on_rename_update(self, node, old_name):
@@ -74,7 +76,7 @@ class Clipable(Node):
 
     def __init__(self, name, parent, binfile):
         self.is_modified = False
-        self.observers = None       # also make this observable
+        self.observers = None  # also make this observable
         super(Clipable, self).__init__(name, parent, binfile)
 
     def rename(self, name):
@@ -148,7 +150,7 @@ class Clipable(Node):
         if not self.is_modified:
             self.is_modified = True
             if self.parent:
-                self.parent.mark_modified(False)    # marks parent modified but does not notify
+                self.parent.mark_modified(False)  # marks parent modified but does not notify
 
     def _mark_unmodified_group(self, group):
         for x in group:

@@ -200,12 +200,12 @@ class Material(Clipable):
     def auto_detect_layer(self):
         if not self.layers:
             if self.name in self.get_texture_map():
-                self.addLayer(self.name)
+                self.add_layer(self.name)
 
     def __str__(self):
         return "{}: xlu {} layers {} culling {} blend {}".format(self.name,
                                                                  self.xlu, len(self.layers),
-                                                                 self.CULL_STRINGS[self.cullmode], self.getBlend())
+                                                                 self.CULL_STRINGS[self.cullmode], self.get_blend())
 
     # ==========================================================================
     # Getters
@@ -223,57 +223,57 @@ class Material(Clipable):
     def is_xlu(self):
         return self.xlu
 
-    def getXlu(self):
+    def get_xlu(self):
         return self.xlu
 
-    def getRef0(self):
+    def get_ref0(self):
         return self.ref0
 
-    def getRef1(self):
+    def get_ref1(self):
         return self.ref1
 
-    def getComp0(self):
+    def get_comp0(self):
         return self.COMP_STRINGS[self.comp0]
 
-    def getComp1(self):
+    def get_comp1(self):
         return self.COMP_STRINGS[self.comp1]
 
     def getLogic(self):
         return self.LOGIC_STRINGS[self.logic]
 
-    def getCompareBeforeTexture(self):
+    def get_compare_before_texture(self):
         return self.compareBeforeTexture
 
-    def getBlend(self):
+    def get_blend(self):
         return self.blend_enabled
 
-    def getBlendSrc(self):
+    def get_blend_src(self):
         return self.BLFACTOR_STRINGS[self.blend_source]
 
-    def getBlendLogic(self):
+    def get_blend_logic(self):
         return self.BLLOGIC_STRINGS[self.blend_logic]
 
-    def getBlendDest(self):
+    def get_blend_dest(self):
         return self.BLFACTOR_STRINGS[self.blend_dest]
 
-    def getConstantAlpha(self):
+    def get_constant_alpha(self):
         if not self.constant_alpha_enabled:
             return -1
         return self.constant_alpha
 
-    def getCullMode(self):
+    def get_cull_mode(self):
         return self.CULL_STRINGS[self.cullmode]
 
     def getShader(self):
         return self.shader
 
-    def getLightChannel(self):
+    def get_light_channel(self):
         return self.lightChannels[0].to_json()
 
-    def getLightset(self):
+    def get_lightset(self):
         return self.lightset
 
-    def getFogset(self):
+    def get_fogset(self):
         return self.fogset
 
     def getColor(self, i):
@@ -287,28 +287,28 @@ class Material(Clipable):
         if parent:
             return parent.parent
 
-    def getShaderColor(self):
+    def get_shader_color(self):
         return {
             'color': self.colors,
             'constant': self.constant_colors
         }
 
-    def getMatrixMode(self):
+    def get_matrix_mode(self):
         return self.MATRIXMODE[self.textureMatrixMode]
 
-    def getEnableDepthTest(self):
+    def get_enable_depth_test(self):
         return self.depth_test
 
-    def getEnableDepthUpdate(self):
+    def get_enable_depth_update(self):
         return self.depth_update
 
-    def getDepthFunction(self):
+    def get_depth_function(self):
         return self.COMP_STRINGS[self.depth_function]
 
-    def getDrawPriority(self):
+    def get_draw_priority(self):
         return [x.get_draw_priority() for x in self.polygons]
 
-    def getName(self):
+    def get_name(self):
         return self.name
 
     def getLayerI(self, layer_index):
@@ -322,10 +322,10 @@ class Material(Clipable):
             return layers[0]
 
     def forceAdd(self, key):
-        textures = self.parent.parent.getTextures(key)
+        textures = self.parent.parent.get_textures(key)
         if textures:
             key = textures[0].name
-        return self.addLayer(key)
+        return self.add_layer(key)
 
     def getDrawXLU(self):
         return self.xlu
@@ -340,7 +340,7 @@ class Material(Clipable):
     def getIndMatrix(self, id=0):
         return self.indirect_matrices[id].matrix
 
-    def getIndMatrixStr(self, id=0):
+    def get_ind_matrix_str(self, id=0):
         matrix = self.indirect_matrices[id]
         return {
             'id': id,
@@ -349,14 +349,14 @@ class Material(Clipable):
             'matrix': matrix.matrix
         }
 
-    def getLayerCount(self):
+    def get_layer_count(self):
         return len(self.layers)
 
     # Get Functions
-    GET_SETTING = (getXlu, getRef0, getRef1, getComp0, getComp1, getCompareBeforeTexture,
-                   getBlend, getBlendSrc, getBlendLogic, getBlendDest, getConstantAlpha, getCullMode,
-                   getShaderColor, getLightChannel, getLightset, getFogset, getMatrixMode, getEnableDepthTest,
-                   getEnableDepthUpdate, getDepthFunction, getDrawPriority, getIndMatrixStr, getName, getLayerCount)
+    GET_SETTING = (get_xlu, get_ref0, get_ref1, get_comp0, get_comp1, get_compare_before_texture,
+                   get_blend, get_blend_src, get_blend_logic, get_blend_dest, get_constant_alpha, get_cull_mode,
+                   get_shader_color, get_light_channel, get_lightset, get_fogset, get_matrix_mode, get_enable_depth_test,
+                   get_enable_depth_update, get_depth_function, get_draw_priority, get_ind_matrix_str, get_name, get_layer_count)
 
     def get_str(self, key):
         for i in range(len(self.SETTINGS)):
@@ -384,11 +384,11 @@ class Material(Clipable):
             self.parent.on_material_rename(self, value)
         return result
 
-    def setXluStr(self, str_value):
+    def set_xlu_str(self, str_value):
         val = validBool(str_value)
         if self.xlu != val:
             self.xlu = val
-            self.setDrawXLU(val)
+            self.set_draw_xlu(val)
             self.mark_modified()
 
     def __parse_json_color_str(self, x):
@@ -403,7 +403,7 @@ class Material(Clipable):
                 break
             self.constant_colors[i] = constants[i]
 
-    def setShaderColorStr(self, str):
+    def set_shader_color_str(self, str):
         if type(str) == dict:     # dictionary of colors
             self.__parse_json_color_str(str)
         else:
@@ -432,7 +432,7 @@ class Material(Clipable):
 
     def set_single_color(self, color):
         self.shader.set_single_color()
-        self.setLayerCount(0)
+        self.set_layer_count(0)
         self.set_color(color)
 
     def set_constant_color(self, color, color_num=0):
@@ -440,14 +440,14 @@ class Material(Clipable):
             self.constant_colors[color_num] = color
             self.mark_modified()
 
-    def setCullModeStr(self, cullstr):
+    def set_cull_mode_str(self, cullstr):
         cullstr = cullstr.replace('cull', '')
         i = indexListItem(self.CULL_STRINGS, cullstr, self.cullmode)
         if i >= 0 and self.cullmode != i:
             self.cullmode = i
             self.mark_modified()
 
-    def setLightChannelStr(self, lcStr):
+    def set_light_channel_str(self, lcStr):
         if type(lcStr) == dict:
             self.lightChannels[0].parse_json(lcStr)
         else:
@@ -459,7 +459,7 @@ class Material(Clipable):
             self.lightChannels[0][key] = value
         self.mark_modified()
 
-    def setLightsetStr(self, str):
+    def set_lightset_str(self, str):
         val = int(str)
         if val > 0:
             AutoFix.get().error("Invalid lightset " + str + ", expected -1")
@@ -467,7 +467,7 @@ class Material(Clipable):
             self.lightset = val
             self.mark_modified()
 
-    def setFogsetStr(self, str):
+    def set_fogset_str(self, str):
         val = int(str)
         if val != 0 and val != -1:
             raise ValueError("Invalid fogset " + str + ", expected 0")
@@ -485,7 +485,7 @@ class Material(Clipable):
             self.constant_alpha = val
             self.mark_modified()
 
-    def setConstantAlphaStr(self, str):
+    def set_constant_alpha_str(self, str):
         if "disable" in str:
             val = -1
         elif "enable" in str:
@@ -509,7 +509,7 @@ class Material(Clipable):
                 self.constant_alpha = val
                 self.mark_modified()
 
-    def setMatrixModeStr(self, str):
+    def set_matrix_mode_str(self, str):
         if "maya" in str:
             if self.textureMatrixMode != 0:
                 self.textureMatrixMode = 0
@@ -523,7 +523,7 @@ class Material(Clipable):
             raise ValueError("Invalid Matrix Mode " + str + ", Expected Maya|XSI|3DSMax")
         self.mark_modified()
 
-    def setRef0Str(self, str):
+    def set_ref0_str(self, str):
         val = int(str)
         if not 0 <= val < 256:
             raise ValueError("Ref0 must be 0-255")
@@ -531,7 +531,7 @@ class Material(Clipable):
             self.ref0 = val
             self.mark_modified()
 
-    def setRef1Str(self, str):
+    def set_ref1_str(self, str):
         val = int(str)
         if not 0 <= val < 256:
             raise ValueError("Ref1 must be 0-255")
@@ -539,94 +539,94 @@ class Material(Clipable):
             self.ref1 = val
             self.mark_modified()
 
-    def setComp0Str(self, str):
+    def set_comp0_str(self, str):
         i = indexListItem(self.COMP_STRINGS, str, self.comp0)
         if i >= 0:
             self.comp0 = i
             self.mark_modified()
 
-    def setComp1Str(self, str):
+    def set_comp1_str(self, str):
         i = indexListItem(self.COMP_STRINGS, str, self.comp1)
         if i >= 0:
             self.comp1 = i
             self.mark_modified()
 
-    def setLogic(self, str):
+    def set_logic(self, str):
         i = indexListItem(self.LOGIC_STRINGS, str, self.logic)
         if i >= 0:
             self.logic = i
             self.mark_modified()
 
-    def setCompareBeforeTex(self, val):
+    def set_compare_before_tex(self, val):
         if val != self.compareBeforeTexture:
             self.compareBeforeTexture = val
             self.mark_modified()
 
-    def setCompareBeforeTexStr(self, str):
-        self.setCompareBeforeTex(validBool(str))
+    def set_compare_before_tex_str(self, str):
+        self.set_compare_before_tex(validBool(str))
 
     def enable_xlu(self, enable):
         if self.xlu != enable:
             self.xlu = enable
             self.mark_modified()
 
-    def setBlendStr(self, str):
+    def set_blend_str(self, str):
         val = validBool(str)
         if val != self.blend_enabled:
             self.blend_enabled = val
             self.mark_modified()
 
-    def enableBlendFlag(self, enable):
+    def enable_blend_flag(self, enable):
         if self.blend_enabled != enable:
             self.blend_enabled = enable
             self.mark_modified()
 
-    def setBlendSrcStr(self, str):
+    def set_blend_src_str(self, str):
         i = indexListItem(self.BLFACTOR_STRINGS, str, self.blend_source)
         if i >= 0:
             self.blend_source = i
             self.mark_modified()
 
-    def setBlendDestStr(self, str):
+    def set_blend_dest_str(self, str):
         i = indexListItem(self.BLFACTOR_STRINGS, str, self.blend_dest)
         if i >= 0:
             self.blend_dest = i
             self.mark_modified()
 
-    def setBlendLogicStr(self, str):
+    def set_blend_logic_str(self, str):
         i = indexListItem(self.BLLOGIC_STRINGS, str, self.blend_logic)
         if i >= 0:
             self.blend_logic = i
             self.mark_modified()
 
-    def enableBlendLogic(self, enabled):
+    def enable_blend_logic(self, enabled):
         if self.blend_logic_enabled != enabled:
             self.blend_logic_enabled = enabled
             self.mark_modified()
 
-    def setEnableDepthTest(self, val):
+    def set_enable_depth_test(self, val):
         if val != self.depth_test:
             self.depth_test = val
             self.mark_modified()
 
-    def setEnableDepthTestStr(self, str):
-        self.setEnableDepthTest(validBool(str))
+    def set_enable_depth_test_str(self, str):
+        self.set_enable_depth_test(validBool(str))
 
-    def setEnableDepthUpdate(self, val):
+    def set_enable_depth_update(self, val):
         if val != self.depth_update:
             self.depth_update = val
             self.mark_modified()
 
-    def setEnableDepthUpdateStr(self, str):
-        self.setEnableDepthUpdate(validBool(str))
+    def set_enable_depth_update_str(self, str):
+        self.set_enable_depth_update(validBool(str))
 
-    def setDepthFunctionStr(self, str):
+    def set_depth_function_str(self, str):
         i = indexListItem(self.COMP_STRINGS, str, self.depth_function)
         if i >= 0:
             self.depth_function = i
             self.mark_modified()
 
-    def setDrawPriorityStr(self, str):
+    def set_draw_priority_str(self, str):
         if str[0].isdigit():
             i = validInt(str, 0, 255)
             for x in self.polygons:
@@ -638,14 +638,14 @@ class Material(Clipable):
                     break
                 self.polygons[i].set_draw_priority(validInt(priorities[i].strip(), 0))
 
-    def setDrawXLU(self, enabled):
+    def set_draw_xlu(self, enabled):
         if enabled != self.xlu:
             self.xlu = enabled
             self.mark_modified()
 
     MATRIX_ERR = 'Error parsing "{}", Usage: IndirectMatrix:[<i>:]<scale>,<r1c1>,<r1c2>,<r1c3>,<r2c1>,<r2c2>,<r2c3>'
 
-    def setIndMatrixEnable(self, id=0, enable=True):
+    def set_ind_matrix_enable(self, id=0, enable=True):
         x = self.indirect_matrices[id]
         x.enabled = enable
         if enable and not x.scale:
@@ -653,7 +653,7 @@ class Material(Clipable):
             x.scale = 14
             x.matrix = [[0.6396484375, 0, 0], [0, 0.639648375, 0]]
 
-    def setIndMatrixScale(self, scale, id=0):
+    def set_ind_matrix_scale(self, scale, id=0):
         matrix = self.indirect_matrices[id]
         if not -17 <= scale < 47:
             raise ValueError('Indirect scale {} out of range!'.format(scale))
@@ -671,7 +671,7 @@ class Material(Clipable):
             my_matrix[row][col] = value
             self.mark_modified()
 
-    def setIndMatrix(self, matrix, id=0):
+    def set_ind_matrix(self, matrix, id=0):
         my_matrix = self.indirect_matrices[id].matrix
         modify_flag = False
         if len(matrix) != 2 or len(matrix[0]) != 3:
@@ -691,7 +691,7 @@ class Material(Clipable):
         matrix.scale = data['scale']
         matrix.matrix = data['matrix']
 
-    def setIndirectMatrixStr(self, str_value):
+    def set_indirect_matrix_str(self, str_value):
         if type(str_value) == dict:
             self.__parse_json_ind_matrix(str_value)
         else:
@@ -703,7 +703,7 @@ class Material(Clipable):
             if ',' not in str_value:
                 try:
                     enable = validBool(str_value)
-                    self.setIndMatrixEnable(matrix_index, enable)
+                    self.set_ind_matrix_enable(matrix_index, enable)
                     return
                 except ValueError as e:
                     raise ValueError(self.MATRIX_ERR.format(str_value))
@@ -718,28 +718,28 @@ class Material(Clipable):
             ind_matrix.enabled = True
         self.mark_modified()
 
-    def setLayerCountStr(self, str_value):
-        self.setLayerCount(validInt(str_value, 0, 8))
+    def set_layer_count_str(self, str_value):
+        self.set_layer_count(validInt(str_value, 0, 8))
 
-    def setLayerCount(self, val):
+    def set_layer_count(self, val):
         current_len = len(self.layers)
         if val > current_len:
             while val > current_len:
-                current_len = self.addEmptyLayer()
+                current_len = self.add_empty_layer()
             self.mark_modified()
         elif val < current_len:
             while val < current_len:
-                current_len = self.removeLayerI()
+                current_len = self.remove_layer_i()
             self.mark_modified()
 
     # Set functions
-    SET_SETTING = (setXluStr, setRef0Str, setRef1Str,
-                   setComp0Str, setComp1Str, setCompareBeforeTexStr, setBlendStr, setBlendSrcStr,
-                   setBlendLogicStr, setBlendDestStr, setConstantAlphaStr, setCullModeStr,
-                   setShaderColorStr, setLightChannelStr, setLightsetStr,
-                   setFogsetStr, setMatrixModeStr, setEnableDepthTestStr,
-                   setEnableDepthUpdateStr, setDepthFunctionStr, setDrawPriorityStr,
-                   setIndirectMatrixStr, rename, setLayerCountStr)
+    SET_SETTING = (set_xlu_str, set_ref0_str, set_ref1_str,
+                   set_comp0_str, set_comp1_str, set_compare_before_tex_str, set_blend_str, set_blend_src_str,
+                   set_blend_logic_str, set_blend_dest_str, set_constant_alpha_str, set_cull_mode_str,
+                   set_shader_color_str, set_light_channel_str, set_lightset_str,
+                   set_fogset_str, set_matrix_mode_str, set_enable_depth_test_str,
+                   set_enable_depth_update_str, set_depth_function_str, set_draw_priority_str,
+                   set_indirect_matrix_str, rename, set_layer_count_str)
 
     # --------------------- threshold transparency -------------------------------
     def get_transparency_threshold(self):
@@ -801,7 +801,7 @@ class Material(Clipable):
         if self.parent is not None:
             self.parent.add_srt0(anim)
         self.set_srt0(anim)
-        anim.addLayer()
+        anim.add_layer()
         self.mark_modified()
         return anim
 
@@ -817,7 +817,7 @@ class Material(Clipable):
             AutoFix.get().error('Multiple Srt0 for {}'.format(self.name), 1)
             return False
         self.srt0 = anim
-        anim.setMaterial(self)
+        anim.set_material(self)
         return True
 
     def get_srt0(self):
@@ -865,7 +865,7 @@ class Material(Clipable):
             self.blend_enabled = False
             self.xlu = False
             self.depth_update = True
-            self.setDrawPriorityStr('0')
+            self.set_draw_priority_str('0')
             self.mark_modified()
 
     def enable_blend(self, enabled=True):
@@ -876,7 +876,7 @@ class Material(Clipable):
                 self.xlu = True
                 self.set_transparency_threshold(0)
                 self.depth_update = False
-                self.setDrawPriorityStr('1')
+                self.set_draw_priority_str('1')
                 self.mark_modified()
         else:
             self.disable_blend()
@@ -932,36 +932,36 @@ class Material(Clipable):
             self.mark_modified()
 
     # -------------------------------- Layer removing/adding --------------------------
-    def removeLayerI(self, index=-1):
+    def remove_layer_i(self, index=-1):
         """Removes layer at index"""
         layer = self.layers[index]
         self.layers.pop(index)
         if self.srt0:
-            self.srt0.removeLayerI(index)
+            self.srt0.remove_layer_i(index)
         self.mark_modified()
         return len(self.layers)
 
-    def removeLayer(self, name):
+    def remove_layer(self, name):
         """ Removes layer from material by name """
         for i, x in enumerate(self.layers):
             if x.name == name:
-                self.removeLayerI(i)
+                self.remove_layer_i(i)
                 self.mark_modified()
                 return
         raise ValueError('Material "{}" has no layer "{}" to remove'.format(self.name, name))
 
-    def addEmptyLayer(self):
+    def add_empty_layer(self):
         """Adds 1 layer"""
-        self.addLayer('Null')
+        self.add_layer('Null')
         return len(self.layers)
 
-    def addLayer(self, name):
+    def add_layer(self, name):
         """ Creates and returns new layer """
         i = len(self.layers)
         l = Layer(name, self)
         self.layers.append(l)
         if self.srt0:
-            self.srt0.updateLayerNameI(i, name)
+            self.srt0.update_layer_name_i(i, name)
         self.mark_modified()
         return l
 
@@ -974,9 +974,9 @@ class Material(Clipable):
         if self.srt0:
             self.srt0.mark_unmodified()
 
-    def renameLayer(self, layer, name):
+    def rename_layer(self, layer, name):
         if self.srt0:
-            self.srt0.updateLayerNameI(layer.layer_index, name)
+            self.srt0.update_layer_name_i(layer.layer_index, name)
         if self.parent:
             self.parent.rename_texture_link(layer, name)
         layer.rename(name)
@@ -1123,11 +1123,11 @@ class Material(Clipable):
         my_layers = self.layers
         item_layers = item.layers
         num_layers = len(item_layers)
-        self.setLayerCount(num_layers)
+        self.set_layer_count(num_layers)
         for i in range(num_layers):
             my_layer = my_layers[i]
             item_layer = item_layers[i]
             my_layer.paste(item_layer)
-            my_layer.setName(item_layer.name)
+            my_layer.set_name(item_layer.name)
             my_layer.tex0_ref = item_layer.get_tex0()
         self.on_brres_link(self.getBrres())

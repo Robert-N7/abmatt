@@ -3,9 +3,8 @@
 import math
 
 from abmatt.autofix import AutoFix, Bug
-from abmatt.brres.lib import decoder
 from abmatt.brres.lib.matching import fuzzy_match, MATCHING
-from abmatt.brres.lib.node import Node
+from abmatt.brres.lib.node import Node, get_name_mapping
 from abmatt.brres.lib.packing.pack_mdl0.pack_mdl0 import PackMdl0
 from abmatt.brres.lib.unpacking.unpack_mdl0.unpack_mdl0 import UnpackMdl0
 from abmatt.brres.mdl0.bone import Bone
@@ -77,7 +76,7 @@ class Mdl0(SubFile):
         self.DrawOpa = self.DrawXlu = self.NodeTree = self.NodeMix = None
         self.weights_by_id = None
         self.rebuild_head = False
-        self.boneMatrixCount = 0
+        self.bone_matrix_count = 0
         self.minimum = [0] * 3
         self.maximum = [0] * 3
         self.definitions = []
@@ -86,7 +85,7 @@ class Mdl0(SubFile):
         self.normals = []
         self.colors = []
         self.uvs = []
-        self.faceCount = 0
+        self.face_count = 0
         self.facepoint_count = 0
         self.scaling_rule = 0
         self.texture_matrix_mode = 0
@@ -103,12 +102,10 @@ class Mdl0(SubFile):
         super(Mdl0, self).__init__(name, parent, binfile)
 
     def get_influences(self):
-        if self.influences is None:
-            self.influences = decoder.decode_mdl0_influences(self)
         return self.influences
 
     def begin(self):
-        self.boneTable = []
+        self.bone_table = []
         self.parent.has_new_model = True
         for definition in ('DrawOpa', 'DrawXlu', 'NodeTree', 'NodeMix'):
             self.__setattr__(definition, get_definition(definition, self))
@@ -117,27 +114,8 @@ class Mdl0(SubFile):
         self.is_modified = False
         self._mark_unmodified_group(self.materials)
 
-    def get_weights_by_ids(self, indices):
-        weights_by_id = self.weights_by_id
-        if weights_by_id is None:
-            self.weights_by_id = weights_by_id = {}
-            if self.NodeMix is not None:
-                for x in self.NodeMix.fixed_weights:
-                    self.weights_by_id[x.weight_id] = x
-                for x in self.NodeMix.mixed_weights:
-                    self.weights_by_id[x.weight_id] = x
-        weights = []
-        bonetable = self.boneTable
-        for index in indices:
-            # weight = bonetable[index]
-            if False:
-                weights.append([(weight, 1)])
-            else:
-                weights.append([(bonetable[x[0]], x[1]) for x in weights_by_id[index].to_inf()])
-        return weights
-
     def set_bonetable(self, bonetable):
-        self.boneTable = bonetable
+        self.bone_table = bonetable
 
     def search_for_min_and_max(self):
         minimum = [math.inf] * 3
@@ -156,13 +134,46 @@ class Mdl0(SubFile):
         bone.minimum = [x for x in self.minimum]
         bone.maximum = [x for x in self.maximum]
 
+    def rebuild_node_tree(self):
+        new_tree = []
+        for bone in self.bones:
+            parent_index = bone.b_parent.weight_id if bone.b_parent else 0
+            new_tree.append((bone.index, parent_index))
+        self.NodeTree.nodes = new_tree
+
     def rebuild_header(self):
         """After encoding data, calculates the header data"""
-        self.boneMatrixCount = len(self.boneTable)
+        self.bone_matrix_count = len(self.bone_table)
         self.search_for_min_and_max()
         self.facepoint_count = sum(obj.facepoint_count for obj in self.objects)
-        self.faceCount = sum(obj.face_count for obj in self.objects)
+        self.face_count = sum(obj.face_count for obj in self.objects)
+        self.rebuild_node_tree()
         self.rebuild_head = False
+
+    def rebuild_vertex_refs(self):
+        mapper = get_name_mapping(self.vertices)
+        for poly in self.objects:
+            poly.vertices = mapper[poly.vertices.name]
+
+    def rebuild_normal_refs(self):
+        mapper = get_name_mapping(self.normals)
+        for poly in self.objects:
+            normals = poly.get_normal_group()
+            if normals:
+                poly.normals = mapper[normals.name]
+
+    def rebuild_uv_refs(self):
+        mapper = get_name_mapping(self.uvs)
+        for poly in self.objects:
+            for i in range(poly.count_uvs()):
+                poly.uvs[i] = mapper[poly.get_uv_group(i).name]
+
+    def rebuild_color_refs(self):
+        mapper = get_name_mapping(self.colors)
+        for poly in self.objects:
+            colors = poly.get_color_group()
+            if colors:
+                poly.colors[0] = mapper[colors.name]
 
     def get_str(self, key):
         if key == 'name':
@@ -271,17 +282,14 @@ class Mdl0(SubFile):
                  fixed_rotation=fixed_rotation, fixed_translation=fixed_translation)
         b.index = len(self.bones)
         self.bones.append(b)
-        if self.boneTable is None:
-            self.boneTable = []
-        b.weight_id = len(self.boneTable)
-        self.boneTable.append(self.boneMatrixCount)
+        if self.bone_table is None:
+            self.bone_table = []
+        b.weight_id = len(self.bone_table)
+        self.bone_table.append(self.bone_matrix_count)
         if parent_bone:
-            parent_index = parent_bone.index
             parent_bone.link_child(b)
-        else:
-            parent_index = 0
-        self.NodeTree.add_entry(self.boneMatrixCount, parent_index)
-        self.boneMatrixCount += 1
+        # self.NodeTree.add_entry(self.boneMatrixCount, parent_index)
+        self.bone_matrix_count += 1
         return b
 
     def add_definition(self, material, polygon, visible_bone=None, priority=0):
@@ -389,7 +397,7 @@ class Mdl0(SubFile):
         return MATCHING.findAll(name, self.materials)
 
     def add_texture_link(self, name):
-        if name != 'Null' and not self.parent.getTexture(name):
+        if name != 'Null' and not self.parent.get_texture(name):
             tex = fuzzy_match(name, self.parent.textures)
             notify = 'Adding reference to unknown texture "{}"'.format(name)
             if tex:
@@ -399,7 +407,7 @@ class Mdl0(SubFile):
     def rename_texture_link(self, layer, name):
         """Attempts to rename a layer, raises value error if the texture can't be found"""
         # No link found, try to find texture matching and create link
-        if name != 'Null' and not self.parent.getTexture(name):
+        if name != 'Null' and not self.parent.get_texture(name):
             tex = fuzzy_match(name, self.parent.textures)
             notify = 'Adding reference to unknown texture "{}"'.format(name)
             if tex:

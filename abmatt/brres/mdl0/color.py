@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from abmatt.autofix import AutoFix
 from abmatt.brres.lib.decoder import ColorDecoder
 from abmatt.brres.lib.node import Node
@@ -17,14 +19,28 @@ class Color(Node):
         self.decoded = None
         super().__init__(name, parent, binfile)
 
+    def __deepcopy__(self, memodict=None):
+        copy = Color(self.name, None)
+        return copy.paste(self)
+
+    def paste(self, item):
+        self.flags = item.flags
+        self.index = item.index
+        self.count = item.count
+        self.format = item.format
+        self.has_alpha = item.has_alpha
+        self.stride = item.stride
+        self.data = deepcopy(item.data)
+        return self
+
     def begin(self):
-        self.flags = 0
         self.index = 0
         self.count = 0
         self.format = FMT_RGB8
         self.has_alpha = False
         self.stride = 3
         self.flags = 0
+        self.data = None
 
     def get_decoded(self):
         if self.decoded is None:

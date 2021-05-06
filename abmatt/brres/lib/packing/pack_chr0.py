@@ -1,4 +1,5 @@
 from abmatt.brres.lib.binfile import Folder
+from abmatt.brres.lib.packing.interface import Packer
 from abmatt.brres.lib.packing.pack_subfile import PackSubfile
 
 
@@ -15,5 +16,12 @@ class PackChr0(PackSubfile):
         for x in chr0.animations:  # hackish way of overwriting the string offsets
             binfile.offset = binfile.beginOffset + x.offset
             f.createEntryRefI()
-            binfile.storeNameRef(x.name)
+            PackChr0BoneAnimation(x, binfile)
+        binfile.end()
+
+
+class PackChr0BoneAnimation(Packer):
+    def pack(self, node, binfile):
+        binfile.start()
+        binfile.storeNameRef(node.name)
         binfile.end()
