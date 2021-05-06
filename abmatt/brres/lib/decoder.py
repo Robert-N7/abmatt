@@ -40,10 +40,10 @@ class ColorDecoder:
 
     @staticmethod
     def decode_rgb565(color_data, num_colors):
-        data = unpack('>{}H'.format(num_colors), color_data)
+        data = unpack_from('>{}H'.format(num_colors), color_data, 0)
         colors = []
         for color in data:
-            colors.append(((color >> 8) & 0xf8, (color >> 3) & 0xfc, (color & 0x1f) << 3, 0xff))
+            colors.append(((color >> 8) & 0xf8 | 0x7, (color >> 3) & 0xfc | 0x3, (color & 0x1f) << 3 | 0x7, 0xff))
         return colors
 
     @staticmethod
@@ -69,10 +69,10 @@ class ColorDecoder:
     @staticmethod
     def decode_rgba4(data, num_colors):
         colors = []
-        c_data = unpack('>{}H'.format(num_colors), data)
+        c_data = unpack_from('>{}H'.format(num_colors), data, 0)
         for color in c_data:
-            colors.append((color >> 8 & 0xf0, color >> 4 & 0xf0,
-                           color & 0xf0, color << 4 & 0xf0))
+            colors.append((color >> 8 & 0xf0 | 0xf, color >> 4 & 0xf0 | 0xf,
+                           color & 0xf0 | 0xf, color << 4 & 0xf0 | 0xf))
         return colors
 
     @staticmethod
@@ -81,8 +81,8 @@ class ColorDecoder:
         offset = 0
         for i in range(num_colors):
             d = unpack_from('>3B', data, offset)
-            colors.append((d[0] & 0xfc, (d[0] & 0x3) << 6 | (d[1] & 0xf0) >> 2,
-                           d[1] << 4 & 0xf0 | d[2] >> 4 & 0xc, d[2] << 2 & 0xfc))
+            colors.append((d[0] & 0xfc | 0x3, (d[0] & 0x3) << 6 | (d[1] & 0xf0) >> 2 | 0x3,
+                           d[1] << 4 & 0xf0 | d[2] >> 4 & 0xc | 0x3, d[2] << 2 & 0xfc | 0x3))
             offset += 3
         return colors
 
