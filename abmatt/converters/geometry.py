@@ -1,19 +1,14 @@
-from struct import pack, unpack_from
+from struct import pack
 
 import numpy as np
 
-from abmatt.autofix import AutoFix
-from abmatt.brres.lib.decoder import decode_geometry_group, ColorDecoder
 from abmatt.brres.mdl0.color import Color
 from abmatt.brres.mdl0.normal import Normal
 from abmatt.brres.mdl0.polygon import Polygon
 from abmatt.brres.mdl0.texcoord import TexCoord
 from abmatt.brres.mdl0.vertex import Vertex
-from abmatt.converters.colors import ColorCollection
-from abmatt.converters.convert_lib import Converter
-from abmatt.converters.influence import InfluenceCollection
-from abmatt.converters.points import PointCollection
-from abmatt.converters.triangle import TriangleSet
+from abmatt.converters.error import ConvertError
+from abmatt.converters.triangle import TriangleSet, encode_triangles, encode_triangle_strip, get_weighted_tri_groups
 
 
 class Geometry:
@@ -62,7 +57,6 @@ class Geometry:
         return True
 
     def swap_y_z_axis(self):
-        collections = [self.vertices, self.normals]
         points = self.vertices.points
         points[:, [1, 2]] = points[:, [2, 1]]
         points[:, 2] *= -1
@@ -108,14 +102,15 @@ class Geometry:
         if self.__encode_colors(p, self.colors, mdl):
             p.color0_index = self.ipp()
         self.__encode_texcoords(p, self.texcoords, mdl)
-        tris = self.__construct_tris()
-        if p.has_weighted_matrix():
-            data, p.face_count, p.facepoint_count = self.__encode_weighted_tris(tris)
-        else:
-            data, p.face_count, p.facepoint_count = self.__encode_tris(tris)
+        tris = self.__construct_tris(p, p.has_weighted_matrix())
+        data, p.face_count, p.facepoint_count = self.__encode_tris(tris, p.has_weighted_matrix())
+        past_align = len(data) % 0x20
+        if past_align:
+            data.extend(b'\0' * (0x20 - past_align))
+
         if p.face_count <= 0:
             # todo, cleanup?
-            return data
+            return None
         p.data = data
         p.encode_str = self.fmt_str
         mdl.objects.append(p)
@@ -144,41 +139,62 @@ class Geometry:
         Geometry.__encode_load_matrices_helper(data, indices, 1024, 9, 0x28)
         return data
 
-    def __encode_weighted_tris(self, tris):
+    @staticmethod
+    def __remap_inf_group(group, tris, matrices):
+        remapper = {}
+        matrices = list(matrices)
+        for i in range(len(matrices)):
+            remapper[matrices[i]] = i * 3
+        n_group = []
+        for strip in group:
+            arr = np.array(strip)
+            for item in arr:
+                item[0] = remapper[item[0]]
+            n_group.append(arr)
+        n_tris = []
+        for tri in tris:
+            arr = np.array(tri.vertices)
+            for item in arr:
+                item[0] = remapper[item[0]]
+            n_tris.append(arr)
+        return n_group, n_tris
+
+    def __encode_weighted_tris(self, tri_strips, tris):
+        group_tristrips, group_tris, group_matrices = get_weighted_tri_groups(tri_strips, tris)
         data = bytearray()
-        fmt_str = self.fmt_str
-        total_facepoint_count = total_face_count = 0
-        # first get the weighted groups
-        weighted_groups = self.influences.get_weighted_tri_groups(tris)
-        for group in weighted_groups:
+        for i in range(len(group_tristrips)):
+            matrices = group_matrices[i]
+            tristrips, tris = self.__remap_inf_group(group_tristrips[i], group_tris[i], matrices)
+
             # now get the matrices and face points, encode them for each group
-            matrices, face_points = group.get_influence_indices()
             data.extend(self.__encode_load_matrices(matrices))
-            new_data, face_count, facepoint_count = self.__encode_tris(face_points, True)
-            if face_count > 0:
-                total_face_count += face_count
-                total_facepoint_count += facepoint_count
-                data.extend(new_data)
-        return data, total_face_count, total_facepoint_count
+            for j in range(len(tristrips)):
+                encode_triangle_strip(tristrips[j], self.fmt_str, data)
+            if tris:
+                encode_triangles(tris, self.fmt_str, data)
+        return data
 
     def __encode_tris(self, tris, is_weighted=False):
         tris[:, [0, 1]] = tris[:, [1, 0]]
-        triset = TriangleSet(tris, is_weighted)
+        triset = TriangleSet(tris)
         if not triset:
             return None, 0, 0
-        data, face_count, facepoint_count = triset.get_tri_strips(self.fmt_str)
-        return data, face_count, facepoint_count
+        fmt_str = self.fmt_str if not is_weighted else None
+        tristrips, face_count, facepoint_count, tris = triset.get_tri_strips(fmt_str)
+        if is_weighted:
+            tristrips = self.__encode_weighted_tris(tristrips, tris)
+        return tristrips, face_count, facepoint_count
 
     def __encode_influences(self, polygon, influences, mdl0, default_bone):
         if influences is not None:
             if influences.is_mixed():
-                polygon.bone_table = [i for i in range(len(mdl0.bones))]
                 polygon.weight_index = 0
                 self.fmt_str += 'B'
                 return True
             else:
                 bone = self.get_linked_bone()
-                polygon.linked_bone = bone if bone else default_bone
+                polygon.linked_bone = self.linked_bone = bone if bone else default_bone
+        return False
         # face_indices = influences.get_face_indices(vertex_face_indices)
 
     def __encode_vertices(self, polygon, vertices, mdl0):
@@ -187,11 +203,10 @@ class Geometry:
         points = vertices.points
         encoder = self.encoder.vertex_encoder if self.encoder is not None else None
         if polygon.has_weighted_matrix():
-            AutoFix.get().warn(f'Polygon weighting is experimental, {polygon.name} will likely be incorrect.')
             for i in range(len(vertices)):
                 influence = self.influences[i]
                 points[i] = influence.apply_to(points[i], decode=False)
-            vertex_format, vertex_divisor, remapper = vertices.encode_data(vert, True, encoder)
+            vertex_format, vertex_divisor, remapper = vertices.encode_data(vert, True, encoder, self.influences)
             if remapper is not None:
                 new_inf_map = {}
                 old_inf_map = self.influences.influences
@@ -254,10 +269,14 @@ class Geometry:
                 polygon.uvs[i] = tex
             return True
 
-    def __construct_tris(self):
+    def __construct_tris(self, polygon, weighted=False):
         tris = []
-        vert_face_indices = self.vertices.face_indices
-        tris.append(vert_face_indices)
+        if weighted:    # build the influence indices
+            remapper = self.influences.influences
+            pos_indices = np.array([[remapper[y].influence_id for y in tri] for tri in self.vertices.face_indices])
+            polygon.bone_table = [i for i in range(np.max(pos_indices) + 1)]
+            tris.append(pos_indices)
+        tris.append(self.vertices.face_indices)
         if self.normals:
             tris.append(self.normals.face_indices)
         if self.colors:
@@ -278,195 +297,8 @@ class Geometry:
 def get_index_format(item):
     l = len(item)
     if l > 0xffff:
-        raise Converter.ConvertError(f'{item.name} exceeds max length! ({len(item)})')
+        raise ConvertError(f'{item.name} exceeds max length! ({len(item)})')
     elif l > 0xff:
         return 'H'
     else:
         return 'B'
-
-
-def decode_polygon(polygon, influences):
-    """ Decodes an mdl0 polygon
-            :returns geometry
-        """
-    # build the decoder_string decoder
-    pos_matrix_index = polygon.get_weight_index()
-    tex_matrix_index = polygon.get_uv_matrix_index(0)
-    vertex_index = polygon.get_vertex_index()
-    vertices = polygon.get_vertex_group()
-    normals = polygon.get_normal_group()
-    normal_index = polygon.get_normal_index()
-    colors = polygon.get_color_group()
-    color_index = polygon.get_color0_index()
-    texcoords = []
-    texcoord_index = polygon.get_uv_index(0)
-    for i in range(polygon.count_uvs()):
-        texcoords.append(polygon.get_uv_group(i))
-
-    face_point_indices, weights = decode_indices(polygon, polygon.encode_str)
-    face_point_indices = np.array(face_point_indices, dtype=np.uint)
-    face_point_indices[:, [0, 1]] = face_point_indices[:, [1, 0]]
-    # decoded_verts =
-    g_verts = PointCollection(decode_geometry_group(vertices), face_point_indices[:, :, vertex_index])
-    linked_bone = polygon.get_linked_bone()
-    if pos_matrix_index >= 0:  # apply influences to vertices
-        influence_collection = decode_pos_mtx_indices(influences, weights, g_verts,
-                                                      face_point_indices[:, :, pos_matrix_index] // 3)
-    else:
-        influence = influences[linked_bone.weight_id]
-        g_verts.apply_affine_matrix(np.array(linked_bone.get_transform_matrix()), apply=True)
-        influence_collection = InfluenceCollection({0: influence})
-    if tex_matrix_index > 0:
-        for x in polygon.has_tex_matrix:
-            if x:
-                indices = face_point_indices[:, :, tex_matrix_index]
-                tex_matrix_index += 1
-
-    geometry = Geometry(polygon.name, polygon.get_material().name, g_verts,
-                        triangles=face_point_indices[:, :, vertex_index:], influences=influence_collection,
-                        linked_bone=linked_bone)
-    # create the point collections
-    if normals:
-        geometry.normals = PointCollection(decode_geometry_group(normals), face_point_indices[:, :, normal_index])
-    if colors:
-        geometry.colors = ColorCollection(ColorDecoder.decode_data(colors), face_point_indices[:, :, color_index])
-    for tex in texcoords:
-        x = decode_geometry_group(tex)
-        pc = PointCollection(x, face_point_indices[:, :, texcoord_index],
-                             tex.minimum, tex.maximum)
-        pc.flip_points()
-        geometry.texcoords.append(pc)
-        texcoord_index += 1
-    return geometry
-
-
-def get_stride(decoder_string):
-    stride = 0
-    for x in decoder_string:
-        if x == 'H':
-            stride += 2
-        elif x == 'B':
-            stride += 1
-        elif x != '>':
-            raise ValueError('Unknown decoder format {}'.format(x))
-    return stride
-
-
-def decode_tri_strip(decoder, decoder_byte_len, data, start_offset, num_facepoints, face_point_indices):
-    face_points = []
-    flip = False
-    for i in range(num_facepoints):
-        face_points.append(unpack_from(decoder, data, start_offset))
-        start_offset += decoder_byte_len
-        if i >= 2:
-            if flip:
-                face_point_indices.append((face_points[i - 1], face_points[i - 2], face_points[i]))
-            else:
-                face_point_indices.append(face_points[i - 2:i + 1])
-        flip = not flip
-    return start_offset
-
-
-def decode_tris(decoder, decoder_byte_len, data, start_offset, num_facepoints, face_point_indices):
-    assert num_facepoints % 3 == 0
-    for i in range(int(num_facepoints / 3)):
-        tri = []
-        for j in range(3):
-            tri.append(unpack_from(decoder, data, start_offset))
-            start_offset += decoder_byte_len
-        face_point_indices.append(tri)
-    return start_offset
-
-
-def decode_indices(polygon, fmt_str):
-    """Given a polygon and decoder string, decode the facepoint indices
-        :return (face_point_indices, weight_groups)
-        weight_groups is a map of the face_point index to a list of weight indices (matrices loaded)
-    """
-    # now decode the indices
-    face_point_indices = []
-    stride = get_stride(fmt_str)
-    data = polygon.data
-    total_face_points = i = 0
-    weight_groups = {}
-    new_weight_group = True
-    face_point_count = polygon.facepoint_count
-    while total_face_points < face_point_count:
-        [cmd] = unpack_from('>B', data, i)
-        i += 1
-        if cmd in (0x98, 0x90):
-            [num_facepoints] = unpack_from('>H', data, i)
-            i += 2
-            if cmd == 0x98:
-                i = decode_tri_strip(fmt_str, stride, data, i, num_facepoints, face_point_indices)
-            elif cmd == 0x90:
-                i = decode_tris(fmt_str, stride, data, i, num_facepoints, face_point_indices)
-            total_face_points += num_facepoints
-            new_weight_group = True
-        elif cmd in (0x20, 0x28, 0x30):  # load matrix
-            if new_weight_group:
-                weight_groups[len(face_point_indices)] = weights = []
-                new_weight_group = False
-            bone_index, len_and_xf_address = unpack_from('>2H', data, i)
-            xf_address = 0xfff & len_and_xf_address
-            # length = (len_and_xf_address >> 12) + 1
-            i += 4
-            if cmd == 0x20:  # pos matrix
-                index = xf_address // 12
-                if index == len(weights):
-                    weights.append(bone_index)
-                elif index < len(weights):
-                    weights[index] = bone_index
-            elif cmd == 0x28:
-                pass  # normals  no parsing?
-            elif cmd == 0x30:  # tex matrix
-                pass
-            else:
-                raise Converter.ConvertError('Texture matrices not supported')
-        elif cmd == 0x00:
-            AutoFix.get().warn('Finished parsing {} indices early, possible bug?'.format(polygon.name))
-            break
-        else:
-            raise ValueError('Unsupported draw cmd {}'.format(cmd))
-    return face_point_indices, weight_groups
-
-
-def decode_pos_mtx_indices(all_influences, weight_groups, vertices, pos_mtx_indices):
-    """ Finds and applies the weight matrix to the corresponding vertices
-    :param all_influences: map of influence ids to influences
-    :param weight_groups: map of each beginning group face_point index to list of weights
-    :param vertices: PointCollection
-    :param pos_mtx_indices: np array of face_point indices corresponding to those in vertices
-    :return: InfluenceCollection
-    """
-    influences = {}  # map vertex indices to influences used by this geometry
-    vert_indices = vertices.face_indices
-    points = vertices.points
-    # Order the indices of each group so we can slice up the indices
-    slicer = sorted(weight_groups.keys())
-    slicer.append(len(vert_indices))  # add the max onto the end for slicing
-
-    # Each weighting slice group
-    for i in range(len(slicer) - 1):
-        start = slicer[i]
-        end = slicer[i + 1]
-        weights = np.array(weight_groups[start])
-        vertex_slice = vert_indices[start:end].flatten()
-        pos_mtx_slice = pos_mtx_indices[start:end].flatten()
-        # get the ordered indices corresponding to vertices
-        vertex_indices, indices = np.unique(vertex_slice, return_index=True)
-        weight_indices = weights[
-            pos_mtx_slice[indices]]  # get the matrix corresponding to vert index, resolve to weight_id
-
-        # map each vertex id to an influence and apply it
-        for i in range(len(vertex_indices)):
-            vertex_index = vertex_indices[i]
-            if vertex_index not in influences:
-                influences[vertex_index] = influence = all_influences[weight_indices[i]]
-                points[vertex_index] = influence.apply_to(points[vertex_index], decode=True)
-            elif influences[vertex_index].influence_id != weight_indices[i]:
-                AutoFix.get().warn(f'vertex {vertex_index} has multiple different influences!')
-                influences[vertex_index] = all_influences[weight_indices[i]]
-
-    assert len(influences) == len(points)
-    return InfluenceCollection(influences)

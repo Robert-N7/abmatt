@@ -1,6 +1,8 @@
 """CHR0 Subfile"""
 from copy import copy
 
+from abmatt.brres.key_frame_list import KeyFrameList
+from abmatt.brres.lib.node import Node
 from abmatt.brres.lib.packing.pack_chr0 import PackChr0
 from abmatt.brres.lib.unpacking.unpack_chr0 import UnpackChr0
 from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
@@ -24,10 +26,21 @@ class Chr0(SubFile):
         self.loop = True
         self.scaling_rule = 0
 
-    class ModelAnim:
-        def __init__(self, name, offset):
-            self.name = name
-            self.offset = offset  # since we don't parse data... store name offsetg
+    class BoneAnimation(Node):
+        def __init__(self, name, parent, binfile=None, framecount=1, loop=True):
+            self.framecount = framecount
+            self.loop = loop
+            self.x_translation = KeyFrameList(framecount)
+            self.y_translation = KeyFrameList(framecount)
+            self.z_translation = KeyFrameList(framecount)
+            self.x_rotation = KeyFrameList(framecount)
+            self.y_rotation = KeyFrameList(framecount)
+            self.z_rotation = KeyFrameList(framecount)
+            self.x_scale = KeyFrameList(framecount, 1.0)
+            self.y_scale = KeyFrameList(framecount, 1.0)
+            self.z_scale = KeyFrameList(framecount, 1.0)
+            # self.offset = offset  # since we don't parse data... store name offsetg
+            super().__init__(name, parent, binfile)
 
     def set_str(self, key, value):
         return set_anim_str(self, key, value)

@@ -459,7 +459,7 @@ class Command:
             files = Command.updateFile(filename)
             b = files[0] if len(files) else None
         else:
-            b = Brres(filename, readFile=False)
+            b = Brres(filename, read_file=False)
             Command.OPEN_FILES[filename] = b
             Command.ACTIVE_FILES = [b]
             Command.MODELS = []
@@ -526,7 +526,7 @@ class Command:
         if model or not Command.MODELS:
             Command.MODELS = []
             for x in Command.ACTIVE_FILES:
-                Command.MODELS.extend(x.getModelsByName(model))
+                Command.MODELS.extend(x.get_models_by_name(model))
             if Command.MATERIALS:
                 Command.MATERIALS = []
         # Materials
@@ -639,11 +639,11 @@ class Command:
                         for x in shaders:
                             Command.SELECTED.extend(x.stages)
                     else:
-                        Command.SELECTED = [x.getStage(self.SELECT_ID) for x in shaders]
+                        Command.SELECTED = [x.get_stage(self.SELECT_ID) for x in shaders]
             elif type == 'mdl0':
                 if self.SELECT_ID_NUMERIC:
                     brres = getBrresFromMaterials(self.MATERIALS)
-                    Command.SELECTED = {x.getModelI(self.SELECT_ID) for x in brres}
+                    Command.SELECTED = {x.get_model_by_index(self.SELECT_ID) for x in brres}
                     if None in Command.SELECTED:
                         Command.SELECTED.remove(None)
                 else:
@@ -659,7 +659,7 @@ class Command:
                     Command.SELECTED = []
                     if self.SELECT_ID_NUMERIC:
                         for x in srts:
-                            anim = x.getTexAnimationByID(self.SELECT_ID)
+                            anim = x.get_tex_animation_by_id(self.SELECT_ID)
                             if anim:
                                 Command.SELECTED.append(anim)
                     else:
@@ -917,22 +917,22 @@ class Command:
                 if self.SELECT_ID_NUMERIC:
                     for x in self.SELECTED:
                         for i in range(type_id):
-                            x.addEmptyLayer()
+                            x.add_empty_layer()
                 else:
                     for x in self.SELECTED:
-                        x.addLayer(type_id)
+                        x.add_layer(type_id)
         elif type == 'shader':  # add stage case
             for x in self.SELECTED:
                 for i in range(type_id):
-                    x.addStage()
+                    x.add_stage()
         elif type == 'srt0':  # add srt0 layer
             if self.SELECT_ID_NUMERIC:
                 for x in self.SELECTED:
                     for i in range(type_id):
-                        x.addLayer()
+                        x.add_layer()
             else:
                 for x in self.SELECTED:
-                    x.addLayerByName(type_id)
+                    x.add_layer_by_name(type_id)
         elif type == 'brres':
             if self.type == 'tex0':
                 resize = convert_fmt = None
@@ -974,20 +974,20 @@ class Command:
             else:  # remove layer case
                 if self.SELECT_ID_NUMERIC:
                     for x in self.SELECTED:
-                        x.removeLayerI(type_id)
+                        x.remove_layer_i(type_id)
                 else:
                     for x in self.SELECTED:
-                        x.removeLayer(type_id)
+                        x.remove_layer(type_id)
         elif type == 'shader':  # remove stage case
             for x in self.SELECTED:
-                x.removeStage(type_id)
+                x.remove_stage(type_id)
         elif type == 'srt0':  # remove srt0 layer
             if self.SELECT_ID_NUMERIC:
                 for x in self.SELECTED:
-                    x.removeLayerI(type_id)
+                    x.remove_layer_i(type_id)
             else:
                 for x in self.SELECTED:
-                    x.removeLayerByName(type_id)
+                    x.remove_layer_by_name(type_id)
         elif type == 'brres':
             if self.type == 'tex0':
                 if self.SELECT_ID_NUMERIC:

@@ -1,11 +1,9 @@
 import math
 
 import numpy as np
-from numpy.lib._iotools import ConverterError
 
-from abmatt.brres.mdl0 import point
-from abmatt.converters.convert_lib import Converter
-from abmatt.converters.matrix import apply_matrix, combine_matrices
+from abmatt.converters import error
+from abmatt.converters.matrix import combine_matrices, apply_matrix
 
 
 class PointCollection:
@@ -20,6 +18,7 @@ class PointCollection:
         self.points = points
         self.face_indices = face_indices
         self.matrix = None
+        self.influences = None
         assert np.max(face_indices) < len(points)
         self.minimum = minimum
         self.maximum = maximum
@@ -103,7 +102,7 @@ class PointCollection:
     def flip_points(self):
         self.points[:, -1] = self.points[:, -1] * -1 + 1
 
-    def encode_data(self, mdl0_points, get_index_remapper=False, encoder=None):
+    def encode_data(self, mdl0_points, get_index_remapper=False, encoder=None, influences=None):
         """Encodes the point collection as geometry data, returns the data width (component count)
         :param get_index_remapper: set to true to get the index remapping, (useful for influences)
         :type mdl0_points: Points
@@ -112,6 +111,8 @@ class PointCollection:
         if self.matrix is not None:
             self.points = apply_matrix(self.matrix, self.points)
             self.matrix = None
+        if influences is not None:
+            self.influences = influences
         self.minimum, self.maximum = self.__calc_min_max(self.points)
         mdl0_points.minimum = self.minimum
         mdl0_points.maximum = self.maximum
@@ -127,31 +128,32 @@ class PointCollection:
         mdl0_points.divisor = divisor
         data = mdl0_points.data
         if form == 'h':
-            mdl0_points.format = point.FMT_INT16
+            mdl0_points.format = 3
             dtype = np.int16
             mdl0_points.stride = point_width * 2
         elif form == 'H':
-            mdl0_points.format = point.FMT_UINT16
+            mdl0_points.format = 2
             dtype = np.uint16
             mdl0_points.stride = point_width * 2
         elif form == 'b':
-            mdl0_points.format = point.FMT_INT8
+            mdl0_points.format = 1
             dtype = np.int8
             mdl0_points.stride = point_width
         elif form == 'B':
-            mdl0_points.format = point.FMT_UINT8
+            mdl0_points.format = 0
             dtype = np.uint8
             mdl0_points.stride = point_width
         elif form == 'f':
-            mdl0_points.format = point.FMT_FLOAT
+            mdl0_points.format = 4
             dtype = np.float
             mdl0_points.stride = point_width * 4
         else:
-            raise ConverterError('Unknown format {}'.format(form))
+            raise error.ConvertError('Unknown format {}'.format(form))
         if divisor:
             multiplyBy = 2 ** divisor
             self.encode_points(multiplyBy, dtype)
-        if not encoder or encoder.should_consolidate():
+        should_consolidate = False if self.influences and self.influences.is_mixed() else encoder is None or encoder.should_consolidate()
+        if should_consolidate:
             points, face_indices, index_remapper = self.__consolidate_points()
             self.points = points
             self.face_indices = face_indices
@@ -160,7 +162,7 @@ class PointCollection:
             points = self.points
         mdl0_points.count = len(points)
         if mdl0_points.count > 0xffff:
-            raise Converter.ConvertError(f'{mdl0_points.name} has too many points! ({mdl0_points.count})')
+            raise error.ConvertError(f'{mdl0_points.name} has too many points! ({mdl0_points.count})')
         for x in points:
             data.append(x)
         self.points = points

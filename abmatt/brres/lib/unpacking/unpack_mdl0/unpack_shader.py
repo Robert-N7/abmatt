@@ -25,7 +25,7 @@ class UnpackShader(Unpacker):
         for x in shader.swap_table:
             binfile.advance(5)  # skip extra masks
             x.unpack(binfile)
-        shader.indTexMaps, shader.indTexCoords = bp.unpack_ras1_iref(binfile)
+        shader.ind_tex_maps, shader.ind_tex_coords = bp.unpack_ras1_iref(binfile)
         binfile.align()
         i = 0
         while i < stage_count:

@@ -20,7 +20,7 @@ class UnpackMdl0(UnpackSubfile):
         offset = binfile.start()  # Header
         ln = binfile.readLen()
         fh, mdl0.scaling_rule, mdl0.texture_matrix_mode, mdl0.facepoint_count, \
-            mdl0.faceCount, _, mdl0.boneCount, _ = binfile.read("i7I", 32)
+        mdl0.face_count, _, mdl0.boneCount, _ = binfile.read("i7I", 32)
         binfile.store()  # bone table offset
         if binfile.offset - offset < ln:
             mdl0.minimum = binfile.read("3f", 12)
@@ -29,7 +29,7 @@ class UnpackMdl0(UnpackSubfile):
             mdl0.find_min_max = True
         binfile.end()  # end header
         binfile.recallOffset(offset)
-        mdl0.boneTable = unpack_bonetable(binfile, 'I')
+        mdl0.bone_table = unpack_bonetable(binfile, 'i')
         # unpack sections
         self.definitions = self.unpackSection(binfile, self.UnpackDefinition, 'Definitions', return_nodes=False)
         # store bone unpackers to resolve references

@@ -324,10 +324,10 @@ class Stage(Clipable):
 
     # -------------------- CLIPBOARD --------------------------------------------------
     def clip(self, clipboard):
-        clipboard[self.parent.getMaterialName() + str(self.name)] = self
+        clipboard[self.parent.get_material_name() + str(self.name)] = self
 
     def clip_find(self, clipboard):
-        return clipboard[self.parent.getMaterialName() + str(self.name)]
+        return clipboard[self.parent.get_material_name() + str(self.name)]
 
     def __copy_data_from(self, stage):
         self.enabled = stage.enabled
@@ -374,7 +374,7 @@ class Stage(Clipable):
         self.mark_modified()
 
     def info(self, key=None, indentation_level=0):
-        trace = '>' + '  ' * indentation_level if indentation_level else '>' + str(self.parent.getMaterialName())
+        trace = '>' + '  ' * indentation_level if indentation_level else '>' + str(self.parent.get_material_name())
         if key:
             AutoFix.get().info('{}->Stage:{}\t{}:{}'.format(trace, self.name, key, self[key]), 1)
         else:

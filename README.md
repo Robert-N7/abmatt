@@ -2,11 +2,11 @@
 This tool is used to convert and edit *Brres* files in *Mario Kart Wii*. 
 
 ## Installation
-Download compiled [releases](https://github.com/Robert-N7/abmatt/releases) for Linux and Windows.
-Alternatively, install as a python package:
+It is recommended to install as a python package:
 ```
 pip install git+https://github.com/Robert-N7/abmatt.git
 ```
+Alternatively, download compiled [releases](https://github.com/Robert-N7/abmatt/releases) for Linux and Windows.
 
 ## Dependencies
 ABMatt uses [Wiimm's Image Tool](https://szs.wiimm.de/download.html) which must be installed on your system path.
@@ -256,4 +256,3 @@ To call the preset:
 
 ## Known Limitations and Bugs
 * Windows installer sometimes hangs in the background until the process is terminated.
-* Rigged models are not supported.

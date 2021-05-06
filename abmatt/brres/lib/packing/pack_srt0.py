@@ -20,13 +20,13 @@ class PackSrt0Tex(Packer):
         """
         if not flags[0]:    # not scale default
             if flags[4]:    # x-scale-fixed
-                binfile.write("f", self.node.animations['xscale'].getValue())
+                binfile.write("f", self.node.animations['xscale'].get_value())
             else:
                 binfile.mark()  # mark to be stored
                 self.has_offsets[0] = True
             if not flags[3]:    # not isotropic
                 if flags[5]:    # y-scale-fixed
-                    binfile.write("f", self.node.animations['yscale'].getValue())
+                    binfile.write("f", self.node.animations['yscale'].get_value())
                 else:
                     binfile.mark()
                     self.has_offsets[1] = True
@@ -35,7 +35,7 @@ class PackSrt0Tex(Packer):
         """ packs rotation data """
         if not flags[1]:    # rotation not default
             if flags[6]:    # rotation fixed
-                binfile.write("f", self.node.animations['rot'].getValue())
+                binfile.write("f", self.node.animations['rot'].get_value())
             else:
                 binfile.mark()
                 self.has_offsets[2] = True
@@ -44,12 +44,12 @@ class PackSrt0Tex(Packer):
         """ packs translation data, returning tuple (hasXTransOffset, hasYTransOffset) """
         if not flags[2]:    # not trans-default
             if flags[7]:    # x-trans
-                binfile.write("f", self.node.animations['xtranslation'].getValue())
+                binfile.write("f", self.node.animations['xtranslation'].get_value())
             else:
                 binfile.mark()
                 self.has_offsets[3] = True
             if flags[8]:    # y-trans
-                binfile.write("f", self.node.animations['ytranslation'].getValue())
+                binfile.write("f", self.node.animations['ytranslation'].get_value())
             else:
                 binfile.mark()
                 self.has_offsets[4] = True
@@ -69,20 +69,20 @@ class PackSrt0Tex(Packer):
         # Scale
         x = srt0.animations['xscale']  # XScale
         y = srt0.animations['yscale']  # yscale
-        flags[4] = x.isFixed()
-        flags[5] = y.isFixed()
-        flags[0] = (x.isDefault(True) and y.isDefault(True))
+        flags[4] = x.is_fixed()
+        flags[5] = y.is_fixed()
+        flags[0] = (x.is_default(True) and y.is_default(True))
         flags[3] = flags[0] or x == y
         # Rotation
         rot = srt0.animations['rot']
-        flags[6] = rot.isFixed()
-        flags[1] = rot.isDefault(False)
+        flags[6] = rot.is_fixed()
+        flags[1] = rot.is_default(False)
         # Translation
         x = srt0.animations['xtranslation']
         y = srt0.animations['ytranslation']
-        flags[7] = x.isFixed()
-        flags[8] = y.isFixed()
-        flags[2] = x.isDefault(False) and y.isDefault(False)
+        flags[7] = x.is_fixed()
+        flags[8] = y.is_fixed()
+        flags[2] = x.is_default(False) and y.is_default(False)
         return flags
 
     def pack(self, srt0, binfile):

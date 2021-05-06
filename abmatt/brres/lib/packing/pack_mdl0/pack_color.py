@@ -17,5 +17,5 @@ class PackColor(Packer):
         binfile.createRef()
         # offset = binfile.offset  #- debug
         binfile.writeRemaining(color.data)
-        # binfile.linked_offsets.extend(i for i in range(offset, binfile.offset))     #- debug
+        # binfile.linked_offsets.extend(i for i in range(offset, binfile.offset, 4))     #- debug
         binfile.alignAndEnd()

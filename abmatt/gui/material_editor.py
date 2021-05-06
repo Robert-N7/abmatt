@@ -245,7 +245,7 @@ class ShaderEditor(EditorStyle, ClipableObserver, ColorWidgetHandler):
                 ind_matrix[i][j].setText(str(mat_matrix[i][j]))
 
     def __on_shader_update(self, shader):
-        self.ind_map_sel.setCurrentIndex(shader.indTexMaps[0])
+        self.ind_map_sel.setCurrentIndex(shader.ind_tex_maps[0])
         my_count = self.stage_id.count()
         need_count = len(shader.stages)
         self.stage_count.setValue(need_count)
@@ -402,16 +402,16 @@ class ShaderEditor(EditorStyle, ClipableObserver, ColorWidgetHandler):
 
     def on_ind_matrix_enable(self):
         if self.material.isIndMatrixEnabled() != self.ind_matrix_enable.isChecked():
-            self.material.setIndMatrixEnable(enable=self.ind_matrix_enable.isChecked())
+            self.material.set_ind_matrix_enable(enable=self.ind_matrix_enable.isChecked())
 
     def on_ind_map_sel(self, i):
-        if self.shader.getIndMap() != i:
-            self.shader.setIndMap(i)
-            self.shader.setIndCoord(i)
+        if self.shader.get_ind_map() != i:
+            self.shader.set_ind_map(i)
+            self.shader.set_ind_coord(i)
 
     def on_ind_matrix_scale_change(self):
         if self.material.getIndMatrixScale() != self.ind_matrix_scale.value():
-            self.material.setIndMatrixScale(self.ind_matrix_scale.value())
+            self.material.set_ind_matrix_scale(self.ind_matrix_scale.value())
 
     def on_ind_matrix_change_00(self):
         self.on_ind_matrix_change(0, 0)
@@ -679,19 +679,19 @@ class MaterialEditor(EditorStyle, ClipableObserver, ColorWidgetHandler, Tex0Widg
 
     def on_blend_dest_change(self, i):
         if self.material.blend_dest != i:
-            self.material.setBlendDestStr(self.blend_dest.currentText())
+            self.material.set_blend_dest_str(self.blend_dest.currentText())
 
     def on_blend_source_change(self, i):
         if self.material.blend_source != i:
-            self.material.setBlendSrcStr(self.blend_source.currentText())
+            self.material.set_blend_src_str(self.blend_source.currentText())
 
     def on_blend_logic_change(self, i):
         if self.material.blend_logic != i:
-            self.material.setBlendLogicStr(self.blend_logic.currentText())
+            self.material.set_blend_logic_str(self.blend_logic.currentText())
 
     def on_blend_logic_enable(self):
         if self.material.blend_logic_enabled != self.blend_logic_enable.isChecked():
-            self.material.enableBlendLogic(self.blend_logic_enable.isChecked())
+            self.material.enable_blend_logic(self.blend_logic_enable.isChecked())
 
     def on_blend_change(self):
         if self.material.blend_enabled != self.blend_enabled.isChecked():
@@ -703,27 +703,27 @@ class MaterialEditor(EditorStyle, ClipableObserver, ColorWidgetHandler, Tex0Widg
 
     def on_comp1_change(self, i):
         if self.material.comp1 != i:
-            self.material.setComp1Str(self.comp1.currentText())
+            self.material.set_comp1_str(self.comp1.currentText())
 
     def on_ref1_change(self, i):
         if self.material.ref1 != i:
-            self.material.setRef1Str(str(i))
+            self.material.set_ref1_str(str(i))
 
     def on_logic_change(self, i):
         if self.material.logic != i:
-            self.material.setLogic(self.logic.currentText())
+            self.material.set_logic(self.logic.currentText())
 
     def on_comp0_change(self, i):
         if self.material.comp0 != i:
-            self.material.setComp0Str(self.comp0.currentText())
+            self.material.set_comp0_str(self.comp0.currentText())
 
     def on_ref0_change(self, i):
         if self.material.ref0 != i:
-            self.material.setRef0Str(str(i))
+            self.material.set_ref0_str(str(i))
 
     def on_cull_change(self, i):
         if self.material.cullmode != i:
-            self.material.setCullModeStr(self.cull_combo.currentText())
+            self.material.set_cull_mode_str(self.cull_combo.currentText())
 
     def on_const_alpha_change(self, i):
         self.material.set_constant_alpha(i)
@@ -739,15 +739,15 @@ class MaterialEditor(EditorStyle, ClipableObserver, ColorWidgetHandler, Tex0Widg
 
     def comp_before_tex_enable(self):
         if self.material.compareBeforeTexture != self.compare_before_texture.isChecked():
-            self.material.setCompareBeforeTexStr()
+            self.material.set_compare_before_tex_str()
 
     def depth_test_enable(self):
         if self.material.depth_test != self.depth_test.isChecked():
-            self.material.setEnableDepthTest(self.depth_test.isChecked())
+            self.material.set_enable_depth_test(self.depth_test.isChecked())
 
     def depth_update_enable(self):
         if self.material.depth_update != self.depth_update.isChecked():
-            self.material.setEnableDepthUpdate(self.depth_update.isChecked())
+            self.material.set_enable_depth_update(self.depth_update.isChecked())
 
     # ----------------------------------------------
     #   LAYER functions
@@ -758,40 +758,40 @@ class MaterialEditor(EditorStyle, ClipableObserver, ColorWidgetHandler, Tex0Widg
             self.__set_layer(layer)
 
     def on_map_add(self, tex0, index):
-        self.material.addLayer(tex0.name)
+        self.material.add_layer(tex0.name)
 
     def on_map_remove(self, tex0, index):
-        self.material.removeLayerI(index)
+        self.material.remove_layer_i(index)
 
     def on_map_replace(self, tex0, index):
         self.layer.rename(tex0.name)
 
     def on_uwrap_change(self, i):
-        self.layer.setUWrapStr(self.uwrap.currentText())
+        self.layer.set_u_wrap_str(self.uwrap.currentText())
 
     def on_vwrap_change(self, i):
-        self.layer.setVWrapStr(self.vwrap.currentText())
+        self.layer.set_v_wrap_str(self.vwrap.currentText())
 
     def on_minfilter_change(self, i):
-        self.layer.setMinFilterStr(self.minfilter.currentText())
+        self.layer.set_minfilter_str(self.minfilter.currentText())
 
     def on_magfilter_change(self, i):
-        self.layer.setMagFilterStr(self.magfilter.currentText())
+        self.layer.set_magfilter_str(self.magfilter.currentText())
 
     def on_lod_bias_change(self):
-        self.layer.setLodBiasStr(self.lod_bias.text())
+        self.layer.set_lod_bias_str(self.lod_bias.text())
 
     def on_mapmode_change(self, i):
-        self.layer.setMapmodeStr(self.mapmode.currentText())
+        self.layer.set_map_mode_str(self.mapmode.currentText())
 
     def on_coordinate_change(self, i):
-        self.layer.setCoordinatesStr(self.coordinates.currentText())
+        self.layer.set_coordinate_str(self.coordinates.currentText())
 
     def on_projection_change(self, i):
-        self.layer.setProjectionStr(self.projection.currentText())
+        self.layer.set_projection_str(self.projection.currentText())
 
     def on_inputform_change(self, i):
-        self.layer.setInputFormStr(self.inputform.currentText())
+        self.layer.set_input_form_str(self.inputform.currentText())
 
     def on_normalize_enable(self):
         self.layer.normalize = self.normalize.isChecked()
@@ -827,13 +827,13 @@ class MaterialEditor(EditorStyle, ClipableObserver, ColorWidgetHandler, Tex0Widg
             self.tr_y.setText(str(self.layer.translation[1]))
 
     def on_anisotrophy_change(self, i):
-        self.layer.setAnisotrophyStr(self.max_anisotrophy.currentText())
+        self.layer.set_anisotrophy_str(self.max_anisotrophy.currentText())
 
     def on_clamp_enable(self):
-        self.layer.setClampBiasStr(str(self.clamp_bias.isChecked()).lower())
+        self.layer.set_clamp_bias_str(str(self.clamp_bias.isChecked()).lower())
 
     def on_interpolate_enable(self):
-        self.layer.setTexelInterpolateStr(str(self.interpolate.isChecked()).lower())
+        self.layer.set_texel_interpolate_str(str(self.interpolate.isChecked()).lower())
 
     # ------------------------------------------------
     # End EVENT HANDLERS

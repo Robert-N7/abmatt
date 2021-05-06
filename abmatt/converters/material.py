@@ -25,7 +25,7 @@ class Material:
         if map:
             layer_name = os.path.splitext(os.path.basename(map))[0]
             if layer_name not in used_layers:
-                material.addLayer(layer_name)
+                material.add_layer(layer_name)
                 used_layers.add(layer_name)
 
     def encode(self, mdl):

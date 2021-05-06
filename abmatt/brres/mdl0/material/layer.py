@@ -106,83 +106,83 @@ class Layer(Clipable):
                 func = self.GET_SETTINGS[i]
                 return func(self)
 
-    def getScale(self):
+    def get_scale(self):
         return self.scale
 
-    def getRotation(self):
+    def get_rotation(self):
         return self.rotation
 
-    def getTranslation(self):
+    def get_translation(self):
         return self.translation
 
-    def getScn0LightRef(self):
+    def get_scn0_light_ref(self):
         return self.scn0_light_ref
 
-    def getScn0CameraRef(self):
+    def get_scn0_camera_ref(self):
         return self.scn0_camera_ref
 
-    def getMapmode(self):
+    def get_map_mode(self):
         return self.MAPMODE[self.map_mode]
 
-    def getUwrap(self):
+    def get_u_wrap(self):
         return self.WRAP[self.uwrap]
 
-    def getVwrap(self):
+    def get_v_wrap(self):
         return self.WRAP[self.vwrap]
 
-    def getMinfilter(self):
+    def get_minfilter(self):
         return self.FILTER[self.minfilter]
 
-    def getMagfilter(self):
+    def get_magfilter(self):
         return self.FILTER[self.magfilter]
 
-    def getLodbias(self):
+    def get_lod_bias(self):
         return self.lod_bias
 
-    def getAnisotrophy(self):
+    def get_anisotrophy(self):
         return self.ANISOTROPHY[self.max_anisotrophy]
 
-    def getClampbias(self):
+    def get_clamp_bias(self):
         return self.clamp_bias
 
-    def getTexelInterpolate(self):
+    def get_texel_interpolate(self):
         return self.texel_interpolate
 
-    def getProjection(self):
+    def get_projection(self):
         return self.PROJECTION[self.projection]
 
-    def getInputform(self):
+    def get_input_form(self):
         return self.INPUTFORM[self.inputform]
 
-    def getType(self):
+    def get_type(self):
         return self.TYPE[self.type]
 
-    def getCoordinates(self):
+    def get_coordinates(self):
         return self.COORDINATES[self.coordinates]
 
     def get_uv_channel(self):
         val = self.coordinates - 5
         return val if val >= 0 else None
 
-    def getEmbossLight(self):
+    def get_emboss_light(self):
         return self.emboss_light
 
-    def getEmbossSource(self):
+    def get_emboss_source(self):
         return self.emboss_source
 
-    def getNormalize(self):
+    def get_normalize(self):
         return self.normalize
 
-    def getName(self):
+    def get_name(self):
         return self.name
 
-    GET_SETTINGS = (getScale, getRotation, getTranslation, getScn0CameraRef,
-                    getScn0LightRef, getMapmode, getUwrap, getVwrap, getMinfilter, getMagfilter,
-                    getLodbias, getAnisotrophy, getClampbias, getTexelInterpolate, getProjection,
-                    getInputform, getType, getCoordinates, getEmbossSource, getEmbossLight,
-                    getNormalize, getName)
+    GET_SETTINGS = (get_scale, get_rotation, get_translation, get_scn0_camera_ref,
+                    get_scn0_light_ref, get_map_mode, get_u_wrap, get_v_wrap, get_minfilter, get_magfilter,
+                    get_lod_bias, get_anisotrophy, get_clamp_bias, get_texel_interpolate, get_projection,
+                    get_input_form, get_type, get_coordinates, get_emboss_source, get_emboss_light,
+                    get_normalize, get_name)
 
-    def getSetter(self, key):
+    def get_setter(self, key):
         for i in range(len(self.SETTINGS)):
             if self.SETTINGS[i] == key:
                 return self.SET_SETTING[i]
@@ -192,7 +192,7 @@ class Layer(Clipable):
     # ----------------------------------------------------------------------------------
 
     def set_str(self, key, value):
-        fun = self.getSetter(key)
+        fun = self.get_setter(key)
         return fun(self, value)
 
     def set_x_scale(self, x_scale):
@@ -212,7 +212,7 @@ class Layer(Clipable):
             self.scale = scale
             self.mark_modified()
 
-    def setScaleStr(self, value):
+    def set_scale_str(self, value):
         values = parseValStr(value)
         if len(values) < 2:
             raise ValueError("Scale requires 2 floats")
@@ -223,7 +223,7 @@ class Layer(Clipable):
             self.rotation = rotation
             self.mark_modified()
 
-    def setRotationStr(self, value):
+    def set_rotation_str(self, value):
         self.set_rotation(float(value))
 
     def set_x_translation(self, val):
@@ -243,13 +243,13 @@ class Layer(Clipable):
             self.translation = translation
             self.mark_modified()
 
-    def setTranslationStr(self, value):
+    def set_translation_str(self, value):
         values = parseValStr(value)
         if len(values) < 2:
             raise ValueError("Translation requires 2 floats")
         self.set_translation((float(values[0]), float(values[1])))
 
-    def setCameraRefStr(self, value):
+    def set_camera_ref_str(self, value):
         i = int(value)
         if i != -1 and i != 0:
             raise ValueError("Expected -1 or 0 for camera reference")
@@ -257,7 +257,7 @@ class Layer(Clipable):
             self.scn0_camera_ref = i
             self.mark_modified()
 
-    def setLightRefStr(self, value):
+    def set_light_ref_str(self, value):
         i = int(value)
         if i != -1:
             raise ValueError("Expected -1 for light reference")
@@ -265,32 +265,32 @@ class Layer(Clipable):
             self.scn0_light_ref = i
             self.mark_modified()
 
-    def setMapmodeStr(self, value):
+    def set_map_mode_str(self, value):
         i = indexListItem(self.MAPMODE, value, self.map_mode)
         if i >= 0:
             self.map_mode = i
             self.mark_modified()
 
-    def setUWrapStr(self, value):
+    def set_u_wrap_str(self, value):
         i = indexListItem(self.WRAP, value, self.uwrap)
         if i >= 0:
             self.uwrap = i
             self.mark_modified()
 
-    def setVWrapStr(self, value):
+    def set_v_wrap_str(self, value):
         i = indexListItem(self.WRAP, value, self.vwrap)
         if i >= 0:
             self.vwrap = i
             self.mark_modified()
 
-    def setMinFilterStr(self, value):
+    def set_minfilter_str(self, value):
         value = value.replace('_', '')
         i = indexListItem(self.FILTER, value, self.minfilter)
         if i >= 0:
             self.minfilter = i
             self.mark_modified()
 
-    def setMagFilterStr(self, value):
+    def set_magfilter_str(self, value):
         i = indexListItem(self.FILTER, value, self.magfilter)
         if i > 1:
             raise ValueError("MagFilter out of range (0-1)")
@@ -298,13 +298,13 @@ class Layer(Clipable):
             self.minfilter = i
             self.mark_modified()
 
-    def setLodBiasStr(self, value):
+    def set_lod_bias_str(self, value):
         f = float(value)
         if f != self.lod_bias:
             self.lod_bias = f
             self.mark_modified()
 
-    def setAnisotrophyStr(self, value):
+    def set_anisotrophy_str(self, value):
         invalidI = False
         try:
             i = int(value)
@@ -322,43 +322,43 @@ class Layer(Clipable):
             self.max_anisotrophy = i
             self.mark_modified()
 
-    def setClampBiasStr(self, value):
+    def set_clamp_bias_str(self, value):
         val = validBool(value)
         if val != self.clamp_bias:
             self.clamp_bias = val
             self.mark_modified()
 
-    def setTexelInterpolateStr(self, value):
+    def set_texel_interpolate_str(self, value):
         val = validBool(value)
         if val != self.texel_interpolate:
             self.texel_interpolate = val
             self.mark_modified()
 
-    def setProjectionStr(self, value):
+    def set_projection_str(self, value):
         i = indexListItem(self.PROJECTION, value, self.projection)
         if i >= 0:
             self.projection = i
             self.mark_modified()
 
-    def setInputFormStr(self, value):
+    def set_input_form_str(self, value):
         i = indexListItem(self.INPUTFORM, value, self.inputform)
         if i >= 0:
             self.inputform = i
             self.mark_modified()
 
-    def setTypeStr(self, value):
+    def set_type_str(self, value):
         i = indexListItem(self.TYPE, value, self.type)
         if i >= 0:
             self.type = i
             self.mark_modified()
 
-    def setCoordinatesStr(self, value):
+    def set_coordinate_str(self, value):
         i = indexListItem(self.COORDINATES, value, self.coordinates)
         if i >= 0:
             self.coordinates = i
             self.mark_modified()
 
-    def setEmbossSourceStr(self, value):
+    def set_emboss_src_str(self, value):
         i = int(value)
         if not 0 <= i <= 7:
             raise ValueError("Value '" + value + "' out of range for emboss source")
@@ -366,7 +366,7 @@ class Layer(Clipable):
             self.emboss_source = i
             self.mark_modified()
 
-    def setEmbossLightStr(self, value):
+    def set_emboss_light_str(self, value):
         i = int(value)
         if not 0 <= i <= 255:
             raise ValueError("Value '" + value + "' out of range for emboss light")
@@ -374,13 +374,13 @@ class Layer(Clipable):
             self.emboss_light = i
             self.mark_modified()
 
-    def setNormalizeStr(self, value):
+    def set_normalize_str(self, value):
         val = validBool(value)
         if val != self.normalize:
             self.normalize = val
             self.mark_modified()
 
-    def setLayerFlags(self, nibble):
+    def set_layer_flags(self, nibble):
         """ from lsb, enable, scaledefault, rotationdefault, transdefault """
         self.enable = nibble & 1
         if nibble >> 1 & 1:
@@ -391,14 +391,14 @@ class Layer(Clipable):
             self.translation = (0.0, 0.0)
         return self.enable
 
-    def setName(self, value):
+    def set_name(self, value):
         self.rename(value)
 
-    SET_SETTING = (setScaleStr, setRotationStr, setTranslationStr, setCameraRefStr,
-                   setLightRefStr, setMapmodeStr, setUWrapStr, setVWrapStr, setMinFilterStr, setMagFilterStr,
-                   setLodBiasStr, setAnisotrophyStr, setClampBiasStr, setTexelInterpolateStr, setProjectionStr,
-                   setInputFormStr, setTypeStr, setCoordinatesStr, setEmbossSourceStr, setEmbossLightStr,
-                   setNormalizeStr, setName)
+    SET_SETTING = (set_scale_str, set_rotation_str, set_translation_str, set_camera_ref_str,
+                   set_light_ref_str, set_map_mode_str, set_u_wrap_str, set_v_wrap_str, set_minfilter_str, set_magfilter_str,
+                   set_lod_bias_str, set_anisotrophy_str, set_clamp_bias_str, set_texel_interpolate_str, set_projection_str,
+                   set_input_form_str, set_type_str, set_coordinate_str, set_emboss_src_str, set_emboss_light_str,
+                   set_normalize_str, set_name)
 
     def __str__(self):
         return self.name + ': srt:{} {} {}'.format(self.scale, self.rotation, self.translation)
@@ -406,7 +406,7 @@ class Layer(Clipable):
     # -------------------------------------- PASTE ---------------------------
     def paste(self, item):
         if self.name == 'Null':
-            self.setName(item.name)
+            self.set_name(item.name)
         self.uwrap = item.uwrap
         self.vwrap = item.vwrap
         self.minfilter = item.minfilter
@@ -479,7 +479,7 @@ class Layer(Clipable):
             if result is None:
                 if self.REMOVE_UNKNOWN_REFS:
                     b.fix_des = 'Remove reference'
-                    self.parent.removeLayer(self.name)
+                    self.parent.remove_layer(self.name)
                     b.resolve()
                     self.mark_modified()
                     return

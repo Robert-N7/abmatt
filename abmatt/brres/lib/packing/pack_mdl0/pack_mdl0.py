@@ -26,13 +26,13 @@ class PackMdl0(PackSubfile):
         binfile.writeOuterOffset()
         # binfile.linked_offsets.extend([binfile.offset + 8, binfile.offset + 12])    #- debug
         binfile.write("7I", mdl0.scaling_rule, mdl0.texture_matrix_mode,
-                      mdl0.facepoint_count, mdl0.faceCount, 0, len(mdl0.bones), 0x01000000)
+                      mdl0.facepoint_count, mdl0.face_count, 0, len(mdl0.bones), 0x01000000)
         binfile.mark()  # bone table offset
         if mdl0.version >= 10:
             binfile.write("6f", mdl0.minimum[0], mdl0.minimum[1], mdl0.minimum[2],
                           mdl0.maximum[0], mdl0.maximum[1], mdl0.maximum[2])
         binfile.createRef()  # bone table
-        self.pack_bonetable(mdl0.boneTable)
+        self.pack_bonetable(mdl0.bone_table)
         binfile.end()  # end header
         # sections
         folders = self.packFolders(binfile)
@@ -59,7 +59,7 @@ class PackMdl0(PackSubfile):
 
     def pack_bonetable(self, table):
         self.binfile.write('I', len(table))
-        self.binfile.write('{}I'.format(len(table)), *table)
+        self.binfile.write('{}i'.format(len(table)), *table)
 
     class TextureLink:
         def __init__(self, name, num_refs):
@@ -91,7 +91,7 @@ class PackMdl0(PackSubfile):
 
     def packTextureLinks(self, binfile, folder):
         """Packs texture link section, returning map of names:offsets be filled in by mat/layer refs"""
-        # binfile.section_offsets.append((binfile.offset, folder.name))       #- debug
+        # binfile.section_offsets.append((binfile.offset, 'Textures'))       #- debug
         tex_map = {}
         links = self.sections[11]
         for x in links:

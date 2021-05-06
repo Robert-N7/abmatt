@@ -116,7 +116,7 @@ class BrresTreeView(QTreeView):
             old_name = node.name
             text, ok = QInputDialog.getText(self, 'Rename Node', 'Rename to:', text=old_name)
             if ok and text != old_name:
-                if brres.getModel(text):
+                if brres.get_model(text):
                     AutoFix.get().error('Model with name {} already exists!'.format(text))
                     return
                 node.rename(text)

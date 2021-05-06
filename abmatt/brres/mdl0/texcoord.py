@@ -5,6 +5,10 @@ COORD_ST = 1
 
 
 class TexCoord(Point):
+    def __deepcopy__(self, memodict=None):
+        copy = TexCoord(self.name, None)
+        return copy.paste(self)
+
     @property
     def point_width(self):
         return self.comp_count + 1

@@ -64,7 +64,7 @@ class Polygon(Clipable):
 
     def get_decoded(self):
         if self.decoded is None:
-            self.decoded = decoder.decode_polygon(self, self.parent.get_influences())
+            self.decoded = decoder.decode_polygon(self)
         return self.decoded
 
     # These indices correspond to the triangle column index, not the group index!
