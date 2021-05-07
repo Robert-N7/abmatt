@@ -159,14 +159,14 @@ class Brres(Clipable, Packable):
         if overwrite is None:
             overwrite = self.OVERWRITE
         if not overwrite and os.path.exists(filename):
-            AutoFix.get().error('File {} already exists!'.format(filename), 1)
+            AutoFix.error('File {} already exists!'.format(filename), 1)
         else:
             if check:
                 self.check()
             f = BinFile(filename, mode="w")
             self.pack(f)
             if f.commitWrite():
-                AutoFix.get().info("Wrote file '{}'".format(filename), 2)
+                AutoFix.info("Wrote file '{}'".format(filename), 2)
                 self.rename(filename)
                 self.has_new_model = False
                 self.mark_unmodified()
@@ -179,7 +179,7 @@ class Brres(Clipable, Packable):
         return self.name
 
     def info(self, key=None, indentation_level=0):
-        AutoFix.get().info('{}{}:\t{} model(s)\t{} texture(s)'.format('  ' * indentation_level + '>',
+        AutoFix.info('{}{}:\t{} model(s)\t{} texture(s)'.format('  ' * indentation_level + '>',
                                     self.name, len(self.models), len(self.textures)), 1)
         indentation_level += 2
         self.sub_info('MDL0', self.models, key, indentation_level)
@@ -257,7 +257,7 @@ class Brres(Clipable, Packable):
             if not replace:
                 return False
             self.remove_tex0(tex0.name)
-            AutoFix.get().info('Replaced tex0 {}'.format(tex0.name))
+            AutoFix.info('Replaced tex0 {}'.format(tex0.name))
         if tex0.parent is not None and tex0.parent is not self:
             t = Tex0(tex0.name, self)
             t.paste(tex0)
@@ -315,7 +315,7 @@ class Brres(Clipable, Packable):
             self.textures.remove(tex)
             self.mark_modified()
         except KeyError:
-            AutoFix.get().warn('No texture {} in {}'.format(name, self.name))
+            AutoFix.warn('No texture {} in {}'.format(name, self.name))
 
     def remove_tex0_i(self, i):
         tex = self.textures.pop(i)
@@ -351,7 +351,7 @@ class Brres(Clipable, Packable):
 
     # --------------------------------------------------------------------------
     def check(self):
-        AutoFix.get().info('checking file {}'.format(self.name), 4)
+        AutoFix.info('checking file {}'.format(self.name), 4)
         expected = self.get_expected_mdl_name()
         for mdl in self.models:
             mdl.check(expected)

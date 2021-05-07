@@ -41,7 +41,7 @@ class UnpackBrres(Unpacker):
             anim_collections.append(collection)
             mdl = brres.get_model(key)
             if not mdl:
-                AutoFix.get().info('No model found matching srt0 animation {} in {}'.format(key, brres.name), 3)
+                AutoFix.info('No model found matching srt0 animation {} in {}'.format(key, brres.name), 3)
             else:
                 mdl.set_srt0(collection)
         return anim_collections
@@ -57,7 +57,7 @@ class UnpackBrres(Unpacker):
             anim_collections.append(collection)
             mdl = brres.get_model(key)
             if not mdl:
-                AutoFix.get().info('No model found matching pat0 animation {} in {}'.format(key, brres.name), 3)
+                AutoFix.info('No model found matching pat0 animation {} in {}'.format(key, brres.name), 3)
             else:
                 mdl.set_pat0(collection)
         return anim_collections

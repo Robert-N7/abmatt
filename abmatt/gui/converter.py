@@ -41,11 +41,11 @@ class ConvertManager(QRunnable):
 
     def enqueue(self, converter):
         if converter == self.item:
-            AutoFix.get().error('Conversion already in progress!')
+            AutoFix.error('Conversion already in progress!')
             return False
         for x in self.queue:
             if x == converter:
-                AutoFix.get().error('Conversion already in progress!')
+                AutoFix.error('Conversion already in progress!')
                 return False
         self.queue.append(converter)
         return True
@@ -60,7 +60,7 @@ class ConvertManager(QRunnable):
 
     @pyqtSlot()
     def run(self):
-        AutoFix.get().info('Started converter... ', 5)
+        AutoFix.info('Started converter... ', 5)
         try:
             while True:
                 if len(self.queue):
@@ -74,4 +74,4 @@ class ConvertManager(QRunnable):
                     break
                 sleep(0.2)
         except:
-            AutoFix.get().exception(shutdown=True)
+            AutoFix.exception(shutdown=True)

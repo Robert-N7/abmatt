@@ -21,7 +21,7 @@ class InteractiveCmd(QLineEdit):
                 self.cmds_run.pop(0)
             return Command.run_commands([Command(text)])
         except ParsingException as e:
-            AutoFix.get().error(str(e))
+            AutoFix.error(str(e))
             return False
 
     def eventFilter(self, obj, event):

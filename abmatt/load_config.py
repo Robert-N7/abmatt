@@ -51,11 +51,11 @@ def load_config(app_dir, loudness=None, autofix_level=None):
         loudness = conf['loudness']
     if loudness:
         try:
-            AutoFix.get().set_loudness(loudness)
+            AutoFix.set_loudness(loudness)
         except ValueError:
-            AutoFix.get().warn('Invalid loudness level {}'.format(loudness))
+            AutoFix.warn('Invalid loudness level {}'.format(loudness))
     if not len(conf):
-        AutoFix.get().warn('No configuration detected (etc/abmatt/config.conf).')
+        AutoFix.warn('No configuration detected (etc/abmatt/config.conf).')
         return
     Command.set_max_brres_files(conf)
     # Matching stuff
@@ -299,7 +299,7 @@ def parse_args(argv, app_dir):
         try:
             Command.updateSelection(brres_file)
         except NoSuchFile as e:
-            AutoFix.get().exception(e, True)
+            AutoFix.exception(e, True)
 
     if command_file:
         try:
@@ -307,7 +307,7 @@ def parse_args(argv, app_dir):
             if filecmds:
                 cmds = cmds + filecmds
         except NoSuchFile as err:
-            AutoFix.get().error(err)
+            AutoFix.error(err)
 
     # Run Commands
     if cmds:

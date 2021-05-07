@@ -156,7 +156,7 @@ class Tex0(SubFile):
         PackTex0(self, binfile)
 
     def info(self, key=None, indentation=0):
-        AutoFix.get().info('{} {}: {} {}x{} mips:{}'.format(self.MAGIC, self.name, self.FORMATS[self.format],
+        AutoFix.info('{} {}: {} {}x{} mips:{}'.format(self.MAGIC, self.name, self.FORMATS[self.format],
                                                self.width, self.height, self.num_mips), 1)
 
 

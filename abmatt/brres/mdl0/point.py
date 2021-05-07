@@ -81,15 +81,15 @@ class Point(Node):
     def check(self):
         result = False
         # if self.comp_count > 3 and self.comp_count != 9:
-        #     AutoFix.get().error('Geometry {} comp_count {} out of range'.format(self.name, self.comp_count))
+        #     AutoFix.error('Geometry {} comp_count {} out of range'.format(self.name, self.comp_count))
         #     self.comp_count = 0
         #     result = True
         if self.divisor >= 16:
-            AutoFix.get().error('Geometry {} divisor {} out of range'.format(self.name, self.divisor))
+            AutoFix.error('Geometry {} divisor {} out of range'.format(self.name, self.divisor))
             self.divisor = 0
             result = True
         # if self.format > 5:
-        #     AutoFix.get().error('Geometry {} format {} out of range'.format(self.name, self.format))
+        #     AutoFix.error('Geometry {} format {} out of range'.format(self.name, self.format))
         #     self.format = 4
         #     result = True
         return result

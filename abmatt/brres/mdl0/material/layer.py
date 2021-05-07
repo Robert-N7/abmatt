@@ -436,9 +436,9 @@ class Layer(Clipable):
         trace = '  ' * indentation_level + self.name if indentation_level else '>' + self.parent.name + "->" + self.name
         if key:
             val = self.get_str(key)
-            AutoFix.get().info("{}\t{}:{}".format(trace, key, val), 1)
+            AutoFix.info("{}\t{}:{}".format(trace, key, val), 1)
         else:
-            AutoFix.get().info("{}:\tScale:{} Rot:{} Trans:{}".format(
+            AutoFix.info("{}:\tScale:{} Rot:{} Trans:{}".format(
                 trace, self.scale, self.rotation, self.translation), 1)
 
     def uses_mipmaps(self):

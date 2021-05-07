@@ -236,7 +236,7 @@ class Command:
                 ext = None
             if ext is None or ext.lower() != '.brres':
                 if ext:
-                    AutoFix.get().warn('Unsupported target extension {}, using .brres'.format(ext))
+                    AutoFix.warn('Unsupported target extension {}, using .brres'.format(ext))
                 self.destination += '.brres'
         if not self.is_import:
             if not self.destination:
@@ -447,7 +447,7 @@ class Command:
             opened[f] = brres
             active.append(brres)
         # except UnpackingError as e:
-        #     AutoFix.get().error(e)
+        #     AutoFix.error(e)
         return active
 
     @staticmethod
@@ -473,7 +473,7 @@ class Command:
             try:
                 lines = f.readlines()
             except UnicodeDecodeError:
-                AutoFix.get().error('Not a text file {}'.format(filename))
+                AutoFix.error('Not a text file {}'.format(filename))
                 return
             preset_begin = False
             preset = []
@@ -487,7 +487,7 @@ class Command:
                         try:
                             preset.append(Command(line))
                         except ParsingException as e:
-                            AutoFix.get().error('Preset {} : {}'.format(name, e), 1)
+                            AutoFix.error('Preset {} : {}'.format(name, e), 1)
                             Command.PRESETS[name] = None
                     else:
                         commands.append(Command(line))
@@ -692,7 +692,7 @@ class Command:
                 cmd.run_cmd()
         except (ValueError, SaveError, PasteError, MaxFileLimit, NoSuchFile, FileNotFoundError, ParsingException,
                 OSError, UnpackingError, PackingError, NotImplementedError, NoImgConverterError, RuntimeError) as e:
-            AutoFix.get().exception(e)
+            AutoFix.exception(e)
             return False
         return True
 
@@ -735,7 +735,7 @@ class Command:
     def run_cmd(self):
         if self.hasSelection:
             if not self.updateSelection(self.file, self.model, self.name):
-                AutoFix.get().warn('No selection found for "{}"'.format(self.txt))
+                AutoFix.warn('No selection found for "{}"'.format(self.txt))
                 return False
             elif self.cmd == 'select':
                 return True
@@ -758,7 +758,7 @@ class Command:
         self.updateTypeSelection()
         if not self.SELECTED:
             if self.cmd == 'info':
-                AutoFix.get().info('No items in selection.')
+                AutoFix.info('No items in selection.')
                 return True
             raise RuntimeError('No items found in selection! ({})'.format(self.txt))
         if self.cmd == 'set':
@@ -1033,9 +1033,9 @@ def load_presets(app_dir):
     if app_dir != cwd:
         loaded_cwd = load_preset_file(cwd)
     if loaded or loaded_cwd:
-        AutoFix.get().info('Presets loaded...', 5)
+        AutoFix.info('Presets loaded...', 5)
     else:
-        AutoFix.get().info('No presets file detected', 3)
+        AutoFix.info('No presets file detected', 3)
     return loaded
 
 
@@ -1052,7 +1052,7 @@ class Shell(Cmd, object):
         try:
             Command.run_commands([Command(line)])
         except (ParsingException, NoSuchFile) as e:
-            AutoFix.get().exception(e)
+            AutoFix.exception(e)
 
     @staticmethod
     def complete_material_name(match_text):
@@ -1321,7 +1321,7 @@ class Shell(Cmd, object):
             file = words.pop(0)
             overwrite = True if 'overwrite' in words or Command.OVERWRITE else False
             if os.path.exists(file) and not overwrite:
-                AutoFix.get().error('File {} already exists!'.format(file))
+                AutoFix.error('File {} already exists!'.format(file))
             else:
                 with open(file, 'w') as f:
                     f.write('\n'.join(self.cmd_queue))

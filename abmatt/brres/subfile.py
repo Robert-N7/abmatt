@@ -78,7 +78,7 @@ class SubFile(Clipable, Packable):
         if not dest.endswith(ext):
             dest += ext
         if os.path.exists(dest) and not overwrite and not self.OVERWRITE_MODE:
-            AutoFix.get().error('{} already exists!'.format(dest))
+            AutoFix.error('{} already exists!'.format(dest))
             return
         bin = BinFile(dest, 'w')
         self.pack(bin)

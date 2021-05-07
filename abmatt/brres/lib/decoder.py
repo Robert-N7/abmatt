@@ -147,13 +147,13 @@ def decode_polygon(polygon, influences=None):
         influence_collection = InfluenceCollection({0: influence})
     for x in polygon.uv_mtx_indices:
         if x >= 0:
-            AutoFix.get().warn('{} uv matrices data lost in export.'.format(polygon.name))
+            AutoFix.warn('{} uv matrices data lost in export.'.format(polygon.name))
             indices = face_point_indices[:, :, x] // 3
             if (indices < 10).any():
                 print('Less than 10!')
     from abmatt.converters.geometry import Geometry
     geometry = Geometry(polygon.name, polygon.get_material().name, g_verts,
-                        triangles=face_point_indices[:, :, vertex_index:], influences=influence_collection,
+                        triangles=None, influences=influence_collection,
                         linked_bone=linked_bone)
     # create the point collections
     if normals:
@@ -254,7 +254,7 @@ def decode_indices(polygon, fmt_str):
             else:
                 raise error.ConvertError('Texture matrices not supported')
         elif cmd == 0x00:
-            AutoFix.get().warn('Finished parsing {} indices early, possible bug?'.format(polygon.name))
+            AutoFix.warn('Finished parsing {} indices early, possible bug?'.format(polygon.name))
             break
         else:
             raise ValueError('Unsupported draw cmd {}'.format(cmd))
@@ -295,7 +295,7 @@ def decode_pos_mtx_indices(all_influences, weight_groups, vertices, pos_mtx_indi
                 influences[vertex_index] = influence = all_influences[weight_indices[i]]
                 points[vertex_index] = influence.apply_to(points[vertex_index], decode=True)
             elif influences[vertex_index].influence_id != weight_indices[i]:
-                AutoFix.get().warn(f'vertex {vertex_index} has multiple different influences!')
+                AutoFix.warn(f'vertex {vertex_index} has multiple different influences!')
                 influences[vertex_index] = all_influences[weight_indices[i]]
 
     # assert len(influences) == len(points)

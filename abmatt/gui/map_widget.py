@@ -295,7 +295,7 @@ class MapImporter(QWidget):
                 tex0 = self.brres.get_texture(os.path.splitext(os.path.basename(path))[0])
             self.import_handler.on_import(tex0)
         except EncodeError as e:
-            AutoFix.get().error(e)
+            AutoFix.error(e)
         self.close()
 
 
@@ -341,10 +341,10 @@ class MapExporter(QWidget):
         path = self.path_edit.text()
         dir = os.path.dirname(path)
         if not os.path.exists(dir):
-            AutoFix.get().error('Path {} does not exist!'.format(path))
+            AutoFix.error('Path {} does not exist!'.format(path))
         else:
             ImgConverter().decode(self.tex0, path, overwrite=True, num_mips=self.mipmap_count.value())
-            AutoFix.get().info('Exported {} to {}'.format(self.tex0.name, path))
+            AutoFix.info('Exported {} to {}'.format(self.tex0.name, path))
             self.close()
 
     def on_cancel(self):

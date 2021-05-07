@@ -19,15 +19,15 @@ class Vertex(Point):
         if min(linked_bone.scale) >= 0.9999 and np.allclose(linked_bone.rotation, 0.0):  # only checks if not scaled down and not rotated
             # Check Y value
             if self.parent.name == 'course' and self.minimum[1] + linked_bone.translation[1] < 0:
-                AutoFix.get().warn('Vertex {} minimum y below axis {}'.format(self.name, self.minimum[1]))
+                AutoFix.warn('Vertex {} minimum y below axis {}'.format(self.name, self.minimum[1]))
             for x in self.minimum:
                 if abs(x) > self.__MAX_COORD:
-                    AutoFix.get().warn(
+                    AutoFix.warn(
                         'Vertex {} extreme coordinate {}, (ignore this warning for non-drivable surfaces)'.format(
                             self.name, x))
             for x in self.maximum:
                 if x > self.__MAX_COORD:
-                    AutoFix.get().warn(
+                    AutoFix.warn(
                         'Vertex {} extreme coordinate {}, (ignore this warning for non-drivable surfaces)'.format(
                             self.name, x))
 

@@ -2,6 +2,7 @@ from abmatt.brres.lib.binfile import UnpackingError
 from abmatt.brres.lib.unpacking.interface import Unpacker
 from abmatt.brres.lib.unpacking.unpack_mdl0.unpack_bone import unpack_bonetable
 from abmatt.brres.mdl0 import polygon as ply
+from abmatt.autofix import AutoFix
 
 
 class UnpackPolygon(Unpacker):
@@ -15,15 +16,13 @@ class UnpackPolygon(Unpacker):
         binfile.start()
         binfile.readLen()
         mdl0_offset, self.bone_id, cp_vert_lo, cp_vert_hi, xf_vert = binfile.read('2i3I', 20)
-        self.parse_cp_vertex_format(polygon, cp_vert_hi, cp_vert_lo)
-        self.parse_xf_vertex_specs(xf_vert)
         offset = binfile.offset
         vt_dec_size, vt_dec_actual, vt_dec_offset = binfile.read('3I', 12)
         vt_dec_offset += offset
         offset = binfile.offset
         vt_size, vt_actual, vt_offset = binfile.read('3I', 12)
         vt_offset += offset
-        xf_arry_flags, polygon.flags = binfile.read('2I', 8)
+        self.xf_arry_flags, polygon.flags = binfile.read('2I', 8)
         binfile.advance(4)
         polygon.index, polygon.facepoint_count, polygon.face_count, \
         self.vertex_group_index, self.normal_group_index = binfile.read('3I2h', 16)
@@ -37,7 +36,17 @@ class UnpackPolygon(Unpacker):
         binfile.store()  # bt offset
         binfile.recall()  # bt
         polygon.bone_table = unpack_bonetable(binfile, 'H')
-        binfile.offset = vt_dec_offset + 32  # ignores most of the beginning since we already have it
+        binfile.offset = vt_dec_offset + 10
+        _, self.cp_vert_lo, _, self.cp_vert_hi = binfile.read('HIHI', 12)
+        if self.cp_vert_lo != cp_vert_lo:
+            AutoFix.warn('{} CP_VERTEX_LO does not match (using {})'.format(polygon.name, self.cp_vert_lo))
+        if self.cp_vert_hi != cp_vert_hi:
+            AutoFix.warn('{} CP_VERTEX_HI does not match (using {})'.format(polygon.name, self.cp_vert_hi))
+        binfile.advance(5)
+        [self.xf_vert] = binfile.read('I', 4)
+        if self.xf_vert != xf_vert:
+            AutoFix.warn('{} XF_VERT_SPEC does not match (using {})'.format(polygon.name, xf_vert))
+        binfile.offset = vt_dec_offset + 32
         uvat = binfile.read('HIHIHI', 18)
         # self.uvat = uvat
         self.parse_uvat(polygon, uvat[1], uvat[3], uvat[5])
@@ -51,6 +60,9 @@ class UnpackPolygon(Unpacker):
     def post_unpack(self):
         poly = self.node
         mdl0 = poly.parent
+        self.parse_xf_arry_flags(self.xf_arry_flags)
+        self.parse_xf_vertex_specs(self.xf_vert)
+        self.parse_cp_vertex_format(poly, self.cp_vert_hi, self.cp_vert_lo)
         # hook up references
         if self.vertex_group_index >= 0:
             poly.vertices = mdl0.vertices[self.vertex_group_index]
@@ -102,12 +114,24 @@ class UnpackPolygon(Unpacker):
             return self.i_pp()
         return -1
 
+    def parse_xf_arry_flags(self, xf_arry_flags):
+        self.has_weights = xf_arry_flags & 1
+        self.has_uv_matrix = [xf_arry_flags >> i & 1 for i in range(1, 9)]
+        xf_arry_flags >>= 9
+        self.has_vertex = xf_arry_flags & 1
+        self.has_normals = xf_arry_flags & 2
+        self.has_color0 = xf_arry_flags & 4
+        self.has_color1 = xf_arry_flags & 8
+        xf_arry_flags >>= 4
+        self.has_uv_group = [xf_arry_flags >> 0 & 1 for i in range(8)]
+
     def parse_cp_vertex_format(self, polygon, hi, lo):
         if lo & 0x1:
             polygon.weight_index = self.i_pp()
             self.encode_string += 'B'
         else:
             polygon.weight_index = -1
+        self.__check_helper(lo & 0x1, self.has_weights, 'weight')
         lo >>= 1
         tex_matrix = []
         for i in range(8):
@@ -116,17 +140,37 @@ class UnpackPolygon(Unpacker):
                 self.encode_string += 'B'
             else:
                 tex_matrix.append(-1)
+            self.__check_helper(lo & 1, self.has_uv_matrix[i], 'uv_matrix' + str(i))
             lo >>= 1
         polygon.uv_mtx_indices = tex_matrix
         polygon.vertex_index = self.get_index_from_format(lo & 0x3)
+        self.__check_helper(polygon.vertex_index >= 0, self.has_vertex, 'vertex')
         polygon.normal_index = self.get_index_from_format(lo >> 2 & 0x3)
+        self.__check_helper(polygon.normal_index >= 0, self.has_normals, 'normal')
         polygon.color0_index = self.get_index_from_format(lo >> 4 & 0x3)
+        self.__check_helper(polygon.color0_index >= 0, self.has_color0, 'color0')
         polygon.color1_index = self.get_index_from_format(lo >> 6 & 0x3)
+        self.__check_helper(polygon.color1_index >= 0, self.has_color1, 'color1')
+        polygon.color_count = (polygon.color0_index >= 0) + (polygon.color1_index >= 0)
+        self.__check_helper(polygon.color_count, self.color_count, 'color count')
         tex = []
+        total = 0
         for i in range(8):
-            tex.append(self.get_index_from_format(hi & 3))
+            index = self.get_index_from_format(hi & 3)
+            tex.append(index)
+            self.__check_helper(index >= 0, self.has_uv_group[i], 'uv' + str(i))
+            total += (index >= 0)
             hi >>= 2
+        polygon.uv_count = total
+        if polygon.uv_count != self.uv_count:
+            AutoFix.warn('{} mismatch in {} definition (assuming {})'.format(self.node.name, 'UV count', polygon.uv_count))
+        self.__check_helper(polygon.uv_count, self.uv_count, 'uv count')
         polygon.uv_indices = tex
+
+    def __check_helper(self, actual_exists, exists, def_name):
+        if bool(actual_exists) != bool(exists):
+            has_str = 'has' if actual_exists else 'None'
+            AutoFix.warn('{} mismatch in {} definition (assuming {})'.format(self.node.name, def_name, has_str))
 
     def parse_uvat(self, polygon, uvata, uvatb, uvatc):
         # Since we hook the references to their groups, we don't need the formats etc
@@ -165,7 +209,7 @@ class UnpackPolygon(Unpacker):
 
     def parse_xf_vertex_specs(self, vt_specs):
         poly = self.node
-        poly.color_count = vt_specs & 0x3
+        self.color_count = vt_specs & 0x3
         normals = vt_specs >> 2 & 0x3
-        poly.uv_count = vt_specs >> 4 & 0xf
+        self.uv_count = vt_specs >> 4 & 0xf
 

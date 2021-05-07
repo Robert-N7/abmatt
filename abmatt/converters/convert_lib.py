@@ -43,7 +43,7 @@ class Converter:
         self.encoder = encoder
 
     def _start_saving(self, mdl0):
-        AutoFix.get().info('Exporting to {}...'.format(self.mdl_file))
+        AutoFix.info('Exporting to {}...'.format(self.mdl_file))
         self.start = time.time()
         if mdl0 is None:
             mdl0 = self.mdl0
@@ -73,10 +73,10 @@ class Converter:
         self._create_image_library(self.tex0_map.values())
         os.chdir(self.cwd)
         writer.write(self.mdl_file)
-        AutoFix.get().info('\t...finished in {} seconds.'.format(round(time.time() - self.start, 2)))
+        AutoFix.info('\t...finished in {} seconds.'.format(round(time.time() - self.start, 2)))
 
     def _start_loading(self, model_name):
-        AutoFix.get().info('Converting {}... '.format(self.mdl_file))
+        AutoFix.info('Converting {}... '.format(self.mdl_file))
         self.start = time.time()
         self.cwd = os.getcwd()
         self.import_textures_map = {}
@@ -107,7 +107,7 @@ class Converter:
         if self.is_map:
             mdl0.add_map_bones()
         os.chdir(self.cwd)
-        AutoFix.get().info('\t... finished in {} secs'.format(round(time.time() - self.start, 2)))
+        AutoFix.info('\t... finished in {} secs'.format(round(time.time() - self.start, 2)))
         if self.encoder:
             self.encoder.after_encode(mdl0)
         return mdl0
@@ -194,7 +194,7 @@ class Converter:
             return True
         converter = ImgConverter()
         if not converter:
-            AutoFix.get().error('No image converter found!')
+            AutoFix.error('No image converter found!')
             return False
         converter.batch_decode(tex0s, self.image_dir)
         return True
@@ -221,7 +221,7 @@ class Converter:
         try:
             return self._try_import_textures(self.brres, image_path_map)
         except NoImgConverterError as e:
-            AutoFix.get().exception(e)
+            AutoFix.exception(e)
 
     @staticmethod
     def _try_import_textures(brres, image_paths):
@@ -230,7 +230,7 @@ class Converter:
                 converter = ImgConverter()
                 converter.batch_encode(image_paths.values(), brres, overwrite=converter.OVERWRITE_IMAGES)
             except EncodeError:
-                AutoFix.get().warn('Failed to encode images')
+                AutoFix.warn('Failed to encode images')
         return image_paths
 
     def _encode_geometry(self, geometry):

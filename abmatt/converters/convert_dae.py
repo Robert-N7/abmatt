@@ -116,7 +116,7 @@ class DaeConverter(convert_lib.Converter):
             if layer not in self.tex0_map:
                 tex0 = self.texture_library.get(layer)
                 if tex0 is None:
-                    AutoFix.get().warn('No texture found matching {}'.format(layer))
+                    AutoFix.warn('No texture found matching {}'.format(layer))
                 else:
                     map_path = layer + '.png'
                     mesh.add_image(layer, os.path.join(self.image_dir, map_path))

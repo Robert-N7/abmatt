@@ -216,7 +216,7 @@ class MaterialLibraryGui(MaterialBrowser):
         if self.brres is not None:
             model = self.brres.models[0]
             if model.get_material_by_name(material.name):
-                AutoFix.get().error('Material {} already exists!'.format(material.name))
+                AutoFix.error('Material {} already exists!'.format(material.name))
                 return False
             mat = Material(material.name, self.brres.models[0])
             mat.paste(material)

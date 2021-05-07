@@ -376,9 +376,9 @@ class Stage(Clipable):
     def info(self, key=None, indentation_level=0):
         trace = '>' + '  ' * indentation_level if indentation_level else '>' + str(self.parent.get_material_name())
         if key:
-            AutoFix.get().info('{}->Stage:{}\t{}:{}'.format(trace, self.name, key, self[key]), 1)
+            AutoFix.info('{}->Stage:{}\t{}:{}'.format(trace, self.name, key, self[key]), 1)
         else:
-            AutoFix.get().info('{}Stage:{}\tMapId:{} ColorScale:{}'.format(
+            AutoFix.info('{}Stage:{}\tMapId:{} ColorScale:{}'.format(
                 trace, self.name, self['mapid'], self['colorscale']), 1)
 
     # --------------------------------------------------------------------

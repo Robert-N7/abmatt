@@ -371,7 +371,7 @@ class Mdl0(SubFile):
     def rename(self, name):
         for x in self.parent.models:
             if x is not self and x.name == name:
-                AutoFix.get().error('Unable to rename {}, the model {} already exists!'.format(self.name, name))
+                AutoFix.error('Unable to rename {}, the model {} already exists!'.format(self.name, name))
                 return False
         old_name = self.name
         result = super().rename(name)
@@ -402,7 +402,7 @@ class Mdl0(SubFile):
             notify = 'Adding reference to unknown texture "{}"'.format(name)
             if tex:
                 notify += ', did you mean ' + tex.name + '?'
-            AutoFix.get().info(notify, 4)
+            AutoFix.info(notify, 4)
 
     def rename_texture_link(self, layer, name):
         """Attempts to rename a layer, raises value error if the texture can't be found"""
@@ -412,7 +412,7 @@ class Mdl0(SubFile):
             notify = 'Adding reference to unknown texture "{}"'.format(name)
             if tex:
                 notify += ', did you mean ' + tex.name + '?'
-            AutoFix.get().info(notify, 4)
+            AutoFix.info(notify, 4)
         return name
 
     def get_trace(self):
@@ -420,7 +420,7 @@ class Mdl0(SubFile):
 
     def info(self, key=None, indentation_level=0):
         trace = '  ' * indentation_level + '>' + self.name if indentation_level else self.parent.name + "->" + self.name
-        AutoFix.get().info("{}:\t{} material(s)".format(trace, len(self.materials)), 1)
+        AutoFix.info("{}:\t{} material(s)".format(trace, len(self.materials)), 1)
         indentation_level += 1
         # pass it along
         for x in self.materials:
@@ -491,7 +491,7 @@ class Mdl0(SubFile):
         to_remove = []
         for x in group:
             if x.name not in used_set:
-                AutoFix.get().info('Unused reference {}'.format(x.name), 3)
+                AutoFix.info('Unused reference {}'.format(x.name), 3)
                 if self.REMOVE_UNUSED_REFS:
                     to_remove.append(x)
             if extras and x.check(extras):
@@ -499,7 +499,7 @@ class Mdl0(SubFile):
             elif x.check():
                 self.mark_modified()
         if to_remove:
-            AutoFix.get().info('(FIXED) Removed unused refs')
+            AutoFix.info('(FIXED) Removed unused refs')
             for x in to_remove:
                 group.remove(x)
             self.rebuild_indexes(group)
@@ -542,7 +542,7 @@ class Mdl0(SubFile):
         self.check_group(self.colors, colors)
         if not len(self.bones):  # no bones???
             name = expected_name if expected_name else 'default'
-            AutoFix.get().warn('No bones in model, adding bone {}'.format(name))
+            AutoFix.warn('No bones in model, adding bone {}'.format(name))
             self.add_bone(name)
 
     def add_map_bones(self):
