@@ -140,4 +140,4 @@ if __name__ == '__main__':
     files = []
     for x in gather_brres_files(root, files):
         perform_analysis(Brres(x))
-    AutoFix.get().quit()
+    AutoFix.quit()

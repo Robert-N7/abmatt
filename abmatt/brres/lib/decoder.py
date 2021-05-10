@@ -40,10 +40,10 @@ class ColorDecoder:
 
     @staticmethod
     def decode_rgb565(color_data, num_colors):
-        data = unpack('>{}H'.format(num_colors), color_data)
+        data = unpack_from('>{}H'.format(num_colors), color_data, 0)
         colors = []
         for color in data:
-            colors.append(((color >> 8) & 0xf8, (color >> 3) & 0xfc, (color & 0x1f) << 3, 0xff))
+            colors.append(((color >> 8) & 0xf8 | 0x7, (color >> 3) & 0xfc | 0x3, (color & 0x1f) << 3 | 0x7, 0xff))
         return colors
 
     @staticmethod
@@ -69,10 +69,10 @@ class ColorDecoder:
     @staticmethod
     def decode_rgba4(data, num_colors):
         colors = []
-        c_data = unpack('>{}H'.format(num_colors), data)
+        c_data = unpack_from('>{}H'.format(num_colors), data, 0)
         for color in c_data:
-            colors.append((color >> 8 & 0xf0, color >> 4 & 0xf0,
-                           color & 0xf0, color << 4 & 0xf0))
+            colors.append((color >> 8 & 0xf0 | 0xf, color >> 4 & 0xf0 | 0xf,
+                           color & 0xf0 | 0xf, color << 4 & 0xf0 | 0xf))
         return colors
 
     @staticmethod
@@ -81,8 +81,8 @@ class ColorDecoder:
         offset = 0
         for i in range(num_colors):
             d = unpack_from('>3B', data, offset)
-            colors.append((d[0] & 0xfc, (d[0] & 0x3) << 6 | (d[1] & 0xf0) >> 2,
-                           d[1] << 4 & 0xf0 | d[2] >> 4 & 0xc, d[2] << 2 & 0xfc))
+            colors.append((d[0] & 0xfc | 0x3, (d[0] & 0x3) << 6 | (d[1] & 0xf0) >> 2 | 0x3,
+                           d[1] << 4 & 0xf0 | d[2] >> 4 & 0xc | 0x3, d[2] << 2 & 0xfc | 0x3))
             offset += 3
         return colors
 
@@ -147,13 +147,13 @@ def decode_polygon(polygon, influences=None):
         influence_collection = InfluenceCollection({0: influence})
     for x in polygon.uv_mtx_indices:
         if x >= 0:
-            AutoFix.get().warn('{} uv matrices data lost in export.'.format(polygon.name))
+            AutoFix.warn('{} uv matrices data lost in export.'.format(polygon.name))
             indices = face_point_indices[:, :, x] // 3
             if (indices < 10).any():
                 print('Less than 10!')
     from abmatt.converters.geometry import Geometry
     geometry = Geometry(polygon.name, polygon.get_material().name, g_verts,
-                        triangles=face_point_indices[:, :, vertex_index:], influences=influence_collection,
+                        triangles=None, influences=influence_collection,
                         linked_bone=linked_bone)
     # create the point collections
     if normals:
@@ -254,7 +254,7 @@ def decode_indices(polygon, fmt_str):
             else:
                 raise error.ConvertError('Texture matrices not supported')
         elif cmd == 0x00:
-            AutoFix.get().warn('Finished parsing {} indices early, possible bug?'.format(polygon.name))
+            AutoFix.warn('Finished parsing {} indices early, possible bug?'.format(polygon.name))
             break
         else:
             raise ValueError('Unsupported draw cmd {}'.format(cmd))
@@ -295,7 +295,7 @@ def decode_pos_mtx_indices(all_influences, weight_groups, vertices, pos_mtx_indi
                 influences[vertex_index] = influence = all_influences[weight_indices[i]]
                 points[vertex_index] = influence.apply_to(points[vertex_index], decode=True)
             elif influences[vertex_index].influence_id != weight_indices[i]:
-                AutoFix.get().warn(f'vertex {vertex_index} has multiple different influences!')
+                AutoFix.warn(f'vertex {vertex_index} has multiple different influences!')
                 influences[vertex_index] = all_influences[weight_indices[i]]
 
     # assert len(influences) == len(points)

@@ -90,7 +90,7 @@ class ObjGeometry():
         try:
             triangles = np.array(self.triangles).reshape((-1, 3, width))
         except ValueError as e:
-            AutoFix.get().warn('Please triangulate your model before importing it!'.format(self.name))
+            AutoFix.warn('Please triangulate your model before importing it!'.format(self.name))
             raise ValueError('Normalize triangles failed')
         triangles = triangles - 1
         self.triangles = triangles
@@ -120,7 +120,7 @@ class Obj():
                     geo.normalize(self.vertices, self.normals, self.texcoords)
                 except ValueError:
                     to_remove.append(geo)
-                    AutoFix.get().warn('No geometry found for {}'.format(geo.name))
+                    AutoFix.warn('No geometry found for {}'.format(geo.name))
             if to_remove:
                 self.geometries = [x for x in self.geometries if x not in to_remove]
         else:
@@ -138,7 +138,7 @@ class Obj():
         self.save_obj()
 
     def save_mtllib(self, folder):
-        s = '# Wavefront MTL exported with ABMATT v0.9.6'
+        s = '# Wavefront MTL exported with ABMATT v0.9.7'
         materials = self.materials
         for x in materials:
             s += '\n' + materials[x].get_save_str()
@@ -146,7 +146,7 @@ class Obj():
             f.write(s)
 
     def save_obj(self):
-        s = '# Wavefront OBJ exported with ABMATT v0.9.6\n\nmtllib ' + self.mtllib + '\n\n'
+        s = '# Wavefront OBJ exported with ABMATT v0.9.7\n\nmtllib ' + self.mtllib + '\n\n'
         vertex_index = 1
         normal_index = 1
         normal_offset = -1
@@ -302,5 +302,5 @@ class Obj():
             try:
                 self.parse_mat_lib(self.mtllib)
             except FileNotFoundError as e:
-                AutoFix.get().error(str(e))
+                AutoFix.error(str(e))
 

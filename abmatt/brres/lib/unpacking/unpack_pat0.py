@@ -11,7 +11,7 @@ class UnpackPat0Animation(Unpacker):
         for x in self.node.frames:
             if x.tex >= m:
                 x.tex = textures[0]
-                AutoFix.get().warn('Unpacked Pat0 {} tex_id out of range'.format(self.node.name), 1)
+                AutoFix.warn('Unpacked Pat0 {} tex_id out of range'.format(self.node.name), 1)
             else:
                 x.tex = textures[x.tex]
 
@@ -22,7 +22,7 @@ class UnpackPat0Animation(Unpacker):
         for i in range(size):
             frame_id, tex_id, plt_id = binfile.read('f2H', 8)
             if frame_id > pat0.framecount:
-                AutoFix.get().warn('Unpacked Pat0 {} frame index out of range'.format(pat0.name), 1)
+                AutoFix.warn('Unpacked Pat0 {} frame index out of range'.format(pat0.name), 1)
                 break
             frames.append(pat0.Frame(frame_id, tex_id, plt_id))
 

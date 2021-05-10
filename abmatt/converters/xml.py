@@ -80,7 +80,7 @@ class XML:
                     node.attributes[attrib_name] = attrib_value
                     if attrib_name == 'id':
                         if attrib_value in self.elements_by_id:
-                            AutoFix.get().warn('xml id {} used multiple times'.format(attrib_value), 5)
+                            AutoFix.warn('xml id {} used multiple times'.format(attrib_value), 5)
                         self.elements_by_id[attrib_value] = node
                     offset += 1
                     break

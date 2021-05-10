@@ -35,14 +35,14 @@ class Bug:
         self.description = description
         self.fix_des = fix_des
         self.is_resolved = False
-        AutoFix.get().notify(self)
+        AutoFix.notify(self)
 
     # def should_fix(self):
-    #     return not self.is_resolved and AutoFix.get().should_fix(self)
+    #     return not self.is_resolved and AutoFix.should_fix(self)
 
     def resolve(self):
         self.is_resolved = True
-        AutoFix.get().info(f'(FIXED): {self.fix_des}', self.notify_level)
+        AutoFix.info(f'(FIXED): {self.fix_des}', self.notify_level)
 
 
 class AutoFixAbort(BaseException):
@@ -54,6 +54,7 @@ class AutoFixAbort(BaseException):
 
 class MessageReceiver:
     """Interface to receive messages"""
+
     def info(self, message):
         raise NotImplementedError()
 
@@ -114,29 +115,32 @@ class AutoFix:
         self.loudness = loudness
         self.fix_level = fix_level
         self.queue = []
-        self.is_running = True
+        self.is_running = False
         self.pipe = None  # if set, output is sent to the pipe, must implement info warn and error.
-        self.thread = Thread(target=self.run)
         AutoFix.__AUTO_FIXER = self
-        self.thread.start()
 
     @staticmethod
     def quit():
         a = AutoFix.__AUTO_FIXER
         if a is not None:
-            a.is_running = False
-            a.thread.join()
-            AutoFix.__AUTO_FIXER = None
+            if a.is_running:
+                a.is_running = False
+                a.thread.join()
+                AutoFix.__AUTO_FIXER = None
 
     def run(self):
-        while self.is_running:
-            sleep(0.01)
+        self.is_running = True
+        while len(self.queue):
             if len(self.queue):
-                message = self.queue.pop(0)
-                message.send(self.pipe)
+                self.queue.pop(0).send(self.pipe)
+            sleep(0.01)
+        self.is_running = False
 
     def enqueue(self, message):
         self.queue.append(message)
+        if not self.is_running:
+            self.thread = Thread(target=self.run)
+            self.thread.start()
 
     @staticmethod
     def get(fixe_level=3, loudness=3):
@@ -164,7 +168,7 @@ class AutoFix:
         if self.loudness >= 5:
             self.enqueue(self.Info(str(message)))
 
-    def info(self, message, loudness=2):
+    def info(self, message, loudness=3):
         if self.loudness >= loudness:
             self.enqueue(self.Info(str(message)))
 
@@ -178,7 +182,7 @@ class AutoFix:
 
     def exception(self, exception=None, shutdown=False):
         exc_type, exc_value, exc_tb = sys.exc_info()
-        if self.loudness >= 5:      # Debug level
+        if self.loudness >= 5:  # Debug level
             s = traceback.format_exception(exc_type, exc_value, exc_tb)
         elif self.loudness >= 1:
             s = traceback.format_exception(exc_type, exc_value, exc_tb, 10)
@@ -244,3 +248,6 @@ class AutoFix:
 
     def set_loudness(self, level_str):
         self.loudness = self.get_level(level_str)
+
+
+AutoFix = AutoFix()

@@ -176,7 +176,7 @@ class Clipable(Node):
         else:
             key += ':' + self.get_str(key)
         start = '>' + indentation_level * '  '
-        AutoFix.get().info('{}{}> {}'.format(start, self.name, key), 1)
+        AutoFix.info('{}{}> {}'.format(start, self.name, key), 1)
 
     def get_full_path(self):
         return os.path.join(self.parent.get_full_path(), self.name)

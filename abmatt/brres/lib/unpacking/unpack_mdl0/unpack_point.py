@@ -22,7 +22,7 @@ class UnpackPoint(Unpacker):
         binfile.advance(4)
         pt.index, pt.comp_count, pt.format, pt.divisor, pt.stride, pt.count = binfile.read('3I2BH', 16)
         if not self.is_valid_comp_count(pt.comp_count):
-            AutoFix.get().error('{} has invalid component count {}, using default {}'.format(pt.name, pt.comp_count,
+            AutoFix.error('{} has invalid component count {}, using default {}'.format(pt.name, pt.comp_count,
                                                                                              pt.default_comp_count))
             pt.comp_count = pt.default_comp_count
         if not is_valid_format(pt.format):
@@ -37,7 +37,7 @@ class UnpackPoint(Unpacker):
                 pt.format = point.FMT_INT16
             else:
                 pt.format = point.FMT_INT8
-            AutoFix.get().error('{} has invalid format {}, using format {}'.format(pt.name, old_format,
+            AutoFix.error('{} has invalid format {}, using format {}'.format(pt.name, old_format,
                                                                                    point.FMT_STR[pt.format]))
         # print(self)
 

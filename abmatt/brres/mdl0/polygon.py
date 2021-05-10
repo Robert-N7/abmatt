@@ -99,7 +99,7 @@ class Polygon(Clipable):
             try:
                 return INDEX_FORMAT_BYTE if self.encode_str[index + 1] == 'B' else INDEX_FORMAT_SHORT
             except IndexError:
-                AutoFix.get().error(f'Polygon {self.name} in {self.parent.parent.name} tri index {index} out of range.')
+                AutoFix.error(f'Polygon {self.name} in {self.parent.parent.name} tri index {index} out of range.')
 
     def add_bone_table(self, table):
         self.bone_table = table
@@ -174,7 +174,7 @@ class Polygon(Clipable):
         if my_colors:
             colors.add(my_colors.name)
             if not uses_vertex_colors:
-                AutoFix.get().info(f'{self.name} has unused vertex colors', 4)
+                AutoFix.info(f'{self.name} has unused vertex colors', 4)
         elif uses_vertex_colors:
             b = Bug(2, 2, f'{material.name} uses vertex colors but {self.name} has no colors!',
                     'Disable vertex colors')
@@ -193,11 +193,11 @@ class Polygon(Clipable):
                 if i in uvs_used:
                     uvs_used.remove(i)
                 else:
-                    AutoFix.get().info(f'{self.name} UV Channel {i} is not used by material.', 3)
+                    AutoFix.info(f'{self.name} UV Channel {i} is not used by material.', 3)
             else:
                 break
         if uvs_used:
-            AutoFix.get().warn(f'{self.name} does not have UV channel(s) {uvs_used} but the material uses them!')
+            AutoFix.warn(f'{self.name} does not have UV channel(s) {uvs_used} but the material uses them!')
         self.uv_count = uv_count
         return modified
 

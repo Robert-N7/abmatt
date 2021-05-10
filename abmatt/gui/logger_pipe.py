@@ -22,4 +22,4 @@ class LoggerPipe(QObject, MessageReceiver):
 
     def __init__(self):
         super().__init__()
-        AutoFix.get().set_pipe(self)
+        AutoFix.set_pipe(self)

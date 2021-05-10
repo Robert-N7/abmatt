@@ -7,7 +7,6 @@ import os.path
 import sys
 
 from abmatt import load_config
-from abmatt.autofix import AutoFix
 
 
 def main():
@@ -20,15 +19,10 @@ def main():
         base_path = sys.executable
     else:
         base_path = os.path.abspath(__file__)
-    try:
-        files = load_config.parse_args(argv, base_path)
-        # cleanup
-        for file in files.values():
-            file.close()
-    except:
-        AutoFix.get().quit()
-        raise
-    AutoFix.get().quit()
+    files = load_config.parse_args(argv, base_path)
+    # cleanup
+    for file in files.values():
+        file.close()
 
 
 if __name__ == "__main__":

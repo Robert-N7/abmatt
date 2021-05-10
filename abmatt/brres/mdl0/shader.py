@@ -164,12 +164,12 @@ class Shader(Clipable):
     def info(self, key=None, indentation_level=0):
         trace = '>' + '  ' * indentation_level if indentation_level else '>'
         if not key:
-            AutoFix.get().info('{}(Shader){}'.format(trace, self.get_material_name()), 1)
+            AutoFix.info('{}(Shader){}'.format(trace, self.get_material_name()), 1)
             indentation_level += 1
             for x in self.stages:
                 x.info(key, indentation_level)
         else:
-            AutoFix.get().info('{}(Shader){}: {}:{} '.format(trace, self.get_material_name(), key, self[key]), 1)
+            AutoFix.info('{}(Shader){}: {}:{} '.format(trace, self.get_material_name(), key, self[key]), 1)
 
     def get_stage(self, n):
         if not 0 <= n < len(self.stages):
@@ -308,7 +308,7 @@ class Shader(Clipable):
                         tex_usage[x] += 1
                         ind_stage_count += 1
                     except IndexError:
-                        AutoFix.get().warn('Ind coord {} set but unused'.format(x), 3)
+                        AutoFix.warn('Ind coord {} set but unused'.format(x), 3)
         # now check usage count
         removal_index = 0
         for i in range(len(tex_usage)):

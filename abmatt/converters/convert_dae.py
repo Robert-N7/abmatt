@@ -50,7 +50,6 @@ class DaeConverter(convert_lib.Converter):
 
     def save_model(self, mdl0=None):
         base_name, mdl0 = self._start_saving(mdl0)
-        self.bones = {}
         mesh = collada.Dae(initial_scene_name=base_name)
         self.decoded_mats = [self.__decode_material(x, mesh) for x in mdl0.materials]
         # polygons
@@ -67,13 +66,13 @@ class DaeConverter(convert_lib.Converter):
         return mtx.srt_to_matrix(bone.scale, bone.rotation, bone.translation)
 
     def __decode_bone(self, mdl0_bone, collada_parent=None, matrix=None):
-        if len(self.bones) > 0 and self.flags & self.SINGLE_BONE:
+        if len(self.bones) >= 1 and self.flags & self.SINGLE_BONE:
             return
         name = mdl0_bone.name
+        self.bones[name] = mdl0_bone
         node = collada.ColladaNode(name, {'type': 'JOINT'})
         matrix = self.__get_matrix(mdl0_bone)
         node.matrix = matrix
-        self.bones[mdl0_bone.name] = mdl0_bone
         if collada_parent:
             collada_parent.nodes.append(node)
         if mdl0_bone.child:
@@ -83,25 +82,12 @@ class DaeConverter(convert_lib.Converter):
         return node
 
     def __decode_geometry(self, polygon):
+        geo = super()._decode_geometry(polygon)
         name = polygon.name
         node = collada.ColladaNode(name)
-        geo = polygon.get_decoded()
-        if geo.colors and self.flags & self.NO_COLORS:
-            geo.colors = None
-        if geo.normals and self.flags & self.NO_NORMALS:
-            geo.normals = None
-        if self.flags & self.SINGLE_BONE:
-            geo.influences = self.__get_single_bone_influence()
         node.geometries.append(geo)
         node.controller = get_controller(geo)
         return node
-
-    def __get_single_bone_influence(self):
-        for x in self.bones:
-            pass
-        bone = self.bones[x]
-        return influence.InfluenceCollection({0: influence.Influence(
-            bone_weights={bone.name: influence.Weight(bone, 1.0)})})
 
     def __decode_material(self, material, mesh):
         diffuse_map = ambient_map = specular_map = None
@@ -116,7 +102,7 @@ class DaeConverter(convert_lib.Converter):
             if layer not in self.tex0_map:
                 tex0 = self.texture_library.get(layer)
                 if tex0 is None:
-                    AutoFix.get().warn('No texture found matching {}'.format(layer))
+                    AutoFix.warn('No texture found matching {}'.format(layer))
                 else:
                     map_path = layer + '.png'
                     mesh.add_image(layer, os.path.join(self.image_dir, map_path))
@@ -138,10 +124,6 @@ class DaeConverter(convert_lib.Converter):
     def __encode_geometry(self, geometry):
         if not self.dae.y_up:
             geometry.swap_y_z_axis()
-        if self.flags & self.NO_COLORS:
-            geometry.colors = None
-        if self.flags & self.NO_NORMALS:
-            geometry.normals = None
         replace = 'Mesh'
         if geometry.name.endswith(replace) and len(replace) < len(geometry.name):
             geometry.name = geometry.name[:len(replace) * -1]

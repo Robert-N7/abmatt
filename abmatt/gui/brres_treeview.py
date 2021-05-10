@@ -117,7 +117,7 @@ class BrresTreeView(QTreeView):
             text, ok = QInputDialog.getText(self, 'Rename Node', 'Rename to:', text=old_name)
             if ok and text != old_name:
                 if brres.get_model(text):
-                    AutoFix.get().error('Model with name {} already exists!'.format(text))
+                    AutoFix.error('Model with name {} already exists!'.format(text))
                     return
                 node.rename(text)
                 self.handler.on_rename_update(node, old_name)
@@ -126,7 +126,7 @@ class BrresTreeView(QTreeView):
             text, ok = QInputDialog.getText(self, 'Rename Node', 'Rename to:', text=node.name)
             if ok:
                 if text in [x.name for x in mdl0.objects]:
-                    AutoFix.get().error('Polygon with name {} already exists!'.format(text))
+                    AutoFix.error('Polygon with name {} already exists!'.format(text))
                     return
                 node.rename(text)
 
@@ -227,7 +227,7 @@ class BrresTreeView(QTreeView):
             # elif ext in ('.png', '.jpg', '.bmp', '.tga'):
             #     self.handler.import_texture(fname)
             else:
-                AutoFix.get().warn(f'{fname} has unknown extension')
+                AutoFix.warn(f'{fname} has unknown extension')
 
     def add_mdl0_item(self, brres_tree, mdl0):
         mdl0_tree = self.__create_tree_item(mdl0, brres_tree)

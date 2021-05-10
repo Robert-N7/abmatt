@@ -36,17 +36,17 @@ class Window(QMainWindow, ClipableObserver):
         self.cwd = os.getcwd()
         self.__init_threads()
         self.locked_files = set()       # lock files that are pending conversion etc...
-        # AutoFix.get().set_pipe(self)
+        # AutoFix.set_pipe(self)
         self.__init_UI()
         self.shell_is_shown = False
         self.shell = None
         for file in brres_files:
             self.open(file.name)
-        AutoFix.get().info('Initialized main window', 5)
+        AutoFix.info('Initialized main window', 5)
         self.show()
 
     def __init_threads(self):
-        AutoFix.get().info('Starting threads...', 5)
+        AutoFix.info('Starting threads...', 5)
         self.threadpool = QThreadPool()     # for multi-threading
         self.threadpool.setMaxThreadCount(5)
         self.converter = converter = ConvertManager.get()
@@ -56,7 +56,7 @@ class Window(QMainWindow, ClipableObserver):
             image_manager.signals.on_image_update.connect(self.on_image_update)
             self.threadpool.start(image_manager)
         else:
-            AutoFix.get().warn('Image Manager disabled, do you have Wiimms SZS Tools installed?')
+            AutoFix.warn('Image Manager disabled, do you have Wiimms SZS Tools installed?')
         self.threadpool.start(converter)
         log_pipe = LoggerPipe()
         log_pipe.info_sig.connect(self.info)
@@ -288,7 +288,7 @@ class Window(QMainWindow, ClipableObserver):
                 self.brres.save(fname, overwrite=True)
                 self.update_status('Wrote file {}'.format(fname))
         else:
-            AutoFix.get().error('No Brres file selected.')
+            AutoFix.error('No Brres file selected.')
 
     def import_texture(self, filename):
         raise NotImplementedError()
@@ -351,7 +351,7 @@ class Window(QMainWindow, ClipableObserver):
         if not brres:
             brres = self.brres
             if not brres:
-                AutoFix.get().error('Nothing to export!')
+                AutoFix.error('Nothing to export!')
                 return
         elif mdl0 is None:
             if len(brres.models) > 1:
@@ -442,7 +442,7 @@ class Window(QMainWindow, ClipableObserver):
 
 def on_exit():
     #   join other threads
-    AutoFix.get().quit()
+    AutoFix.quit()
 
 
 def main():

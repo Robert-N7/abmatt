@@ -51,11 +51,11 @@ def load_config(app_dir, loudness=None, autofix_level=None):
         loudness = conf['loudness']
     if loudness:
         try:
-            AutoFix.get().set_loudness(loudness)
+            AutoFix.set_loudness(loudness)
         except ValueError:
-            AutoFix.get().warn('Invalid loudness level {}'.format(loudness))
+            AutoFix.warn('Invalid loudness level {}'.format(loudness))
     if not len(conf):
-        AutoFix.get().warn('No configuration detected (etc/abmatt/config.conf).')
+        AutoFix.warn('No configuration detected (etc/abmatt/config.conf).')
         return
     Command.set_max_brres_files(conf)
     # Matching stuff
@@ -108,7 +108,7 @@ def load_config(app_dir, loudness=None, autofix_level=None):
     return conf
 
 
-VERSION = '0.9.6'
+VERSION = '0.9.7'
 USAGE = "USAGE: abmatt [command_line][--interactive -f <file> -b <brres-file> -d <destination> --overwrite]"
 
 
@@ -159,7 +159,7 @@ preset = 'preset' preset_name;
 save = 'save' [filename] ['as' destination] ['overwrite']
 copy = 'copy' type;
 paste = 'paste' type;
-convert = 'convert' filename ['to' destination] ['no-colors'] ['no-normals']
+convert = 'convert' filename ['to' destination] ['no-colors'] ['no-normals'] ['no-uvs']
 
 selection = name ['in' container]
 container = ['brres' filename] ['model' name];
@@ -180,7 +180,7 @@ def parse_args(argv, app_dir):
     command = destination = brres_file = command_file = model = value = key = ""
     autofix = loudness = None
     name = None
-    no_normals = no_colors = single_bone = False
+    no_normals = no_colors = single_bone = no_uvs = False
     do_help = False
     for i in range(len(argv)):
         if argv[i][0] == '-':
@@ -194,7 +194,8 @@ def parse_args(argv, app_dir):
                                    ["help", "destination=", "overwrite",
                                     "command=", "type=", "key=", "value=",
                                     "name=", "brres=", "model=", "file=", "interactive",
-                                    "loudness=", "debug", "single-bone", "no-colors", "no-normals"])
+                                    "loudness=", "debug",
+                                    "single-bone", "no-colors", "no-normals", "no-uvs"])
     except getopt.GetoptError as e:
         print(e)
         print(USAGE)
@@ -237,6 +238,8 @@ def parse_args(argv, app_dir):
             no_normals = True
         elif opt == '--no-colors':
             no_colors = True
+        elif opt == '--no-uvs':
+            no_uvs = True
         else:
             print("Unknown option '{}'".format(opt))
             print(USAGE)
@@ -267,6 +270,8 @@ def parse_args(argv, app_dir):
                 cmd_args.append('--no-colors')
             if no_normals:
                 cmd_args.append('--no-normals')
+            if no_uvs:
+                cmd_args.append('--no-uvs')
         cmds.append(Command(arg_list=cmd_args))
     if command:
         args = [command, type]
@@ -288,6 +293,8 @@ def parse_args(argv, app_dir):
                 args.append('--no-colors')
             if no_normals:
                 args.append('--no-normals')
+            if no_uvs:
+                args.append('--no-uvs')
         cmds.append(Command(arg_list=args))
     if destination:
         Command.DESTINATION = destination
@@ -299,7 +306,7 @@ def parse_args(argv, app_dir):
         try:
             Command.updateSelection(brres_file)
         except NoSuchFile as e:
-            AutoFix.get().exception(e, True)
+            AutoFix.exception(e, True)
 
     if command_file:
         try:
@@ -307,7 +314,7 @@ def parse_args(argv, app_dir):
             if filecmds:
                 cmds = cmds + filecmds
         except NoSuchFile as err:
-            AutoFix.get().error(err)
+            AutoFix.error(err)
 
     # Run Commands
     if cmds:

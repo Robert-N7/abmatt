@@ -80,7 +80,7 @@ class Geometry:
         self.index += 1
         return j
 
-    def encode(self, mdl, visible_bone=None, encoder=None):
+    def encode(self, mdl, visible_bone=None, encoder=None, use_default_colors_if_none_found=True):
         if not visible_bone:
             if not mdl.bones:
                 mdl.add_bone(mdl.name)
@@ -99,7 +99,7 @@ class Geometry:
             p.vertex_index = self.ipp()
         if self.__encode_normals(p, self.normals, mdl):
             p.normal_index = self.ipp()
-        if self.__encode_colors(p, self.colors, mdl):
+        if self.__encode_colors(p, self.colors, mdl, use_default_colors_if_none_found):
             p.color0_index = self.ipp()
         self.__encode_texcoords(p, self.texcoords, mdl)
         tris = self.__construct_tris(p, p.has_weighted_matrix())
@@ -186,14 +186,13 @@ class Geometry:
         return tristrips, face_count, facepoint_count
 
     def __encode_influences(self, polygon, influences, mdl0, default_bone):
-        if influences is not None:
-            if influences.is_mixed():
-                polygon.weight_index = 0
-                self.fmt_str += 'B'
-                return True
-            else:
-                bone = self.get_linked_bone()
-                polygon.linked_bone = self.linked_bone = bone if bone else default_bone
+        if influences is not None and influences.is_mixed():
+            polygon.weight_index = 0
+            self.fmt_str += 'B'
+            return True
+        else:
+            bone = self.get_linked_bone()
+            polygon.linked_bone = self.linked_bone = bone if bone else default_bone
         return False
         # face_indices = influences.get_face_indices(vertex_face_indices)
 
@@ -233,7 +232,7 @@ class Geometry:
             self.fmt_str += get_index_format(normal)
             return True
 
-    def __encode_colors(self, polygon, colors, mdl0):
+    def __encode_colors(self, polygon, colors, mdl0, use_default):
         if colors:
             encoder = self.encoder.color_encoder if self.encoder else None
             color = colors.get_encoded_color()

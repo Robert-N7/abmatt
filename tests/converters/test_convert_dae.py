@@ -119,6 +119,7 @@ class DaeConverterTest(AbmattTest):
         # load it to test against original
         converter = DaeConverter(self._get_tmp('.brres'), fname)
         converter.load_model()
+        converter.brres.save(overwrite=True)
         original = self._get_brres('simple.brres').models[0]
         new = converter.mdl0
         self.assertTrue(CheckPositions().bones_equal(original.bones, new.bones, 0.01,

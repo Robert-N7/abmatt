@@ -59,9 +59,9 @@ class SRTTexAnim(Clipable):
                 anim = self.get_str(x)
                 if len(anim) > 1:
                     trace += ' ' + x + ':' + str(anim)
-            AutoFix.get().info(trace, 1)
+            AutoFix.info(trace, 1)
         else:
-            AutoFix.get().info('{}\t{}:{}'.format(trace, key, self.get_str(key)), 1)
+            AutoFix.info('{}\t{}:{}'.format(trace, key, self.get_str(key)), 1)
 
     def set_key_frame(self, animType, value, index=0):
         """ Adds a key frame to the animation

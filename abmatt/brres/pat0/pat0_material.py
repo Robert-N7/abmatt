@@ -153,7 +153,7 @@ class Pat0MatAnimation(Clipable):
 
     def check_name(self, name):
         if self.brres_textures and name not in self.brres_textures:
-            AutoFix.get().warn('No texture found matching frame {}'.format(name), 3)
+            AutoFix.warn('No texture found matching frame {}'.format(name), 3)
 
     def set_frame(self, key_frame_id, tex_name):
         if not 0 <= key_frame_id <= self.framecount:
@@ -184,12 +184,12 @@ class Pat0MatAnimation(Clipable):
     def info(self, key=None, indentation=0):
         prefix = '>' + '  ' * indentation + self.name if indentation else '>(PAT0)' + self.name
         if key:
-            AutoFix.get().info('{}: {}'.format(prefix, self.get_str(key)), 1)
+            AutoFix.info('{}: {}'.format(prefix, self.get_str(key)), 1)
         else:
             val = prefix + ': '
             for x in self.SETTINGS:
                 val += ' ' + x + ':' + str(self.get_str(x))
-            AutoFix.get().info(val, 1)
+            AutoFix.info(val, 1)
 
     def calcFrameScale(self):
         return 1 / (self.frames[-1].frame_id - self.frames[0].frame_id)

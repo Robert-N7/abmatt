@@ -104,7 +104,7 @@ class ImgConverterI:
             sampler_index = filters.index(sample)
             ImgConverterI.RESAMPLE = sampler_index
         except (ValueError, IndexError):
-            AutoFix.get().warn('Invalid config value {} for "img_resample", using {}'.format(sample,
+            AutoFix.warn('Invalid config value {} for "img_resample", using {}'.format(sample,
                                                                                              filters[
                                                                                                  ImgConverterI.RESAMPLE]))
 
@@ -149,7 +149,7 @@ class ImgConverter:
                     self.set_tmp_dir(os.path.join(os.getcwd(), str(uuid.uuid4())))
                     self.cleanup = True
             else:
-                AutoFix.get().error('wimgt not found, please install Wiimms SZS Tools on your system path.')
+                AutoFix.error('wimgt not found, please install Wiimms SZS Tools on your system path.')
             super(ImgConverter.Wimgt, self).__init__(program)
 
         def __del__(self):
@@ -210,7 +210,7 @@ class ImgConverter:
                 overwrite = self.OVERWRITE_IMAGES
             img_file, name = self.convert_png(self.find_file(img_file))
             if not overwrite and brres is not None and name in brres.get_texture_map():
-                AutoFix.get().warn(f'Tex0 {name} already exists!')
+                AutoFix.warn(f'Tex0 {name} already exists!')
                 return None
             if check:
                 self.check_image_dimensions(img_file)
@@ -243,7 +243,7 @@ class ImgConverter:
                 try:
                     t_files.append(self.find_file(x))
                 except EncodeError:
-                    AutoFix.get().warn('Failed to find image {}'.format(x))
+                    AutoFix.warn('Failed to find image {}'.format(x))
             # tmp = 'abmatt-tmp'
             # create a new dir to work in
             tmp = self._move_to_temp_dir(t_files)
@@ -288,7 +288,7 @@ class ImgConverter:
             elif os.path.splitext(os.path.basename(dest_file))[1].lower() != '.png':
                 dest_file += '.png'
             if not overwrite and os.path.exists(dest_file):
-                AutoFix.get().warn('File {} already exists!'.format(dest_file))
+                AutoFix.warn('File {} already exists!'.format(dest_file))
                 return None
             tmp = self.get_temp_dest()
             f = BinFile(tmp, 'w')

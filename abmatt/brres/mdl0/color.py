@@ -58,7 +58,7 @@ class Color(Node):
 
     def check(self):
         if not FMT_RGB565 <= self.format <= FMT_RGBA8:
-            AutoFix.get().error(f'Color {self.name} has unknown color format.')
+            AutoFix.error(f'Color {self.name} has unknown color format.')
             self.format = 0
 
     def set_format(self, fmt):

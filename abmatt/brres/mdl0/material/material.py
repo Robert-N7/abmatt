@@ -377,7 +377,7 @@ class Material(Clipable):
         if self.parent:
             for x in self.parent.materials:
                 if x is not self and x.name == value:
-                    AutoFix.get().error('The name {} is already taken!'.format(value))
+                    AutoFix.error('The name {} is already taken!'.format(value))
                     return False
         result = super().rename(value)
         if result and self.parent:
@@ -462,7 +462,7 @@ class Material(Clipable):
     def set_lightset_str(self, str):
         val = int(str)
         if val > 0:
-            AutoFix.get().error("Invalid lightset " + str + ", expected -1")
+            AutoFix.error("Invalid lightset " + str + ", expected -1")
         if self.lightset != val:
             self.lightset = val
             self.mark_modified()
@@ -814,7 +814,7 @@ class Material(Clipable):
     def set_srt0(self, anim):
         """This is called by model to set up the srt0 reference"""
         if self.srt0:
-            AutoFix.get().error('Multiple Srt0 for {}'.format(self.name), 1)
+            AutoFix.error('Multiple Srt0 for {}'.format(self.name), 1)
             return False
         self.srt0 = anim
         anim.set_material(self)
@@ -852,7 +852,7 @@ class Material(Clipable):
 
     def set_pat0(self, anim):
         if self.pat0:
-            AutoFix.get().error('Multiple Pat0 for {} in {}!'.format(self.name, self.getBrres().name), 1)
+            AutoFix.error('Multiple Pat0 for {} in {}!'.format(self.name, self.getBrres().name), 1)
             return False
         self.pat0 = anim
         return True
@@ -891,10 +891,10 @@ class Material(Clipable):
         if key in self.SETTINGS:
             val = self.getKey(key)
             if val is not None:
-                AutoFix.get().info("{}\t{}:{}".format(trace, key, val), 1)
+                AutoFix.info("{}\t{}:{}".format(trace, key, val), 1)
             return
         elif not key:
-            AutoFix.get().info("{}\txlu:{} cull:{}".format(trace, self.xlu, self.CULL_STRINGS[self.cullmode]), 1)
+            AutoFix.info("{}\txlu:{} cull:{}".format(trace, self.xlu, self.CULL_STRINGS[self.cullmode]), 1)
         indentation_level += 1
         for x in self.layers:
             x.info(key, indentation_level)
@@ -921,9 +921,9 @@ class Material(Clipable):
             matrix = self.indirect_matrices[i]
             if matrix.enabled:
                 if not matrices_used[i]:
-                    AutoFix.get().warn('{} indirect matrix {} enabled but unused in shader'.format(self.name, i), 3)
+                    AutoFix.warn('{} indirect matrix {} enabled but unused in shader'.format(self.name, i), 3)
             elif not matrix.enabled and matrices_used[i]:
-                AutoFix.get().warn('{} indirect matrix {} disabled but used in shader'.format(self.name, i), 3)
+                AutoFix.warn('{} indirect matrix {} disabled but used in shader'.format(self.name, i), 3)
         if direct_count != self.shaderStages:
             self.shaderStages = direct_count
             self.mark_modified()

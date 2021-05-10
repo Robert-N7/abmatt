@@ -86,10 +86,10 @@ class ObjConverter(Converter):
         geo.normals = geometry.normals
         geo.has_normals = bool(geo.normals)
         if geometry.colors:
-            AutoFix.get().warn('Loss of color data for {}'.format(geo.name))
+            AutoFix.warn('Loss of color data for {}'.format(geo.name))
         texcoords = geometry.texcoords
         if len(texcoords) > 1:
-            AutoFix.get().warn('Loss of UV data for {}.'.format(geo.name))
+            AutoFix.warn('Loss of UV data for {}.'.format(geo.name))
         stack = [geo.vertices.face_indices]
         if len(texcoords):
             geo.texcoords = texcoords[0]
@@ -115,7 +115,7 @@ class ObjConverter(Converter):
                 if tex:
                     self.tex0_map[name] = tex
                 else:
-                    AutoFix.get().warn('No texture found matching {}'.format(name))
+                    AutoFix.warn('No texture found matching {}'.format(name))
             if first:
                 path = os.path.join(self.image_dir, name + '.png')
                 mat.diffuse_map = path

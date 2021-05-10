@@ -77,7 +77,7 @@ class MaterialWidget(QWidget, ClipableObserver, ImageObserver):
             text, ok = QInputDialog.getText(self, 'Rename Node', 'Rename to:', text=current_name)
             if ok and text != current_name:
                 if self.material.parent.get_material_by_name(text) is not None:
-                    AutoFix.get().error('Material with name {} already exists!'.format(text))
+                    AutoFix.error('Material with name {} already exists!'.format(text))
                     return
                 self.material.rename(text)
 

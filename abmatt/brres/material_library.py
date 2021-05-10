@@ -28,7 +28,7 @@ class MaterialLibrary(ClipableObserver):
         try:
             self.brres = Brres(path)
         except FileNotFoundError as e:
-            AutoFix.get().info(f'Material library "{path}" not found.')
+            AutoFix.info(f'Material library "{path}" not found.')
             self.brres = Brres(path, read_file=False)
             self.brres.add_mdl0(Mdl0('lib', self.brres))
         self.on_brres_update()
@@ -57,4 +57,4 @@ class MaterialLibrary(ClipableObserver):
                 if material.name not in self.materials:
                     self.materials[material.name] = material
                 else:
-                    AutoFix.get().warn('Multiple materials named {} in material library'.format(material.name))
+                    AutoFix.warn('Multiple materials named {} in material library'.format(material.name))

@@ -13,12 +13,14 @@ from abmatt.converters import matrix
 from abmatt.converters.convert_mats_to_json import MatsToJsonConverter
 from abmatt.converters.matrix import matrix_to_srt
 from abmatt.image_converter import EncodeError, NoImgConverterError, ImgConverter
+from abmatt.converters import influence
 
 
 class Converter:
     NO_NORMALS = 0x1
     NO_COLORS = 0x2
     SINGLE_BONE = 0x4
+    NO_UVS = 0x8
     DETECT_FILE_UNITS = True
     OVERWRITE_IMAGES = False
 
@@ -43,7 +45,7 @@ class Converter:
         self.encoder = encoder
 
     def _start_saving(self, mdl0):
-        AutoFix.get().info('Exporting to {}...'.format(self.mdl_file))
+        AutoFix.info('Exporting to {}...'.format(self.mdl_file))
         self.start = time.time()
         if mdl0 is None:
             mdl0 = self.mdl0
@@ -63,6 +65,7 @@ class Converter:
         self.image_dir = base_name + '_maps'
         self.json_file = base_name + '.json'
         self.influences = mdl0.get_influences()
+        self.bones = {}
         self.tex0_map = {}
         return base_name, mdl0
 
@@ -73,10 +76,10 @@ class Converter:
         self._create_image_library(self.tex0_map.values())
         os.chdir(self.cwd)
         writer.write(self.mdl_file)
-        AutoFix.get().info('\t...finished in {} seconds.'.format(round(time.time() - self.start, 2)))
+        AutoFix.info('\t...finished in {} seconds.'.format(round(time.time() - self.start, 2)))
 
     def _start_loading(self, model_name):
-        AutoFix.get().info('Converting {}... '.format(self.mdl_file))
+        AutoFix.info('Converting {}... '.format(self.mdl_file))
         self.start = time.time()
         self.cwd = os.getcwd()
         self.import_textures_map = {}
@@ -85,7 +88,8 @@ class Converter:
         self.material_library = library.materials if library else None
         brres_dir, brres_name = os.path.split(self.brres.name)
         base_name = os.path.splitext(brres_name)[0]
-        self.is_map = True if 'map' in base_name else False
+        mdl_file_base_name = os.path.splitext(os.path.basename(self.mdl_file))[0]
+        self.is_map = True if 'map' in base_name or mdl_file_base_name == 'map_model' else False
         work_dir, name = os.path.split(self.mdl_file)
         self.json_file = os.path.join(work_dir, os.path.splitext(name)[0]) + '.json'
         if work_dir:
@@ -107,7 +111,7 @@ class Converter:
         if self.is_map:
             mdl0.add_map_bones()
         os.chdir(self.cwd)
-        AutoFix.get().info('\t... finished in {} secs'.format(round(time.time() - self.start, 2)))
+        AutoFix.info('\t... finished in {} secs'.format(round(time.time() - self.start, 2)))
         if self.encoder:
             self.encoder.after_encode(mdl0)
         return mdl0
@@ -194,7 +198,7 @@ class Converter:
             return True
         converter = ImgConverter()
         if not converter:
-            AutoFix.get().error('No image converter found!')
+            AutoFix.error('No image converter found!')
             return False
         converter.batch_decode(tex0s, self.image_dir)
         return True
@@ -221,7 +225,7 @@ class Converter:
         try:
             return self._try_import_textures(self.brres, image_path_map)
         except NoImgConverterError as e:
-            AutoFix.get().exception(e)
+            AutoFix.exception(e)
 
     @staticmethod
     def _try_import_textures(brres, image_paths):
@@ -230,10 +234,34 @@ class Converter:
                 converter = ImgConverter()
                 converter.batch_encode(image_paths.values(), brres, overwrite=converter.OVERWRITE_IMAGES)
             except EncodeError:
-                AutoFix.get().warn('Failed to encode images')
+                AutoFix.warn('Failed to encode images')
         return image_paths
 
+    def __get_single_bone_influence(self):
+        for bone in self.bones.values():
+            break
+        return influence.InfluenceCollection({0: influence.Influence(
+            bone_weights={bone.name: influence.Weight(bone, 1.0)})})
+
+    def _decode_geometry(self, polygon):
+        geo = polygon.get_decoded()
+        if geo.colors and self.flags & self.NO_COLORS:
+            geo.colors = None
+        if geo.normals and self.flags & self.NO_NORMALS:
+            geo.normals = None
+        if self.flags & self.SINGLE_BONE:
+            geo.influences = self.__get_single_bone_influence()
+        if self.flags & self.NO_UVS:
+            geo.texcoords = []
+        return geo
+
     def _encode_geometry(self, geometry):
+        if self.flags & self.NO_COLORS:
+            geometry.colors = None
+        if self.flags & self.NO_NORMALS:
+            geometry.normals = None
+        if self.flags & self.NO_UVS:
+            geometry.texcoords = []
         encoder = self.encoder.get_encoder(geometry) if self.encoder else None
         return geometry.encode(self.mdl0, encoder=encoder)
 
