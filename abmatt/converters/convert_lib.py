@@ -13,12 +13,15 @@ from abmatt.converters import matrix
 from abmatt.converters.convert_mats_to_json import MatsToJsonConverter
 from abmatt.converters.matrix import matrix_to_srt
 from abmatt.image_converter import EncodeError, NoImgConverterError, ImgConverter
+from converters import influence
+from converters.colors import ColorCollection
 
 
 class Converter:
     NO_NORMALS = 0x1
     NO_COLORS = 0x2
     SINGLE_BONE = 0x4
+    NO_UVS = 0x8
     DETECT_FILE_UNITS = True
     OVERWRITE_IMAGES = False
 
@@ -63,6 +66,7 @@ class Converter:
         self.image_dir = base_name + '_maps'
         self.json_file = base_name + '.json'
         self.influences = mdl0.get_influences()
+        self.bones = {}
         self.tex0_map = {}
         return base_name, mdl0
 
@@ -85,7 +89,8 @@ class Converter:
         self.material_library = library.materials if library else None
         brres_dir, brres_name = os.path.split(self.brres.name)
         base_name = os.path.splitext(brres_name)[0]
-        self.is_map = True if 'map' in base_name else False
+        mdl_file_base_name = os.path.splitext(os.path.basename(self.mdl_file))[0]
+        self.is_map = True if 'map' in base_name or mdl_file_base_name == 'map_model' else False
         work_dir, name = os.path.split(self.mdl_file)
         self.json_file = os.path.join(work_dir, os.path.splitext(name)[0]) + '.json'
         if work_dir:
@@ -233,7 +238,31 @@ class Converter:
                 AutoFix.warn('Failed to encode images')
         return image_paths
 
+    def __get_single_bone_influence(self):
+        for bone in self.bones.values():
+            break
+        return influence.InfluenceCollection({0: influence.Influence(
+            bone_weights={bone.name: influence.Weight(bone, 1.0)})})
+
+    def _decode_geometry(self, polygon):
+        geo = polygon.get_decoded()
+        if geo.colors and self.flags & self.NO_COLORS:
+            geo.colors = None
+        if geo.normals and self.flags & self.NO_NORMALS:
+            geo.normals = None
+        if self.flags & self.SINGLE_BONE:
+            geo.influences = self.__get_single_bone_influence()
+        if self.flags & self.NO_UVS:
+            geo.texcoords = []
+        return geo
+
     def _encode_geometry(self, geometry):
+        if self.flags & self.NO_COLORS:
+            geometry.colors = None
+        if self.flags & self.NO_NORMALS:
+            geometry.normals = None
+        if self.flags & self.NO_UVS:
+            geometry.texcoords = []
         encoder = self.encoder.get_encoder(geometry) if self.encoder else None
         return geometry.encode(self.mdl0, encoder=encoder)
 

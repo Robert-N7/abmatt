@@ -213,6 +213,8 @@ class Command:
                     flags |= 2
                 elif lower == 'single-bone':
                     flags |= 4
+                elif lower == 'no-uvs':
+                    flags |= 8
                 elif not self.name:
                     self.name = os.path.normpath(param)
                 else:
@@ -1346,7 +1348,7 @@ class Shell(Cmd, object):
 
     def help_convert(self):
         print('Converts dae or obj model to/from brres.\n'
-              'Usage: convert <filename> [to <destination>][--no-normals][--no-colors][--single-bone')
+              'Usage: convert <filename> [to <destination>][--no-normals][--no-colors][--single-bone][--no-uvs]')
 
     def default(self, line):
         if line == 'x' or line == 'q':

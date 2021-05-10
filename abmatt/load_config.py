@@ -159,7 +159,7 @@ preset = 'preset' preset_name;
 save = 'save' [filename] ['as' destination] ['overwrite']
 copy = 'copy' type;
 paste = 'paste' type;
-convert = 'convert' filename ['to' destination] ['no-colors'] ['no-normals']
+convert = 'convert' filename ['to' destination] ['no-colors'] ['no-normals'] ['no-uvs']
 
 selection = name ['in' container]
 container = ['brres' filename] ['model' name];
@@ -180,7 +180,7 @@ def parse_args(argv, app_dir):
     command = destination = brres_file = command_file = model = value = key = ""
     autofix = loudness = None
     name = None
-    no_normals = no_colors = single_bone = False
+    no_normals = no_colors = single_bone = no_uvs = False
     do_help = False
     for i in range(len(argv)):
         if argv[i][0] == '-':
@@ -194,7 +194,8 @@ def parse_args(argv, app_dir):
                                    ["help", "destination=", "overwrite",
                                     "command=", "type=", "key=", "value=",
                                     "name=", "brres=", "model=", "file=", "interactive",
-                                    "loudness=", "debug", "single-bone", "no-colors", "no-normals"])
+                                    "loudness=", "debug",
+                                    "single-bone", "no-colors", "no-normals", "no-uvs"])
     except getopt.GetoptError as e:
         print(e)
         print(USAGE)
@@ -237,6 +238,8 @@ def parse_args(argv, app_dir):
             no_normals = True
         elif opt == '--no-colors':
             no_colors = True
+        elif opt == '--no-uvs':
+            no_uvs = True
         else:
             print("Unknown option '{}'".format(opt))
             print(USAGE)
@@ -267,6 +270,8 @@ def parse_args(argv, app_dir):
                 cmd_args.append('--no-colors')
             if no_normals:
                 cmd_args.append('--no-normals')
+            if no_uvs:
+                cmd_args.append('--no-uvs')
         cmds.append(Command(arg_list=cmd_args))
     if command:
         args = [command, type]
@@ -288,6 +293,8 @@ def parse_args(argv, app_dir):
                 args.append('--no-colors')
             if no_normals:
                 args.append('--no-normals')
+            if no_uvs:
+                args.append('--no-uvs')
         cmds.append(Command(arg_list=args))
     if destination:
         Command.DESTINATION = destination

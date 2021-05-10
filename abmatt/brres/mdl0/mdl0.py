@@ -288,7 +288,7 @@ class Mdl0(SubFile):
         self.bone_table.append(self.bone_matrix_count)
         if parent_bone:
             parent_bone.link_child(b)
-        # self.NodeTree.add_entry(self.boneMatrixCount, parent_index)
+        self.rebuild_head = True
         self.bone_matrix_count += 1
         return b
 
@@ -552,14 +552,14 @@ class Mdl0(SubFile):
         maximum = self.maximum
         if 'posLD' not in current_names:
             b = self.add_bone('posLD', parent, fixed_translation=False, has_geometry=False)
-            left = round(minimum[0] - 8000)
-            down = round(maximum[2] + 8000)
+            left = round(minimum[0] - 6000)
+            down = round(maximum[2] + 6000)
             b.set_translation((left, 0, down))
             self.mark_modified()
         if 'posRU' not in current_names:
             b = self.add_bone('posRU', parent, fixed_translation=False, has_geometry=False)
-            right = round(maximum[0] + 8000)
-            up = round(minimum[2] - 8000)
+            right = round(maximum[0] + 6000)
+            up = round(minimum[2] - 6000)
             b.set_translation((right, 0, up))
             self.mark_modified()
 

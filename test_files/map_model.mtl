@@ -1,0 +1,10 @@
+# Wavefront MTL exported with ABMATT v0.9.6
+newmtl beginner_course_m
+	Ns 0
+	Ni 1.5
+	d 1
+	Tr 0
+	illum 2
+	Ka 0.5 0.5 0.5
+	Kd 0.5 0.5 0.5
+	Ks 0.33 0.33 0.33

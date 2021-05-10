@@ -670,9 +670,9 @@ class Stage(Clipable):
         if key == s[0]:
             self.set_enabled(validBool(value))
         elif key == s[1]:
-            self.set_map_id(validInt(value, 0, 7))
+            self.set_map_id(validInt(value, 0, 8))
         elif key == s[2]:
-            self.set_coord_id(validInt(value, 0, 7))
+            self.set_coord_id(validInt(value, 0, 8))
         elif key == s[3]:
             self.set_tex_swap_sel(validInt(value, 0, 4))
         elif key == s[4]:

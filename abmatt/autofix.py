@@ -54,6 +54,7 @@ class AutoFixAbort(BaseException):
 
 class MessageReceiver:
     """Interface to receive messages"""
+
     def info(self, message):
         raise NotImplementedError()
 
@@ -135,7 +136,6 @@ class AutoFix:
             sleep(0.01)
         self.is_running = False
 
-
     def enqueue(self, message):
         self.queue.append(message)
         if not self.is_running:
@@ -182,7 +182,7 @@ class AutoFix:
 
     def exception(self, exception=None, shutdown=False):
         exc_type, exc_value, exc_tb = sys.exc_info()
-        if self.loudness >= 5:      # Debug level
+        if self.loudness >= 5:  # Debug level
             s = traceback.format_exception(exc_type, exc_value, exc_tb)
         elif self.loudness >= 1:
             s = traceback.format_exception(exc_type, exc_value, exc_tb, 10)
@@ -248,5 +248,6 @@ class AutoFix:
 
     def set_loudness(self, level_str):
         self.loudness = self.get_level(level_str)
+
 
 AutoFix = AutoFix()
