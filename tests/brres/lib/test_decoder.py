@@ -1,4 +1,4 @@
-from brres.lib.decoder import ColorDecoder
+from abmatt.brres.lib.decoder import ColorDecoder
 from tests.lib import AbmattTest
 
 

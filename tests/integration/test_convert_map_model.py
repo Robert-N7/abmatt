@@ -1,4 +1,4 @@
-from converters.convert_dae import DaeConverter
+from abmatt.converters.convert_dae import DaeConverter
 from tests.lib import AbmattTest, CheckPositions
 
 

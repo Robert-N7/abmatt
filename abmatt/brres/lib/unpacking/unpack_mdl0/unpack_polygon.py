@@ -123,7 +123,7 @@ class UnpackPolygon(Unpacker):
         self.has_color0 = xf_arry_flags & 4
         self.has_color1 = xf_arry_flags & 8
         xf_arry_flags >>= 4
-        self.has_uv_group = [xf_arry_flags >> 0 & 1 for i in range(8)]
+        self.has_uv_group = [xf_arry_flags >> i & 1 for i in range(8)]
 
     def parse_cp_vertex_format(self, polygon, hi, lo):
         if lo & 0x1:

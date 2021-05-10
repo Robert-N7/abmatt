@@ -13,8 +13,7 @@ from abmatt.converters import matrix
 from abmatt.converters.convert_mats_to_json import MatsToJsonConverter
 from abmatt.converters.matrix import matrix_to_srt
 from abmatt.image_converter import EncodeError, NoImgConverterError, ImgConverter
-from converters import influence
-from converters.colors import ColorCollection
+from abmatt.converters import influence
 
 
 class Converter:

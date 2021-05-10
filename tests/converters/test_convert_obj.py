@@ -1,4 +1,4 @@
-from converters.convert_obj import ObjConverter
+from abmatt.converters.convert_obj import ObjConverter
 from tests.lib import AbmattTest
 
 

@@ -5,10 +5,8 @@ For editing Mario Kart Wii files
 """
 import os.path
 import sys
-import threading
 
 from abmatt import load_config
-from abmatt.autofix import AutoFix
 
 
 def main():

@@ -23,6 +23,10 @@ class AbmattTest(unittest.TestCase):
     main_path = os.path.join(base_path, 'abmatt', '__main__.py')
 
     @classmethod
+    def setUpClass(cls):
+        AutoFix.set_loudness('2')
+
+    @classmethod
     def tearDown(cls):
         AutoFix.quit()
 
@@ -129,7 +133,7 @@ class CheckPositions:
         v1 = sorted(vertices1, key=lambda x: x.name)
         v2 = sorted(vertices2, key=lambda x: x.name)
         if not matching.fuzzy_match(v1[0].name, v2):    # no match! try matching shapes
-            print('Groups dont have matching names!')
+            # print('Groups dont have matching names!')
             v1 = sorted(vertices1, key=lambda x: x.count)
             v2 = sorted(vertices2, key=lambda x: x.count)
         return v1, v2, mismatched_len

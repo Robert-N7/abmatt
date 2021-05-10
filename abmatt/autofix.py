@@ -168,7 +168,7 @@ class AutoFix:
         if self.loudness >= 5:
             self.enqueue(self.Info(str(message)))
 
-    def info(self, message, loudness=2):
+    def info(self, message, loudness=3):
         if self.loudness >= loudness:
             self.enqueue(self.Info(str(message)))
 
