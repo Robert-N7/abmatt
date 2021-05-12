@@ -145,12 +145,12 @@ def decode_polygon(polygon, influences=None):
         influence = influences[linked_bone.weight_id]
         g_verts.apply_affine_matrix(np.array(linked_bone.get_transform_matrix()), apply=True)
         influence_collection = InfluenceCollection({0: influence})
-    for x in polygon.uv_mtx_indices:
-        if x >= 0:
-            AutoFix.warn('{} uv matrices data lost in export.'.format(polygon.name))
-            indices = face_point_indices[:, :, x] // 3
-            if (indices < 10).any():
-                print('Less than 10!')
+    # for x in polygon.uv_mtx_indices:
+    #     if x >= 0:
+    #         AutoFix.warn('{} uv matrices data lost in export.'.format(polygon.name))
+    #         indices = face_point_indices[:, :, x] // 3
+    #         if (indices < 10).any():
+    #             print('Less than 10!')
     from abmatt.converters.geometry import Geometry
     geometry = Geometry(polygon.name, polygon.get_material().name, g_verts,
                         triangles=None, influences=influence_collection,

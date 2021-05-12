@@ -97,13 +97,17 @@ class Converter:
         return self._init_mdl0(brres_name, os.path.splitext(name)[0], model_name)
 
     def _before_encoding(self):
+        if os.path.exists(self.json_file):
+            converter = MatsToJsonConverter(self.json_file)
+            converter.load_into(self.mdl0.materials)
+            self.json_polygon_encoding = converter.polygons_by_name
+        else:
+            self.json_polygon_encoding = None
         if self.encoder:
             self.encoder.before_encoding(self)
 
     def _end_loading(self):
         mdl0 = self.mdl0
-        if os.path.exists(self.json_file):
-            MatsToJsonConverter(self.json_file).load_into(mdl0.materials)
         import_path_map = self.__normalize_image_path_map(self.import_textures_map)
         self._import_images(import_path_map)
         mdl0.rebuild_header()
@@ -262,8 +266,20 @@ class Converter:
             geometry.normals = None
         if self.flags & self.NO_UVS:
             geometry.texcoords = []
+        has_uv_mtx = priority = None
+        json_data = self.json_polygon_encoding.get(geometry.name) if self.json_polygon_encoding else None
+        if json_data:
+            has_uv_mtx = json_data.get('has_uv_matrix')
+            priority = json_data.get('draw_priority')
+        elif self.replacement_model:
+            replace_geometry = [x for x in self.replacement_model.objects if x.name == geometry.name]
+            if replace_geometry:
+                has_uv_mtx = [replace_geometry[0].has_uv_matrix(i) for i in range(8)]
+                priority = replace_geometry[0].priority
         encoder = self.encoder.get_encoder(geometry) if self.encoder else None
-        return geometry.encode(self.mdl0, encoder=encoder)
+        return geometry.encode(self.mdl0, encoder=encoder,
+                               priority=priority,
+                               has_uv_mtx=has_uv_mtx)
 
     def convert(self):
         if self.encode:

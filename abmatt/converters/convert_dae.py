@@ -35,13 +35,14 @@ class DaeConverter(convert_lib.Converter):
         self.__parse_nodes(dae.get_scene(), material_geometry_map, matrix)
         self.__combine_bones_map()
         self.__parse_controllers(material_geometry_map)
-
-        self._before_encoding()
-        self.influences.encode_bone_weights(self.mdl0)
         for material in material_geometry_map:
             if material not in material_names:
                 self._encode_material(material.Material(material))
                 material_names.add(material)
+
+        self._before_encoding()
+        self.influences.encode_bone_weights(self.mdl0)
+        for material in material_geometry_map:
             geometries = material_geometry_map[material]
             for x in geometries:
                 self.__encode_geometry(x)

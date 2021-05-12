@@ -1,3 +1,5 @@
+import os
+
 from abmatt.brres import Brres
 from abmatt.converters.convert_dae import DaeConverter
 from tests.lib import AbmattTest, CheckPositions
@@ -80,11 +82,14 @@ class DaeConverterTest(AbmattTest):
     def test_kuribo_loads(self):
         b = self._get_brres('kuribo.brres')
         model = b.models[1]
-        converter = DaeConverter(self._get_tmp('.brres'), self._get_test_fname('kuribo.dae'))
+        converter = DaeConverter(b, self._get_test_fname('kuribo.dae'))
         converter.load_model()
-        # converter.brres.save(overwrite=True)
+        # converter.brres.save('../../tmp/kuribo.brres', overwrite=True)
         self.assertTrue(CheckPositions().positions_equal(model.vertices, converter.mdl0.vertices, rtol=1e-1, atol=1e-2))
         self.assertTrue(CheckPositions().bones_equal(model.bones, converter.mdl0.bones))
+        poly = converter.mdl0.objects[0]
+        for i in range(1, 3):
+            self.assertTrue(poly.has_uv_matrix(i))
 
     def test_convert_cow(self):
         original = self._get_brres('cow.brres').models[1]
@@ -119,7 +124,7 @@ class DaeConverterTest(AbmattTest):
         # load it to test against original
         converter = DaeConverter(self._get_tmp('.brres'), fname)
         converter.load_model()
-        converter.brres.save(overwrite=True)
+        # converter.brres.save(overwrite=True)
         original = self._get_brres('simple.brres').models[0]
         new = converter.mdl0
         self.assertTrue(CheckPositions().bones_equal(original.bones, new.bones, 0.01,
@@ -149,4 +154,16 @@ class DaeConverterTest(AbmattTest):
         converter.load_model()
         self.assertTrue(CheckPositions().model_equal(original, converter.mdl0))
 
+    def test_save_and_load_uv_mtx(self):
+        fname = self._get_tmp('.dae')
+        converter = DaeConverter(self._get_brres('kuribo.brres'), fname)
+        converter.save_model('kuribo')
+        converter = DaeConverter(self._get_tmp('.brres'), fname)
+        converter.load_model()
+        # converter.brres.save(overwrite=True)
+        poly = converter.mdl0.objects[0]
+        expected = [False, True, True]
+        expected.extend([False] * 5)
+        for i in range(8):
+            self.assertEqual(expected[i], poly.has_uv_matrix(i))
     # endregion save_model

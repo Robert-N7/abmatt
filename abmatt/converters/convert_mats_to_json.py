@@ -17,6 +17,7 @@ class MatsToJsonConverter:
         """
         self.filename = filename
         self.materials_by_name = {}
+        self.polygons_by_name = {}
 
     def export(self, materials):
         """ Exports the materials to a JSON file
@@ -67,7 +68,14 @@ class MatsToJsonConverter:
         if pat0_data is not None:
             material.add_pat0()
             self.__load_pat0(material.pat0, pat0_data)
+        poly_data = data.get('polygons')
+        if poly_data:
+            self.__load_polygons(poly_data)
         return material
+
+    def __load_polygons(self, poly_data):
+        for x in poly_data:
+            self.polygons_by_name[x] = poly_data[x]
 
     def __load_srt0(self, srt0, data):
         self.__load_settings(srt0, data.get('settings'))
@@ -135,12 +143,25 @@ class MatsToJsonConverter:
     def __get_material_str(self, material):
         x = {'settings': self.__get_settings(material),
                 'layers': self.__get_items_str(material.layers),
-                'shader': self.__get_shader_str(material.shader)}
+                'shader': self.__get_shader_str(material.shader),
+                'polygons': self.__get_polygons_str(material.polygons)}
         if material.srt0 is not None:
             x['srt0'] = self.__get_srt0_str(material.srt0)
         if material.pat0 is not None:
             x['pat0'] = self.__get_pat0_str(material.pat0)
         return x
+
+    def __get_polygons_str(self, polygons):
+        d = {}
+        for poly in polygons:
+            d[poly.name] = self.__get_polygon_str(poly)
+        return d
+
+    def __get_polygon_str(self, poly):
+        return {
+            'has_uv_matrix': [x >= 0 for x in poly.uv_mtx_indices],
+            'draw_priority': poly.priority
+        }
 
     def __get_shader_str(self, shader):
         return {'settings': self.__get_settings(shader),
