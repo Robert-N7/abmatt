@@ -29,6 +29,8 @@ class Geometry:
         self.influences = influences
         self.triangles = triangles
         self.linked_bone = linked_bone
+        self.has_uv_mtx = None
+        self.priority = 0
 
     def __eq__(self, other):
         return other is not None and type(other) == Geometry and self.name == other.name and \
@@ -80,7 +82,13 @@ class Geometry:
         self.index += 1
         return j
 
-    def encode(self, mdl, visible_bone=None, encoder=None, use_default_colors_if_none_found=True):
+    def encode(self, mdl, visible_bone=None, encoder=None,
+               use_default_colors_if_none_found=True,
+               priority=None, has_uv_mtx=None):
+        if priority is not None:
+            self.priority = priority
+        if has_uv_mtx is not None:
+            self.has_uv_mtx = has_uv_mtx
         if not visible_bone:
             if not mdl.bones:
                 mdl.add_bone(mdl.name)
@@ -95,6 +103,7 @@ class Geometry:
         self.fmt_str = '>'
         if self.__encode_influences(p, self.influences, mdl, visible_bone):
             p.weight_index = self.ipp()
+        self.__encode_tex_matrices(p, self.has_uv_mtx)
         if self.__encode_vertices(p, self.vertices, mdl):
             p.vertex_index = self.ipp()
         if self.__encode_normals(p, self.normals, mdl):
@@ -115,12 +124,19 @@ class Geometry:
         p.encode_str = self.fmt_str
         mdl.objects.append(p)
         material = mdl.get_material_by_name(self.material_name)
-        mdl.add_definition(material, p, visible_bone)
+        mdl.add_definition(material, p, visible_bone, self.priority)
         if self.colors:
             material.enable_vertex_color()
         if encoder:
             encoder.after_encode(p)
         return p
+
+    def __encode_tex_matrices(self, poly, has_uv_mtx):
+        if has_uv_mtx:
+            for i in range(8):
+                if has_uv_mtx[i]:
+                    poly.uv_mtx_indices[i] = self.ipp()
+                    self.fmt_str += 'B'
 
     @staticmethod
     def __encode_load_matrices_helper(data, indices, xf_address, matrix_len, cmd):
@@ -139,9 +155,9 @@ class Geometry:
         Geometry.__encode_load_matrices_helper(data, indices, 1024, 9, 0x28)
         return data
 
-    @staticmethod
-    def __remap_inf_group(group, tris, matrices):
+    def __remap_inf_group(self, group, tris, matrices):
         remapper = {}
+        uv_mtx_count = sum(self.has_uv_mtx) if self.has_uv_mtx is not None else 0
         matrices = list(matrices)
         for i in range(len(matrices)):
             remapper[matrices[i]] = i * 3
@@ -149,12 +165,16 @@ class Geometry:
         for strip in group:
             arr = np.array(strip)
             for item in arr:
+                if uv_mtx_count:
+                    item[1:1+uv_mtx_count] = (item[0] + 10) * 3
                 item[0] = remapper[item[0]]
             n_group.append(arr)
         n_tris = []
         for tri in tris:
             arr = np.array(tri.vertices)
             for item in arr:
+                if uv_mtx_count:
+                    item[1:1 + uv_mtx_count] = (item[0] + 10) * 3
                 item[0] = remapper[item[0]]
             n_tris.append(arr)
         return n_group, n_tris
@@ -275,6 +295,10 @@ class Geometry:
             pos_indices = np.array([[remapper[y].influence_id for y in tri] for tri in self.vertices.face_indices])
             polygon.bone_table = [i for i in range(np.max(pos_indices) + 1)]
             tris.append(pos_indices)
+            if self.has_uv_mtx is not None:
+                for x in self.has_uv_mtx:
+                    if x:
+                        tris.append(pos_indices)    # this just serves as a placeholder
         tris.append(self.vertices.face_indices)
         if self.normals:
             tris.append(self.normals.face_indices)

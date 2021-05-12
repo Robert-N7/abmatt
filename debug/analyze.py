@@ -1,8 +1,10 @@
+import fnmatch
 import os
 import sys
 
 from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
+from abmatt.converters.convert_dae import DaeConverter
 
 
 def analyze_material(mat):
@@ -20,43 +22,43 @@ def analyze_material(mat):
     #         print('Use prev!')
     #     if s.ind_unmodify_lod:
     #         print('Unmodify lod!')
-        # DOES NOT CHANGE
-        # if stage.map_id != stage.coord_id:
-        #     print(f'{mat.name} shader has map id that does not match coord id')
+    # DOES NOT CHANGE
+    # if stage.map_id != stage.coord_id:
+    #     print(f'{mat.name} shader has map id that does not match coord id')
 
-        # ONLY 1 INSTANCE OF CHANGING
-        # if stage.texture_swap_sel:
-        #     print(f'{mat.name} texture swap sel enabled!')
-        # if stage.raster_swap_sel:
-        #     print(f'{mat.name} raster swap sel enabled!')
+    # ONLY 1 INSTANCE OF CHANGING
+    # if stage.texture_swap_sel:
+    #     print(f'{mat.name} texture swap sel enabled!')
+    # if stage.raster_swap_sel:
+    #     print(f'{mat.name} raster swap sel enabled!')
 
-        # CHANGES
-        # if stage.bias:
-        #     print(f'{mat.name} bias enabled!')
-        # if stage.oper:
-        #     print(f'{mat.name} operation not add.')
-        # if stage.clamp != True:
-        #     print(f'{mat.name} clamp not enabled')
+    # CHANGES
+    # if stage.bias:
+    #     print(f'{mat.name} bias enabled!')
+    # if stage.oper:
+    #     print(f'{mat.name} operation not add.')
+    # if stage.clamp != True:
+    #     print(f'{mat.name} clamp not enabled')
 
-        # THESE CHANGE
-        # if layer.scn0_light_ref != -1:
-        #     print(f'{layer.name} scn0 light ref not -1 in {layer.parent.getBrres().name}!')
-        # if layer.scn0_camera_ref != -1:
-        #     print(f'{layer.name} scn0 camera ref not -1 in {layer.parent.getBrres().name}!')
-        # if layer.clamp_bias:
-        #     print(f'{layer.name} clamp enabled!')
-        # if layer.texel_interpolate:
-        #     print(f'{layer.name} interpolate enabled!')
-        # if layer.magfilter != 1:
-        #     print(f'{layer.name} magfilter {layer.magfilter}')
+    # THESE CHANGE
+    # if layer.scn0_light_ref != -1:
+    #     print(f'{layer.name} scn0 light ref not -1 in {layer.parent.getBrres().name}!')
+    # if layer.scn0_camera_ref != -1:
+    #     print(f'{layer.name} scn0 camera ref not -1 in {layer.parent.getBrres().name}!')
+    # if layer.clamp_bias:
+    #     print(f'{layer.name} clamp enabled!')
+    # if layer.texel_interpolate:
+    #     print(f'{layer.name} interpolate enabled!')
+    # if layer.magfilter != 1:
+    #     print(f'{layer.name} magfilter {layer.magfilter}')
 
-        # THESE DON"T CHANGE
-        # if layer.emboss_source != 5:
-        #     print(f'{layer.name} emboss source {layer.emboss_source}!')
-        # if layer.type:
-        #     print(f'{layer.name} type {layer.type}!')
-        # if layer.emboss_light:
-        #     print(f'{layer.name} emboss light {layer.emboss_light}!')
+    # THESE DON"T CHANGE
+    # if layer.emboss_source != 5:
+    #     print(f'{layer.name} emboss source {layer.emboss_source}!')
+    # if layer.type:
+    #     print(f'{layer.name} type {layer.type}!')
+    # if layer.emboss_light:
+    #     print(f'{layer.name} emboss light {layer.emboss_light}!')
 
     # changes
     # if not mat.depth_test:
@@ -91,11 +93,13 @@ def analyze_material(mat):
 
 def perform_analysis(brres):
     print('Analyzing {}'.format(brres.name))
+    export = False
     for model in brres.models:
-        pass
+        if len(model.colors) > 0 and model.colors[0].count > 1:
+            export = True
         # for mat in model.materials:
-            # if len(mat.polygons) > 1:
-            #     print('Mat {} used more than once by {}'.format(mat.name, [x.name for x in mat.polygons]))
+        # if len(mat.polygons) > 1:
+        #     print('Mat {} used more than once by {}'.format(mat.name, [x.name for x in mat.polygons]))
         # for poly in model.objects:
         #
         #     has_uv_mtx = False
@@ -105,13 +109,14 @@ def perform_analysis(brres):
         #             break
         #     if has_uv_mtx:
         #         decode_polygon(poly, decode_mdl0_influences(model))
-    # DaeConverter(brres, os.path.join(os.getcwd(), 'tmp', 'tmp.dae'), encode=False).convert()
+    if export:
+        DaeConverter(brres, os.path.join(os.getcwd(), 'tmp', 'tmp.dae'), encode=False).convert()
     # for model in brres.models:
     #     for material in model.materials:
     #         analyze_material(material)
 
 
-def gather_brres_files(root, brres_files):
+def gather_brres_files(root, brres_files, filter=None):
     """
     Recursively gathers brres files in root
     :param root: path
@@ -122,14 +127,16 @@ def gather_brres_files(root, brres_files):
         if file.startswith('.'):
             continue
         if os.path.isdir(path):
-            gather_brres_files(path, brres_files)
+            gather_brres_files(path, brres_files, filter)
         elif file.endswith('.brres'):
-            brres_files.append(path)
+            if filter is None or fnmatch.fnmatch(file, filter):
+                brres_files.append(path)
     return brres_files
 
 
 if __name__ == '__main__':
     args = sys.argv[1:]
+    filter = 'water_course.d\\map_model.brres'
     if not len(args):
         root = os.getcwd()
     else:
@@ -138,6 +145,5 @@ if __name__ == '__main__':
             print('Invalid root path')
             sys.exit(1)
     files = []
-    for x in gather_brres_files(root, files):
+    for x in gather_brres_files(root, files, filter):
         perform_analysis(Brres(x))
-    AutoFix.quit()

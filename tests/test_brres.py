@@ -6,7 +6,7 @@ from abmatt.brres import Brres
 from tests.lib import AbmattTest
 
 
-class MyTestCase(AbmattTest):
+class TestBrresLoadsCorrectly(AbmattTest):
     @classmethod
     def setUpClass(cls):
         cls.brres = cls._get_brres('beginner_course.brres')
