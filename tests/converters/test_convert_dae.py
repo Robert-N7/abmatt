@@ -166,4 +166,16 @@ class DaeConverterTest(AbmattTest):
         expected.extend([False] * 5)
         for i in range(8):
             self.assertEqual(expected[i], poly.has_uv_matrix(i))
+
+    def test_save_multi_influence_per_face_index(self):
+        DaeConverter(self._get_brres('koopaFigure.brres'), self._get_tmp('.dae')).save_model()
+
+    def test_save_and_load_polygons_bound_to_single_material(self):
+        converter = DaeConverter(self._get_brres('castleflower1.brres'), self._get_tmp('.dae'))
+        converter.save_model()
+        original = converter.mdl0
+        new = DaeConverter(self._get_tmp('.brres'), converter.mdl_file).load_model()
+        self.assertTrue(CheckPositions.positions_equal(original.vertices, new.vertices, rtol=0.1, atol=0.01))
+        self.assertTrue(CheckPositions.bones_equal([x.linked_bone for x in original.objects],
+                                                   [x.linked_bone for x in new.objects]))
     # endregion save_model

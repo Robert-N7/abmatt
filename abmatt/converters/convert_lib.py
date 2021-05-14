@@ -77,6 +77,7 @@ class Converter:
         os.chdir(self.cwd)
         writer.write(self.mdl_file)
         AutoFix.info('\t...finished in {} seconds.'.format(round(time.time() - self.start, 2)))
+        return self.mdl_file
 
     def _start_loading(self, model_name):
         AutoFix.info('Converting {}... '.format(self.mdl_file))

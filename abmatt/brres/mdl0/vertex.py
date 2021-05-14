@@ -20,16 +20,17 @@ class Vertex(Point):
             # Check Y value
             if self.parent.name == 'course' and self.minimum[1] + linked_bone.translation[1] < 0:
                 AutoFix.warn('Vertex {} minimum y below axis {}'.format(self.name, self.minimum[1]))
-            for x in self.minimum:
-                if abs(x) > self.__MAX_COORD:
-                    AutoFix.warn(
-                        'Vertex {} extreme coordinate {}, (ignore this warning for non-drivable surfaces)'.format(
-                            self.name, x))
-            for x in self.maximum:
-                if x > self.__MAX_COORD:
-                    AutoFix.warn(
-                        'Vertex {} extreme coordinate {}, (ignore this warning for non-drivable surfaces)'.format(
-                            self.name, x))
+            if self.parent.name != 'vrcorn':
+                for x in self.minimum:
+                    if abs(x) > self.__MAX_COORD:
+                        AutoFix.warn(
+                            'Vertex {} extreme coordinate {}, (ignore this warning for non-drivable surfaces)'.format(
+                                self.name, x))
+                for x in self.maximum:
+                    if x > self.__MAX_COORD:
+                        AutoFix.warn(
+                            'Vertex {} extreme coordinate {}, (ignore this warning for non-drivable surfaces)'.format(
+                                self.name, x))
 
     @property
     def point_width(self):

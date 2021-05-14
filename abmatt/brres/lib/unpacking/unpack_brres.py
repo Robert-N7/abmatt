@@ -1,3 +1,4 @@
+import os
 import string
 
 from abmatt.autofix import AutoFix
@@ -83,7 +84,7 @@ class UnpackBrres(Unpacker):
         root = binfile.readMagic()
         assert (root == 'root')
         section_length = binfile.read("I", 4)
-        root = Folder(binfile, root)
+        self.root = root = Folder(binfile, root)
         root.unpack(binfile)
         # open all the folders
         for i in range(len(root)):

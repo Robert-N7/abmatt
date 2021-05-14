@@ -36,5 +36,10 @@ class TestBrresLoadsCorrectly(AbmattTest):
         self.assertTrue(original_len > 0)
         self.assertTrue(original_len == len(self.test_model.objects))
 
+    # Currently unsupported
+    # def test_load_and_save_brres_with_text_file(self):
+    #     brres = self._get_brres('kuribo_with_txt.brres')
+    #     brres.save(self._get_tmp('.brres'), overwrite=True)
+
 if __name__ == '__main__':
     unittest.main()

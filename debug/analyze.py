@@ -92,15 +92,13 @@ def analyze_material(mat):
 
 
 def perform_analysis(brres):
-    print('Analyzing {}'.format(brres.name))
+    AutoFix.info('Analyzing {}'.format(brres.name))
     export = False
-    for model in brres.models:
-        if len(model.colors) > 0 and model.colors[0].count > 1:
-            export = True
-        # for mat in model.materials:
-        # if len(mat.polygons) > 1:
-        #     print('Mat {} used more than once by {}'.format(mat.name, [x.name for x in mat.polygons]))
-        # for poly in model.objects:
+    # for model in brres.models:
+    #     for mat in model.materials:
+    #         if len(mat.polygons) > 1:
+    #             print(f'{brres.name}/{model.name} has multiple polys/mat')
+    #             print('Mat {} used more than once by {}'.format(mat.name, [x.name for x in mat.polygons]))
         #
         #     has_uv_mtx = False
         #     for x in poly.uv_mtx_indices:
@@ -109,12 +107,10 @@ def perform_analysis(brres):
         #             break
         #     if has_uv_mtx:
         #         decode_polygon(poly, decode_mdl0_influences(model))
-    if export:
-        DaeConverter(brres, os.path.join(os.getcwd(), 'tmp', 'tmp.dae'), encode=False).convert()
     # for model in brres.models:
     #     for material in model.materials:
     #         analyze_material(material)
-
+    brres.save(os.path.join(os.path.dirname(os.getcwd()), 'tmp', 'tmp.brres'), overwrite=True)
 
 def gather_brres_files(root, brres_files, filter=None):
     """
@@ -136,9 +132,12 @@ def gather_brres_files(root, brres_files, filter=None):
 
 if __name__ == '__main__':
     args = sys.argv[1:]
-    filter = 'water_course.d\\map_model.brres'
+    filter = None
     if not len(args):
         root = os.getcwd()
+        if os.path.basename(root) == 'debug':
+            root = os.path.dirname(root)
+            os.chdir(root)
     else:
         root = args.pop(0)
         if not os.path.exists(root) or not os.path.isdir(root):

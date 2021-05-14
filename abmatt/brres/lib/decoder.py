@@ -1,3 +1,4 @@
+from copy import deepcopy
 from struct import unpack_from, unpack
 
 import numpy as np
@@ -276,27 +277,45 @@ def decode_pos_mtx_indices(all_influences, weight_groups, vertices, pos_mtx_indi
     slicer = sorted(weight_groups.keys())
     slicer.append(len(vert_indices))  # add the max onto the end for slicing
 
+    remapper = {}
+    max_vert = np.max(vert_indices)
+    new_points = [x for x in points]
+    new_face_indices = deepcopy(vert_indices)
     # Each weighting slice group
     for i in range(len(slicer) - 1):
         start = slicer[i]
         end = slicer[i + 1]
         weights = np.array(weight_groups[start])
-        vertex_slice = vert_indices[start:end].flatten()
-        pos_mtx_slice = pos_mtx_indices[start:end].flatten()
-        # get the ordered indices corresponding to vertices
-        vertex_indices, indices = np.unique(vertex_slice, return_index=True)
-        weight_indices = weights[
-            pos_mtx_slice[indices]]  # get the matrix corresponding to vert index, resolve to weight_id
+        vertex_slice = vert_indices[start:end]
+        pos_mtx_slice = pos_mtx_indices[start:end]
 
-        # map each vertex id to an influence and apply it
-        for i in range(len(vertex_indices)):
-            vertex_index = vertex_indices[i]
-            if vertex_index not in influences:
-                influences[vertex_index] = influence = all_influences[weight_indices[i]]
-                points[vertex_index] = influence.apply_to(points[vertex_index], decode=True)
-            elif influences[vertex_index].influence_id != weight_indices[i]:
-                AutoFix.warn(f'vertex {vertex_index} has multiple different influences!')
-                influences[vertex_index] = all_influences[weight_indices[i]]
+        # map each vertex to an influence
+        for i in range(len(vertex_slice)):
+            for j in range(3):
+                vert_id = vertex_slice[i, j]
+                inf = all_influences[weights[pos_mtx_slice[i, j]]]
+                weight_id = inf.influence_id
+                if vert_id not in influences:
+                    new_points[vert_id] = inf.apply_to(points[vert_id], decode=True)
+                    influences[vert_id] = inf
+                elif influences[vert_id].influence_id != weight_id:     # remap
+                    found = False
+                    remappings = remapper.get(vert_id)
+                    if remappings:
+                        for index, influence in remappings:
+                            if influence.influence_id == weight_id:
+                                found = True
+                                new_face_indices[start + i, j] = index
+                    if not found:
+                        if not remappings:
+                            remapper[vert_id] = remappings = []
+                        remappings.append((max_vert, inf))
+                        new_points.append(inf.apply_to(points[vert_id], decode=True))
+                        new_face_indices[start + i, j] = max_vert
+                        influences[max_vert] = inf
+                        max_vert += 1
 
-    # assert len(influences) == len(points)
+        vertices.points = np.array(new_points)
+        vertices.face_indices = new_face_indices
+    assert len(influences) == len(points)
     return InfluenceCollection(influences)

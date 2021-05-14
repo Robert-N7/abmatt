@@ -223,7 +223,7 @@ class Brres(Clipable, Packable):
         return os.path.join(w_dir, name + '.brres')
 
     def get_expected_mdl_name(self):
-        filename = self.name
+        filename = os.path.basename(self.name)
         for item in ('course', 'map', 'vrcorn'):
             if item in filename:
                 return item

@@ -256,3 +256,4 @@ To call the preset:
 
 ## Known Limitations and Bugs
 * Windows installer sometimes hangs in the background until the process is terminated.
+* Non-standard files in Brres are not supported.
