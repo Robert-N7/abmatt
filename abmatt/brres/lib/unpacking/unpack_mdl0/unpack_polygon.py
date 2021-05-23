@@ -87,6 +87,9 @@ class UnpackPolygon(Unpacker):
         poly.encode_str = self.encode_string
         if self.bone_id >= 0:
             poly.linked_bone = mdl0.bones[mdl0.bone_table[self.bone_id]]
+        elif poly.weight_index < 0:
+            poly.linked_bone = mdl0.bones[0]
+            AutoFix.warn('{} has incorrect bone reference, using {}'.format(poly.name, poly.linked_bone))
         else:
             poly.linked_bone = None
 

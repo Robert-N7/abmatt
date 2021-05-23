@@ -92,42 +92,72 @@ def analyze_material(mat):
 
 
 def perform_analysis(brres):
-    AutoFix.info('Analyzing {}'.format(brres.name))
+    s = ''
+    has_count = 0
+    if brres.chr0:
+        s += ' has chr0'
+    if brres.shp0:
+        s += ' has shp0'
+        has_count += 1
+    if brres.clr0:
+        s += ' has clr0'
+        has_count += 1
+    if brres.unused_pat0:
+        s += ' has unused pat0'
+    if brres.unused_srt0:
+        s += ' has unused srt0'
+    if brres.scn0:
+        s += ' has scn0'
+        has_count += 1
+    if has_count:
+        AutoFix.info(f'{brres.name} {s}')
+    # AutoFix.info('Analyzing {}'.format(brres.name))
     export = False
     # for model in brres.models:
     #     for mat in model.materials:
     #         if len(mat.polygons) > 1:
     #             print(f'{brres.name}/{model.name} has multiple polys/mat')
     #             print('Mat {} used more than once by {}'.format(mat.name, [x.name for x in mat.polygons]))
-        #
-        #     has_uv_mtx = False
-        #     for x in poly.uv_mtx_indices:
-        #         if x >= 0:
-        #             has_uv_mtx = True
-        #             break
-        #     if has_uv_mtx:
-        #         decode_polygon(poly, decode_mdl0_influences(model))
+    #
+    #     has_uv_mtx = False
+    #     for x in poly.uv_mtx_indices:
+    #         if x >= 0:
+    #             has_uv_mtx = True
+    #             break
+    #     if has_uv_mtx:
+    #         decode_polygon(poly, decode_mdl0_influences(model))
     # for model in brres.models:
     #     for material in model.materials:
     #         analyze_material(material)
-    brres.save(os.path.join(os.path.dirname(os.getcwd()), 'tmp', 'tmp.brres'), overwrite=True)
+    # brres.save(os.path.join(os.path.dirname(os.getcwd()), 'tmp', 'tmp.brres'), overwrite=True)
 
-def gather_brres_files(root, brres_files, filter=None):
+
+def gather_files(root, match_filter=None, filter='.brres', exclude=['tmp']):
     """
     Recursively gathers brres files in root
     :param root: path
-    :param brres_files: list to gather files in
+    :param files: list to gather files in
     """
     for file in os.listdir(root):
         path = os.path.join(root, file)
         if file.startswith('.'):
             continue
-        if os.path.isdir(path):
-            gather_brres_files(path, brres_files, filter)
-        elif file.endswith('.brres'):
-            if filter is None or fnmatch.fnmatch(file, filter):
-                brres_files.append(path)
-    return brres_files
+        if os.path.isdir(path) and file not in exclude:
+            yield from gather_files(path, match_filter, filter)
+        elif file.endswith(filter):
+            if match_filter is None or fnmatch.fnmatch(file, match_filter):
+                yield path
+
+
+def get_project_root():
+    directory = os.getcwd()
+    while True:
+        new_dir, name = os.path.split(directory)
+        if name == 'abmatt':
+            return directory
+        directory = new_dir
+        if not directory:
+            break
 
 
 if __name__ == '__main__':
@@ -143,6 +173,5 @@ if __name__ == '__main__':
         if not os.path.exists(root) or not os.path.isdir(root):
             print('Invalid root path')
             sys.exit(1)
-    files = []
-    for x in gather_brres_files(root, files, filter):
+    for x in gather_files(root, filter):
         perform_analysis(Brres(x))

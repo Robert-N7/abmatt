@@ -66,7 +66,7 @@ class Geometry:
         points[:, [1, 2]] = points[:, [2, 1]]
 
     def apply_linked_bone_bindings(self):
-        self.influences.apply_world_position(self.vertices)
+        self.influences.apply_world_position(np.array(self.vertices))
 
     def apply_matrix(self, matrix):
         if matrix is not None:

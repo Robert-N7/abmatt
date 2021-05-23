@@ -56,6 +56,11 @@ class Color(Node):
     def __getitem__(self, item):
         return self.get_decoded()[item]
 
+    def __eq__(self, other):
+        return super().__eq__(other) and self.flags == other.flags and self.stride == other.stride and \
+               self.count == other.count and self.has_alpha == other.has_alpha and self.format == other.format and \
+               self.data == other.data
+
     def check(self):
         if not FMT_RGB565 <= self.format <= FMT_RGBA8:
             AutoFix.error(f'Color {self.name} has unknown color format.')

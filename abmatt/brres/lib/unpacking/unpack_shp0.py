@@ -46,7 +46,7 @@ class UnpackShp0(UnpackSubfile):
         folder = Folder(binfile)
         folder.unpack(binfile)
         while len(folder):
-            anim = Shp0Animation(folder.recallEntryI())
+            anim = Shp0Animation(folder.recallEntryI(), shp0)
             self.UnpackSub(anim, binfile)
             shp0.animations.append(anim)
         binfile.end()

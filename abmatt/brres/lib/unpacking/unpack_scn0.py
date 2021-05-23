@@ -69,7 +69,7 @@ class UnpackScn0(UnpackSubfile):
 
     def unpack_group(self, unpacker, klass, section_count):
         if self.binfile.recall():
-            return [unpacker(klass(), self.binfile).node for i in range(section_count)]
+            return [unpacker(klass('', self.node), self.binfile).node for i in range(section_count)]
         return []
 
     def unpack(self, scn0, binfile):
@@ -77,8 +77,6 @@ class UnpackScn0(UnpackSubfile):
         _, scn0.framecount, scn0.speclightcount, scn0.loop = binfile.read('i2Hi', 12)
         section_counts = binfile.read('5H', 12)  # + pad
         binfile.recall()  # section root
-        # folder = Folder(binfile).unpack(binfile)
-        # groups = [scn0.lightsets, scn0.ambient_lights, scn0.lights, scn0.fogs, scn0.cameras]
         scn0.lightsets = self.unpack_group(self.UnpackLightSet, light.LightSet, section_counts[0])
         scn0.ambient_lights = self.unpack_group(self.UnpackAmbientLight, light.AmbientLight, section_counts[1])
         scn0.lights = self.unpack_group(self.UnpackLight, light.Light, section_counts[2])

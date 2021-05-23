@@ -78,7 +78,11 @@ class MatsToJsonConverter:
             self.polygons_by_name[x] = poly_data[x]
 
     def __load_srt0(self, srt0, data):
-        self.__load_settings(srt0, data.get('settings'))
+        settings = data.get('settings')
+        base_name = settings.get('base_name')
+        if base_name:
+            srt0.parent_base_name = base_name
+        self.__load_settings(srt0, settings)
         d = data.get('texture_animations')
         if d:
             if len(d) != len(srt0.tex_animations):
@@ -114,6 +118,7 @@ class MatsToJsonConverter:
             pat0.fixedTeture = data['fixed_texture']
             pat0.framecount = data['frame_count']
             pat0.loop = data['loop']
+            pat0.parent_base_name = data.get('base_name')
 
     def __load_layers(self, layers, data):
         i = 0
@@ -168,7 +173,9 @@ class MatsToJsonConverter:
                 'stages': self.__get_items_str(shader.stages)}
 
     def __get_srt0_str(self, srt0):
-        return {'settings': self.__get_settings(srt0),
+        settings = self.__get_settings(srt0)
+        settings['base_name'] = srt0.parent_base_name
+        return {'settings': settings,
                 'texture_animations': [self.__get_srt0_tex_anim_str(x) for x in srt0.tex_animations]}
 
     def __get_srt0_tex_anim_str(self, tex_anim):
@@ -201,9 +208,10 @@ class MatsToJsonConverter:
     def __get_pat0_settings(self, pat0):
         return {
             'enabled': pat0.enabled,
-            'fixed_texture': pat0.fixedTexture,
+            'fixed_texture': pat0.fixed_texture,
             'frame_count': pat0.framecount,
             'loop': pat0.loop,
+            'base_name': pat0.parent_base_name
         }
 
     def __get_items_str(self, items):

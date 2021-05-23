@@ -113,7 +113,7 @@ class DaeConverterTest(AbmattTest):
         original = converter.mdl0
         converter = DaeConverter(self._get_tmp('.brres'), fname)
         converter.load_model()
-        # converter.brres.save(overwrite=True)
+        converter.brres.save(overwrite=True)
         self.assertTrue(CheckPositions().model_equal(original, converter.mdl0, 0.01, 0.001))
 
     def test_save_multi_bone_as_single_bone(self):

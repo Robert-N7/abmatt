@@ -48,7 +48,7 @@ class UnpackClr0(UnpackSubfile):
         folder = Folder(binfile)
         folder.unpack(binfile)
         while len(folder):
-            anim = Clr0Animation(folder.recallEntryI(), clr0.framecount, clr0.loop)
+            anim = Clr0Animation(folder.recallEntryI(), clr0)
             self.UnpackSub(anim, binfile)
             clr0.animations.append(anim)
         binfile.end()

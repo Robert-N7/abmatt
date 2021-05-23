@@ -7,70 +7,6 @@ from abmatt.brres.lib.unpacking.unpack_pat0 import UnpackPat0
 from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
 
 
-class Pat0Collection(Node):
-    """A collection of pat0 mat animations for a model"""
-
-    def __init__(self, name, parent, pats=None):
-        self.collection = []
-        if pats:
-            for x in pats:
-                self.collection.extend(x.mat_anims)
-        super().__init__(name, parent)
-
-    def __getitem__(self, material_name):
-        """Gets animation in collection matching material name"""
-        for x in self.collection:
-            if x.name == material_name:
-                return x
-
-    def __len__(self):
-        return len(self.collection)
-
-    def __iter__(self):
-        for x in self.collection:
-            yield x
-
-    def get_used_textures(self):
-        used = set()
-        for anim in self.collection:
-            used |= anim.get_used_textures()
-        return used
-
-    def add(self, mat_animation):
-        self.collection.append(mat_animation)
-
-    def remove(self, animation):
-        self.collection.remove(animation)
-
-    def rename(self, name):
-        self.name = name
-
-    def info(self, key=None, indentation_level=0):
-        trace = '  ' * indentation_level + '>(PAT0)' + self.name if indentation_level else '>(PAT0)' + self.name
-        print('{}: {} animations'.format(trace, len(self.collection)))
-        indentation_level += 1
-        for x in self.collection:
-            x.info(key, indentation_level)
-
-    def consolidate(self):
-        """Combines the pats, returning list of pat0"""
-        n = 0
-        pats = []  # for storing pat0s
-        for x in self.collection:
-            added = False
-            for pat in pats:
-                if pat.add(x):
-                    added = True
-                    break
-            if not added:  # create new one
-                postfix = str(len(pats)) if len(pats) > 0 else ''
-                s = Pat0(self.name + postfix, self.parent)
-                if not s.add(x):
-                    print('Error has occurred')
-                pats.append(s)
-        return pats
-
-
 class Pat0(SubFile):
     """ Pat0 animation class """
 
@@ -87,9 +23,10 @@ class Pat0(SubFile):
     VERSION_SECTIONCOUNT = {3: 5, 4: 6}
     EXPECTED_VERSION = 4
 
-    def __init__(self, name, parent, binfile=None):
+    def __init__(self, name, parent, binfile=None, base_name=None):
         self.n_str = 1
         self.version = 4
+        self.base_name = base_name
         self.mat_anims = []
         super(Pat0, self).__init__(name, parent, binfile)
 
@@ -97,16 +34,29 @@ class Pat0(SubFile):
         self.framecount = 100
         self.loop = True
 
+    def __eq__(self, other):
+        return super().__eq__(other) and self.framecount == other.framecount and self.loop == other.loop \
+               and self.mat_anims == other.mat_anims and self.version == other.version
+
+    def __iter__(self):
+        return iter(self.mat_anims)
+
+    def __next__(self):
+        return next(self.mat_anims)
+
     def add(self, x):
+        if self.base_name != x.get_anim_base_name():
+            return False
         if not self.mat_anims:
             self.framecount = x.framecount
             self.loop = x.loop
             self.mat_anims.append(x)
             return True
-        elif x.framecount == self.framecount and x.loop == self.loop:
+        elif x.framecount != self.framecount or x.loop != self.loop:
+            return False
+        elif x not in self.mat_anims:
             self.mat_anims.append(x)
-            return True
-        return False
+        return True
 
     def getTextures(self):
         textures = []

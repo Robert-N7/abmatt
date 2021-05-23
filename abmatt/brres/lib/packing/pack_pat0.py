@@ -16,7 +16,7 @@ class PackPat0Animation(Packer):
         self.offset = binfile.start()
         binfile.storeNameRef(pat0.name)
         # self.fixedTexture = len(self.frames) <= 1       # todo, check fixed texture formatting/why?
-        flags = pat0.enabled | pat0.fixedTexture << 1 | pat0.hasTexture << 2 | pat0.hasPalette << 3
+        flags = pat0.enabled | pat0.fixed_texture << 1 | pat0.has_texture << 2 | pat0.has_palette << 3
         binfile.write('I', flags)
         binfile.mark()
         binfile.end()

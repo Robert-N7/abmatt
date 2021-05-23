@@ -46,8 +46,17 @@ class Node:
     def __deepcopy__(self, memodict=None):
         raise NotImplementedError()
 
+    def __eq__(self, other):
+        return other is not None and type(self) == type(other) and self.name == other.name
+
     def __str__(self):
         return self.name
+
+    def __hash__(self):
+        return hash(self.get_full_path())
+
+    def get_full_path(self):
+        return os.path.join(self.parent.get_full_path(), self.name) if self.parent else self.name
 
     def link_parent(self, parent):
         self.parent = parent

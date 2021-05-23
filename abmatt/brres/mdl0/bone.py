@@ -40,7 +40,7 @@ class Bone(Node):
         self.inverse_matrix = [[y for y in x] for x in self.identity_matrix]
 
     def __eq__(self, other):
-        return other is not None and type(other) == Bone and np.allclose(self.scale, other.scale) and \
+        result = super().__eq__(other) and np.allclose(self.scale, other.scale) and \
                np.allclose(self.rotation, other.rotation) and np.allclose(self.translation, other.translation) and \
                np.allclose(self.transform_matrix, other.transform_matrix) and self.no_transform == other.no_transform \
                and self.fixed_translation == other.fixed_translation and self.fixed_scale == other.fixed_scale \
@@ -49,6 +49,7 @@ class Bone(Node):
                and self.seg_scale_comp_parent == other.seg_scale_comp_parent \
                and self.classic_scale_off == other.classic_scale_off and self.visible == other.visible \
                and self.has_geometry == other.has_geometry and self.has_billboard_parent == other.has_billboard_parent
+        return result
 
     def get_bone_parent(self):
         return self.b_parent

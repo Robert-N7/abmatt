@@ -37,6 +37,10 @@ class Vertex(Point):
         return self.comp_count + 2
 
     @property
+    def default_point_width(self):
+        return 3
+
+    @property
     def default_comp_count(self):
         return XYZ_POSITION
 

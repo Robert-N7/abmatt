@@ -21,7 +21,7 @@ class Joint:
 
     @staticmethod
     def get_world_position(bone):
-        matrix = bone.get_inv_transform_matrix()
+        matrix = np.array(bone.get_inv_transform_matrix())
         parent = bone.get_bone_parent()
         if parent is not None:
             return np.dot(matrix, Joint.get_world_position(parent))
@@ -108,7 +108,7 @@ class Influence:
                 else:
                     matrix = np.dot(matrix, bw_matrix)
             self.world_matrix = matrix
-        return self.world_matrix
+        return np.array(self.world_matrix)
 
     def apply_world_position(self, vertex):
         return apply_matrix_single(self.__get_world_position_matrix(), vertex)

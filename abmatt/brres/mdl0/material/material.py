@@ -5,6 +5,7 @@
 # ---------------------------------------------------------------------
 import json
 import re
+import string
 from copy import deepcopy
 
 from abmatt.autofix import AutoFix
@@ -798,8 +799,6 @@ class Material(Clipable):
         if self.srt0:
             return self.srt0
         anim = SRTMatAnim(self.name)
-        if self.parent is not None:
-            self.parent.add_srt0(anim)
         self.set_srt0(anim)
         anim.add_layer()
         self.mark_modified()
@@ -807,7 +806,7 @@ class Material(Clipable):
 
     def remove_srt0(self):
         if self.srt0:
-            self.parent.remove_srt0(self.srt0)
+            self.srt0.remove_material(self)
             self.srt0 = None
             self.mark_modified()
 
@@ -833,20 +832,21 @@ class Material(Clipable):
     def has_pat0(self):
         return self.pat0 is not None
 
+    def get_anim_base_name(self):
+        if self.parent:
+            return self.parent.get_anim_base_name()
+
     def add_pat0(self):
         """Adds a new pat0"""
         if self.pat0:
             return self.pat0
-        anim = Pat0MatAnimation(self.name, self.parent)
-        if self.parent is not None:
-            self.parent.add_pat0(anim)
+        anim = Pat0MatAnimation(self.name, self)
         self.set_pat0(anim)
         self.mark_modified()
         return anim
 
     def remove_pat0(self):
         if self.pat0:
-            self.parent.remove_pat0(self.pat0)
             self.pat0 = None
             self.mark_modified()
 
@@ -859,6 +859,12 @@ class Material(Clipable):
 
     def get_pat0(self):
         return self.pat0
+
+    def get_used_textures(self):
+        used = {x.name for x in self.layers}
+        if self.pat0:
+            used |= self.pat0.get_used_textures()
+        return used
 
     def disable_blend(self):
         if self.is_blend_enabled():
@@ -1031,6 +1037,9 @@ class Material(Clipable):
                 if self.is_vertex_color_enabled():
                     ret.add('vertex')
         return ret
+
+    def __hash__(self):
+        return super().__hash__()
 
     def __eq__(self, item):
         return self is item or (item is not None and type(self) == type(item) and \

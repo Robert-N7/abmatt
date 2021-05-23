@@ -56,10 +56,15 @@ class ObjConverter(Converter):
             obj_mat = self.__decode_material(mat)
             obj_materials[obj_mat.name] = obj_mat
         obj_geometries = obj.geometries
+        has_colors = False
         for x in polygons:
             geometry = x.get_decoded()
             material = geometry.material_name
             obj_geometries.append(self.__decode_geometry(geometry, material))
+            if x.get_color_group():
+                has_colors = True
+        if has_colors:
+            AutoFix.warn('Loss of color data exporting obj')
         self._end_saving(obj)
 
     @staticmethod
@@ -86,8 +91,6 @@ class ObjConverter(Converter):
         geo.vertices = geometry.vertices
         geo.normals = geometry.normals
         geo.has_normals = bool(geo.normals)
-        if geometry.colors:
-            AutoFix.warn('Loss of color data for {}'.format(geo.name))
         texcoords = geometry.texcoords
         if len(texcoords) > 1:
             AutoFix.warn('Loss of UV data for {}.'.format(geo.name))

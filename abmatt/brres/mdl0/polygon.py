@@ -25,13 +25,25 @@ class Polygon(Clipable):
         raise NotImplementedError()
 
     def __init__(self, name, parent, binfile=None):
-        self.tex_divisor = [0] * 8
         self.tex_e = [1] * 8
         self.material = None
         self.decoded = None
         self.priority = 0
         self.visible_bone = None
         super(Polygon, self).__init__(name, parent, binfile)
+
+    def __eq__(self, other):
+        return super().__eq__(other) and self.encode_str == other.encode_str and self.face_count == other.face_count \
+               and self.weight_index == other.weight_index and self.vertex_index == other.vertex_index \
+               and self.normal_index == other.normal_index and self.color0_index == other.color0_index \
+               and self.uv_indices == other.uv_indices and self.uv_mtx_indices == other.uv_mtx_indices \
+               and self.facepoint_count == other.facepoint_count and self.vertices == other.vertices \
+               and self.colors == other.colors and self.normals == other.normals and self.uvs == other.uvs \
+               and self.flags == other.flags and self.linked_bone == other.linked_bone \
+               and self.visible_bone == other.visible_bone and self.flags == other.flags \
+               and self.vertex_e == other.vertex_e and self.normal_index3 == other.normal_index3 \
+               and self.color0_e == other.color0_e and self.normal_e == other.normal_e \
+               and self.priority == other.priority and self.material == other.material and self.data == other.data
 
     def begin(self):
         # The face point indices, also indexes into the encode string

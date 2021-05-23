@@ -7,6 +7,10 @@ from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
 from abmatt.brres.lib import matching
 from abmatt.brres.lib.matching import it_eq
+from abmatt.brres.mdl0 import Mdl0
+from abmatt.brres.mdl0.material.material import Material
+from abmatt.brres.mdl0.polygon import Polygon
+from abmatt.brres.mdl0.shader import Shader
 
 
 def get_base_path():
@@ -132,10 +136,11 @@ class CheckPositions:
         # Try to sort by name
         v1 = sorted(vertices1, key=lambda x: x.name)
         v2 = sorted(vertices2, key=lambda x: x.name)
-        if not matching.fuzzy_match(v1[0].name, v2):    # no match! try matching shapes
+        if not matching.fuzzy_match(v1[0].name, v2):  # no match! try matching shapes
             # print('Groups dont have matching names!')
             v1 = sorted(vertices1, key=lambda x: x.count)
             v2 = sorted(vertices2, key=lambda x: x.count)
+
         return v1, v2, mismatched_len
 
     @staticmethod
@@ -167,10 +172,10 @@ class CheckPositions:
     @staticmethod
     def model_equal(mdl1, mdl2, rtol=1.e-2, atol=1.e-3):
         return CheckPositions.bones_equal(mdl1.bones, mdl2.bones, rtol, atol) \
-            and CheckPositions.positions_equal(mdl1.vertices, mdl2.vertices, rtol, atol) \
-            and CheckPositions.positions_equal(mdl1.uvs, mdl2.uvs, rtol, atol) \
-            and CheckPositions.positions_equal(mdl1.normals, mdl2.normals, rtol, atol) \
-            and CheckPositions.colors_equal(mdl1.colors, mdl2.colors, rtol, atol)
+               and CheckPositions.positions_equal(mdl1.vertices, mdl2.vertices, rtol, atol) \
+               and CheckPositions.positions_equal(mdl1.uvs, mdl2.uvs, rtol, atol) \
+               and CheckPositions.positions_equal(mdl1.normals, mdl2.normals, rtol, atol) \
+               and CheckPositions.colors_equal(mdl1.colors, mdl2.colors, rtol, atol)
 
     @staticmethod
     def bones_equal(bone_list1, bone_list2, rtol=1.e-2, atol=1.e-3):
@@ -222,3 +227,192 @@ class CheckPositions:
                 if current_err:
                     print('{} and {} mismatch'.format(vertices1[k].name, vertices2[k].name))
         return not err
+
+    @staticmethod
+    def pos_eq_ignore_order(pos1, pos2, rtol=1.e-2, atol=1.e-3):
+        vertices1, vertices2, err = CheckPositions.__pre_process(vertices1, vertices2, 'points')
+        if not err:
+            pass
+
+class CheckAttr:
+    def __init__(self, attr, sub_check_attr=None):
+        """
+        :param attr the attribute to check
+        :param sub_check_attr list of CheckAttr to use as a subcheck
+        """
+        self.attr = attr
+        self.sub_check_attr = sub_check_attr
+
+
+class CheckNodeEq:
+
+    def __init__(self, node, other, check_attr=[], trace=True, parent_node=None):
+        self.node = node
+        self.other = other
+        self.result = node == other
+        self.my_item_diff = self.their_item_diff = self.attr = None
+        self.err_message = ''
+        self.check_attr = check_attr
+        self.parent_node = parent_node if parent_node else self
+        if trace:
+            self.err_trace = self.trace()
+
+    def __str__(self):
+        if self.result:
+            return self.err_message
+        return self.get_err()
+
+    def get_err(self):
+        mine, theirs = self.err_trace
+        return self.parent_node.err_message + f'\nMINE: {mine}\nTHEIRS: {theirs}\n'
+
+    def trace(self, my_trace='', other_trace=''):
+        if self.result:
+            self.err_message = 'Items equal, errors found'
+            return None, None
+        my_trace = str(self.node) if not my_trace else my_trace + '->' + str(self.node)
+        other_trace = str(self.other) if not other_trace else other_trace + '->' + str(self.other)
+        if self.check_attr:
+            for check in self.check_attr:
+                self.parent_node.attr = check.attr
+                mine = getattr(self.node, check.attr)
+                theirs = getattr(self.other, check.attr)
+                if mine is None or theirs is None:
+                    if mine is not theirs:
+                        self.parent_node.err_message = f'Null {check.attr}! ({mine} != {theirs})'
+                        break
+                    print(f'Attr {check.attr} returned None!')
+                    continue
+                if type(mine) not in (list, dict, set, tuple):
+                    mine_sub, their_sub = CheckNodeEq(mine, theirs,
+                                                      check.sub_check_attr,
+                                                      False,
+                                                      self.parent_node).trace(my_trace, other_trace)
+                    if mine_sub or their_sub:
+                        return mine_sub, their_sub
+                else:  # iterable?
+                    if len(mine) != len(theirs):
+                        self.parent_node.err_message = f'{check.attr} has mismatching lengths!'
+                        break
+                    if type(mine) == dict:
+                        for key in mine:
+                            if key not in theirs:
+                                self.parent_node.err_message = f'{check.attr} missing item {key} in theirs!'
+                                break
+                            mine_sub, their_sub = CheckNodeEq(mine[key], theirs[key],
+                                                              check.sub_check_attr,
+                                                              False,
+                                                              self.parent_node).trace(my_trace, other_trace)
+                            if mine_sub or their_sub:
+                                return mine_sub, their_sub
+                    else:
+                        for i in range(len(mine)):
+                            mine_sub, their_sub = CheckNodeEq(mine[i], theirs[i],
+                                                              check.sub_check_attr,
+                                                              False,
+                                                              self.parent_node).trace(my_trace, other_trace)
+                            if mine_sub or their_sub:
+                                return mine_sub, their_sub
+            self.parent_node.attr = None
+        self.parent_node.my_item_diff = self.node
+        self.parent_node.their_item_diff = self.other
+        self.parent_node.err_message += f'\nERR checking {self.parent_node.attr}\n({self.node} != {self.other})'
+        return my_trace, other_trace
+
+
+class CheckMaterialAttr(CheckAttr):
+    class CheckLayerAttr(CheckAttr):
+        def __init__(self, sub_attrs=None):
+            super().__init__('layers', sub_attrs)
+
+    class CheckPat0Attr(CheckAttr):
+        def __init__(self):
+            super().__init__('pat0')
+
+    class CheckSrt0Attr(CheckAttr):
+        def __init__(self):
+            super().__init__('srt0')
+
+    class CheckShaderAttr(CheckAttr):
+        def __init__(self, sub_attrs=None):
+            super().__init__('shader', sub_attrs)
+
+    def __init__(self):
+        sub_attrs = [self.CheckShaderAttr(), self.CheckLayerAttr(), self.CheckPat0Attr(), self.CheckSrt0Attr(),
+                     CheckAttr('colors'), CheckAttr('constant_colors'),
+                     CheckAttr('indirect_matrices'), CheckAttr('lightChannels'),
+                     CheckAttr('blend_dest'), CheckAttr('blend_source'), CheckAttr('blend_logic'),
+                     CheckAttr('blend_subtract'), CheckAttr('blend_update_alpha'), CheckAttr('blend_update_color'),
+                     CheckAttr('blend_dither'), CheckAttr('blend_logic_enabled'), CheckAttr('blend_enabled'),
+                     CheckAttr('depth_function'), CheckAttr('depth_update'), CheckAttr('depth_test'),
+                     CheckAttr('logic'), CheckAttr('comp1'), CheckAttr('comp0'), CheckAttr('ref1'), CheckAttr('ref0'),
+                     CheckAttr('constant_alpha_enabled'), CheckAttr('constant_alpha'),
+                     CheckAttr('indirect_matrices')]
+        super().__init__('material', sub_attrs)
+
+
+class CheckPolysAttr(CheckAttr):
+    def __init__(self):
+        sub_attrs = [CheckMaterialAttr()]
+        super().__init__('objects', sub_attrs)
+
+
+class CheckModelsAttr(CheckAttr):
+    def __init__(self):
+        sub_attrs = [CheckPolysAttr()]
+        super().__init__('models', sub_attrs)
+
+
+class CheckBrresAttr(CheckAttr):
+    def __init__(self):
+        sub_attrs = [CheckModelsAttr(), CheckTextureMap(), CheckAttr('unused_pat0'),
+                     CheckAttr('unused_srt0'),
+                     CheckAttr('chr0'),
+                     CheckAttr('scn0'),
+                     CheckAttr('shp0'),
+                     CheckAttr('clr0')]
+        super().__init__('brres', sub_attrs)
+
+
+class CheckTextureMap(CheckAttr):
+    def __init__(self):
+        super().__init__('texture_map')
+
+
+CHECK_ATTR_MAP = {
+    Brres: CheckBrresAttr,
+    Mdl0: CheckModelsAttr,
+    Polygon: CheckPolysAttr,
+    Material: CheckMaterialAttr,
+}
+
+
+def brres_eq(mine, other):
+    check = CheckNodeEq(mine, other, [CheckModelsAttr(),
+                                      CheckTextureMap(),
+                                      CheckAttr('unused_pat0'),
+                                      CheckAttr('unused_srt0'),
+                                      CheckAttr('chr0'),
+                                      CheckAttr('scn0'),
+                                      CheckAttr('shp0'),
+                                      CheckAttr('clr0')])
+    if not check.result:
+        print(check)
+    return check.result
+
+
+def node_eq(mine, other):
+    if type(mine) in (list, tuple):
+        if len(mine) != len(other):
+            print('Mismatching lengths!')
+        else:
+            for i in range(len(mine)):
+                if not node_eq(mine[i], other[i]):
+                    return False
+    else:
+        check_attr = CHECK_ATTR_MAP[type(mine)]
+        check = CheckNodeEq(mine, other, check_attr().sub_check_attr)
+        if not check.result:
+            print(check)
+        return check.result
+    return True

@@ -13,6 +13,8 @@ FMT_STR = 'BbHhf'
 
 
 class Point(Node):
+    flip_on_decode = False
+
     def __init__(self, name, parent, binfile=None):
         self.decoded = None
         super().__init__(name, parent, binfile)
@@ -28,6 +30,10 @@ class Point(Node):
 
     @property
     def default_comp_count(self):
+        raise NotImplementedError()
+
+    @property
+    def default_point_width(self):
         raise NotImplementedError()
 
     @staticmethod
@@ -57,7 +63,7 @@ class Point(Node):
 
     def get_decoded(self):
         if self.decoded is None:
-            self.decoded = decode_geometry_group(self)
+            self.decoded = decode_geometry_group(self, self.default_point_width, self.flip_on_decode)
         return self.decoded
 
     def __iter__(self):
@@ -65,6 +71,11 @@ class Point(Node):
 
     def __next__(self):
         return next(self.decoded)
+
+    def __eq__(self, other):
+        return super().__eq__(other) and self.count == other.count and self.stride == other.stride \
+               and self.divisor == other.divisor and self.format == other.format and self.comp_count == other.comp_count \
+               and self.data == other.data
 
     def get_format(self):
         return self.format

@@ -45,7 +45,7 @@ class Converter:
         self.encoder = encoder
 
     def _start_saving(self, mdl0):
-        AutoFix.info('Exporting to {}...'.format(self.mdl_file))
+        AutoFix.info('Exporting {} to {}...'.format(os.path.basename(self.brres.name), self.mdl_file))
         self.start = time.time()
         if mdl0 is None:
             mdl0 = self.mdl0
@@ -174,10 +174,11 @@ class Converter:
 
     def __add_pat0_images(self):
         """Adds the pat0 images to tex0 library"""
-        if self.mdl0.pat0_collection is not None:
-            for tex in self.mdl0.pat0_collection.get_used_textures():
-                if tex not in self.tex0_map:
-                    self.tex0_map[tex] = self.texture_library.get(tex)
+        for material in self.mdl0.materials:
+            if material.pat0:
+                for tex in material.pat0.get_used_textures():
+                    if tex not in self.tex0_map:
+                        self.tex0_map[tex] = self.texture_library.get(tex)
 
     def _encode_material(self, generic_mat):
         m = None

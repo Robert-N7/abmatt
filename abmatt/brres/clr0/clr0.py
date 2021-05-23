@@ -18,6 +18,9 @@ class Clr0(SubFile):
         self.animations = []
         super(Clr0, self).__init__(name, parent, binfile)
 
+    def __eq__(self, other):
+        return super().__eq__(other) and self.framecount == other.framecount and self.animations == other.animations
+
     def begin(self, initial_values=None):
         self.loop = True
         self.framecount = 1

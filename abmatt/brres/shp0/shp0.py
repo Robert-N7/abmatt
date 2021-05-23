@@ -21,6 +21,10 @@ class Shp0(SubFile):
         self.strings = []
         super(Shp0, self).__init__(name, parent, binfile)
 
+    def __eq__(self, other):
+        return super().__eq__(other) and self.framecount == other.framecount and self.loop == other.loop \
+               and self.animations == other.animations and self.strings == other.strings
+
     def __getitem__(self, item):
         if item == self.SETTINGS[0]:
             return self.framecount

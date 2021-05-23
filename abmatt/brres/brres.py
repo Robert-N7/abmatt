@@ -3,6 +3,7 @@
 #   Brres Class
 # --------------------------------------------------------
 import os
+import string
 
 from abmatt.autofix import AutoFix, Bug
 from abmatt.brres.lib.binfile import BinFile
@@ -15,7 +16,6 @@ from abmatt.image_converter import ImgConverter
 
 
 class Brres(Clipable, Packable):
-
     SETTINGS = ('name',)
     MAGIC = 'bres'
     OVERWRITE = False
@@ -37,12 +37,13 @@ class Brres(Clipable, Packable):
         self.models = []
         self.texture_map = {}
         self.textures = []
-        self.srt0 = []
-        self.pat0 = []
+        self.unused_srt0 = None
+        self.unused_pat0 = None
         self.chr0 = []
         self.scn0 = []
         self.shp0 = []
         self.clr0 = []
+        self.unknown = []
         binfile = BinFile(name) if read_file else None
         super(Brres, self).__init__(name, parent, binfile)
         self.add_open_file(self)
@@ -76,6 +77,20 @@ class Brres(Clipable, Packable):
     def begin(self):
         self.is_modified = True
 
+    def respect_model_names(self):
+        names = {x.name.rstrip(string.digits) for x in self.models}
+        return len(names) != len(self.models)
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __eq__(self, other):
+        return other is not None and type(other) == Brres and self.models == other.models \
+               and self.texture_map == other.texture_map \
+               and self.unused_srt0 == other.unused_srt0 and self.unused_pat0 == other.unused_pat0 \
+               and self.chr0 == other.chr0 and self.scn0 == other.scn0 and self.shp0 == other.shp0 \
+               and self.clr0 == other.clr0 and self.unknown == other.unknown
+
     def get_str(self, key):
         if key == 'name':
             return self.name
@@ -107,10 +122,6 @@ class Brres(Clipable, Packable):
         for x in self.models:
             if x.name == name:
                 self.models.remove(x)
-                if x.srt0_collection:
-                    self.srt0.remove(x.srt0_collection)
-                if x.pat0_collection:
-                    self.pat0.remove(x.pat0_collection)
                 self.mark_modified()
                 break
 
@@ -180,7 +191,7 @@ class Brres(Clipable, Packable):
 
     def info(self, key=None, indentation_level=0):
         AutoFix.info('{}{}:\t{} model(s)\t{} texture(s)'.format('  ' * indentation_level + '>',
-                                    self.name, len(self.models), len(self.textures)), 1)
+                                                                self.name, len(self.models), len(self.textures)), 1)
         indentation_level += 2
         self.sub_info('MDL0', self.models, key, indentation_level)
         self.sub_info('TEX0', self.textures, key, indentation_level)
@@ -264,7 +275,7 @@ class Brres(Clipable, Packable):
             tex0 = t
         self.textures.append(tex0)
         self.texture_map[tex0.name] = tex0
-        tex0.parent = self      # this may be redundant
+        tex0.parent = self  # this may be redundant
         if mark_modified:
             self.mark_modified()
         return True

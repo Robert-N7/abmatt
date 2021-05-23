@@ -20,10 +20,10 @@ class PackShp0(PackSubfile):
             entries = anim.entries
             binfile.write('2Hi', anim.name_id, len(entries), anim.fixed_flags)
             binfile.mark()  # indices offset
+            binfile.write('{}H'.format(len(entries)), *anim.indices)
             binfile.align(4)
             binfile.mark(len(entries))
             binfile.createRef()  # indices offset
-            binfile.write('{}H'.format(len(entries)), *anim.indices)
             for x in entries:
                 self.PackFrames(x, binfile)
             binfile.end()

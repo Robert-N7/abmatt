@@ -37,6 +37,10 @@ class Tex0(SubFile):
         self.num_mips = 0
         self.data = None
 
+    def __eq__(self, other):
+        return super().__eq__(other) and self.width == other.width and self.height == other.height  \
+               and self.format == other.format and self.num_mips == other.num_mips and self.data == other.data
+
     def get_str(self, key):
         if key == 'dimensions':
             return self.width, self.height
@@ -136,7 +140,6 @@ class Tex0(SubFile):
         return False
 
     def check(self):
-        super(Tex0, self).check()
         if not self.is_power_of_two(self.width) or not self.is_power_of_two(self.height):
             b = Bug(2, 2, str(self) + ' not a power of 2', None)
             if self.should_resize_pow_two():
