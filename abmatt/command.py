@@ -70,7 +70,7 @@ def getBrresFromMaterials(mats):
 
 
 class Command:
-    COMMANDS = ["preset", "set", "add", "remove", "info", "select", "save", "copy", "paste", "convert"]
+    COMMANDS = ["preset", "set", "add", "remove", "info", "select", "save", "copy", "paste", "convert", "load"]
     SELECTED = []  # selection list
     SELECT_TYPE = None  # current selection list type
     SELECT_ID = None  # current selection id
@@ -78,7 +78,6 @@ class Command:
     DESTINATION = None
     OVERWRITE = False
     ACTIVE_FILES = []  # currently being used in selection
-    OPEN_FILES = {}  # currently open
     FILES_MARKED = set()  # files marked as modified
     MODELS = []
     MATERIALS = []
@@ -137,6 +136,9 @@ class Command:
         if cmd == 'convert':
             self.set_convert(x)
             return
+        elif cmd == 'load':
+            self.set_load(x)
+            return
         if self.setType(x[0]):
             x.pop(0)
         if cmd == 'select':
@@ -186,6 +188,13 @@ class Command:
         if self.key and self.type and self.key not in self.TYPE_SETTING_MAP[self.type]:
             raise ParsingException(self.txt, "Unknown Key {} for {}, possible keys:\n\t{}".format(
                 self.key, self.type, self.TYPE_SETTING_MAP[self.type]))
+
+    def set_load(self, params):
+        if params:
+            filepath = params.pop(0)
+            self.file = filepath
+        else:
+            raise ParsingException('load requires target!')
 
     def set_convert(self, params):
         flags = 0
@@ -375,7 +384,7 @@ class Command:
     @staticmethod
     def updateFile(filename):
         # check in opened files
-        files = MATCHING.findAll(filename, Command.OPEN_FILES.values())
+        files = MATCHING.findAll(filename, Brres.OPEN_FILES)
         if files:
             Command.ACTIVE_FILES = files
         else:
@@ -395,30 +404,33 @@ class Command:
         return Command.ACTIVE_FILES
 
     @staticmethod
-    def closeFiles(file_names):
-        opened = Command.OPEN_FILES
+    def closeFiles(files):
+        opened = Brres.OPEN_FILES
         marked = Command.FILES_MARKED
-        for x in file_names:
-            file = opened.pop(x)
-            file.close()
-            marked.remove(file)
+        for x in files:
+            try:
+                x.close()
+                marked.remove(x)
+                opened.remove(x)
+            except (ValueError, KeyError):
+                pass
 
     @staticmethod
     def auto_close(amount, exclude=[]):
         can_close = []  # modified but can close
         to_close = []  # going to close if needs closing
         excluded = []
-        opened = Command.OPEN_FILES
+        opened = Brres.OPEN_FILES
         # first pass, mark non-modified files for closing, and appending active
         for x in opened:
-            if x not in exclude:
-                if not opened[x].is_modified:
+            if x.name not in exclude:
+                if not x.name.is_modified:
                     to_close.append(x)
                     amount -= 1
                 else:
                     can_close.append(x)
             else:
-                excluded.append(opened[x])
+                excluded.append(x)
         if amount:
             for x in can_close:
                 to_close.append(x)
@@ -430,7 +442,7 @@ class Command:
 
     @staticmethod
     def openFiles(filenames):
-        opened = Command.OPEN_FILES
+        opened = Brres.OPEN_FILES
         max = Command.MAX_FILES_OPEN  # max that can remain open
         if max - len(filenames) < 0:
             raise MaxFileLimit()
@@ -444,17 +456,13 @@ class Command:
             active = []
         # open any that aren't opened
         for f in to_open:
-            # try:
             brres = Brres.get_brres(f, True)
-            opened[f] = brres
             active.append(brres)
-        # except UnpackingError as e:
-        #     AutoFix.error(e)
         return active
 
     @staticmethod
     def create_or_open(filename):
-        amount = len(Command.OPEN_FILES) - Command.MAX_FILES_OPEN
+        amount = len(Brres.OPEN_FILES) - Command.MAX_FILES_OPEN
         if amount > 0:
             Command.auto_close(amount, [filename])
         if os.path.exists(filename):
@@ -462,7 +470,6 @@ class Command:
             b = files[0] if len(files) else None
         else:
             b = Brres(filename, read_file=False)
-            Command.OPEN_FILES[filename] = b
             Command.ACTIVE_FILES = [b]
             Command.MODELS = []
         return b
@@ -678,14 +685,6 @@ class Command:
                 for x in getBrresFromMaterials(self.MATERIALS):
                     Command.SELECTED.extend(MATCHING.findAll(self.SELECT_ID, x.textures))
 
-    @staticmethod
-    def markModified():
-        marked = Command.FILES_MARKED
-        for f in Command.ACTIVE_FILES:
-            if f not in marked:
-                f.is_modified = True
-                Command.FILES_MARKED.add(f)
-
     # ---------------------------------------------- RUN CMD ---------------------------------------------------
     @staticmethod
     def run_commands(commandlist):
@@ -735,6 +734,10 @@ class Command:
             print(e)
 
     def run_cmd(self):
+        if self.cmd == 'load':
+            if not os.path.exists(self.file):
+                raise RuntimeError('load file not found {}'.format(self.file))
+            return self.run_cmds(self.load_commandfile(self.file))
         if self.hasSelection:
             if not self.updateSelection(self.file, self.model, self.name):
                 AutoFix.warn('No selection found for "{}"'.format(self.txt))
@@ -764,7 +767,6 @@ class Command:
                 return True
             raise RuntimeError('No items found in selection! ({})'.format(self.txt))
         if self.cmd == 'set':
-            self.markModified()
             for x in self.SELECTED:
                 x.set_str(self.key, self.value)
         elif self.cmd == 'info':
@@ -776,15 +778,12 @@ class Command:
             # for y in self.ACTIVE_FILES:
             #     print(y.name)
         elif self.cmd == 'add':
-            self.markModified()
             self.add(self.SELECT_TYPE, self.SELECT_ID)
         elif self.cmd == 'remove':
-            self.markModified()
             self.remove(self.SELECT_TYPE, self.SELECT_ID)
         elif self.cmd == 'copy':
             self.run_copy(self.SELECT_TYPE)
         elif self.cmd == 'paste':
-            self.markModified()
             self.run_paste(self.SELECT_TYPE)
         return True
 
@@ -898,11 +897,18 @@ class Command:
                 if not x.save(self.destination, self.overwrite):
                     raise SaveError('File already Exists!')
 
+    def run_cmds(self, cmds):
+        err = False
+        for x in cmds:
+            try:
+                err = err or not x.run_cmd()
+            except RuntimeError as e:
+                AutoFix.warn(e)
+        return not err
+
     def runPreset(self, key):
         """Runs preset"""
-        cmds = self.PRESETS[key]
-        for x in cmds:
-            x.run_cmd()
+        return self.run_cmds(self.PRESETS[key])
 
     def add(self, type, type_id):
         """Add command"""
@@ -1263,7 +1269,7 @@ class Shell(Cmd, object):
         self.run('preset', line)
 
     def help_preset(self):
-        print('USAGE: preset <preset> [for <selection>]')
+        print('PRESETS: {}\nUSAGE: preset <preset> [for <selection>]'.format(list(Command.PRESETS.keys())))
 
     def complete_preset(self, text, line, begid, endid):
         words = self.get_words(text, line)
@@ -1293,7 +1299,7 @@ class Shell(Cmd, object):
         possible = []
         words = self.get_words(text, line)
         if not words:
-            possible = [x for x in Command.OPEN_FILES if x.startswith(text)]
+            possible = [x for x in Brres.OPEN_FILES if x.name.startswith(text)]
         elif 'as' in words:
             file_words = words[words.index('as') + 1:]
             if file_words:
@@ -1349,6 +1355,16 @@ class Shell(Cmd, object):
     def help_convert(self):
         print('Converts dae or obj model to/from brres.\n'
               'Usage: convert <filename> [to <destination>][--no-normals][--no-colors][--single-bone][--no-uvs]')
+
+    def do_load(self, line):
+        self.run('load', line)
+
+    def complete_load(self, text, line, begid, endid):
+        words = self.get_words(text, line)
+        return self.find_files(self.construct_file_path(words), text)
+
+    def help_load(self):
+        print('Loads and runs a file with commands and/or presets.')
 
     def default(self, line):
         if line == 'x' or line == 'q':

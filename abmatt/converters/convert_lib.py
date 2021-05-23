@@ -9,6 +9,7 @@ from abmatt.brres.lib.matching import fuzzy_match
 from abmatt.brres.material_library import MaterialLibrary
 from abmatt.brres.mdl0.material import material
 from abmatt.brres.mdl0.mdl0 import Mdl0
+from abmatt.command import Command
 from abmatt.converters import matrix
 from abmatt.converters.convert_mats_to_json import MatsToJsonConverter
 from abmatt.converters.matrix import matrix_to_srt
@@ -23,6 +24,8 @@ class Converter:
     NO_UVS = 0x8
     DETECT_FILE_UNITS = True
     OVERWRITE_IMAGES = False
+    ENCODE_PRESET = None
+    ENCODE_PRESET_ON_NEW = True
 
     def __init__(self, brres, mdl_file, flags=0, encode=True, mdl0=None, encoder=None):
         if not brres:
@@ -119,6 +122,9 @@ class Converter:
         if self.is_map:
             mdl0.add_map_bones()
         os.chdir(self.cwd)
+        if self.ENCODE_PRESET:
+            if not self.ENCODE_PRESET_ON_NEW or (self.replacement_model is None and self.json_polygon_encoding is None):
+                Command('preset ' + self.ENCODE_PRESET + ' for * in ' + self.brres.name + ' model ' + self.mdl0.name).run_cmd()
         AutoFix.info('\t... finished in {} secs'.format(round(time.time() - self.start, 2)))
         if self.encoder:
             self.encoder.after_encode(mdl0)
@@ -291,6 +297,7 @@ class Converter:
             self.load_model()
         else:
             self.save_model()
+        return self
 
     def __eq__(self, other):
         return type(self) == type(other) and self.brres is other.brres and self.mdl0 is other.mdl0 \

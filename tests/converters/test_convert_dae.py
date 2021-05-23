@@ -1,6 +1,7 @@
 import os
 
 from abmatt.brres import Brres
+from abmatt.command import load_preset_file
 from abmatt.converters.convert_dae import DaeConverter
 from tests.lib import AbmattTest, CheckPositions
 
@@ -178,4 +179,5 @@ class DaeConverterTest(AbmattTest):
         self.assertTrue(CheckPositions.positions_equal(original.vertices, new.vertices, rtol=0.1, atol=0.01))
         self.assertTrue(CheckPositions.bones_equal([x.linked_bone for x in original.objects],
                                                    [x.linked_bone for x in new.objects]))
+
     # endregion save_model

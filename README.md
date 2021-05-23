@@ -89,7 +89,7 @@ line = begin_preset | command_line;
 begin_preset = '[' <preset_name> ']' EOL; 
 
 command_line =  cmd-prefix ['for' selection] EOL;
-cmd-prefix = set | info | add | remove | select | preset | save | copy | paste | convert;
+cmd-prefix = set | info | add | remove | select | preset | save | copy | paste | convert | load;
 set   = 'set' type setting;
 info  = 'info' type [key | 'keys'];
 add   = 'add' type;
@@ -100,6 +100,7 @@ save = 'save' [filename] ['as' destination] ['overwrite']
 copy = 'copy' type;
 paste = 'paste' type;
 convert = 'convert' filename ['to' destination] ['--no-colors'] ['--no-normals'] ['--single-bone'] ['--no-uvs']
+load = 'load' command-file
 
 selection = name ['in' container]
 container = ['brres' filename] ['model' name];
@@ -241,10 +242,10 @@ tex0-format = 'cmpr' | 'c14x2' | 'c8' | 'c4' | 'rgba32' | 'rgb5a3' | 'rgb565'
             | 'ia8' | 'ia4' | 'i8' | 'i4';
 ```
 
-### Presets
+### Presets and Command Files
 Presets are a way of grouping commands together. They can be defined in `presets.txt` or in command files.
 Presets begin with `[<preset_name>]` and include all commands until another preset is encountered or end of file. 
-An empty preset `[]` can be used to stop preset parsing.
+An empty preset `[]` can be used to stop preset parsing (and begin command parsing).
 ```
 [my_preset]
 set material xlu:True
@@ -253,6 +254,9 @@ set layer mapmode:linear_mipmap_linear
 ```
 To call the preset:
 `preset my_preset for my_material_name`
+
+The `load` command can be used to load additional commands and presets. 
+As with all recursive things, be careful not to create an infinite loop!
 
 ## Known Limitations and Bugs
 * Windows installer sometimes hangs in the background until the process is terminated.

@@ -16,6 +16,7 @@ from abmatt.brres.subfile import SubFile
 from abmatt.brres.tex0 import Tex0
 from abmatt.command import Command, NoSuchFile, Shell
 from abmatt.config import Config
+from abmatt.converters.convert_lib import Converter
 from abmatt.converters.geometry import Geometry
 from abmatt.image_converter import ImgConverterI, ImgConverter
 
@@ -108,6 +109,7 @@ def load_config(app_dir, loudness=None, autofix_level=None):
         Geometry.ENABLE_VERTEX_COLORS = validBool(conf['enable_vertex_colors'])
     except ValueError:
         pass
+    Converter.ENCODE_PRESET = conf['encode_preset']
     resample = conf['img_resample']
     if resample is not None:
         ImgConverterI.set_resample(resample)
@@ -341,4 +343,4 @@ def parse_args(argv, app_dir):
             sys.exit(1)
     if interactive:
         Shell().cmdloop('Interactive shell started...')
-    return Command.OPEN_FILES
+    return Brres.OPEN_FILES
