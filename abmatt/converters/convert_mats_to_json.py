@@ -122,18 +122,28 @@ class MatsToJsonConverter:
 
     def __load_layers(self, layers, data):
         i = 0
-        for layer_name in data:
-            layers[i].set_name(layer_name)
-            self.__load_settings(layers[i], data[layer_name])
+        for x in data:
+            if type(data) is dict:
+                x = data[x]
+            self.__load_settings(layers[i], x)
             i += 1
 
     def __load_shader(self, shader, data):
         self.__load_settings(shader, data.get('settings'))
+        swap_table = data.get('swap_table')
+        if swap_table:
+            try:
+                for i in range(len(shader.swap_table)):
+                    shader.swap_table[i].data = swap_table[i]
+            except IndexError:
+                pass
         i = 0
         stages_data = data.get('stages')
         if stages_data:
             for stage in stages_data:
-                self.__load_settings(shader.stages[i], stages_data[stage])
+                if type(stages_data) is dict:
+                    stage = stages_data[stage]
+                self.__load_settings(shader.stages[i], stage)
                 i += 1
 
     @staticmethod
@@ -170,6 +180,7 @@ class MatsToJsonConverter:
 
     def __get_shader_str(self, shader):
         return {'settings': self.__get_settings(shader),
+                'swap_table': [x.data for x in shader.swap_table],
                 'stages': self.__get_items_str(shader.stages)}
 
     def __get_srt0_str(self, srt0):
@@ -215,10 +226,7 @@ class MatsToJsonConverter:
         }
 
     def __get_items_str(self, items):
-        ret = {}
-        for x in items:
-            ret[x.name] = self.__get_settings(x)
-        return ret
+        return [self.__get_settings(x) for x in items]
 
     @staticmethod
     def __get_settings(item):

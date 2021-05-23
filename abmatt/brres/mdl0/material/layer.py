@@ -259,8 +259,8 @@ class Layer(Clipable):
 
     def set_light_ref_str(self, value):
         i = int(value)
-        if i != -1:
-            raise ValueError("Expected -1 for light reference")
+        if i > 0:
+            AutoFix.warn('{} set unusual light ref {}, expected -1'.format(self.name, value))
         if self.scn0_light_ref != i:
             self.scn0_light_ref = i
             self.mark_modified()
@@ -295,7 +295,7 @@ class Layer(Clipable):
         if i > 1:
             raise ValueError("MagFilter out of range (0-1)")
         elif i >= 0:
-            self.minfilter = i
+            self.magfilter = i
             self.mark_modified()
 
     def set_lod_bias_str(self, value):

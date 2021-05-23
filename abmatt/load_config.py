@@ -16,6 +16,7 @@ from abmatt.brres.subfile import SubFile
 from abmatt.brres.tex0 import Tex0
 from abmatt.command import Command, NoSuchFile, Shell
 from abmatt.config import Config
+from abmatt.converters.geometry import Geometry
 from abmatt.image_converter import ImgConverterI, ImgConverter
 
 
@@ -54,6 +55,7 @@ def load_config(app_dir, loudness=None, autofix_level=None):
             AutoFix.set_loudness(loudness)
         except ValueError:
             AutoFix.warn('Invalid loudness level {}'.format(loudness))
+    AutoFix.set_fix_level(autofix_level, turn_off_fixes)
     if not len(conf):
         AutoFix.warn('No configuration detected (etc/abmatt/config.conf).')
         return
@@ -101,6 +103,10 @@ def load_config(app_dir, loudness=None, autofix_level=None):
     try:
         Tex0.set_max_image_size(validInt(conf['max_image_size'], 0, 10000))
     except (TypeError, ValueError):
+        pass
+    try:
+        Geometry.ENABLE_VERTEX_COLORS = validBool(conf['enable_vertex_colors'])
+    except ValueError:
         pass
     resample = conf['img_resample']
     if resample is not None:
@@ -171,6 +177,19 @@ For more Help or if you want to contribute visit https://github.com/Robert-N7/ab
     '''
     print(helpstr.format(VERSION))
     print("{}".format(USAGE))
+
+
+def turn_off_fixes():
+    SubFile.FORCE_VERSION = False
+    Brres.REMOVE_UNUSED_TEXTURES = False
+    Layer.MINFILTER_AUTO = False
+    Mdl0.DETECT_MODEL_NAME = False
+    Shader.MAP_ID_AUTO = False
+    Tex0.RESIZE_TO_POW_TWO = False
+    Geometry.ENABLE_VERTEX_COLORS = False
+    Mdl0.RENAME_UNKNOWN_REFS = False
+    Mdl0.REMOVE_UNKNOWN_REFS = False
+    Shader.REMOVE_UNUSED_LAYERS = False
 
 
 def parse_args(argv, app_dir):

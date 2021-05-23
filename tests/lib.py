@@ -228,11 +228,6 @@ class CheckPositions:
                     print('{} and {} mismatch'.format(vertices1[k].name, vertices2[k].name))
         return not err
 
-    @staticmethod
-    def pos_eq_ignore_order(pos1, pos2, rtol=1.e-2, atol=1.e-3):
-        vertices1, vertices2, err = CheckPositions.__pre_process(vertices1, vertices2, 'points')
-        if not err:
-            pass
 
 class CheckAttr:
     def __init__(self, attr, sub_check_attr=None):
@@ -249,7 +244,7 @@ class CheckNodeEq:
     def __init__(self, node, other, check_attr=[], trace=True, parent_node=None):
         self.node = node
         self.other = other
-        self.result = node == other
+        self.result = it_eq(node, other)
         self.my_item_diff = self.their_item_diff = self.attr = None
         self.err_message = ''
         self.check_attr = check_attr
@@ -274,6 +269,8 @@ class CheckNodeEq:
         other_trace = str(self.other) if not other_trace else other_trace + '->' + str(self.other)
         if self.check_attr:
             for check in self.check_attr:
+                if type(check) == str:
+                    check = CheckAttr(check)
                 self.parent_node.attr = check.attr
                 mine = getattr(self.node, check.attr)
                 theirs = getattr(self.other, check.attr)
@@ -281,7 +278,6 @@ class CheckNodeEq:
                     if mine is not theirs:
                         self.parent_node.err_message = f'Null {check.attr}! ({mine} != {theirs})'
                         break
-                    print(f'Attr {check.attr} returned None!')
                     continue
                 if type(mine) not in (list, dict, set, tuple):
                     mine_sub, their_sub = CheckNodeEq(mine, theirs,
@@ -322,7 +318,11 @@ class CheckNodeEq:
 
 class CheckMaterialAttr(CheckAttr):
     class CheckLayerAttr(CheckAttr):
-        def __init__(self, sub_attrs=None):
+        def __init__(self):
+            sub_attrs = ['enable', 'scale', 'rotation', 'translation', 'scn0_light_ref', 'scn0_camera_ref',
+                         'map_mode', 'vwrap', 'uwrap', 'minfilter', 'magfilter', 'lod_bias', 'max_anisotrophy',
+                         'texel_interpolate', 'clamp_bias', 'normalize', 'projection', 'inputform', 'type',
+                         'coordinates', 'emboss_source', 'emboss_light']
             super().__init__('layers', sub_attrs)
 
     class CheckPat0Attr(CheckAttr):
@@ -334,8 +334,20 @@ class CheckMaterialAttr(CheckAttr):
             super().__init__('srt0')
 
     class CheckShaderAttr(CheckAttr):
-        def __init__(self, sub_attrs=None):
+        def __init__(self):
+            sub_attrs = ['swap_table', 'ind_tex_maps', 'ind_tex_coords',
+                         CheckMaterialAttr.CheckStageAttr()]
             super().__init__('shader', sub_attrs)
+
+    class CheckStageAttr(CheckAttr):
+        def __init__(self):
+            sub_attrs = ['map_id', 'coord_id', 'texture_swap_sel', 'raster_color', 'raster_swap_sel',
+                         'constant', 'sel_a', 'sel_b', 'sel_c', 'sel_d', 'bias', 'oper', 'clamp', 'scale', 'dest',
+                         'constant_a', 'sel_a_a', 'sel_b_a', 'sel_c_a', 'sel_d_a',
+                         'bias_a', 'oper_a', 'clamp_a', 'scale_a', 'dest_a',
+                         'ind_stage', 'ind_format', 'ind_alpha', 'ind_bias', 'ind_matrix',
+                         'ind_s_wrap', 'ind_t_wrap', 'ind_use_prev', 'ind_unmodify_lod']
+            super().__init__('stages', sub_attrs)
 
     def __init__(self):
         sub_attrs = [self.CheckShaderAttr(), self.CheckLayerAttr(), self.CheckPat0Attr(), self.CheckSrt0Attr(),

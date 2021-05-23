@@ -38,15 +38,16 @@ class Converter:
         self.mdl0 = mdl0 if type(mdl0) == Mdl0 else brres.get_model(mdl0)
         self.flags = flags
         self.image_dir = None
-        self.image_library = set()
-        self.geometries = []
         self.replacement_model = None
         self.encode = encode
         self.encoder = encoder
 
     def _start_saving(self, mdl0):
         AutoFix.info('Exporting {} to {}...'.format(os.path.basename(self.brres.name), self.mdl_file))
+        if 'sand_battle.d' in self.brres.name and 'map_model' in self.brres.name:
+            print('debug')
         self.start = time.time()
+        self.image_library = set()
         if mdl0 is None:
             mdl0 = self.mdl0
             if mdl0 is None:
@@ -82,6 +83,8 @@ class Converter:
     def _start_loading(self, model_name):
         AutoFix.info('Converting {}... '.format(self.mdl_file))
         self.start = time.time()
+        self.image_library = set()
+        self.geometries = []
         self.cwd = os.getcwd()
         self.import_textures_map = {}
         self.mdl_file = os.path.abspath(self.mdl_file)

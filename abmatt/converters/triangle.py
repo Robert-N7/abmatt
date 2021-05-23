@@ -35,7 +35,7 @@ def get_weighted_tri_groups(tri_strips, tris):
             if not added:
                 if len(new_infs) > 10:
                     raise RuntimeError(
-                        'Too many influences in tri-strip')  # Todo, split tristrip if it contains too many infs?
+                        'Too many influences in tri-strip')
                 if best_group >= 0:
                     g[best_group].append(tri_strip)
                     group_matrices_sets[best_group] |= new_infs
@@ -65,10 +65,12 @@ def encode_triangles(triangle_indices, fmt_str, byte_array):
 
 class TriangleSet:
     triangles_in_strips_count = 0
+    max_infs = 10
 
-    def __init__(self, np_tris):
+    def __init__(self, np_tris, has_infs=False):
         Triangle.edge_map = {}  # reset
         tris = []
+        self.has_infs = has_infs
         for tri in np_tris:
             verts = [tuple(x) for x in tri]
             tri_set = {x for x in verts}
@@ -110,7 +112,7 @@ class TriangleSet:
             disconnected.append(start)
         # now try to generate strip
         while start is not None:
-            strip = start.create_strip()
+            strip = start.create_strip(self.has_infs)
             if strip:
                 if fmt_str:
                     face_point_count += encode_triangle_strip(strip, fmt_str, tristrips)
@@ -223,7 +225,7 @@ class Triangle:
     def nextI(currentI):
         return currentI + 1 if currentI < 2 else 0
 
-    def create_strip(self):
+    def create_strip(self, inf_set):
         # self.disconnect()  # disconnect
         edges = self.edges
         for i in range(3):
@@ -235,11 +237,13 @@ class Triangle:
                 adjacent.disconnect()
                 right_vert = adjacent.get_opposite_vert(edge)
                 vert_strip = deque((vertices[i - 1], vertices[i], vertices[self.nextI(i)], right_vert))
-                return adjacent.extend_right(vert_strip, (vert_strip[2], vert_strip[3]))
+                if inf_set:
+                    inf_set = {x[0] for x in vert_strip}
+                return adjacent.extend_right(vert_strip, (vert_strip[2], vert_strip[3]), inf_set)
                 # return self.extend_left(vert_strip, (vert_strip[0], vert_strip[1]))
                 # return vert_strip
 
-    def extend_right(self, strip, last_verts):
+    def extend_right(self, strip, last_verts, inf_set):
         edge = self.edge_map[last_verts]
         if not edge.tri_count():
             return strip
@@ -247,7 +251,11 @@ class Triangle:
         adj.disconnect()
         vert = adj.get_opposite_vert(edge)
         strip.append(vert)
-        return adj.extend_right(strip, (last_verts[1], vert))
+        if inf_set:
+            inf_set.add(vert[0])
+            if len(inf_set) >= TriangleSet.max_infs:
+                return strip
+        return adj.extend_right(strip, (last_verts[1], vert), inf_set)
 
     def extend_left(self, strip, last_verts, cull_wrong=False):
         edge = self.edge_map[last_verts]

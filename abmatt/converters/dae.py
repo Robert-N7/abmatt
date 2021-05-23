@@ -726,11 +726,12 @@ class Dae:
                 if not image_id:
                     image_id = init_from[0].text
                 image = self.get_element_by_id(image_id)
-            init_from = first(image, 'init_from')
-            image_path = init_from.text
-            if not image_path:
-                image_path = init_from[0].text
-            return image_path
+            if image is not None:
+                init_from = first(image, 'init_from')
+                image_path = init_from.text
+                if not image_path:
+                    image_path = init_from[0].text
+                return image_path
 
     @staticmethod
     def __get_bound_materials(node):

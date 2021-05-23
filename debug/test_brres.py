@@ -5,7 +5,9 @@ from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
 from abmatt.converters.convert_dae import DaeConverter
 from abmatt.converters.convert_obj import ObjConverter
+from abmatt import load_config
 from debug.analyze import gather_files, get_project_root
+from tests.lib import CheckPositions, node_eq
 
 
 class TestBrres(unittest.TestCase):
@@ -36,15 +38,20 @@ class TestBrres(unittest.TestCase):
                 print(f'ERROR saving {x}')
                 raise
 
-    def test_export_all_dae(self):
+    def test_export_import_dae_eq(self):
+        AutoFix.set_fix_level(0, load_config.turn_off_fixes)
         tmp = self._get_tmp('.dae')
+        tmp_brres = self._get_tmp('.brres')
         for x in gather_files(self.root):
             try:
                 converter = DaeConverter(Brres(x), tmp)
                 for model in converter.brres.models:
                     converter.save_model(model)
+                    importer = DaeConverter(Brres(tmp_brres, read_file=False), tmp)
+                    importer.load_model()
+                    self.assertTrue(node_eq(model.materials, importer.mdl0.materials))
             except:
-                print(f'ERROR exporting {x}')
+                print(f'ERROR converting {x}')
                 raise
 
     def test_export_all_obj(self):
