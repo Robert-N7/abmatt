@@ -20,12 +20,7 @@ CLASSIFIERS = [
  ]
 
 data_dir = 'etc/abmatt'
-data_files = []
-for file in os.listdir(data_dir):
-    path = os.path.join(data_dir, file)
-    if not os.path.isdir(path):
-        data_files.append(path)
-print(f'Data files {data_files}')
+data_files = ['config.conf', 'icon.ico', 'mat_lib.brres', 'presets.txt']
 
 # calling the setup function
 setup(name='abmatt',
