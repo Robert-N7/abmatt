@@ -28,6 +28,7 @@ class BinFile:
         """
         self.beginOffset = self.offset = 0
         self.filename = filename
+        self.names_offset = float('inf')
         self.stack = []  # used for tracking depth in files
         self.references = {}  # used for forward references in relation to start
         self.bom = bom  # byte order mark > | <
@@ -388,6 +389,8 @@ class BinFile:
         if name:
             return name
         try:
+            if offset - 4 < self.names_offset:
+                self.names_offset = offset - 4
             [name_lens] = self.readOffset("I", offset - 4)
         except struct.error:
             raise UnpackingError(self, 'Incorrect name offset')
@@ -428,7 +431,7 @@ class BinFile:
         # with open('names.txt', 'w') as f:
             # f.write(str(out))
         #- end debug
-
+        self.names_offset = self.offset
         for key in sorted(names):
             if key is not None and key != b'':
                 self.align(4)
@@ -594,8 +597,7 @@ class Folder:
     def unpack(self, binfile):
         """ Unpacks folder """
         # print('Folder {} offset {}'.format(self.name, binfile.offset))
-        binfile.start()
-        self.offset = binfile.offset
+        self.offset = binfile.start()
         len, num_entries = binfile.read("2I", 8)
         binfile.advance(16)  # skip first entry
         # first = FolderEntry(self, 0)
@@ -609,8 +611,7 @@ class Folder:
 
     def pack(self, binfile):
         """ packs folder """
-        binfile.start()
-        self.offset = binfile.offset
+        self.offset = binfile.start()
         entries = self.calcEntries()
         binfile.write("2I", self.byteSize(), len(entries) - 1)  # -1 to ignore reference entry
         for x in entries:
@@ -661,11 +662,11 @@ class Folder:
                 return self.createEntryRefI(i)
         raise PackingError(self.binfile, "Entry name {} not in folder {}".format(name, self.name))
 
-    def createEntryRefI(self, index=0):
-        """ creates reference in folder to section at entry[index] (once only, pops)"""
-        entry = self.entries.pop(index)
-        # print('{} {}'.format(self.binfile.offset, entry.name))
-        return self.binfile.createRefFrom(self.offset, index + 1)  # index + 1 ignoring the first ref entry
+    def createEntryRefI(self, index=0, pop=True):
+        """ creates reference in folder to section at entry[index]"""
+        if pop:
+            entry = self.entries.pop(index)
+        return self.binfile.createRefFrom(self.offset, index + 1, pop=pop)  # index + 1 ignoring the first ref entry
 
 
 def printCollectionHex(collection):

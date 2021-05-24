@@ -21,7 +21,7 @@ def main():
         base_path = os.path.abspath(__file__)
     files = load_config.parse_args(argv, base_path)
     # cleanup
-    for file in files.values():
+    for file in files:
         file.close()
 
 

@@ -1,3 +1,4 @@
+import string
 from copy import deepcopy, copy
 
 from abmatt.autofix import Bug, AutoFix
@@ -21,7 +22,7 @@ class SRTTexAnim(Clipable):
         super(SRTTexAnim, self).__init__(name, parent, binfile)
 
     def __eq__(self, other):
-        return type(other) == SRTTexAnim and self.animations == other.animations
+        return super().__eq__(other) and self.animations == other.animations
 
     # ---------------------- CLIPABLE -------------------------------------------------------------
     def paste(self, item):
@@ -105,15 +106,36 @@ class SRTMatAnim(Clipable):
     def __init__(self, name, frame_count=1, looping=True, parent=None, binfile=None):
         self.parent = parent
         self.framecount = frame_count
+        self.parent_base_name = parent.get_anim_base_name() if parent else None
         self.tex_animations = []
         self.texEnabled = [False] * 8
+        self.materials = []
         self.loop = looping
         super(SRTMatAnim, self).__init__(name, parent, binfile)
 
+    def __deepcopy__(self, memodict=None):
+        copy = SRTMatAnim(self.name, self.framecount, self.loop)
+        copy.parent_base_name = self.parent_base_name
+        copy.texEnabled = [x for x in self.texEnabled]
+        copy.tex_animations = deepcopy(self.tex_animations)
+        return copy
+
     def __eq__(self, other):
-        return other is not None and type(other) == SRTMatAnim \
+        return super().__eq__(other) \
                and self.framecount == other.framecount and self.loop == other.loop \
                and self.texEnabled == other.texEnabled and self.tex_animations == other.tex_animations
+
+    def __mat_with_max_layers(self):
+        v = [len(x.layers) for x in self.materials]
+        return self.materials[v.index(max(v))]
+
+    def get_anim_base_name(self):
+        if not self.parent_base_name:
+            if self.parent:
+                self.parent_base_name = self.parent.get_anim_base_name()
+            elif self.materials:
+                self.parent_base_name = self.materials[0].get_anim_base_name()
+        return self.parent_base_name
 
     def mark_unmodified(self):
         self.is_modified = False
@@ -166,7 +188,7 @@ class SRTMatAnim(Clipable):
         # setup parent
         for x in self.tex_animations:
             x.parent = self
-        self.update_layer_names(self.parent)
+        self.update_layer_names()
         self.mark_modified()
 
     def set_frame_count(self, count):
@@ -175,15 +197,19 @@ class SRTMatAnim(Clipable):
             x.set_frame_count(count)
 
     def set_material(self, material):
-        self.parent = material
-        self.update_layer_names(material)
+        self.materials.append(material)
+        self.update_layer_names()
+
+    def remove_material(self, material):
+        if material in self.materials:
+            self.materials.remove(material)
 
     def tex_enable(self, i):
         if not self.texEnabled[i]:
             self.texEnabled[i] = True
             anim = SRTTexAnim(i, self.framecount, self)
             self.tex_animations.append(anim)
-            layer = self.parent.getLayerI(i)
+            layer = self.__mat_with_max_layers().getLayerI(i)
             if layer:
                 anim.real_name = layer.name
             self.mark_modified()
@@ -224,10 +250,12 @@ class SRTMatAnim(Clipable):
 
     def add_layer_by_name(self, name):
         """Adds layer if found"""
-        i = self.parent.getLayerByName(name)
-        if i > 0:
-            self.tex_enable(i)
-            self.mark_modified()
+        for x in self.materials:
+            i = x.getLayerByName(name)
+            if i:
+                self.tex_enable(i)
+                self.mark_modified()
+                return
         raise ValueError('{} Unknown layer {}'.format(self.name, name))
 
     # -------------------------------- Remove -------------------------------------------
@@ -269,30 +297,35 @@ class SRTMatAnim(Clipable):
         if tex:
             tex.real_name = name
 
-    def update_layer_names(self, material):
+    def update_layer_names(self):
         """Updates the underlying reference names given material"""
-        layers = material.layers
-        j = 0  # tex indexer
-        for i in range(len(layers)):
-            if self.texEnabled[i]:
-                self.tex_animations[j].real_name = layers[i].name
-                j += 1
+        for material in self.materials:
+            layers = material.layers
+            j = 0  # tex indexer
+            for i in range(len(layers)):
+                if self.texEnabled[i]:
+                    self.tex_animations[j].real_name = layers[i].name
+                    j += 1
+            return
 
     def check(self):
-        if not self.parent:
+        if not self.materials:
             return
-        max = len(self.parent.layers)
+        maximum = max(len(x.layers) for x in self.materials)
         enabled = 0
         for i in range(8):
             if self.texEnabled[i]:
                 enabled += 1
-                if i >= max:
-                    b = Bug(1, 3, "{} SRT layer {} doesn't exist".format(self.parent.name, i), 'Remove srt0 layer')
+                if i >= maximum:
+                    b = Bug(1, 3, "{} SRT layer {} doesn't exist".format(self.name, i), 'Remove srt0 layer')
                     if self.REMOVE_UNKNOWN_REFS:
                         self.tex_disable(i)
                         b.resolve()
         if not enabled:
-            self.parent.remove_srt0()
+            mats = self.materials
+            self.materials = []
+            for x in mats:
+                x.remove_srt0()
 
     def save(self, dest, overwrite):
         from abmatt.brres.srt0.srt0 import Srt0

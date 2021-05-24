@@ -78,7 +78,11 @@ class MatsToJsonConverter:
             self.polygons_by_name[x] = poly_data[x]
 
     def __load_srt0(self, srt0, data):
-        self.__load_settings(srt0, data.get('settings'))
+        settings = data.get('settings')
+        base_name = settings.get('base_name')
+        if base_name:
+            srt0.parent_base_name = base_name
+        self.__load_settings(srt0, settings)
         d = data.get('texture_animations')
         if d:
             if len(d) != len(srt0.tex_animations):
@@ -114,21 +118,32 @@ class MatsToJsonConverter:
             pat0.fixedTeture = data['fixed_texture']
             pat0.framecount = data['frame_count']
             pat0.loop = data['loop']
+            pat0.parent_base_name = data.get('base_name')
 
     def __load_layers(self, layers, data):
         i = 0
-        for layer_name in data:
-            layers[i].set_name(layer_name)
-            self.__load_settings(layers[i], data[layer_name])
+        for x in data:
+            if type(data) is dict:
+                x = data[x]
+            self.__load_settings(layers[i], x)
             i += 1
 
     def __load_shader(self, shader, data):
         self.__load_settings(shader, data.get('settings'))
+        swap_table = data.get('swap_table')
+        if swap_table:
+            try:
+                for i in range(len(shader.swap_table)):
+                    shader.swap_table[i].data = swap_table[i]
+            except IndexError:
+                pass
         i = 0
         stages_data = data.get('stages')
         if stages_data:
             for stage in stages_data:
-                self.__load_settings(shader.stages[i], stages_data[stage])
+                if type(stages_data) is dict:
+                    stage = stages_data[stage]
+                self.__load_settings(shader.stages[i], stage)
                 i += 1
 
     @staticmethod
@@ -165,10 +180,13 @@ class MatsToJsonConverter:
 
     def __get_shader_str(self, shader):
         return {'settings': self.__get_settings(shader),
+                'swap_table': [x.data for x in shader.swap_table],
                 'stages': self.__get_items_str(shader.stages)}
 
     def __get_srt0_str(self, srt0):
-        return {'settings': self.__get_settings(srt0),
+        settings = self.__get_settings(srt0)
+        settings['base_name'] = srt0.parent_base_name
+        return {'settings': settings,
                 'texture_animations': [self.__get_srt0_tex_anim_str(x) for x in srt0.tex_animations]}
 
     def __get_srt0_tex_anim_str(self, tex_anim):
@@ -201,16 +219,14 @@ class MatsToJsonConverter:
     def __get_pat0_settings(self, pat0):
         return {
             'enabled': pat0.enabled,
-            'fixed_texture': pat0.fixedTexture,
+            'fixed_texture': pat0.fixed_texture,
             'frame_count': pat0.framecount,
             'loop': pat0.loop,
+            'base_name': pat0.parent_base_name
         }
 
     def __get_items_str(self, items):
-        ret = {}
-        for x in items:
-            ret[x.name] = self.__get_settings(x)
-        return ret
+        return [self.__get_settings(x) for x in items]
 
     @staticmethod
     def __get_settings(item):

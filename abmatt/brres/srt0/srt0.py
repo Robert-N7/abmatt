@@ -1,66 +1,12 @@
 #!/usr/bin/python
 """ Srt0 Brres subfile """
+import string
 
 from abmatt.brres.lib.node import Clipable, Node
 # ---------------------------------------------------------
 from abmatt.brres.lib.packing.pack_srt0 import PackSrt0
 from abmatt.brres.lib.unpacking.unpack_srt0 import UnpackSrt0
 from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str
-
-
-class SRTCollection(Node):
-    """A collection of srt mat animations for a model"""
-
-    def __init__(self, name, parent, srts=None):
-        self.collection = []
-        if srts:
-            for x in srts:
-                self.collection.extend(x.matAnimations)
-        super().__init__(name, parent)
-
-    def __getitem__(self, material_name):
-        """Gets animation in collection matching material name"""
-        for x in self.collection:
-            if x.name == material_name:
-                return x
-
-    def __len__(self):
-        return len(self.collection)
-
-    def __iter__(self):
-        for x in self.collection:
-            yield x
-
-    def add(self, mat_animation):
-        self.collection.append(mat_animation)
-
-    def remove(self, animation):
-        self.collection.remove(animation)
-
-    def info(self, key=None, indentation_level=0):
-        trace = '  ' * indentation_level + '>(SRT0)' + self.name if indentation_level else '>(SRT0)' + self.name
-        print('{}: {} animations'.format(trace, len(self.collection)))
-        indentation_level += 1
-        for x in self.collection:
-            x.info(key, indentation_level)
-
-    def consolidate(self):
-        """Combines the srts, returning list of SRT0"""
-        n = 0
-        srts = []  # for storing srt0s
-        for x in self.collection:
-            added = False
-            for srt in srts:
-                if srt.add(x):
-                    added = True
-                    break
-            if not added:  # create new one
-                postfix = str(len(srts) + 1) if len(srts) > 0 else ''
-                s = Srt0(self.name + postfix, self.parent)
-                if not s.add(x):
-                    print('Error has occurred')
-                srts.append(s)
-        return srts
 
 
 class Srt0(SubFile):
@@ -71,8 +17,9 @@ class Srt0(SubFile):
     VERSION_SECTIONCOUNT = {4: 1, 5: 2}
     EXPECTED_VERSION = 5
 
-    def __init__(self, name, parent, binfile=None):
+    def __init__(self, name, parent, binfile=None, base_name=None):
         self.matAnimations = []
+        self.base_name = base_name
         super(Srt0, self).__init__(name, parent, binfile)
 
     def begin(self):
@@ -80,6 +27,11 @@ class Srt0(SubFile):
         self.loop = True
         self.matrixmode = 0
 
+    def __iter__(self):
+        return iter(self.matAnimations)
+
+    def __next__(self):
+        return next(self.matAnimations)
 
     def set_str(self, key, value):
         set_anim_str(self, key, value)
@@ -112,12 +64,15 @@ class Srt0(SubFile):
 
     def add(self, mat_animation):
         """ Adds a material animation """
+        if self.base_name != mat_animation.get_anim_base_name():
+            return False
         if not self.matAnimations:
             self.loop = mat_animation.loop
             self.framecount = mat_animation.framecount
         elif self.framecount != mat_animation.framecount or self.loop != mat_animation.loop:
             return False
-        self.matAnimations.append(mat_animation)
+        if mat_animation not in self.matAnimations:
+            self.matAnimations.append(mat_animation)
         return True
 
     def removeMatAnimation(self, material):

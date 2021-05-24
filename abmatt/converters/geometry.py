@@ -2,6 +2,7 @@ from struct import pack
 
 import numpy as np
 
+from abmatt.autofix import AutoFix
 from abmatt.brres.mdl0.color import Color
 from abmatt.brres.mdl0.normal import Normal
 from abmatt.brres.mdl0.polygon import Polygon
@@ -12,6 +13,8 @@ from abmatt.converters.triangle import TriangleSet, encode_triangles, encode_tri
 
 
 class Geometry:
+    ENABLE_VERTEX_COLORS = True
+
     def __init__(self, name, material_name, vertices, texcoords=None, normals=None, colors=None, triangles=None,
                  influences=None, linked_bone=None):
         self.name = name
@@ -66,7 +69,7 @@ class Geometry:
         points[:, [1, 2]] = points[:, [2, 1]]
 
     def apply_linked_bone_bindings(self):
-        self.influences.apply_world_position(self.vertices)
+        self.influences.apply_world_position(np.array(self.vertices))
 
     def apply_matrix(self, matrix):
         if matrix is not None:
@@ -125,7 +128,8 @@ class Geometry:
         mdl.objects.append(p)
         material = mdl.get_material_by_name(self.material_name)
         mdl.add_definition(material, p, visible_bone, self.priority)
-        if self.colors:
+        if self.colors and self.ENABLE_VERTEX_COLORS:
+            AutoFix.info('{} has colors, enabled vertex color in light channel.'.format(self.name))
             material.enable_vertex_color()
         if encoder:
             encoder.after_encode(p)
@@ -196,7 +200,7 @@ class Geometry:
 
     def __encode_tris(self, tris, is_weighted=False):
         tris[:, [0, 1]] = tris[:, [1, 0]]
-        triset = TriangleSet(tris)
+        triset = TriangleSet(tris, is_weighted)
         if not triset:
             return None, 0, 0
         fmt_str = self.fmt_str if not is_weighted else None

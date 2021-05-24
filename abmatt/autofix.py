@@ -114,6 +114,7 @@ class AutoFix:
         if self.__AUTO_FIXER: raise RuntimeError('Autofixer already initialized')
         self.loudness = loudness
         self.fix_level = fix_level
+        self.zero_level_func = None
         self.queue = []
         self.is_running = False
         self.pipe = None  # if set, output is sent to the pipe, must implement info warn and error.
@@ -151,15 +152,22 @@ class AutoFix:
     def set_pipe(self, obj):
         self.pipe = obj
 
-    def set_fix_level(self, fix_level):
-        try:
-            self.fix_level = int(fix_level)
-        except ValueError:
-            fix_level = fix_level.upper()
-            if fix_level == 'ALL':
-                self.fix_level = 4
-            else:
-                self.fix_level = self.ERROR_LEVELS.index(fix_level)
+    def set_fix_level(self, fix_level, zero_level_func=None):
+        if zero_level_func:
+            self.zero_level_func = zero_level_func
+        if type(fix_level) is int:
+            self.fix_level = fix_level
+        elif fix_level is not None:
+            try:
+                self.fix_level = int(fix_level)
+            except ValueError:
+                fix_level = fix_level.upper()
+                if fix_level == 'ALL':
+                    self.fix_level = 4
+                elif fix_level in self.ERROR_LEVELS:
+                    self.fix_level = self.ERROR_LEVELS.index(fix_level)
+        if fix_level == 0 and self.zero_level_func:
+            self.zero_level_func()
 
     def can_prompt(self):
         return self.fix_level == self.FIX_PROMPT

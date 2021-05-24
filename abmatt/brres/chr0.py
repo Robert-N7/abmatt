@@ -42,6 +42,23 @@ class Chr0(SubFile):
             # self.offset = offset  # since we don't parse data... store name offsetg
             super().__init__(name, parent, binfile)
 
+        def __eq__(self, other):
+            return super().__eq__(other) and self.framecount == other.framecount and self.loop == other.loop \
+                   and self.x_translation == other.x_translation and self.y_translation == other.y_translation \
+                   and self.z_translation == other.z_translation and self.x_rotation == other.x_rotation \
+                   and self.y_rotation == other.y_rotation and self.z_rotation == other.z_rotation \
+                   and self.x_scale == other.x_scale and self.y_scale == other.y_scale and self.z_scale == other.z_scale
+
+    def __iter__(self):
+        return iter(self.animations)
+
+    def __next__(self):
+        return next(self.animations)
+
+    def __eq__(self, other):
+        return super().__eq__(other) and self.framecount == other.framecount and self.loop == other.loop \
+               and self.scaling_rule == other.scaling_rule and self.animations == other.animations
+
     def set_str(self, key, value):
         return set_anim_str(self, key, value)
 

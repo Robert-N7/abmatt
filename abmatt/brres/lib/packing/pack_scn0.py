@@ -1,3 +1,4 @@
+from abmatt.autofix import AutoFix
 from abmatt.brres.lib.binfile import Folder
 from abmatt.brres.lib.packing.interface import Packer
 from abmatt.brres.lib.packing.pack_subfile import PackSubfile
@@ -40,8 +41,10 @@ class PackScn0(PackSubfile):
             binfile.write('H', filler)
             binfile.write('B', len(lightset.light_names))
             binfile.advance(1)
+            binfile.start()
             for x in lightset.light_names:
                 binfile.storeNameRef(x)
+            binfile.end()
             binfile.advance((8 - len(lightset.light_names)) * 4)
             for i in range(8):
                 binfile.write('H', filler)
@@ -49,7 +52,7 @@ class PackScn0(PackSubfile):
 
     class PackFog(Packer):
         def pack(self, fog, binfile):
-            print('WARNING: packing scn0 fog is not supported.')
+            AutoFix.warn('packing scn0 fog is not supported.')
             pack_header(binfile, fog.name, fog.node_id, fog.real_id)
             binfile.write('4BI2f', fog.flags, 0, 0, 0, fog.type, fog.start, fog.end)
             binfile.write('4B', fog.color)

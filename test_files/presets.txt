@@ -1,0 +1,5 @@
+
+[load_preset]
+set cullmode:None for cull_none*
+set blend:True for *
+

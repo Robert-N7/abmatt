@@ -16,6 +16,8 @@ from abmatt.brres.subfile import SubFile
 from abmatt.brres.tex0 import Tex0
 from abmatt.command import Command, NoSuchFile, Shell
 from abmatt.config import Config
+from abmatt.converters.convert_lib import Converter
+from abmatt.converters.geometry import Geometry
 from abmatt.image_converter import ImgConverterI, ImgConverter
 
 
@@ -44,7 +46,6 @@ def set_remove_unused(val):
 def load_config(app_dir, loudness=None, autofix_level=None):
     conf = Config.get_instance(os.path.join(app_dir, 'config.conf'))
     tmp_dir = os.path.join(app_dir, 'temp_files')
-    MaterialLibrary.LIBRARY_PATH = os.path.join(app_dir, 'mat_lib.brres')
     converter = ImgConverter(tmp_dir)
     Tex0.converter = converter
     if not loudness:
@@ -54,6 +55,7 @@ def load_config(app_dir, loudness=None, autofix_level=None):
             AutoFix.set_loudness(loudness)
         except ValueError:
             AutoFix.warn('Invalid loudness level {}'.format(loudness))
+    AutoFix.set_fix_level(autofix_level, turn_off_fixes)
     if not len(conf):
         AutoFix.warn('No configuration detected (etc/abmatt/config.conf).')
         return
@@ -102,9 +104,18 @@ def load_config(app_dir, loudness=None, autofix_level=None):
         Tex0.set_max_image_size(validInt(conf['max_image_size'], 0, 10000))
     except (TypeError, ValueError):
         pass
+    try:
+        Geometry.ENABLE_VERTEX_COLORS = validBool(conf['enable_vertex_colors'])
+    except ValueError:
+        pass
+    Converter.ENCODE_PRESET = conf['encode_preset']
     resample = conf['img_resample']
     if resample is not None:
         ImgConverterI.set_resample(resample)
+    if conf['material_library']:
+        MaterialLibrary.LIBRARY_PATH = conf.config.get('material_library')
+    else:
+        MaterialLibrary.LIBRARY_PATH = os.path.join(app_dir, 'mat_lib.brres')
     return conf
 
 
@@ -173,6 +184,19 @@ For more Help or if you want to contribute visit https://github.com/Robert-N7/ab
     print("{}".format(USAGE))
 
 
+def turn_off_fixes():
+    SubFile.FORCE_VERSION = False
+    Brres.REMOVE_UNUSED_TEXTURES = False
+    Layer.MINFILTER_AUTO = False
+    Mdl0.DETECT_MODEL_NAME = False
+    Shader.MAP_ID_AUTO = False
+    Tex0.RESIZE_TO_POW_TWO = False
+    Geometry.ENABLE_VERTEX_COLORS = False
+    Mdl0.RENAME_UNKNOWN_REFS = False
+    Mdl0.REMOVE_UNKNOWN_REFS = False
+    Shader.REMOVE_UNUSED_LAYERS = False
+
+
 def parse_args(argv, app_dir):
     interactive = overwrite = debug = False
     type = ""
@@ -180,7 +204,7 @@ def parse_args(argv, app_dir):
     command = destination = brres_file = command_file = model = value = key = ""
     autofix = loudness = None
     name = None
-    no_normals = no_colors = single_bone = no_uvs = False
+    no_normals = no_colors = single_bone = no_uvs = moonview = False
     do_help = False
     for i in range(len(argv)):
         if argv[i][0] == '-':
@@ -195,7 +219,7 @@ def parse_args(argv, app_dir):
                                     "command=", "type=", "key=", "value=",
                                     "name=", "brres=", "model=", "file=", "interactive",
                                     "loudness=", "debug",
-                                    "single-bone", "no-colors", "no-normals", "no-uvs"])
+                                    "single-bone", "no-colors", "no-normals", "no-uvs", "moonview"])
     except getopt.GetoptError as e:
         print(e)
         print(USAGE)
@@ -240,6 +264,8 @@ def parse_args(argv, app_dir):
             no_colors = True
         elif opt == '--no-uvs':
             no_uvs = True
+        elif opt == '--moonview':
+            moonview = True
         else:
             print("Unknown option '{}'".format(opt))
             print(USAGE)
@@ -261,6 +287,7 @@ def parse_args(argv, app_dir):
     config = load_config(app_dir, loudness, autofix)
     Command.APP_DIR = app_dir
     Command.DEBUG = debug
+    Brres.MOONVIEW = moonview
     cmds = []
     if cmd_args:
         if cmd_args[0] == 'convert':
@@ -322,4 +349,4 @@ def parse_args(argv, app_dir):
             sys.exit(1)
     if interactive:
         Shell().cmdloop('Interactive shell started...')
-    return Command.OPEN_FILES
+    return Brres.OPEN_FILES

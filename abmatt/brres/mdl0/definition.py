@@ -21,6 +21,10 @@ class NodeMix(Node):
         self.fixed_weights = []
         super().__init__(name, parent, binfile)
 
+    def __eq__(self, other):
+        return super().__eq__(other) and self.fixed_weights == other.fixed_weights and \
+               self.mixed_weights == other.mixed_weights
+
     def __bool__(self):
         return bool(self.mixed_weights)
 
@@ -41,25 +45,6 @@ class NodeMix(Node):
     def add_fixed_weight(self, weight_id, bone_id):
         self.fixed_weights.append(self.FixedWeight(weight_id, bone_id))
 
-    # def create_or_find_influence(self, influence):
-    #     if len(influence) > 1:
-    #         for x in self.mixed_weights:
-    #             if x.inf_eq(influence):
-    #                 return x.weight_id
-    #         # wasn't found! Let's create it
-    #         weight = self.MixedWeight(len(self.mixed_weights) + len(self.fixed_weights))
-    #         for x in influence:
-    #             weight.add_weight(*x)
-    #         return weight.weight_id
-    #     else:
-    #         # search in fixed weights
-    #         for x in self.fixed_weights:
-    #             if x.bone_id == influence[0]:
-    #                 return x.weight_id
-    #         # wasn't found! Let's create it
-    #         weight = self.FixedWeight(len(self.mixed_weights) + len(self.fixed_weights), influence[0])
-    #         return weight.weight_id
-
     class MixedWeight:
         def __init__(self, weight_id=None, binfile=None):
             if binfile:
@@ -67,6 +52,9 @@ class NodeMix(Node):
             else:
                 self.weight_id = weight_id
                 self.weights = []
+
+        def __eq__(self, other):
+            return self.weight_id == other.weight_id and self.weights == other.weights
 
         def __iter__(self):
             return iter(self.weights)
@@ -76,17 +64,6 @@ class NodeMix(Node):
 
         def __str__(self):
             return str(self.weight_id) + ':' + str(self.weights)
-        # def inf_eq(self, influence):
-        #     weights = self.weights
-        #     if len(weights) != len(influence):
-        #         return False
-        #     for i in range(len(weights)):
-        #         if weights[i] != influence[i]:
-        #             return False
-        #     return True
-        #
-        # def to_inf(self):
-        #     return [x for x in self.weights]
 
         def add_weight(self, x):
             self.weights.append(x)
@@ -107,6 +84,10 @@ class NodeMix(Node):
 
         def __str__(self):
             return str(self.weight_id) + ':' + str(self.bone_id)
+
+        def __eq__(self, other):
+            return other is not None and type(self) == type(other) and \
+                   self.weight_id == other.weight_id and self.bone_id == other.bone_id
 
         def to_inf(self):
             return [(self.bone_id, 1.0)]
@@ -139,6 +120,9 @@ class NodeTree(Node):
 
     def add_entry(self, bone_index, parent_index):
         self.nodes.append((bone_index, parent_index))
+
+    def __eq__(self, other):
+        return super().__eq__(other) and self.nodes == other.nodes
 
     def __str__(self):
         return str(self.nodes)
@@ -196,6 +180,9 @@ class DrawList(Node):
 
     def __bool__(self):
         return len(self.list) > 0
+
+    def __eq__(self, other):
+        return super().__eq__(other) and self.list == other.list and self.is_xlu == other.is_xlu
 
     def pop(self, draw_entry):
         li = self.list

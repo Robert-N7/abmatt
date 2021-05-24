@@ -17,6 +17,10 @@ class Normal(Point):
         return 3
 
     @property
+    def default_point_width(self):
+        return 3
+
+    @property
     def default_comp_count(self):
         return TYPE_NORMAL
 

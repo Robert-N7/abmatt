@@ -128,7 +128,7 @@ class UnpackSrt0(UnpackSubfile):
             e = folder.openI()
             if not e:
                 break
-            mat = SRTMatAnim(e, srt0.framecount)
+            mat = SRTMatAnim(e, srt0.framecount, parent=srt0)
             UnpackSrt0Material(mat, binfile)
             srt0.matAnimations.append(mat)
         # binfile.recall()  # section 1 (unknown)

@@ -1,17 +1,16 @@
 """ MDL0 Models """
 # ----------------- Model sub files --------------------------------------------
 import math
+import string
 
 from abmatt.autofix import AutoFix, Bug
-from abmatt.brres.lib.matching import fuzzy_match, MATCHING
+from abmatt.brres.lib.matching import fuzzy_match, MATCHING, it_eq
 from abmatt.brres.lib.node import Node, get_name_mapping
 from abmatt.brres.lib.packing.pack_mdl0.pack_mdl0 import PackMdl0
 from abmatt.brres.lib.unpacking.unpack_mdl0.unpack_mdl0 import UnpackMdl0
 from abmatt.brres.mdl0.bone import Bone
 from abmatt.brres.mdl0.definition import get_definition
 from abmatt.brres.mdl0.material.material import Material
-from abmatt.brres.pat0.pat0 import Pat0Collection
-from abmatt.brres.srt0.srt0 import SRTCollection
 from abmatt.brres.subfile import SubFile
 
 
@@ -71,8 +70,6 @@ class Mdl0(SubFile):
 
     def __init__(self, name, parent, binfile=None):
         """ initialize model """
-        self.srt0_collection = None
-        self.pat0_collection = None
         self.DrawOpa = self.DrawXlu = self.NodeTree = self.NodeMix = None
         self.weights_by_id = None
         self.rebuild_head = False
@@ -92,7 +89,6 @@ class Mdl0(SubFile):
         # self.furVectors = []
         # self.furLayers = []
         self.materials = []
-        # self.shaders = ShaderList()
         self.objects = []
         self.influences = None
         # self.paletteLinks = []
@@ -100,6 +96,17 @@ class Mdl0(SubFile):
         self.version = 11
         self.is_map_model = True if 'map' in name else False
         super(Mdl0, self).__init__(name, parent, binfile)
+
+    def __hash__(self):
+        return super().__hash__()
+
+    def __eq__(self, other):
+        return super().__eq__(other) and self.objects == other.objects and self.DrawOpa == other.DrawOpa \
+               and self.DrawXlu == other.DrawXlu and self.NodeTree == other.NodeTree and self.NodeMix == other.NodeMix \
+               and it_eq(self.minimum, other.minimum) and it_eq(self.maximum, other.maximum) \
+               and self.facepoint_count == other.facepoint_count and self.face_count == other.face_count \
+               and self.scaling_rule == other.scaling_rule and self.texture_matrix_mode == other.texture_matrix_mode \
+               and self.bone_table == other.bone_table
 
     def get_influences(self):
         return self.influences
@@ -251,11 +258,6 @@ class Mdl0(SubFile):
         if self.get_material_by_name(material.name):
             raise RuntimeError(f'Material with name {material.name} is already in model!')
         self.materials.append(material)
-        # animations
-        if material.srt0:
-            self.add_srt0(material.srt0)
-        if material.pat0:
-            self.add_pat0(material.pat0)
         self.mark_modified()
         return material
 
@@ -264,11 +266,6 @@ class Mdl0(SubFile):
         if polys:
             raise RuntimeError('Unable to remove linked material, used by {}'.format(polys))
         self.materials.remove(material)
-        # take care of animations
-        if material.srt0:
-            self.srt0_collection.remove(material.srt0)
-        if material.pat0:
-            self.pat0_collection.remove(material.pat0)
         self.mark_modified()
 
     def get_polys_using_material(self, material):
@@ -298,74 +295,6 @@ class Mdl0(SubFile):
         polygon.visible_bone = visible_bone
         polygon.draw_priority = priority
         self.rebuild_head = True
-
-    # ---------------------------------- SRT0 ------------------------------------------
-    def set_srt0(self, srt0_collection):
-        self.srt0_collection = srt0_collection
-        not_found = []
-        for x in srt0_collection:
-            mat = self.get_material_by_name(x.name)
-            if not mat:
-                not_found.append(x)
-            else:
-                mat.set_srt0(x)
-        for x in not_found:
-            mat = fuzzy_match(x.name, self.materials)
-            desc = 'No material matching SRT0 {}'.format(x.name)
-            b = Bug(1, 1, desc, 'Rename material')
-            if self.RENAME_UNKNOWN_REFS and mat and not mat.srt0:
-                if mat.set_srt0(x):
-                    x.rename(mat.name)
-                    b.resolve()
-                    self.mark_modified()
-            else:
-                b.fix_des = 'Remove SRT0'
-                if self.REMOVE_UNKNOWN_REFS:
-                    srt0_collection.remove(x)
-                    b.resolve()
-
-    def add_srt0(self, anim):
-        if not self.srt0_collection:
-            self.srt0_collection = self.parent.add_srt_collection(SRTCollection(self.name, self.parent))
-        self.srt0_collection.add(anim)
-        return anim
-
-    def remove_srt0(self, animation):
-        return self.srt0_collection.remove(animation)
-
-    # ------------------ Pat0 --------------------------------------
-    def set_pat0(self, pat0_collection):
-        self.pat0_collection = pat0_collection
-        not_found = []
-        for x in pat0_collection:
-            mat = self.get_material_by_name(x.name)
-            if not mat:
-                not_found.append(x)
-            else:
-                mat.set_pat0(x)
-        for x in not_found:
-            desc = 'No material matching PAT0 {}'.format(x.name)
-            mat = fuzzy_match(x.name, self.materials)
-            b = Bug(1, 1, desc, None)
-            if self.RENAME_UNKNOWN_REFS and mat and not mat.pat0:
-                b.fix_des = 'Rename to {}'.format(mat.name)
-                if mat.set_pat0(x):
-                    x.rename(mat.name)
-                    b.resolve()
-            else:
-                if self.REMOVE_UNKNOWN_REFS:
-                    b.fix_des = 'remove pat0'
-                    pat0_collection.remove(x)
-                    b.resolve()
-
-    def add_pat0(self, anim):
-        if not self.pat0_collection:
-            self.pat0_collection = self.parent.add_pat0_collection(Pat0Collection(self.name, self.parent))
-        self.pat0_collection.add(anim)
-        return anim
-
-    def remove_pat0(self, animation):
-        return self.pat0_collection.remove(animation)
 
     # ------------------ Name --------------------------------------
     def rename(self, name):
@@ -437,7 +366,7 @@ class Mdl0(SubFile):
         self.paste_group(self.materials, item.materials)
 
     def __deepcopy__(self, memodict={}):
-        raise NotImplementedError()     # hasn't been tested and it seems dangerous
+        raise NotImplementedError()  # hasn't been tested and it seems dangerous
         copy = super().__deepcopy__(memodict)
         sections = [copy.definitions, copy.bones, copy.vertices, copy.normals,
                     copy.colors, copy.uvs,
@@ -451,26 +380,14 @@ class Mdl0(SubFile):
 
     def link_parent(self, parent):
         super().link_parent(parent)
-        brres_textures = self.getTextureMap()
-        if self.pat0_collection:
-            for x in self.pat0_collection:
-                x.brres_textures = brres_textures
         for x in self.materials:
             x.on_brres_link(parent)
 
     def on_material_rename(self, material, new_name):
         if material.srt0:
             material.srt0.rename(new_name)
-        elif self.srt0_collection:
-            anim = self.srt0_collection[new_name]
-            if anim:
-                material.set_srt0(anim)
         if material.pat0:
             material.pat0.rename(new_name)
-        elif self.pat0_collection:
-            anim = self.pat0_collection[new_name]
-            if anim:
-                material.set_pat0(anim)
         return new_name
 
     def getTextureMap(self):
@@ -566,10 +483,7 @@ class Mdl0(SubFile):
     def get_used_textures(self):
         textures = set()
         for x in self.materials:
-            for y in x.layers:
-                textures.add(y.name)
-        if self.pat0_collection is not None:
-            textures |= self.pat0_collection.get_used_textures()
+            textures |= x.get_used_textures()
         return textures
 
     # ---------------START PACKING STUFF -------------------------------------

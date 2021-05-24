@@ -5,6 +5,7 @@
 # Most Brres Subfiles
 # --------------------------------------------------------
 import os
+import string
 
 from abmatt.autofix import Bug, AutoFix
 from abmatt.brres.lib.binfile import BinFile
@@ -19,6 +20,9 @@ def set_anim_str(animation, key, value):
     elif key == 'loop':  # loop
         val = validBool(value)
         animation.loop = val
+    else:
+        return False
+    return True
 
 
 def get_anim_str(animation, key):
@@ -61,6 +65,11 @@ class SubFile(Clipable, Packable):
 
     def _getNumSections(self):
         return self.VERSION_SECTIONCOUNT[self.version]
+
+    def get_anim_base_name(self):
+        if self.parent and self.parent.respect_model_names():
+            return self.name
+        return self.name.rstrip(string.digits)
 
     def check(self):
         if self.version != self.EXPECTED_VERSION:

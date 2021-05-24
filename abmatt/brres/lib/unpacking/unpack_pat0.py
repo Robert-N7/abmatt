@@ -30,11 +30,11 @@ class UnpackPat0Animation(Unpacker):
         binfile.advance(4)  # already have name
         [flags] = binfile.read('I', 4)
         pat0.enabled = flags & 1
-        pat0.fixedTexture = flags >> 1 & 1
+        pat0.fixed_texture = flags >> 1 & 1
         # if self.fixedTexture:
         #     print('{} Fixed texture!'.format(self.name))
         pat0.has_texture = flags >> 2 & 1
-        pat0.hasPalette = flags >> 3 & 1
+        pat0.has_palette = flags >> 3 & 1
 
     def unpack(self, pat0, binfile):
         binfile.start()
@@ -59,7 +59,7 @@ class UnpackPat0(UnpackSubfile):
         unpacked = []
         while len(folder):
             name = folder.recallEntryI()
-            anim = Pat0MatAnimation(name, pat0.parent, pat0.framecount, pat0.loop)
+            anim = Pat0MatAnimation(name, pat0, pat0.framecount, pat0.loop)
             unpacked.append(UnpackPat0Animation(anim, binfile))
             pat0.mat_anims.append(anim)
         binfile.recall()  # section 1

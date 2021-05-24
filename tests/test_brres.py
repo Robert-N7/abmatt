@@ -3,7 +3,7 @@ import sys
 import unittest
 
 from abmatt.brres import Brres
-from tests.lib import AbmattTest
+from tests.lib import AbmattTest, node_eq
 
 
 class TestBrresLoadsCorrectly(AbmattTest):
@@ -23,8 +23,6 @@ class TestBrresLoadsCorrectly(AbmattTest):
     def test_correct_amount_of_objects(self):
         self.assertEqual(len(self.brres.models), 1)
         self.assertEqual(len(self.brres.textures), 29)
-        self.assertEqual(len(self.brres.pat0), 1)
-        self.assertEqual(len(self.brres.srt0), 1)
 
     def test_materials_equal(self):
         self.assertTrue(len(self.original_model.materials) > 0)
@@ -35,6 +33,34 @@ class TestBrresLoadsCorrectly(AbmattTest):
         original_len = len(self.original_model.objects)
         self.assertTrue(original_len > 0)
         self.assertTrue(original_len == len(self.test_model.objects))
+
+    # Currently unsupported
+    # def test_load_and_save_brres_with_text_file(self):
+    #     brres = self._get_brres('kuribo_with_txt.brres')
+    #     brres.save(self._get_tmp('.brres'), overwrite=True)
+
+
+class TestBrresSaveEqual(AbmattTest):
+    def _test_save_eq(self, brres):
+        tmp = self._get_tmp('.brres')
+        brres.save(tmp, overwrite=True)
+        return node_eq(Brres(tmp), brres)
+
+    def test_save_beginner(self):  # has pat0 and srt0
+        self.assertTrue(self._test_save_eq(self._get_brres('beginner_course.brres')))
+
+    def test_save_farm(self):  # has scn0
+        self.assertTrue(self._test_save_eq(self._get_brres('farm_course.brres')))
+
+    def test_save_pocha(self):  # has clr0 and chr0
+        self.assertTrue(self._test_save_eq(self._get_brres('pocha.brres')))
+
+    def test_save_flagb2(self):  # has shp0
+        self.assertTrue(self._test_save_eq(self._get_brres('FlagB2.brres')))
+
+    def test_save_with_unknown_files(self):  # various txt files
+        self.assertTrue(self._test_save_eq(self._get_brres('kuribo_with_txt.brres')))
+
 
 if __name__ == '__main__':
     unittest.main()

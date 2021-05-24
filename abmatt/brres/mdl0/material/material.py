@@ -5,6 +5,7 @@
 # ---------------------------------------------------------------------
 import json
 import re
+import string
 from copy import deepcopy
 
 from abmatt.autofix import AutoFix
@@ -74,9 +75,9 @@ class Material(Clipable):
     #   CONSTANTS
     # -----------------------------------------------------------------------
     EXT = 'matl'
-    SETTINGS = ("xlu", "ref0", "ref1",
+    SETTINGS = ("xlu", "ref0", "ref1", "logic",
                 "comp0", "comp1", "comparebeforetexture", "blend",
-                "blendsrc", "blendlogic", "blenddest", "constantalpha",
+                "blendsrc", "enableblendlogic", "blendlogic", "blenddest", "constantalpha",
                 "cullmode", "shadercolor", "lightchannel", "lightset",
                 "fogset", "matrixmode", "enabledepthtest", "enabledepthupdate",
                 "depthfunction", "drawpriority",
@@ -150,12 +151,12 @@ class Material(Clipable):
         return len(self.polygons) > 0
 
     @staticmethod
-    def get_unique_material(name, mdl):
+    def get_unique_material(name, mdl, get_name_only=False):
         is_digit = False
         while True:
             mat = mdl.get_material_by_name(name)
             if not mat:
-                return Material(name, mdl)
+                return Material(name, mdl) if not get_name_only else name
             if not is_digit and not name[-1].isdigit():
                 name = name + '1'
                 is_digit = True
@@ -238,7 +239,7 @@ class Material(Clipable):
     def get_comp1(self):
         return self.COMP_STRINGS[self.comp1]
 
-    def getLogic(self):
+    def get_logic(self):
         return self.LOGIC_STRINGS[self.logic]
 
     def get_compare_before_texture(self):
@@ -252,6 +253,9 @@ class Material(Clipable):
 
     def get_blend_logic(self):
         return self.BLLOGIC_STRINGS[self.blend_logic]
+
+    def get_blend_logic_enabled(self):
+        return self.blend_logic_enabled
 
     def get_blend_dest(self):
         return self.BLFACTOR_STRINGS[self.blend_dest]
@@ -353,8 +357,9 @@ class Material(Clipable):
         return len(self.layers)
 
     # Get Functions
-    GET_SETTING = (get_xlu, get_ref0, get_ref1, get_comp0, get_comp1, get_compare_before_texture,
-                   get_blend, get_blend_src, get_blend_logic, get_blend_dest, get_constant_alpha, get_cull_mode,
+    GET_SETTING = (get_xlu, get_ref0, get_ref1, get_logic, get_comp0, get_comp1, get_compare_before_texture,
+                   get_blend, get_blend_src, get_blend_logic_enabled, get_blend_logic, get_blend_dest,
+                   get_constant_alpha, get_cull_mode,
                    get_shader_color, get_light_channel, get_lightset, get_fogset, get_matrix_mode, get_enable_depth_test,
                    get_enable_depth_update, get_depth_function, get_draw_priority, get_ind_matrix_str, get_name, get_layer_count)
 
@@ -462,7 +467,7 @@ class Material(Clipable):
     def set_lightset_str(self, str):
         val = int(str)
         if val > 0:
-            AutoFix.error("Invalid lightset " + str + ", expected -1")
+            AutoFix.warn("Unusual lightset " + str + ", expected -1")
         if self.lightset != val:
             self.lightset = val
             self.mark_modified()
@@ -599,6 +604,9 @@ class Material(Clipable):
             self.blend_logic = i
             self.mark_modified()
 
+    def set_enable_blend_logic_str(self, s):
+        self.enable_blend_logic(validBool(s))
+
     def enable_blend_logic(self, enabled):
         if self.blend_logic_enabled != enabled:
             self.blend_logic_enabled = enabled
@@ -733,9 +741,10 @@ class Material(Clipable):
             self.mark_modified()
 
     # Set functions
-    SET_SETTING = (set_xlu_str, set_ref0_str, set_ref1_str,
+    SET_SETTING = (set_xlu_str, set_ref0_str, set_ref1_str, set_logic,
                    set_comp0_str, set_comp1_str, set_compare_before_tex_str, set_blend_str, set_blend_src_str,
-                   set_blend_logic_str, set_blend_dest_str, set_constant_alpha_str, set_cull_mode_str,
+                   set_enable_blend_logic_str, set_blend_logic_str, set_blend_dest_str, set_constant_alpha_str,
+                   set_cull_mode_str,
                    set_shader_color_str, set_light_channel_str, set_lightset_str,
                    set_fogset_str, set_matrix_mode_str, set_enable_depth_test_str,
                    set_enable_depth_update_str, set_depth_function_str, set_draw_priority_str,
@@ -798,8 +807,6 @@ class Material(Clipable):
         if self.srt0:
             return self.srt0
         anim = SRTMatAnim(self.name)
-        if self.parent is not None:
-            self.parent.add_srt0(anim)
         self.set_srt0(anim)
         anim.add_layer()
         self.mark_modified()
@@ -807,7 +814,7 @@ class Material(Clipable):
 
     def remove_srt0(self):
         if self.srt0:
-            self.parent.remove_srt0(self.srt0)
+            self.srt0.remove_material(self)
             self.srt0 = None
             self.mark_modified()
 
@@ -833,20 +840,21 @@ class Material(Clipable):
     def has_pat0(self):
         return self.pat0 is not None
 
+    def get_anim_base_name(self):
+        if self.parent:
+            return self.parent.get_anim_base_name()
+
     def add_pat0(self):
         """Adds a new pat0"""
         if self.pat0:
             return self.pat0
-        anim = Pat0MatAnimation(self.name, self.parent)
-        if self.parent is not None:
-            self.parent.add_pat0(anim)
+        anim = Pat0MatAnimation(self.name, self)
         self.set_pat0(anim)
         self.mark_modified()
         return anim
 
     def remove_pat0(self):
         if self.pat0:
-            self.parent.remove_pat0(self.pat0)
             self.pat0 = None
             self.mark_modified()
 
@@ -859,6 +867,12 @@ class Material(Clipable):
 
     def get_pat0(self):
         return self.pat0
+
+    def get_used_textures(self):
+        used = {x.name for x in self.layers}
+        if self.pat0:
+            used |= self.pat0.get_used_textures()
+        return used
 
     def disable_blend(self):
         if self.is_blend_enabled():
@@ -1032,6 +1046,9 @@ class Material(Clipable):
                     ret.add('vertex')
         return ret
 
+    def __hash__(self):
+        return super().__hash__()
+
     def __eq__(self, item):
         return self is item or (item is not None and type(self) == type(item) and \
                                 self.name == item.name and self.xlu == item.xlu and \
@@ -1062,7 +1079,7 @@ class Material(Clipable):
                                 it_eq(self.constant_colors, item.constant_colors) and \
                                 it_eq(self.ras1_ss, item.ras1_ss) and \
                                 self.indirect_matrices == item.indirect_matrices and \
-                                self.lightChannels == item.lightChannels and \
+                                self.lightChannels[0] == item.lightChannels[0] and \
                                 self.srt0 == item.srt0 and \
                                 self.pat0 == item.pat0 and \
                                 self.shader == item.shader and \

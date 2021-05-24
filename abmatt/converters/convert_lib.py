@@ -9,6 +9,7 @@ from abmatt.brres.lib.matching import fuzzy_match
 from abmatt.brres.material_library import MaterialLibrary
 from abmatt.brres.mdl0.material import material
 from abmatt.brres.mdl0.mdl0 import Mdl0
+from abmatt.command import Command
 from abmatt.converters import matrix
 from abmatt.converters.convert_mats_to_json import MatsToJsonConverter
 from abmatt.converters.matrix import matrix_to_srt
@@ -23,6 +24,8 @@ class Converter:
     NO_UVS = 0x8
     DETECT_FILE_UNITS = True
     OVERWRITE_IMAGES = False
+    ENCODE_PRESET = None
+    ENCODE_PRESET_ON_NEW = True
 
     def __init__(self, brres, mdl_file, flags=0, encode=True, mdl0=None, encoder=None):
         if not brres:
@@ -38,15 +41,16 @@ class Converter:
         self.mdl0 = mdl0 if type(mdl0) == Mdl0 else brres.get_model(mdl0)
         self.flags = flags
         self.image_dir = None
-        self.image_library = set()
-        self.geometries = []
         self.replacement_model = None
         self.encode = encode
         self.encoder = encoder
 
     def _start_saving(self, mdl0):
-        AutoFix.info('Exporting to {}...'.format(self.mdl_file))
+        AutoFix.info('Exporting {} to {}...'.format(os.path.basename(self.brres.name), self.mdl_file))
+        if 'sand_battle.d' in self.brres.name and 'map_model' in self.brres.name:
+            print('debug')
         self.start = time.time()
+        self.image_library = set()
         if mdl0 is None:
             mdl0 = self.mdl0
             if mdl0 is None:
@@ -77,10 +81,13 @@ class Converter:
         os.chdir(self.cwd)
         writer.write(self.mdl_file)
         AutoFix.info('\t...finished in {} seconds.'.format(round(time.time() - self.start, 2)))
+        return self.mdl_file
 
     def _start_loading(self, model_name):
         AutoFix.info('Converting {}... '.format(self.mdl_file))
         self.start = time.time()
+        self.image_library = set()
+        self.geometries = []
         self.cwd = os.getcwd()
         self.import_textures_map = {}
         self.mdl_file = os.path.abspath(self.mdl_file)
@@ -115,6 +122,9 @@ class Converter:
         if self.is_map:
             mdl0.add_map_bones()
         os.chdir(self.cwd)
+        if self.ENCODE_PRESET:
+            if not self.ENCODE_PRESET_ON_NEW or (self.replacement_model is None and self.json_polygon_encoding is None):
+                Command('preset ' + self.ENCODE_PRESET + ' for * in ' + self.brres.name + ' model ' + self.mdl0.name).run_cmd()
         AutoFix.info('\t... finished in {} secs'.format(round(time.time() - self.start, 2)))
         if self.encoder:
             self.encoder.after_encode(mdl0)
@@ -173,10 +183,11 @@ class Converter:
 
     def __add_pat0_images(self):
         """Adds the pat0 images to tex0 library"""
-        if self.mdl0.pat0_collection is not None:
-            for tex in self.mdl0.pat0_collection.get_used_textures():
-                if tex not in self.tex0_map:
-                    self.tex0_map[tex] = self.texture_library.get(tex)
+        for material in self.mdl0.materials:
+            if material.pat0:
+                for tex in material.pat0.get_used_textures():
+                    if tex not in self.tex0_map:
+                        self.tex0_map[tex] = self.texture_library.get(tex)
 
     def _encode_material(self, generic_mat):
         m = None
@@ -286,6 +297,7 @@ class Converter:
             self.load_model()
         else:
             self.save_model()
+        return self
 
     def __eq__(self, other):
         return type(self) == type(other) and self.brres is other.brres and self.mdl0 is other.mdl0 \

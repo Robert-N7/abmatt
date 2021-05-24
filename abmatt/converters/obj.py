@@ -277,7 +277,7 @@ class Obj():
             for line in data:
                 if len(line) < 2 or line[0] == '#':
                     continue
-                words = re.split("\s+", line.rstrip('\n').strip())
+                words = re.split(r"\s+", line.rstrip('\n').strip())
                 new_mat = self.parse_mtl_words(words, material)
                 if new_mat:
                     material = ObjMaterial(new_mat)
@@ -291,7 +291,7 @@ class Obj():
             for line in data:
                 if len(line) < 2 or line[0] == '#':
                     continue
-                words = re.split('\s+', line.rstrip('\n').strip())
+                words = re.split(r'\s+', line.rstrip('\n').strip())
                 new_geo = self.parse_words(words, geometry)
                 if new_geo:
                     if not geometry or geometry.name != new_geo:

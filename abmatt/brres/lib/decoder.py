@@ -1,3 +1,4 @@
+from copy import deepcopy
 from struct import unpack_from, unpack
 
 import numpy as np
@@ -9,10 +10,14 @@ from abmatt.converters.influence import InfluenceCollection, Influence, Weight
 from abmatt.converters.points import PointCollection
 
 
-def decode_geometry_group(geometry):
+def decode_geometry_group(geometry, n_columns, flip_points=False):
     arr = np.array(geometry.data, np.float)
     if geometry.divisor:
         arr = arr / (2 ** geometry.divisor)
+    if arr.shape[1] < n_columns:
+        arr = np.append(arr, np.zeros((arr.shape[0], 1), np.float), axis=1)
+    if flip_points:
+        arr[:, -1] = arr[:, -1] * -1 + 1    # convert st to xy
     return arr
 
 
@@ -135,8 +140,7 @@ def decode_polygon(polygon, influences=None):
     face_point_indices, weights = decode_indices(polygon, polygon.encode_str)
     face_point_indices = np.array(face_point_indices, dtype=np.uint)
     face_point_indices[:, [0, 1]] = face_point_indices[:, [1, 0]]
-    # decoded_verts =
-    g_verts = PointCollection(decode_geometry_group(vertices), face_point_indices[:, :, vertex_index])
+    g_verts = PointCollection(vertices.get_decoded(), face_point_indices[:, :, vertex_index])
     linked_bone = polygon.get_linked_bone()
     if pos_matrix_index >= 0:  # apply influences to vertices
         influence_collection = decode_pos_mtx_indices(influences, weights, g_verts,
@@ -145,26 +149,18 @@ def decode_polygon(polygon, influences=None):
         influence = influences[linked_bone.weight_id]
         g_verts.apply_affine_matrix(np.array(linked_bone.get_transform_matrix()), apply=True)
         influence_collection = InfluenceCollection({0: influence})
-    # for x in polygon.uv_mtx_indices:
-    #     if x >= 0:
-    #         AutoFix.warn('{} uv matrices data lost in export.'.format(polygon.name))
-    #         indices = face_point_indices[:, :, x] // 3
-    #         if (indices < 10).any():
-    #             print('Less than 10!')
     from abmatt.converters.geometry import Geometry
     geometry = Geometry(polygon.name, polygon.get_material().name, g_verts,
                         triangles=None, influences=influence_collection,
                         linked_bone=linked_bone)
     # create the point collections
     if normals:
-        geometry.normals = PointCollection(decode_geometry_group(normals), face_point_indices[:, :, normal_index])
+        geometry.normals = PointCollection(normals.get_decoded(), face_point_indices[:, :, normal_index])
     if colors:
-        geometry.colors = ColorCollection(ColorDecoder.decode_data(colors), face_point_indices[:, :, color_index])
+        geometry.colors = ColorCollection(colors.get_decoded(), face_point_indices[:, :, color_index])
     for tex in texcoords:
-        x = decode_geometry_group(tex)
-        pc = PointCollection(x, face_point_indices[:, :, texcoord_index],
+        pc = PointCollection(tex.get_decoded(), face_point_indices[:, :, texcoord_index],
                              tex.minimum, tex.maximum)
-        pc.flip_points()
         geometry.texcoords.append(pc)
         texcoord_index += 1
     return geometry
@@ -276,27 +272,41 @@ def decode_pos_mtx_indices(all_influences, weight_groups, vertices, pos_mtx_indi
     slicer = sorted(weight_groups.keys())
     slicer.append(len(vert_indices))  # add the max onto the end for slicing
 
+    remapper = {}
+    max_vert = np.max(vert_indices)
+    new_points = []
+    new_face_indices = deepcopy(vert_indices)
     # Each weighting slice group
     for i in range(len(slicer) - 1):
         start = slicer[i]
         end = slicer[i + 1]
         weights = np.array(weight_groups[start])
-        vertex_slice = vert_indices[start:end].flatten()
-        pos_mtx_slice = pos_mtx_indices[start:end].flatten()
-        # get the ordered indices corresponding to vertices
-        vertex_indices, indices = np.unique(vertex_slice, return_index=True)
-        weight_indices = weights[
-            pos_mtx_slice[indices]]  # get the matrix corresponding to vert index, resolve to weight_id
+        vertex_slice = vert_indices[start:end]
+        pos_mtx_slice = pos_mtx_indices[start:end]
 
-        # map each vertex id to an influence and apply it
-        for i in range(len(vertex_indices)):
-            vertex_index = vertex_indices[i]
-            if vertex_index not in influences:
-                influences[vertex_index] = influence = all_influences[weight_indices[i]]
-                points[vertex_index] = influence.apply_to(points[vertex_index], decode=True)
-            elif influences[vertex_index].influence_id != weight_indices[i]:
-                AutoFix.warn(f'vertex {vertex_index} has multiple different influences!')
-                influences[vertex_index] = all_influences[weight_indices[i]]
-
-    # assert len(influences) == len(points)
+        # map each vertex to an influence
+        for i in range(len(vertex_slice)):
+            for j in range(3):
+                vert_id = vertex_slice[i, j]
+                inf = all_influences[weights[pos_mtx_slice[i, j]]]
+                weight_id = inf.influence_id
+                remappings = remapper.get(vert_id)
+                add_it = bool(remappings is None)
+                if not remappings:
+                    remapper[vert_id] = remappings = []
+                if not add_it:
+                    add_it = True
+                    for index, influence in remappings:
+                        if influence.influence_id == weight_id:
+                            add_it = False
+                            new_face_indices[start + i, j] = index
+                            break
+                if add_it:
+                    remappings.append((len(new_points), inf))
+                    influences[len(new_points)] = inf
+                    new_face_indices[start + i, j] = len(new_points)
+                    new_points.append(inf.apply_to(points[vert_id], decode=True))
+    vertices.points = np.array(new_points)
+    vertices.face_indices = new_face_indices
+    assert len(influences) == len(new_points)
     return InfluenceCollection(influences)

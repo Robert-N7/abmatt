@@ -1,3 +1,4 @@
+import string
 from copy import deepcopy
 
 from abmatt.autofix import Bug, AutoFix
@@ -15,20 +16,31 @@ class Pat0MatAnimation(Clipable):
 
     def __init__(self, name, parent, framecount=100, loop=True, binfile=None):
         self.enabled = True
-        self.fixedTexture = False
-        self.hasTexture = True
-        self.hasPalette = False
+        self.fixed_texture = False
+        self.has_texture = True
+        self.has_palette = False
         self.frames = []
         self.framecount = framecount
         self.loop = loop
-        self.brres_textures = parent.get_texture_map() if parent else None
+        if parent:
+            self.parent_base_name = parent.get_anim_base_name()
+            self.brres_textures = parent.get_texture_map()
+        else:
+            self.brres_textures = None
+            self.parent_base_name = None
         super(Pat0MatAnimation, self).__init__(name, parent, binfile)
 
+    def get_anim_base_name(self):
+        if not self.parent_base_name:
+            if self.parent:
+                self.parent_base_name = self.parent.get_anim_base_name()
+        return self.parent_base_name
 
     def __eq__(self, other):
-        return other is not None and type(other) == Pat0MatAnimation \
+        return super().__eq__(other) \
             and self.enabled == other.enabled and self.framecount == other.framecount \
-            and self.loop == other.loop and self.frames == other.frames
+            and self.loop == other.loop and self.frames == other.frames \
+            and self.has_fixed_texture() == other.has_fixed_texture()
 
     def __deepcopy__(self, memodict={}):
         tex = self.brres_textures
@@ -39,9 +51,9 @@ class Pat0MatAnimation(Clipable):
 
     def paste(self, item):
         self.enabled = item.enabled
-        self.fixedTexture = item.fixedTexture
-        self.hasTexture = item.hasTexture
-        self.hasPalette = item.hasPalette
+        self.fixed_texture = item.fixed_texture
+        self.has_texture = item.has_texture
+        self.has_palette = item.has_palette
         self.frames = deepcopy(item.frames)
         self.framecount = item.framecount
         self.loop = item.loop
@@ -52,6 +64,9 @@ class Pat0MatAnimation(Clipable):
 
     def get_used_textures(self):
         return {x.tex for x in self.frames}
+
+    def has_fixed_texture(self):
+        return self.fixed_texture or len(self.frames) <= 1
 
     def set_str(self, key, value):
         if key == 'loop':

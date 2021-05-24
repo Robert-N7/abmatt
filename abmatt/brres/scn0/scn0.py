@@ -10,11 +10,17 @@ class Scn0KeyFrameList:
     def __init__(self):
         self.frames = []
 
+    def __eq__(self, other):
+        return self.frames == other.frames
+
     class KeyFrame:
         def __init__(self, value=0, index=0, delta=0):
             self.value = value
             self.index = index
             self.delta = delta
+
+        def __eq__(self, other):
+            return self.value == other.value and self.index == other.index and self.delta == other.delta
 
         def unpack(self, binfile):
             self.delta, self.index, self.value = binfile.read('3f', 12)
@@ -51,6 +57,11 @@ class Scn0(SubFile):
         self.fogs = []
         self.cameras = []
         super(Scn0, self).__init__(name, parent, binfile)
+
+    def __eq__(self, other):
+        return super().__eq__(other) and self.animations == other.animations and self.lightsets == other.lightsets \
+               and self.ambient_lights == other.ambient_lights and self.lights == other.lights \
+               and self.fogs == other.fogs and self.cameras == other.cameras
 
     def begin(self):
         self.framecount = 1
