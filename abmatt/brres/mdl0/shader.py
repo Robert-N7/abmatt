@@ -293,8 +293,8 @@ class Shader(Clipable):
                 stage['colora'] = 'rastercolor'
                 stage['alphaa'] = 'rasteralpha'
             else:
-                b.fix_des = 'Set solid color {}'.format(self.parent.getColor(0))
                 self.parent.set_default_color()
+                b.fix_des = 'Set solid color {}'.format(self.parent.getColor(0))
             b.resolve()
             resolved_bug = True
         # indirect check

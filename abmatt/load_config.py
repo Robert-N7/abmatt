@@ -46,7 +46,6 @@ def set_remove_unused(val):
 def load_config(app_dir, loudness=None, autofix_level=None):
     conf = Config.get_instance(os.path.join(app_dir, 'config.conf'))
     tmp_dir = os.path.join(app_dir, 'temp_files')
-    MaterialLibrary.LIBRARY_PATH = os.path.join(app_dir, 'mat_lib.brres')
     converter = ImgConverter(tmp_dir)
     Tex0.converter = converter
     if not loudness:
@@ -113,6 +112,10 @@ def load_config(app_dir, loudness=None, autofix_level=None):
     resample = conf['img_resample']
     if resample is not None:
         ImgConverterI.set_resample(resample)
+    if conf['material_library']:
+        MaterialLibrary.LIBRARY_PATH = conf.config.get('material_library')
+    else:
+        MaterialLibrary.LIBRARY_PATH = os.path.join(app_dir, 'mat_lib.brres')
     return conf
 
 
@@ -201,7 +204,7 @@ def parse_args(argv, app_dir):
     command = destination = brres_file = command_file = model = value = key = ""
     autofix = loudness = None
     name = None
-    no_normals = no_colors = single_bone = no_uvs = False
+    no_normals = no_colors = single_bone = no_uvs = moonview = False
     do_help = False
     for i in range(len(argv)):
         if argv[i][0] == '-':
@@ -216,7 +219,7 @@ def parse_args(argv, app_dir):
                                     "command=", "type=", "key=", "value=",
                                     "name=", "brres=", "model=", "file=", "interactive",
                                     "loudness=", "debug",
-                                    "single-bone", "no-colors", "no-normals", "no-uvs"])
+                                    "single-bone", "no-colors", "no-normals", "no-uvs", "moonview"])
     except getopt.GetoptError as e:
         print(e)
         print(USAGE)
@@ -261,6 +264,8 @@ def parse_args(argv, app_dir):
             no_colors = True
         elif opt == '--no-uvs':
             no_uvs = True
+        elif opt == '--moonview':
+            moonview = True
         else:
             print("Unknown option '{}'".format(opt))
             print(USAGE)
@@ -282,6 +287,7 @@ def parse_args(argv, app_dir):
     config = load_config(app_dir, loudness, autofix)
     Command.APP_DIR = app_dir
     Command.DEBUG = debug
+    Brres.MOONVIEW = moonview
     cmds = []
     if cmd_args:
         if cmd_args[0] == 'convert':

@@ -258,11 +258,6 @@ class Mdl0(SubFile):
         if self.get_material_by_name(material.name):
             raise RuntimeError(f'Material with name {material.name} is already in model!')
         self.materials.append(material)
-        # animations
-        if material.srt0:
-            self.add_srt0(material.srt0)
-        if material.pat0:
-            self.add_pat0(material.pat0)
         self.mark_modified()
         return material
 

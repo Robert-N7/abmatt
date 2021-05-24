@@ -151,12 +151,12 @@ class Material(Clipable):
         return len(self.polygons) > 0
 
     @staticmethod
-    def get_unique_material(name, mdl):
+    def get_unique_material(name, mdl, get_name_only=False):
         is_digit = False
         while True:
             mat = mdl.get_material_by_name(name)
             if not mat:
-                return Material(name, mdl)
+                return Material(name, mdl) if not get_name_only else name
             if not is_digit and not name[-1].isdigit():
                 name = name + '1'
                 is_digit = True

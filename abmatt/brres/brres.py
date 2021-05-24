@@ -11,6 +11,7 @@ from abmatt.brres.lib.matching import MATCHING
 from abmatt.brres.lib.node import Clipable, Packable
 from abmatt.brres.lib.packing.pack_brres import PackBrres
 from abmatt.brres.lib.unpacking.unpack_brres import UnpackBrres
+from abmatt.brres.mdl0.material.material import Material
 from abmatt.brres.tex0 import Tex0
 from abmatt.image_converter import ImgConverter
 
@@ -22,6 +23,7 @@ class Brres(Clipable, Packable):
     DESTINATION = None
     OPEN_FILES = []  # reference to active files
     REMOVE_UNUSED_TEXTURES = False
+    MOONVIEW = False    # if true, treat brres as moonview
 
     def __init__(self, name, parent=None, read_file=True):
         """
@@ -364,6 +366,9 @@ class Brres(Clipable, Packable):
     def check(self):
         AutoFix.info('checking file {}'.format(self.name), 4)
         expected = self.get_expected_mdl_name()
+        if self.MOONVIEW or 'ridgehighway_course' in self.name:
+            self.check_moonview()
+            Brres.MOONVIEW = False
         for mdl in self.models:
             mdl.check(expected)
             expected = None
@@ -379,6 +384,33 @@ class Brres(Clipable, Packable):
         all_tex = [x for x in self.textures]
         for tex in all_tex:
             tex.check()
+
+    def check_moonview(self):
+        if not self.models:
+            return True
+        mat_names = ['Goal_Merg', 'Iwa', 'Iwa_alfa', 'Nuki_Ryoumen', 'WallMerg00',
+                     'moon_kabe0000', 'moon_road00', 'road', 'road01', 'road02', 'road03',
+                     'siba00']
+        materials = self.models[0].materials
+        # First check if there's any modification needed
+        j = 0
+        for i in range(len(materials)):
+            if materials[i].name == mat_names[j]:
+                j += 1
+        # Now rename
+        if j != len(mat_names):
+            b = Bug(3, 3, 'Incorrect material names for ridgehighway_course', 'Renaming materials')
+            for i in range(len(mat_names)):
+                if i < len(materials):
+                    if materials[i].name != mat_names[i]:
+                        material = self.models[0].get_material_by_name(mat_names[i])
+                        if material:
+                            material.rename(Material.get_unique_material('material', self.models[0], get_name_only=True))
+                        materials[i].rename(mat_names[i])
+                else:
+                    self.models[0].add_material(Material.get_unique_material(mat_names[i], self.models[0]))
+            b.resolve()
+        return j != len(mat_names)
 
     def remove_unused_textures(self, unused_textures):
         tex = self.textures

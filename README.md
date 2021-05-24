@@ -43,6 +43,7 @@ abmatt [command_line][--interactive -f <file> -b <brres-file> -d <destination> -
 | -i | --interactive | Interactive shell mode. |
 | -l | --loudness | Sets the verbosity level. (0-5)
 | -o | --overwrite | Overwrite existing files.  |
+|   | --moonview | Treat the Brres as Moonview course, adjusting material names. |
 
 ### Command Line Examples
 This command would open *course_model.brres* in overwrite mode and run the commands stored in *my_commands.txt*

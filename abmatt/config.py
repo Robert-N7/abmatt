@@ -11,7 +11,7 @@ def parse_line(line):
             line = line[:comment]
         split_line = line.split('=', 1)
         if len(split_line) > 1:
-            return [x.strip().lower() for x in split_line]
+            return [x.strip() for x in split_line]
     return None
 
 
@@ -46,7 +46,8 @@ class Config:
         return len(self.config)
 
     def __getitem__(self, item):
-        return self.config.get(item)
+        item = self.config.get(item)
+        return item.lower() if item else item
 
     def __setitem__(self, key, value):
         if value == self.config.get(key):
