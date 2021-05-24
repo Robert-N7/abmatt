@@ -281,7 +281,12 @@ def parse_args(argv, app_dir):
         hlp(command)
         sys.exit()
 
-    app_dir = os.path.join(os.path.join(os.path.dirname(os.path.dirname(app_dir)), 'etc'), 'abmatt')
+    app_dir = os.path.dirname(os.path.dirname(app_dir))
+    while not os.path.exists(os.path.join(app_dir, 'etc')):
+        app_dir = os.path.dirname(app_dir)
+        if not app_dir:
+            raise ValueError('Failed to find folder "etc"')
+    app_dir = os.path.join(app_dir, 'etc', 'abmatt')
     if debug and loudness is None:
         loudness = 5
     config = load_config(app_dir, loudness, autofix)
