@@ -119,7 +119,7 @@ def load_config(app_dir, loudness=None, autofix_level=None):
     return conf
 
 
-VERSION = '1.0.0'
+VERSION = '1.0.2'
 USAGE = "USAGE: abmatt [command_line][--interactive -f <file> -b <brres-file> -d <destination> --overwrite]"
 
 
@@ -281,10 +281,17 @@ def parse_args(argv, app_dir):
         hlp(command)
         sys.exit()
 
-    app_dir = os.path.join(os.path.join(os.path.dirname(os.path.dirname(app_dir)), 'etc'), 'abmatt')
+    app_dir = os.path.dirname(os.path.dirname(app_dir))
+    while not os.path.exists(os.path.join(app_dir, 'etc')):
+        app_dir = os.path.dirname(app_dir)
+        if not app_dir:
+            AutoFix.error('Failed to find folder "etc"')
+            break
     if debug and loudness is None:
         loudness = 5
-    config = load_config(app_dir, loudness, autofix)
+    if app_dir:
+        app_dir = os.path.join(app_dir, 'etc', 'abmatt')
+        config = load_config(app_dir, loudness, autofix)
     Command.APP_DIR = app_dir
     Command.DEBUG = debug
     Brres.MOONVIEW = moonview
