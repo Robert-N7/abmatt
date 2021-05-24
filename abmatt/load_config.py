@@ -285,11 +285,13 @@ def parse_args(argv, app_dir):
     while not os.path.exists(os.path.join(app_dir, 'etc')):
         app_dir = os.path.dirname(app_dir)
         if not app_dir:
-            raise ValueError('Failed to find folder "etc"')
-    app_dir = os.path.join(app_dir, 'etc', 'abmatt')
+            AutoFix.error('Failed to find folder "etc"')
+            break
     if debug and loudness is None:
         loudness = 5
-    config = load_config(app_dir, loudness, autofix)
+    if app_dir:
+        app_dir = os.path.join(app_dir, 'etc', 'abmatt')
+        config = load_config(app_dir, loudness, autofix)
     Command.APP_DIR = app_dir
     Command.DEBUG = debug
     Brres.MOONVIEW = moonview
