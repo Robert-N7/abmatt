@@ -21,7 +21,7 @@ CLASSIFIERS = [
 
 data_dir = 'etc/abmatt'
 data_files = []
-for file in os.listdir(data_dir):
+for file in os.listdir(os.path.join(os.path.dirname(__file__), data_dir)):
     path = os.path.join(data_dir, file)
     if not os.path.isdir(path):
         data_files.append(path)
