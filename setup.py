@@ -20,7 +20,10 @@ CLASSIFIERS = [
  ]
 
 data_dir = 'etc/abmatt'
-data_files = ['config.conf', 'icon.ico', 'mat_lib.brres', 'presets.txt']
+data_files = ['etc/abmatt/config.conf',
+              'etc/abmatt/icon.ico',
+              'etc/abmatt/mat_lib.brres',
+              'etc/abmatt/presets.txt']
 
 # calling the setup function
 setup(name='abmatt',
