@@ -1,5 +1,5 @@
-from abmatt.brres.lib.binfile import Folder
-from abmatt.brres.lib.packing.interface import Packer
+from abmatt.lib.binfile import Folder
+from abmatt.lib.pack_interface import Packer
 from abmatt.brres.lib.packing.pack_subfile import PackSubfile
 
 
@@ -19,7 +19,7 @@ class PackClr0(PackSubfile):
 
         def pack(self, clr0, binfile):
             binfile.start()
-            binfile.storeNameRef(clr0.name)
+            binfile.store_name_ref(clr0.name)
             binfile.write('I', self.pack_flags(clr0))
             enabled = clr0.flags
             is_constant = clr0.is_constant
@@ -37,7 +37,7 @@ class PackClr0(PackSubfile):
                         color_lists.append(entries[entry_i])
                     entry_i += 1
             for x in color_lists:
-                binfile.createRefFromStored()
+                binfile.create_ref_from_stored()
                 for i in range(clr0.framecount):
                     binfile.write('4B', *x[i])
             binfile.end()
@@ -46,12 +46,12 @@ class PackClr0(PackSubfile):
         super().pack(clr0, binfile)
         animations = clr0.animations
         binfile.write('i2Hi', 0, clr0.framecount, len(animations), clr0.loop)
-        binfile.createRef()  # section 0
+        binfile.create_ref()  # section 0
         folder = Folder(binfile)
         for x in animations:
-            folder.addEntry(x.name)
+            folder.add_entry(x.name)
         folder.pack(binfile)
         for x in animations:
-            folder.createEntryRefI()
+            folder.create_entry_ref_i()
             self.PackSub(x, binfile)
         binfile.end()

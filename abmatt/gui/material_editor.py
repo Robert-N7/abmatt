@@ -5,7 +5,7 @@ from PyQt5.QtGui import QDoubleValidator, QColor
 from PyQt5.QtWidgets import QLabel, QWidget, QGridLayout, QLineEdit, QCheckBox, QComboBox, \
     QSlider, QVBoxLayout, QFrame, QHBoxLayout, QSpinBox, QTabWidget, QColorDialog
 
-from abmatt.brres.lib.node import ClipableObserver
+from abmatt.lib.node import ClipableObserver
 from abmatt.brres.mdl0 import stage
 from abmatt.brres.mdl0.material.layer import Layer
 from abmatt.brres.mdl0.material.material import Material

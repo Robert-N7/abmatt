@@ -4,8 +4,8 @@
 from copy import deepcopy, copy
 
 from abmatt.autofix import AutoFix, Bug
-from abmatt.brres.lib.matching import *
-from abmatt.brres.lib.node import Clipable
+from abmatt.lib.matching import *
+from abmatt.lib.node import Clipable
 from abmatt.brres.mdl0.stage import Stage
 from abmatt.brres.mdl0.wiigraphics.bp import BPCommand
 

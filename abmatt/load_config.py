@@ -4,7 +4,7 @@ import sys
 
 from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
-from abmatt.brres.lib.matching import validBool, MATCHING, parse_color, validInt
+from abmatt.lib.matching import validBool, MATCHING, parse_color, validInt
 from abmatt.brres.material_library import MaterialLibrary
 from abmatt.brres.mdl0.material.layer import Layer
 from abmatt.brres.mdl0.material.material import Material
@@ -19,6 +19,7 @@ from abmatt.config import Config
 from abmatt.converters.convert_lib import Converter
 from abmatt.converters.geometry import Geometry
 from abmatt.image_converter import ImgConverterI, ImgConverter
+from abmatt.lib.node import Packable
 
 
 def set_rename_unknown(val):
@@ -335,7 +336,7 @@ def parse_args(argv, app_dir):
         Brres.DESTINATION = destination
     if overwrite:
         Command.OVERWRITE = overwrite
-        Brres.OVERWRITE = overwrite
+        Packable.overwrite = overwrite
     if brres_file:
         try:
             Command.updateSelection(brres_file)

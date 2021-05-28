@@ -1,10 +1,10 @@
-from abmatt.brres.lib.binfile import UnpackingError
-from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.lib.binfile import UnpackingError
+from abmatt.lib.unpack_interface import Unpacker
 
 
 def unpack_default(subfile, binfile):
     UnpackSubfile(subfile, binfile)
-    subfile.data = binfile.readRemaining()
+    subfile.data = binfile.read_remaining()
     offsets = []
     for i in range(subfile._getNumSections()):
         offsets.append(binfile.recall())
@@ -16,10 +16,10 @@ class UnpackSubfile(Unpacker):
     def unpack(self, subfile, binfile):
         """ unpacks the sub file, subclass must use binfile.end() """
         offset = binfile.start()
-        magic = binfile.readMagic()
+        magic = binfile.read_magic()
         if magic != subfile.MAGIC:
             raise UnpackingError(binfile, 'Magic {} does not match expected {}'.format(magic, subfile.MAGIC))
-        binfile.readLen()
+        binfile.read_len()
         subfile.version, outerOffset = binfile.read("Ii", 8)
         try:
             subfile.numSections = subfile._getNumSections()

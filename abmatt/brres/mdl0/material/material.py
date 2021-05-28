@@ -3,14 +3,12 @@
 #   Robert Nelson
 #  Structure for working with materials
 # ---------------------------------------------------------------------
-import json
 import re
-import string
 from copy import deepcopy
 
 from abmatt.autofix import AutoFix
-from abmatt.brres.lib.matching import validBool, indexListItem, validInt, validFloat, MATCHING, parse_color, it_eq
-from abmatt.brres.lib.node import Clipable
+from abmatt.lib.matching import validBool, indexListItem, validInt, validFloat, MATCHING, parse_color, it_eq
+from abmatt.lib.node import Clipable
 from abmatt.brres.mdl0.material.layer import Layer
 from abmatt.brres.mdl0.material.light import LightChannel
 from abmatt.brres.mdl0.shader import Shader

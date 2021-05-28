@@ -1,4 +1,4 @@
-from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.lib.unpack_interface import Unpacker
 from abmatt.brres.lib.unpacking.unpack_mdl0 import bp
 from abmatt.brres.mdl0.shader import Shader
 from abmatt.brres.mdl0.stage import Stage
@@ -12,7 +12,7 @@ class UnpackShader(Unpacker):
     def unpack(self, shader, binfile):
         """ Unpacks shader TEV """
         self.offset = binfile.start()
-        binfile.readLen()
+        binfile.read_len()
         outer, index, stage_count, res0, res1, res2, = binfile.read("2I4B", 12)
         layer_indices = binfile.read("8B", 8)
         # for i in range(stage_count):

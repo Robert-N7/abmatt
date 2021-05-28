@@ -1,5 +1,5 @@
-from abmatt.brres.lib.binfile import Folder
-from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.lib.binfile import Folder
+from abmatt.lib.unpack_interface import Unpacker
 from abmatt.brres.lib.unpacking.unpack_subfile import UnpackSubfile
 from abmatt.brres.shp0.shp0_animation import Shp0Animation, Shp0KeyFrameList
 
@@ -46,7 +46,7 @@ class UnpackShp0(UnpackSubfile):
         folder = Folder(binfile)
         folder.unpack(binfile)
         while len(folder):
-            anim = Shp0Animation(folder.recallEntryI(), shp0)
+            anim = Shp0Animation(folder.recall_entry_i(), shp0)
             self.UnpackSub(anim, binfile)
             shp0.animations.append(anim)
         binfile.end()

@@ -7,7 +7,7 @@ from PyQt5.QtCore import QObject, pyqtSignal, QRunnable, pyqtSlot
 from PyQt5.QtGui import QPixmap
 
 from abmatt.autofix import AutoFix
-from abmatt.brres.lib.node import ClipableObserver
+from abmatt.lib.node import ClipableObserver
 from abmatt.brres.tex0 import Tex0
 from abmatt.image_converter import ImgConverter, ImgConverterI, DecodeError
 

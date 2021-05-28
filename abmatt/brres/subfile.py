@@ -8,9 +8,9 @@ import os
 import string
 
 from abmatt.autofix import Bug, AutoFix
-from abmatt.brres.lib.binfile import BinFile
-from abmatt.brres.lib.matching import validInt, validBool
-from abmatt.brres.lib.node import Clipable, Packable
+from abmatt.lib.binfile import BinFile
+from abmatt.lib.matching import validInt, validBool
+from abmatt.lib.node import Clipable, Packable
 
 
 def set_anim_str(animation, key, value):
@@ -80,16 +80,8 @@ class SubFile(Clipable, Packable):
                 b.resolve()
                 self.parent.is_modified = True
 
-    def save(self, dest, overwrite):
-        if dest is None:
-            dest = self.name
-        ext = '.' + self.EXT
-        if not dest.endswith(ext):
-            dest += ext
-        if os.path.exists(dest) and not overwrite and not self.OVERWRITE_MODE:
-            AutoFix.error('{} already exists!'.format(dest))
-            return
-        bin = BinFile(dest, 'w')
-        self.pack(bin)
-        bin.commitWrite()
-        return dest
+    def save(self, filename=None, overwrite=None, check=True):
+        filename = filename if filename else self.name
+        if not filename.endswith(self.EXT):
+            filename += '.' + self.EXT
+        return super().save(filename, overwrite, check)

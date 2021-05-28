@@ -2,7 +2,7 @@ from copy import deepcopy
 
 from abmatt.autofix import AutoFix
 from abmatt.brres.lib.decoder import decode_geometry_group
-from abmatt.brres.lib.node import Node
+from abmatt.lib.node import Node
 
 FMT_UINT8 = 0
 FMT_INT8 = 1

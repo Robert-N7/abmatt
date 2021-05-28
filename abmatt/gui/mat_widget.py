@@ -3,7 +3,7 @@ from PyQt5.QtGui import QDrag, QPixmap, QPainter
 from PyQt5.QtWidgets import QLabel, QAction, QWidget, QVBoxLayout, QInputDialog
 
 from abmatt.autofix import AutoFix
-from abmatt.brres.lib.node import ClipableObserver
+from abmatt.lib.node import ClipableObserver
 from abmatt.gui.brres_path import BrresPath
 from abmatt.gui.image_manager import ImageObserver, ImageManager, update_image
 

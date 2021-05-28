@@ -1,4 +1,4 @@
-from abmatt.brres.lib.packing.interface import Packer
+from abmatt.lib.pack_interface import Packer
 
 
 class PackPoint(Packer):
@@ -9,21 +9,21 @@ class PackPoint(Packer):
     def pack_data(self, binfile):
         point = self.node
         binfile.align()
-        binfile.createRef()
+        binfile.create_ref()
         fmt = '{}{}'.format(point.point_width, point.format_str)
         data = point.data
         # offset = binfile.offset     #- debug
         for x in data:
             binfile.write(fmt, *x)
         # binfile.linked_offsets.extend([i for i in range(offset, binfile.offset)])   #- debug
-        binfile.alignAndEnd()
+        binfile.align_and_end()
 
     def pack(self, point, binfile):
         binfile.start()
-        binfile.markLen()
-        binfile.writeOuterOffset()
+        binfile.mark_len()
+        binfile.write_outer_offset()
         binfile.mark()
-        binfile.storeNameRef(point.name)
+        binfile.store_name_ref(point.name)
         binfile.write('3I2BH', self.index, point.comp_count, point.format, point.divisor, point.stride, point.count)
 
 

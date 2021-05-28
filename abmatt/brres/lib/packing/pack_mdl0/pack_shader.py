@@ -1,4 +1,4 @@
-from abmatt.brres.lib.packing.interface import Packer
+from abmatt.lib.pack_interface import Packer
 from abmatt.brres.lib.packing.pack_mdl0 import bp
 
 BYTESIZE = 512
@@ -77,7 +77,7 @@ class PackShader(Packer):
         """ Packs the shader """
         self.offset = binfile.start()
         binfile.write("I", BYTESIZE)
-        binfile.writeOuterOffset()
+        binfile.write_outer_offset()
         binfile.write("I4B", self.index,
                       len(shader.stages), 0, 0, 0)
         layer_indices = [0xff] * 8
@@ -92,4 +92,4 @@ class PackShader(Packer):
         bp.pack_ras1_iref(binfile, shader.ind_tex_maps, shader.ind_tex_coords)
         binfile.align()
         self.pack_stages(binfile)
-        binfile.advanceAndEnd(BYTESIZE)
+        binfile.advance_and_end(BYTESIZE)

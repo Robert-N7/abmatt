@@ -1,7 +1,6 @@
 """PAT0 Animations"""
 from copy import deepcopy
 
-from abmatt.brres.lib.node import Node
 from abmatt.brres.lib.packing.pack_pat0 import PackPat0
 from abmatt.brres.lib.unpacking.unpack_pat0 import UnpackPat0
 from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str

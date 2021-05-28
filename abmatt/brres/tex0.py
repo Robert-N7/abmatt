@@ -2,7 +2,7 @@
 from math import log
 
 from abmatt.autofix import Bug, AutoFix
-from abmatt.brres.lib.matching import parseValStr, validInt
+from abmatt.lib.matching import parseValStr, validInt
 from abmatt.brres.lib.packing.pack_tex0 import PackTex0
 from abmatt.brres.lib.unpacking.unpack_tex0 import UnpackTex0
 from abmatt.brres.subfile import SubFile

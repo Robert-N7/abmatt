@@ -1,4 +1,4 @@
-from abmatt.brres.lib.node import Node
+from abmatt.lib.node import Node
 
 
 class Fog(Node):

@@ -1,6 +1,6 @@
 import numpy as np
 
-from abmatt.brres.lib.node import Node
+from abmatt.lib.node import Node
 
 
 class Bone(Node):

@@ -1,7 +1,7 @@
 ''' Dealing with Wii graphics, the constants courtesy of Brawlbox
     https://github.com/libertyernie/brawltools
 '''
-from abmatt.brres.lib.matching import it_eq
+from abmatt.lib.matching import it_eq
 
 
 class BPCommand(object):

@@ -1,4 +1,4 @@
-from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.lib.unpack_interface import Unpacker
 from abmatt.brres.mdl0.bone import Bone
 
 
@@ -42,7 +42,7 @@ class UnpackBone(Unpacker):
 
     def unpack(self, bone, binfile):
         self.offset = binfile.start()
-        binfile.readLen()
+        binfile.read_len()
         binfile.advance(8)
         bone.index, bone.weight_id, flags, bone.billboard = binfile.read('4I', 20)
         self.__parse_flags(bone, flags)
@@ -52,6 +52,6 @@ class UnpackBone(Unpacker):
         bone.minimum = binfile.read('3f', 12)
         bone.maximum = binfile.read('3f', 12)
         self.b_parent, self.child, self.next, self.prev, bone.part2 = binfile.read('5i', 20)
-        bone.transform_matrix = binfile.readMatrix(4, 3)
-        bone.inverse_matrix = binfile.readMatrix(4, 3)
+        bone.transform_matrix = binfile.read_matrix(4, 3)
+        bone.inverse_matrix = binfile.read_matrix(4, 3)
         binfile.end()

@@ -1,8 +1,5 @@
-import string
-
-from abmatt.brres.chr0 import Chr0
-from abmatt.brres.lib.binfile import Folder
-from abmatt.brres.lib.packing.interface import Packer
+from abmatt.lib.binfile import Folder
+from abmatt.lib.pack_interface import Packer
 from abmatt.brres.lib.packing.pack_unknown import UnknownPacker
 from abmatt.brres.lib.unpacking.unpack_unknown import UnknownFolder
 from abmatt.brres.pat0.pat0 import Pat0
@@ -63,13 +60,13 @@ class PackBrres(Packer):
         return ret
 
     def recursive_add_unknown(self, parent_dir, node):
-        parent_dir.addEntry(node.name)
+        parent_dir.add_entry(node.name)
         if type(node) == UnknownFolder:
             f = Folder(self.binfile, node.name)
             node.folder = f
             for x in node.subfiles:
                 self.recursive_add_unknown(f, x)
-            return f.byteSize()
+            return f.byte_size()
         return 0
 
     def generateRoot(self, subfiles):
@@ -87,8 +84,8 @@ class PackBrres(Packer):
             if size:
                 f = Folder(self.binfile, folder_name)
                 for j in range(size):
-                    f.addEntry(folder[j].name)  # might not have name?
-                rootFolder.addEntry(f.name)
+                    f.add_entry(folder[j].name)  # might not have name?
+                rootFolder.add_entry(f.name)
                 rootFolders.append(f)
         for uk in self.node.unknown:
             self.recursive_add_unknown(rootFolder, uk)
@@ -99,17 +96,17 @@ class PackBrres(Packer):
             parent_folder.pack(self.binfile)
         for f in files:
             if type(f) == UnknownFolder:
-                parent_folder.createEntryRef(f.name)
+                parent_folder.create_entry_ref(f.name)
                 self.__pack_uk_folders_recurse(f.folder, f.subfiles, False)
 
     def packRoot(self, binfile, rt_folders):
         """ Packs the root section, returns root folders that need data ptrs"""
         binfile.start()
-        binfile.writeMagic("root")
-        binfile.markLen()
+        binfile.write_magic("root")
+        binfile.mark_len()
         self.rootFolder.pack(binfile)
         for f in rt_folders:
-            self.rootFolder.createEntryRefI()
+            self.rootFolder.create_entry_ref_i()
             f.pack(binfile)
         self.__pack_uk_folders_recurse(self.rootFolder, self.node.unknown)
         binfile.end()
@@ -131,10 +128,10 @@ class PackBrres(Packer):
         sub_files = self.pre_packing(brres)
         binfile.start()
         rt_folders = self.generateRoot(sub_files)
-        binfile.writeMagic(brres.MAGIC)
+        binfile.write_magic(brres.MAGIC)
         binfile.write("H", 0xfeff)  # BOM
         binfile.advance(2)
-        binfile.markLen()
+        binfile.mark_len()
         num_sections = self.getNumSections(rt_folders)
         binfile.write("2H", 0x10, num_sections)
         folders = self.packRoot(binfile, rt_folders)
@@ -145,19 +142,19 @@ class PackBrres(Packer):
             index_group = folders[folder_index]
             for file in file_group:
                 # binfile.section_offsets.append((binfile.offset, file.name))  # - debug
-                index_group.createEntryRefI()  # create the dataptr
+                index_group.create_entry_ref_i()  # create the dataptr
                 file.pack(binfile)
             folder_index += 1
         if brres.unknown:
             self.__recursive_pack_uk(brres.unknown, self.rootFolder)
-        binfile.packNames()
+        binfile.pack_names()
         binfile.end()
 
     def __recursive_pack_uk(self, unknown, parent_folder):
         for i in range(len(unknown)):
             x = unknown[i]
             if type(x) != UnknownFolder:
-                parent_folder.createEntryRef(x.name)
+                parent_folder.create_entry_ref(x.name)
                 UnknownPacker(x, self.binfile)
             else:
                 self.__recursive_pack_uk(x.subfiles, x.folder)

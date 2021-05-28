@@ -4,7 +4,7 @@ from copy import copy, deepcopy
 from struct import unpack_from
 
 from abmatt.brres import Brres
-from abmatt.brres.lib import matching
+from abmatt.lib import matching
 from abmatt.brres.mdl0.normal import Normal
 from abmatt.brres.mdl0.vertex import Vertex
 from abmatt.converters import DaeConverter

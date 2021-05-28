@@ -1,5 +1,6 @@
-from abmatt.brres.lib.binfile import Folder, PackingError
-from abmatt.brres.lib.packing.interface import Packer
+from abmatt.lib.binfile import Folder, PackingError
+from abmatt.lib.indexing import rebuild_indexes
+from abmatt.lib.pack_interface import Packer
 from abmatt.brres.lib.packing.pack_mdl0.pack_bone import PackBone
 from abmatt.brres.lib.packing.pack_mdl0.pack_color import PackColor
 from abmatt.brres.lib.packing.pack_mdl0.pack_material import PackMaterial
@@ -23,7 +24,7 @@ class PackMdl0(PackSubfile):
         super(PackMdl0, self).pack(mdl0, binfile)
         binfile.start()  # header
         binfile.write('I', 0x40)
-        binfile.writeOuterOffset()
+        binfile.write_outer_offset()
         # binfile.linked_offsets.extend([binfile.offset + 8, binfile.offset + 12])    #- debug
         binfile.write("7I", mdl0.scaling_rule, mdl0.texture_matrix_mode,
                       mdl0.facepoint_count, mdl0.face_count, 0, len(mdl0.bones), 0x01000000)
@@ -31,7 +32,7 @@ class PackMdl0(PackSubfile):
         if mdl0.version >= 10:
             binfile.write("6f", mdl0.minimum[0], mdl0.minimum[1], mdl0.minimum[2],
                           mdl0.maximum[0], mdl0.maximum[1], mdl0.maximum[2])
-        binfile.createRef()  # bone table
+        binfile.create_ref()  # bone table
         self.pack_bonetable(mdl0.bone_table)
         binfile.end()  # end header
         # sections
@@ -55,7 +56,7 @@ class PackMdl0(PackSubfile):
         self.pack_section(binfile, i, folders[i], PackColor)
         i += 1
         self.pack_section(binfile, i, folders[i], PackUV)
-        binfile.alignAndEnd()  # end file
+        binfile.align_and_end()  # end file
 
     def pack_bonetable(self, table):
         self.binfile.write('I', len(table))
@@ -95,14 +96,14 @@ class PackMdl0(PackSubfile):
         tex_map = {}
         links = self.sections[11]
         for x in links:
-            folder.createEntryRefI()
+            folder.create_entry_ref_i()
             tex_map[x.name] = self.PackTextureLink(x.name, binfile, x.num_refs)
         return tex_map
 
     def pack_definitions(self, binfile, folder):
         # self.binfile.section_offsets.append((binfile.offset, folder.name))    #- debug
         for x in self.sections[0]:
-            folder.createEntryRefI()
+            folder.create_entry_ref_i()
             x.pack(binfile)
         binfile.align(4)
 
@@ -113,7 +114,7 @@ class PackMdl0(PackSubfile):
         section = self.sections[8]
         for i in range(len(section)):
             mat = section[i]
-            folder.createEntryRefI()
+            folder.create_entry_ref_i()
             mat_packers[mat.name] = PackMaterial(mat, binfile, i, texture_link_map)
         for x in texture_link_map:
             if binfile.references[texture_link_map[x].offset]:
@@ -128,7 +129,7 @@ class PackMdl0(PackSubfile):
             # create index group and material refs
             for mat in shader_mats[i]:
                 name = mat.name
-                folder.createEntryRef(name)
+                folder.create_entry_ref(name)
                 mat_packers[name].create_shader_ref(binfile)
             # pack the shader
             PackShader(shaders[i], binfile, i)
@@ -141,7 +142,7 @@ class PackMdl0(PackSubfile):
             # now pack the data
             for i in range(len(section)):
                 x = section[i]
-                folder.createEntryRefI()  # create reference to current data location
+                folder.create_entry_ref_i()  # create reference to current data location
                 packer(x, binfile, i)
 
     def packFolders(self, binfile):
@@ -161,9 +162,9 @@ class PackMdl0(PackSubfile):
                 f = Folder(binfile, self.SECTION_NAMES[i])
                 for x in section:
                     assert x
-                    f.addEntry(x.name)
+                    f.add_entry(x.name)
                 root_folders.append(f)
-                binfile.createRef(j, False)  # create the ref from stored offsets
+                binfile.create_ref(j, False)  # create the ref from stored offsets
                 f.pack(binfile)
             else:
                 root_folders.append(None)  # create placeholder
@@ -222,14 +223,9 @@ class PackMdl0(PackSubfile):
                     ]
         for i in range(1, len(sections) - 1):
             if sections[i]:
-                self.rebuild_indexes(sections[i])
+                rebuild_indexes(sections[i])
         sections[0] = self.build_definitions()
         return sections
-
-    @staticmethod
-    def rebuild_indexes(group):
-        for i in range(len(group)):
-            group[i].index = i
 
     def build_definitions(self):
         mdl0 = self.node

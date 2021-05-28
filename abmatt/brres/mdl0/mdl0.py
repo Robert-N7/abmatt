@@ -1,11 +1,10 @@
 """ MDL0 Models """
 # ----------------- Model sub files --------------------------------------------
 import math
-import string
 
 from abmatt.autofix import AutoFix, Bug
-from abmatt.brres.lib.matching import fuzzy_match, MATCHING, it_eq
-from abmatt.brres.lib.node import Node, get_name_mapping
+from abmatt.lib.matching import fuzzy_match, MATCHING, it_eq
+from abmatt.lib.node import Node, get_name_mapping
 from abmatt.brres.lib.packing.pack_mdl0.pack_mdl0 import PackMdl0
 from abmatt.brres.lib.unpacking.unpack_mdl0.unpack_mdl0 import UnpackMdl0
 from abmatt.brres.mdl0.bone import Bone
@@ -26,18 +25,18 @@ class ModelGeneric(Node):
         binfile.advance(4)  # ignore, we already have name
         [self.index] = binfile.read("I", 4)
         # doesn't do much unpacking
-        self.data = binfile.readRemaining(self.length)
+        self.data = binfile.read_remaining(self.length)
         # printCollectionHex(self.data)
         binfile.end()
 
     def pack(self, binfile):
         """ Packs into binfile """
         binfile.start()
-        binfile.write("Ii", self.length, binfile.getOuterOffset())
+        binfile.write("Ii", self.length, binfile.get_outer_offset())
         binfile.write("I", self.dataPtr)
-        binfile.storeNameRef(self.name)
+        binfile.store_name_ref(self.name)
         binfile.write("I", self.index)
-        binfile.writeRemaining(self.data)
+        binfile.write_remaining(self.data)
         binfile.end()
 
 

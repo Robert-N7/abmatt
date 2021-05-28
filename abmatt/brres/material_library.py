@@ -2,7 +2,7 @@ import os
 
 from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
-from abmatt.brres.lib.node import ClipableObserver
+from abmatt.lib.node import ClipableObserver
 from abmatt.brres.mdl0 import Mdl0
 from abmatt.brres.mdl0.material.material import Material
 

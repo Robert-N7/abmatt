@@ -1,11 +1,10 @@
-import os
 import string
 
 from abmatt.autofix import AutoFix
 from abmatt.brres.chr0 import Chr0
 from abmatt.brres.clr0.clr0 import Clr0
-from abmatt.brres.lib.binfile import Folder, UnpackingError
-from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.lib.binfile import Folder, UnpackingError
+from abmatt.lib.unpack_interface import Unpacker
 from abmatt.brres.lib.unpacking.unpack_unknown import UnknownUnpacker
 from abmatt.brres.mdl0.mdl0 import Mdl0
 from abmatt.brres.pat0.pat0 import Pat0
@@ -69,16 +68,16 @@ class UnpackBrres(Unpacker):
     def unpack(self, brres, binfile):
         """ Unpacks the brres """
         self.offset = binfile.start()
-        magic = binfile.readMagic()
+        magic = binfile.read_magic()
         if magic != 'bres':
             raise UnpackingError(brres, '"{}" not a brres file'.format(brres.name))
         bom = binfile.read("H", 2)
         binfile.bom = "<" if bom == 0xfffe else ">"
         binfile.advance(2)
-        l = binfile.readLen()
+        l = binfile.read_len()
         rootoffset, numSections = binfile.read("2h", 4)
         binfile.offset = rootoffset
-        root = binfile.readMagic()
+        root = binfile.read_magic()
         assert (root == 'root')
         section_length = binfile.read("I", 4)
         root = Folder(binfile, root)
@@ -86,7 +85,7 @@ class UnpackBrres(Unpacker):
         self.section_offsets = []
         # open all the folders
         for i in range(len(root)):
-            self.unpack_folder(root.recallEntryI())
+            self.unpack_folder(root.recall_entry_i())
         self.section_offsets.append(binfile.names_offset)
         brres.unknown = self.unpack_unknown()
         binfile.end()
@@ -106,7 +105,7 @@ class UnpackBrres(Unpacker):
         subfolder.unpack(binfile)
         r = []
         for i in range(len(subfolder)):
-            name = subfolder.recallEntryI()
+            name = subfolder.recall_entry_i()
             self.section_offsets.append(binfile.offset)
             r.append(klass(name, self.node, binfile))
         return r

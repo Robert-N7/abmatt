@@ -3,8 +3,9 @@ import sys
 import numpy as np
 
 from abmatt.brres import Brres
-from abmatt.brres.lib.binfile import BinFile
+from abmatt.lib.binfile import BinFile
 from tests import lib
+from tests.lib import MatEqual
 
 
 def printCollectionHex(collection):
@@ -151,7 +152,7 @@ def compare_two_brres(brres1, brres2):
     for i in range(len(brres1.models)):
         mdl1 = brres1.models[i]
         mdl2 = brres2.models[i]
-        lib.AbmattTest._test_mats_equal(mdl1.materials, mdl2.materials)
+        MatEqual._test_mats_equal(mdl1.materials, mdl2.materials)
         lib.CheckPositions.model_equal(mdl1, mdl2)
 
 

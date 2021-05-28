@@ -1,5 +1,5 @@
 from abmatt.autofix import AutoFix
-from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.lib.unpack_interface import Unpacker
 from abmatt.brres.mdl0 import point
 from abmatt.brres.mdl0.normal import Normal
 from abmatt.brres.mdl0.texcoord import TexCoord
@@ -16,7 +16,7 @@ class UnpackPoint(Unpacker):
 
     def unpack(self, pt, binfile):
         start = binfile.start()
-        l = binfile.readLen()
+        l = binfile.read_len()
         binfile.advance(4)
         binfile.store()
         binfile.advance(4)
@@ -48,7 +48,7 @@ class UnpackPoint(Unpacker):
         data = []
         for i in range(point.count):
             data.append(binfile.read(fmt, stride))
-        binfile.alignAndEnd()
+        binfile.align_and_end()
         point.data = data
 
 

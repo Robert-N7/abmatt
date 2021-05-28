@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QAction, QFileDialog, QVB
 
 from abmatt.autofix import AutoFix
 from abmatt.brres.brres import Brres
-from abmatt.brres.lib.node import ClipableObserver
+from abmatt.lib.node import ClipableObserver
 from abmatt.command import Command
 from abmatt.converters.convert_dae import DaeConverter
 from abmatt.converters.convert_obj import ObjConverter
@@ -407,7 +407,7 @@ class Window(QMainWindow, ClipableObserver):
         for x in self.open_files:
             if x.is_modified:
                 files_to_save.append(x)
-        if Brres.OVERWRITE:
+        if Brres.overwrite:
             for x in files_to_save:
                 x.close()
         elif files_to_save:

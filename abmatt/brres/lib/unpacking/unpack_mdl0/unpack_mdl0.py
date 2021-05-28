@@ -1,7 +1,7 @@
 from copy import deepcopy
 
-from abmatt.brres.lib.binfile import Folder, UnpackingError
-from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.lib.binfile import Folder, UnpackingError
+from abmatt.lib.unpack_interface import Unpacker
 from abmatt.brres.lib.unpacking.unpack_mdl0.unpack_bone import UnpackBone, unpack_bonetable
 from abmatt.brres.lib.unpacking.unpack_mdl0.unpack_color import UnpackColor
 from abmatt.brres.lib.unpacking.unpack_mdl0.unpack_material import UnpackMaterial
@@ -18,7 +18,7 @@ class UnpackMdl0(UnpackSubfile):
         """ unpacks model data """
         super().unpack(mdl0, binfile)
         offset = binfile.start()  # Header
-        ln = binfile.readLen()
+        ln = binfile.read_len()
         fh, mdl0.scaling_rule, mdl0.texture_matrix_mode, mdl0.facepoint_count, \
         mdl0.face_count, _, mdl0.boneCount, _ = binfile.read("i7I", 32)
         binfile.store()  # bone table offset
@@ -28,7 +28,7 @@ class UnpackMdl0(UnpackSubfile):
         else:
             mdl0.find_min_max = True
         binfile.end()  # end header
-        binfile.recallOffset(offset)
+        binfile.recall_offset(offset)
         mdl0.bone_table = unpack_bonetable(binfile, 'i')
         # unpack sections
         self.definitions = self.unpackSection(binfile, self.UnpackDefinition, 'Definitions', return_nodes=False)
@@ -126,7 +126,7 @@ class UnpackMdl0(UnpackSubfile):
             folder = Folder(binfile, name)
             folder.unpack(binfile)
             while len(folder.entries):
-                name = folder.recallEntryI()
+                name = folder.recall_entry_i()
                 k = section_klass(name, self.node, binfile=binfile)
                 group.append(k) if not return_nodes else group.append(k.node)
         return group
@@ -138,7 +138,7 @@ class UnpackMdl0(UnpackSubfile):
             folder = Folder(binfile, 'Shaders')
             folder.unpack(binfile)
             while len(folder.entries):
-                name = folder.recallEntryI()
+                name = folder.recall_entry_i()
                 offset = binfile.offset
                 if offset in shader_offset_map:
                     continue

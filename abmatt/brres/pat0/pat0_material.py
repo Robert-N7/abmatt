@@ -1,9 +1,8 @@
-import string
 from copy import deepcopy
 
 from abmatt.autofix import Bug, AutoFix
-from abmatt.brres.lib.matching import validBool, validInt, splitKeyVal, validFloat, fuzzy_strings
-from abmatt.brres.lib.node import Clipable
+from abmatt.lib.matching import validBool, validInt, splitKeyVal, validFloat, fuzzy_strings
+from abmatt.lib.node import Clipable
 
 
 class Pat0MatAnimation(Clipable):

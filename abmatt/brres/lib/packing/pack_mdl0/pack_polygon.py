@@ -1,4 +1,4 @@
-from abmatt.brres.lib.packing.interface import Packer
+from abmatt.lib.pack_interface import Packer
 from abmatt.brres.lib.packing.pack_mdl0 import xf
 
 
@@ -12,8 +12,8 @@ class PackPolygon(Packer):
     def pack(self, poly, binfile):
         start = binfile.start()
         # binfile.polygon_offsets.append((start, poly.name))   #- debug
-        binfile.markLen()
-        binfile.writeOuterOffset()
+        binfile.mark_len()
+        binfile.write_outer_offset()
         hi, lo = self.get_cp_vertex_format()
         xf_specs = self.get_xf_vertex_specs()
         binfile.write('i3I', self.get_bone_weight_id(poly.linked_bone), lo, hi, xf_specs)
@@ -24,7 +24,7 @@ class PackPolygon(Packer):
         binfile.write('3I', data_len, data_len, 0)
         vt_offset = binfile.offset - 4
         binfile.write('2I', self.get_xf_array_flags(), poly.flags)
-        binfile.storeNameRef(poly.name)
+        binfile.store_name_ref(poly.name)
         # binfile.linked_offsets.extend([binfile.offset + 4, binfile.offset + 8])     #- debug
         binfile.write('3I2h', self.index, poly.facepoint_count, poly.face_count,
                       self.get_item_id(poly.get_vertex_group()), self.get_item_id(poly.get_normal_group()))
@@ -35,7 +35,7 @@ class PackPolygon(Packer):
             binfile.write('2h', -1, -1)  # Fur vector/coord
         binfile.mark()
         # bone table
-        binfile.createRef()
+        binfile.create_ref()
         l = len(poly.bone_table) if poly.bone_table else 0
         binfile.write('I', l)
         if l:
@@ -44,7 +44,7 @@ class PackPolygon(Packer):
         # vertex declaration
         dec_ref = binfile.offset - vt_dec_offset + 8
         end_dec = binfile.offset + 0xe0
-        binfile.writeOffset('I', vt_dec_offset, dec_ref)
+        binfile.write_offset('I', vt_dec_offset, dec_ref)
         binfile.advance(10)
         binfile.write('HIHI', 0x0850, lo, 0x0860, hi)
         xf.pack_vt_specs(binfile, xf_specs)
@@ -56,11 +56,11 @@ class PackPolygon(Packer):
         binfile.advance(end_dec - binfile.offset)
         # vertex data
         vt_ref = binfile.offset - vt_offset + 8
-        binfile.writeOffset('I', vt_offset, vt_ref)
+        binfile.write_offset('I', vt_offset, vt_ref)
         #- debug    Allows us to ignore differences in construction of triangles
         # binfile.linked_offsets.extend([i for i in range(binfile.offset, binfile.offset + len(poly.data))])
         #- end debug
-        binfile.writeRemaining(poly.data)
+        binfile.write_remaining(poly.data)
         binfile.end()
 
     def get_cp_vertex_format(self):

@@ -4,7 +4,7 @@ import subprocess
 import uuid
 
 from abmatt.autofix import AutoFix, Bug
-from abmatt.brres.lib.binfile import BinFile
+from abmatt.lib.binfile import BinFile
 from abmatt.brres.tex0 import Tex0
 
 
@@ -293,7 +293,7 @@ class ImgConverter:
             tmp = self.get_temp_dest()
             f = BinFile(tmp, 'w')
             tex0.pack(f)
-            f.commitWrite()
+            f.commit_write()
             if num_mips == 0:
                 mips = '--no-mipmaps'
             elif num_mips == -1:
@@ -334,7 +334,7 @@ class ImgConverter:
             if not files:  # our work is already done!
                 return files
             for x in files:
-                x.commitWrite()
+                x.commit_write()
             args = [self.converter, '--no-mipmaps', '-qo', 'decode']
             args.extend(base_names)
             result = subprocess.call(args, cwd=tmp_dir, startupinfo=self.si)
@@ -356,7 +356,7 @@ class ImgConverter:
             tmp = self.get_temp_dest()
             f = BinFile(tmp, 'w')
             tex0.pack(f)
-            f.commitWrite()
+            f.commit_write()
             result = subprocess.call([self.converter, 'encode', tmp, '-oq', '-x', tex_format], startupinfo=self.si)
             if result:
                 os.remove(tmp)

@@ -2,7 +2,7 @@
 
 from abmatt.autofix import AutoFix, Bug
 from abmatt.brres.lib import decoder
-from abmatt.brres.lib.node import Clipable
+from abmatt.lib.node import Clipable
 
 INDEX_FORMAT_NONE = 0
 INDEX_FORMAT_DIRECT = 1

@@ -5,7 +5,7 @@ import numpy as np
 
 from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
-from abmatt.brres.lib.matching import fuzzy_match
+from abmatt.lib.matching import fuzzy_match
 from abmatt.brres.material_library import MaterialLibrary
 from abmatt.brres.mdl0.material import material
 from abmatt.brres.mdl0.mdl0 import Mdl0

@@ -1,7 +1,7 @@
 import struct
 
-from abmatt.brres.lib.binfile import Folder, UnpackingError
-from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.lib.binfile import Folder, UnpackingError
+from abmatt.lib.unpack_interface import Unpacker
 
 
 class UnknownFile:
@@ -33,7 +33,7 @@ class UnknownUnpacker(Unpacker):
     def check_for_folder(self, binfile):
         """Detect if its a folder by reading the first entry"""
         try:
-            id, u, left, right, name, dataptr = binfile.readOffset('4H2I', binfile.offset + 8)
+            id, u, left, right, name, dataptr = binfile.read_offset('4H2I', binfile.offset + 8)
             return id == 0xffff and u == 0 and name == 0 and dataptr == 0
         except struct.error:
             return False
@@ -62,7 +62,7 @@ class UnknownUnpacker(Unpacker):
             folder.unpack(binfile)
             entries = []
             for i in range(len(folder)):
-                entries.append((folder.recallEntryI(), binfile.offset))
+                entries.append((folder.recall_entry_i(), binfile.offset))
                 self.boundary_offsets.append(binfile.offset)
             entries = sorted(entries, key=lambda x: x[1])
             nodes = []

@@ -2,7 +2,7 @@ from copy import deepcopy
 
 from abmatt.autofix import AutoFix
 from abmatt.brres.lib.decoder import ColorDecoder
-from abmatt.brres.lib.node import Node
+from abmatt.lib.node import Node
 
 # Constants
 FMT_RGB565 = 0

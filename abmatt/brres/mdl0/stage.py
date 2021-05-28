@@ -1,7 +1,7 @@
 # Constants
 from abmatt.autofix import AutoFix
-from abmatt.brres.lib.matching import validBool, validInt, indexListItem, validFloat
-from abmatt.brres.lib.node import Clipable
+from abmatt.lib.matching import validBool, validInt, indexListItem, validFloat
+from abmatt.lib.node import Clipable
 
 RASTER_LIGHT0 = 0
 RASTER_LIGHT1 = 1

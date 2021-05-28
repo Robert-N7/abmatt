@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from abmatt.brres.lib.matching import validFloat, splitKeyVal
+from abmatt.lib.matching import validFloat, splitKeyVal
 
 
 class KeyFrameList:

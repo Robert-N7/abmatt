@@ -2,7 +2,7 @@ import unittest
 
 from abmatt.brres.mdl0.material.material import Material
 from abmatt.converters.convert_mats_to_json import MatsToJsonConverter
-from tests.lib import TestBeginner
+from tests.lib import TestBeginner, MatEqual
 
 
 class TestConvertMatToJson(TestBeginner):
@@ -15,8 +15,8 @@ class TestConvertMatToJson(TestBeginner):
         importer = MatsToJsonConverter(temp)
         mats = importer.load()
         importer.load_into(updated)
-        self.assertTrue(self._test_mats_equal(materials, updated))
-        self.assertTrue(self._test_mats_equal(materials, mats))
+        self.assertTrue(MatEqual._test_mats_equal(materials, updated))
+        self.assertTrue(MatEqual._test_mats_equal(materials, mats))
 
 
 if __name__ == '__main__':

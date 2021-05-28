@@ -1,4 +1,4 @@
-from abmatt.brres.lib.packing.interface import Packer
+from abmatt.lib.pack_interface import Packer
 
 
 def pack_ras1_ss(binfile, data, index):

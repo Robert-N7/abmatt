@@ -1,4 +1,4 @@
-from abmatt.brres.lib.packing.interface import Packer
+from abmatt.lib.pack_interface import Packer
 
 
 class PackColor(Packer):
@@ -8,14 +8,14 @@ class PackColor(Packer):
 
     def pack(self, color, binfile):
         binfile.start()
-        binfile.markLen()
-        binfile.writeOuterOffset()
+        binfile.mark_len()
+        binfile.write_outer_offset()
         binfile.mark()
-        binfile.storeNameRef(color.name)
+        binfile.store_name_ref(color.name)
         binfile.write('3I2BH', self.index, color.has_alpha, color.format, color.stride, color.flags, color.count)
         binfile.align()
-        binfile.createRef()
+        binfile.create_ref()
         # offset = binfile.offset  #- debug
-        binfile.writeRemaining(color.data)
+        binfile.write_remaining(color.data)
         # binfile.linked_offsets.extend(i for i in range(offset, binfile.offset, 4))     #- debug
-        binfile.alignAndEnd()
+        binfile.align_and_end()

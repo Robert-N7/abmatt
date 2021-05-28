@@ -1,7 +1,7 @@
 from copy import deepcopy
 
-from abmatt.brres.lib.binfile import Folder
-from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.lib.binfile import Folder
+from abmatt.lib.unpack_interface import Unpacker
 from abmatt.brres.lib.unpacking.unpack_key_frames import unpack_key_frames
 from abmatt.brres.lib.unpacking.unpack_subfile import UnpackSubfile
 from abmatt.brres.srt0.srt0_animation import SRTMatAnim, SRTTexAnim
@@ -125,7 +125,7 @@ class UnpackSrt0(UnpackSubfile):
         folder = Folder(binfile, "srt0root")
         folder.unpack(binfile)
         while True:
-            e = folder.openI()
+            e = folder.open_i()
             if not e:
                 break
             mat = SRTMatAnim(e, srt0.framecount, parent=srt0)

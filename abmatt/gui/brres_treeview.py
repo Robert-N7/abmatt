@@ -5,7 +5,7 @@ from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtWidgets import QTreeView, QMenu, QAction, QInputDialog
 
 from abmatt.autofix import AutoFix
-from abmatt.brres.lib.node import ClipableObserver
+from abmatt.lib.node import ClipableObserver
 
 
 class BrresTreeView(QTreeView):

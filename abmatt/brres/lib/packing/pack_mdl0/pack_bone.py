@@ -1,4 +1,4 @@
-from abmatt.brres.lib.packing.interface import Packer
+from abmatt.lib.pack_interface import Packer
 
 
 class PackBone(Packer):
@@ -16,12 +16,12 @@ class PackBone(Packer):
         bone.offset = binfile.start()
         # take care of marked references
         if bone.prev:
-            binfile.createRefFrom(bone.prev.offset, 1)
+            binfile.create_ref_from(bone.prev.offset, 1)
         elif bone.b_parent:     # first child
-            binfile.createRefFrom(bone.b_parent.offset, 0, False)
-        binfile.markLen()
-        binfile.writeOuterOffset()
-        binfile.storeNameRef(bone.name)
+            binfile.create_ref_from(bone.b_parent.offset, 0, False)
+        binfile.mark_len()
+        binfile.write_outer_offset()
+        binfile.store_name_ref(bone.name)
         binfile.write('5I', self.index, bone.weight_id, self.__get_flags(bone), bone.billboard, 0)
         binfile.write('3f', *bone.scale)
         binfile.write('3f', *bone.rotation)
@@ -32,6 +32,6 @@ class PackBone(Packer):
         binfile.mark(2)     # mark child and next
         binfile.write('i', bone.prev.offset - bone.offset) if bone.prev else binfile.advance(4)
         binfile.write('i', bone.part2)
-        binfile.writeMatrix(bone.transform_matrix)
-        binfile.writeMatrix(bone.inverse_matrix)
+        binfile.write_matrix(bone.transform_matrix)
+        binfile.write_matrix(bone.inverse_matrix)
         binfile.end()

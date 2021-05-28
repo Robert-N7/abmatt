@@ -1,11 +1,11 @@
-from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.lib.unpack_interface import Unpacker
 from abmatt.brres.lib.unpacking.unpack_subfile import UnpackSubfile
 from abmatt.brres.scn0 import light, fog, camera
 
 
 def unpack_header(binfile):
     binfile.start()
-    binfile.readLen()
+    binfile.read_len()
     binfile.advance(4)  # ignore outer offset
     name = binfile.unpack_name()
     node_id, real_id = binfile.read('2I', 8)

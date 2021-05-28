@@ -7,8 +7,8 @@ from cmd import Cmd
 
 from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
-from abmatt.brres.lib.binfile import UnpackingError, PackingError
-from abmatt.brres.lib.matching import validInt, MATCHING
+from abmatt.lib.binfile import UnpackingError, PackingError
+from abmatt.lib.matching import validInt, MATCHING
 from abmatt.brres.mdl0.material.layer import Layer
 from abmatt.brres.mdl0.material.material import Material
 from abmatt.brres.mdl0.mdl0 import Mdl0

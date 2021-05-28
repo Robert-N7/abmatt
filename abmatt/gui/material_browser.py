@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QWidget, QGridLayout, QScrollArea, QVBoxLayout, QLab
 
 from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
-from abmatt.brres.lib.node import ClipableObserver
+from abmatt.lib.node import ClipableObserver
 from abmatt.brres.material_library import MaterialLibrary
 from abmatt.brres.mdl0.material.material import Material
 from abmatt.gui.brres_path import BrresPath, get_material_by_url

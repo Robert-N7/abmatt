@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QStackedLayout, QComboBox, QLa
     QSpinBox, QHBoxLayout, QPushButton, QFileDialog, QAction
 
 from abmatt.autofix import AutoFix
-from abmatt.brres.lib.node import ClipableObserver
+from abmatt.lib.node import ClipableObserver
 from abmatt.brres.tex0 import Tex0
 from abmatt.gui.image_manager import ImageObserver, update_image, ImageManager
 from abmatt.image_converter import ImgConverter, EncodeError

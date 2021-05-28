@@ -3,7 +3,7 @@ import os
 from abmatt.brres import Brres
 from abmatt.command import load_preset_file
 from abmatt.converters.convert_dae import DaeConverter
-from tests.lib import AbmattTest, CheckPositions
+from tests.lib import AbmattTest, CheckPositions, MatEqual
 
 
 class DaeConverterTest(AbmattTest):
@@ -27,7 +27,8 @@ class DaeConverterTest(AbmattTest):
         dae_file = self._get_test_fname('beginner.dae')
         converter = DaeConverter(Brres(self._get_tmp('.brres'), read_file=False), dae_file)
         converter.load_model()
-        self._test_mats_equal(converter.brres.models[0].materials, brres.models[0].materials)
+        MatEqual._test_mats_equal(converter.brres.models[0].materials,
+                               brres.models[0].materials)
 
     def test_convert_multi_material_geometry(self):
         """Tests converting dae file that has multiple materials associated with geometry"""

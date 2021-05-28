@@ -1,4 +1,4 @@
-from abmatt.brres.lib.node import Node
+from abmatt.lib.node import Node
 
 
 def get_definition(name, parent, binfile=None):

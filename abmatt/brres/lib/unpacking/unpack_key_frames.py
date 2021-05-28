@@ -1,4 +1,4 @@
-from abmatt.brres.lib.binfile import UnpackingError
+from abmatt.lib.binfile import UnpackingError
 
 
 def unpack_key_frames(key_frame_list, binfile, from_in_place=True, format=None):

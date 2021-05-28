@@ -1,5 +1,5 @@
-from abmatt.brres.lib.binfile import UnpackingError
-from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.lib.binfile import UnpackingError
+from abmatt.lib.unpack_interface import Unpacker
 from abmatt.brres.lib.unpacking.unpack_mdl0.unpack_bone import unpack_bonetable
 from abmatt.brres.mdl0 import polygon as ply
 from abmatt.autofix import AutoFix
@@ -14,7 +14,7 @@ class UnpackPolygon(Unpacker):
 
     def unpack(self, polygon, binfile):
         binfile.start()
-        binfile.readLen()
+        binfile.read_len()
         mdl0_offset, self.bone_id, cp_vert_lo, cp_vert_hi, xf_vert = binfile.read('2i3I', 20)
         offset = binfile.offset
         vt_dec_size, vt_dec_actual, vt_dec_offset = binfile.read('3I', 12)
@@ -51,7 +51,7 @@ class UnpackPolygon(Unpacker):
         # self.uvat = uvat
         self.parse_uvat(polygon, uvat[1], uvat[3], uvat[5])
         binfile.offset = vt_offset
-        polygon.data = binfile.readRemaining()
+        polygon.data = binfile.read_remaining()
         # print('\n\n{}\tfacecount:{} data length:{} '.format(self.name, self.face_count, len(self.vt_data)))
         # if self.face_count < 30:
         #     printCollectionHex(self.vt_data)

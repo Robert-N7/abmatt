@@ -1,6 +1,6 @@
 from abmatt.brres.clr0.clr0_animation import Clr0Animation
-from abmatt.brres.lib.binfile import Folder
-from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.lib.binfile import Folder
+from abmatt.lib.unpack_interface import Unpacker
 from abmatt.brres.lib.unpacking.unpack_subfile import UnpackSubfile
 
 
@@ -48,7 +48,7 @@ class UnpackClr0(UnpackSubfile):
         folder = Folder(binfile)
         folder.unpack(binfile)
         while len(folder):
-            anim = Clr0Animation(folder.recallEntryI(), clr0)
+            anim = Clr0Animation(folder.recall_entry_i(), clr0)
             self.UnpackSub(anim, binfile)
             clr0.animations.append(anim)
         binfile.end()

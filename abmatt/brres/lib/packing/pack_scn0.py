@@ -1,14 +1,14 @@
 from abmatt.autofix import AutoFix
-from abmatt.brres.lib.binfile import Folder
-from abmatt.brres.lib.packing.interface import Packer
+from abmatt.lib.binfile import Folder
+from abmatt.lib.pack_interface import Packer
 from abmatt.brres.lib.packing.pack_subfile import PackSubfile
 
 
 def pack_header(binfile, name, node_id, real_id):
     binfile.start()
-    binfile.markLen()
-    binfile.writeOuterOffset()
-    binfile.storeNameRef(name)
+    binfile.mark_len()
+    binfile.write_outer_offset()
+    binfile.store_name_ref(name)
     binfile.write('2I', node_id, real_id)
 
 
@@ -36,14 +36,14 @@ class PackScn0(PackSubfile):
     class PackLightSet(Packer):
         def pack(self, lightset, binfile):
             pack_header(binfile, lightset.name, lightset.node_id, lightset.real_id)
-            binfile.storeNameRef(lightset.ambient_name)
+            binfile.store_name_ref(lightset.ambient_name)
             filler = 0xffff
             binfile.write('H', filler)
             binfile.write('B', len(lightset.light_names))
             binfile.advance(1)
             binfile.start()
             for x in lightset.light_names:
-                binfile.storeNameRef(x)
+                binfile.store_name_ref(x)
             binfile.end()
             binfile.advance((8 - len(lightset.light_names)) * 4)
             for i in range(8):
@@ -70,28 +70,28 @@ class PackScn0(PackSubfile):
             binfile.end()
 
     def pack_root(self, scn0, binfile, packing_items):
-        binfile.createRef()  # section root
+        binfile.create_ref()  # section root
         root = Folder(binfile)
         index_groups = []
         for i in range(5):
             if packing_items[i]:
-                root.addEntry(scn0.FOLDERS[i])
+                root.add_entry(scn0.FOLDERS[i])
                 f = Folder(binfile, scn0.FOLDERS[i])
                 index_groups.append(f)
                 for item in packing_items[i]:
-                    f.addEntry(item.name)
+                    f.add_entry(item.name)
         root.pack(binfile)
         for x in index_groups:
-            root.createEntryRefI()
+            root.create_entry_ref_i()
             x.pack(binfile)  # doesn't create data pointers
         return index_groups
 
     def pack_group(self, group, folders, packer_klass, parent_offset_index):
         if len(group):
-            self.binfile.createRef(parent_offset_index, False)  # create section header offset
+            self.binfile.create_ref(parent_offset_index, False)  # create section header offset
             folder = folders.pop(0)
             for x in group:
-                folder.createEntryRefI()
+                folder.create_entry_ref_i()
                 packer_klass(x, self.binfile)
 
     def pack(self, scn0, binfile):

@@ -1,6 +1,4 @@
-import json
-
-from abmatt.brres.lib.matching import splitKeyVal, validBool, parse_color, indexListItem, it_eq
+from abmatt.lib.matching import splitKeyVal, validBool, parse_color, indexListItem, it_eq
 
 
 class LightChannel:

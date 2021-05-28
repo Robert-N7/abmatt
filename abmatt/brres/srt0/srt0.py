@@ -1,8 +1,7 @@
 #!/usr/bin/python
 """ Srt0 Brres subfile """
-import string
 
-from abmatt.brres.lib.node import Clipable, Node
+from abmatt.lib.node import Clipable
 # ---------------------------------------------------------
 from abmatt.brres.lib.packing.pack_srt0 import PackSrt0
 from abmatt.brres.lib.unpacking.unpack_srt0 import UnpackSrt0

@@ -1,10 +1,9 @@
-import string
 from copy import deepcopy, copy
 
 from abmatt.autofix import Bug, AutoFix
 from abmatt.brres.key_frame_list import KeyFrameList
-from abmatt.brres.lib.matching import splitKeyVal, validInt, validBool, MATCHING, parseValStr
-from abmatt.brres.lib.node import Clipable
+from abmatt.lib.matching import splitKeyVal, validInt, validBool, MATCHING, parseValStr
+from abmatt.lib.node import Clipable
 
 
 class SRTTexAnim(Clipable):

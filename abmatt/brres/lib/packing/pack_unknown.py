@@ -1,5 +1,4 @@
-from abmatt.brres.lib.binfile import Folder
-from abmatt.brres.lib.packing.interface import Packer
+from abmatt.lib.pack_interface import Packer
 
 
 class UnknownPacker(Packer):

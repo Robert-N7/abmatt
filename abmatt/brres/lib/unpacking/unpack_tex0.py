@@ -7,5 +7,5 @@ class UnpackTex0(UnpackSubfile):
         _, subfile.width, subfile.height, subfile.format, \
             subfile.num_images, _, subfile.num_mips, _ = binfile.read('I2H3IfI', 0x1c)
         binfile.recall()
-        subfile.data = binfile.readRemaining()
+        subfile.data = binfile.read_remaining()
         binfile.end()

@@ -2,7 +2,7 @@
 from copy import copy
 
 from abmatt.brres.key_frame_list import KeyFrameList
-from abmatt.brres.lib.node import Node
+from abmatt.lib.node import Node
 from abmatt.brres.lib.packing.pack_chr0 import PackChr0
 from abmatt.brres.lib.unpacking.unpack_chr0 import UnpackChr0
 from abmatt.brres.subfile import SubFile, set_anim_str, get_anim_str

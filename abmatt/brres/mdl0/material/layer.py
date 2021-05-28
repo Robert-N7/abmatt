@@ -2,8 +2,8 @@
 from copy import copy
 
 from abmatt.autofix import Bug, AutoFix
-from abmatt.brres.lib.matching import parseValStr, indexListItem, validBool, fuzzy_strings, it_eq
-from abmatt.brres.lib.node import Clipable
+from abmatt.lib.matching import parseValStr, indexListItem, validBool, fuzzy_strings, it_eq
+from abmatt.lib.node import Clipable
 
 
 class Layer(Clipable):

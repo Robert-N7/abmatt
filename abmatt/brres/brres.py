@@ -6,9 +6,9 @@ import os
 import string
 
 from abmatt.autofix import AutoFix, Bug
-from abmatt.brres.lib.binfile import BinFile
-from abmatt.brres.lib.matching import MATCHING
-from abmatt.brres.lib.node import Clipable, Packable
+from abmatt.lib.binfile import BinFile
+from abmatt.lib.matching import MATCHING
+from abmatt.lib.node import Clipable, Packable
 from abmatt.brres.lib.packing.pack_brres import PackBrres
 from abmatt.brres.lib.unpacking.unpack_brres import UnpackBrres
 from abmatt.brres.mdl0.material.material import Material
@@ -19,7 +19,6 @@ from abmatt.image_converter import ImgConverter
 class Brres(Clipable, Packable):
     SETTINGS = ('name',)
     MAGIC = 'bres'
-    OVERWRITE = False
     DESTINATION = None
     OPEN_FILES = []  # reference to active files
     REMOVE_UNUSED_TEXTURES = False
@@ -164,27 +163,11 @@ class Brres(Clipable, Packable):
         except ValueError:
             pass
         if try_save and self.is_modified or self.DESTINATION and self.DESTINATION != self.name:
-            return self.save(self.DESTINATION, self.OVERWRITE)
+            return self.save(self.DESTINATION, self.overwrite)
 
     def save(self, filename=None, overwrite=None, check=True):
-        if not filename:
-            filename = self.name
-        if overwrite is None:
-            overwrite = self.OVERWRITE
-        if not overwrite and os.path.exists(filename):
-            AutoFix.error('File {} already exists!'.format(filename), 1)
-        else:
-            if check:
-                self.check()
-            f = BinFile(filename, mode="w")
-            self.pack(f)
-            if f.commitWrite():
-                AutoFix.info("Wrote file '{}'".format(filename), 2)
-                self.rename(filename)
-                self.has_new_model = False
-                self.mark_unmodified()
-                return True
-        return False
+        if super().save(filename, overwrite, check):
+            self.has_new_model = False
 
     def get_trace(self):
         if self.parent:

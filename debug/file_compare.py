@@ -11,23 +11,23 @@ def setup_ignored(ignored_offsets, start):
     return ret
 
 
-def main(argv):
-    if not len(argv) > 1:
-        print("Usage: file_compare.py file1 file2")
-    print('Comparing "{}" and "{}"'.format(argv[0], argv[1]))
-    start = argv[2:4] if len(argv) > 2 else (0, 0)
-    max_length = argv[4] if len(argv) > 4 else 0x7FFFFFFF
-    with open(argv[0], 'rb') as f1:
+def file_compare(file1, file2, start1=0, start2=0, compare_len=-1,
+                 ignored_offsets=[],
+                 max_err=10):
+    max_length = compare_len if compare_len > 0 else 0x7FFFFFFF
+    with open(file1, 'rb') as f1:
         f1_data = f1.read()
-    with open(argv[1], 'rb') as f2:
+    with open(file2, 'rb') as f2:
         f2_data = f2.read()
-    if start:
-        f1_data = f1_data[start[0]:]
-        f2_data = f2_data[start[1]:]
-    ignore_offsets = setup_ignored(argv[5], start[0]) if len(argv) > 5 else []
-    max_errs = argv[6] if len(argv) > 6 else 20
+    if start1 or start2:
+        f1_data = f1_data[start1:]
+        f2_data = f2_data[start2:]
+    ignore_offsets = setup_ignored(ignored_offsets, start1) if \
+        ignored_offsets else ignored_offsets
+    max_errs = max_err
     if len(f1_data) != len(f2_data):
-        print('Mismatched file lengths: {}, {}'.format(start[0] + len(f1_data), start[1] + len(f2_data)))
+        print('Mismatched file lengths: {}, {}'.format(start1 + len(f1_data),
+                                                       start2 + len(f2_data)))
     m = min(len(f1_data), len(f2_data), max_length)
     mismatch_file2_offsets = []
     for i in range(m):
@@ -37,7 +37,10 @@ def main(argv):
             if len(mismatch_file2_offsets) >= max_errs:
                 print('{} errors reached!'.format(max_err))
                 break
-    print('Target mismatch offsets:\n {}'.format(mismatch_file2_offsets))
+    if mismatch_file2_offsets:
+        print('Differences in "{}" and "{}"'.format(file1, file2))
+        print('Target mismatch offsets:\n {}'.format(mismatch_file2_offsets))
+    return len(mismatch_file2_offsets) == 0
     # if len(f1_data) > len(f2_data):
     #     print('Extra on {}: {}'.format(argv[0], f1_data[len(f2_data):]))
     # elif len(f2_data) > len(f1_data):
@@ -57,4 +60,5 @@ if __name__ == "__main__":
     compare_length = 41000000
     max_err = 10
     ignore_offsets = []
-    main((file1, file2, compare_start0, compare_start1, compare_length, ignore_offsets, max_err))
+    file_compare(file1, file2, compare_start0, compare_start1, compare_length,
+                 ignore_offsets, max_err)

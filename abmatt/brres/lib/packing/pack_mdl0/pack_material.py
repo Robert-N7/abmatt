@@ -1,4 +1,4 @@
-from abmatt.brres.lib.packing.interface import Packer
+from abmatt.lib.pack_interface import Packer
 from abmatt.brres.lib.packing.pack_mdl0 import bp, xf
 
 
@@ -18,7 +18,7 @@ class PackLayer:
     def pack(self, binfile):
         layer = self.layer
         binfile.start()
-        binfile.storeNameRef(layer.name)
+        binfile.store_name_ref(layer.name)
         binfile.advance(12)  # ignoring pallete name / offsets
         binfile.write("6IfI2BH", self.index, self.index,
                       layer.uwrap, layer.vwrap, layer.minfilter, layer.magfilter,
@@ -61,7 +61,7 @@ class PackLayer:
 
 class PackMaterial(Packer):
     def create_shader_ref(self, binfile):
-        binfile.createRefFrom(self.offset)
+        binfile.create_ref_from(self.offset)
 
     class PackLightChannel(Packer):
         def flagsToInt(self, lc):
@@ -99,9 +99,9 @@ class PackMaterial(Packer):
     def pack(self, material, binfile):
         """ Packs the material """
         self.offset = binfile.start()
-        binfile.markLen()
-        binfile.writeOuterOffset()
-        binfile.storeNameRef(material.name)
+        binfile.mark_len()
+        binfile.write_outer_offset()
+        binfile.store_name_ref(material.name)
         binfile.write("2I4BI3b", self.index, material.xlu << 31, len(material.layers), len(material.lightChannels),
                       material.shaderStages, material.indirectStages, material.cullmode,
                       material.compareBeforeTexture, material.lightset, material.fogset)
@@ -145,18 +145,18 @@ class PackMaterial(Packer):
                 self.PackLightChannel(channels[i], binfile)
             else:
                 self.PackLightChannel.pack_default(binfile)
-        binfile.createRef(1)
+        binfile.create_ref(1)
         for l in layers:
             # Write Texture linker offsets
             start_offset = self.texture_link_map[l.layer.name].offset
             tex_link_offsets = binfile.references[start_offset]
-            binfile.writeOffset('i', tex_link_offsets.pop(0), self.offset - start_offset)  # material offset
-            binfile.writeOffset('i', tex_link_offsets.pop(0), binfile.offset - start_offset)  # layer offset
+            binfile.write_offset('i', tex_link_offsets.pop(0), self.offset - start_offset)  # material offset
+            binfile.write_offset('i', tex_link_offsets.pop(0), binfile.offset - start_offset)  # layer offset
             l.pack(binfile)
 
-        binfile.alignToParent()
+        binfile.align_to_parent()
         # binfile.section_offsets.append((binfile.offset, material.name + '-matGX'))  #- debug
-        binfile.createRef(1)
+        binfile.create_ref(1)
         binfile.start()  # MatGX section
         self.pack_mat_gx(binfile)
         offset = binfile.offset

@@ -1,5 +1,5 @@
-from abmatt.brres.lib.binfile import UnpackingError
-from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.lib.binfile import UnpackingError
+from abmatt.lib.unpack_interface import Unpacker
 from abmatt.brres.lib.unpacking.unpack_mdl0 import bp, xf
 from abmatt.brres.mdl0.material.layer import Layer
 from abmatt.brres.mdl0.material.light import LightChannel
@@ -20,7 +20,7 @@ class UnpackLayer(Unpacker):
         texDataID, palleteDataID, layer.uwrap, layer.vwrap, \
         layer.minfilter, layer.magfilter, layer.lod_bias, layer.max_anisotrophy, \
         layer.clamp_bias, layer.texel_interpolate, pad = binfile.read("6IfI2BH", 0x24)
-        transforms = binfile.readOffset("5f", self.scaleOffset)
+        transforms = binfile.read_offset("5f", self.scaleOffset)
         layer.scale = transforms[0:2]
         layer.rotation = transforms[2]
         layer.translation = transforms[3:]
@@ -132,7 +132,7 @@ class UnpackMaterial(Unpacker):
         """ Unpacks material """
         self.offset = binfile.start()
         # print('Material {} offset {}'.format(self.name, offset))
-        binfile.readLen()
+        binfile.read_len()
         binfile.advance(8)
         material.index, xluFlags, ntexgens, nlights, \
         material.shaderStages, material.indirectStages, \

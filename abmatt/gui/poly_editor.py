@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QCheckBox, QLabel, QGridLayout, \
     QFrame
 
-from abmatt.brres.lib.node import ClipableObserver
+from abmatt.lib.node import ClipableObserver
 from abmatt.gui.brres_path import BrresPath
 from abmatt.gui.mat_widget import MaterialWidget, MatWidgetHandler
 from abmatt.gui.material_editor import MaterialContainer

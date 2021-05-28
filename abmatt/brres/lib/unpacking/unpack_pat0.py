@@ -1,6 +1,6 @@
 from abmatt.autofix import AutoFix
-from abmatt.brres.lib.binfile import Folder
-from abmatt.brres.lib.unpacking.interface import Unpacker
+from abmatt.lib.binfile import Folder
+from abmatt.lib.unpack_interface import Unpacker
 from abmatt.brres.lib.unpacking.unpack_subfile import UnpackSubfile
 from abmatt.brres.pat0.pat0_material import Pat0MatAnimation
 
@@ -58,7 +58,7 @@ class UnpackPat0(UnpackSubfile):
         folder.unpack(binfile)
         unpacked = []
         while len(folder):
-            name = folder.recallEntryI()
+            name = folder.recall_entry_i()
             anim = Pat0MatAnimation(name, pat0, pat0.framecount, pat0.loop)
             unpacked.append(UnpackPat0Animation(anim, binfile))
             pat0.mat_anims.append(anim)

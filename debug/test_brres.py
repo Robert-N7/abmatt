@@ -7,24 +7,13 @@ from abmatt.converters.convert_dae import DaeConverter
 from abmatt.converters.convert_obj import ObjConverter
 from abmatt import load_config
 from debug.analyze import gather_files, get_project_root
-from tests.lib import CheckPositions, node_eq
+from tests.lib import CheckPositions, node_eq, AbmattTest
 
 
-class TestBrres(unittest.TestCase):
-    @classmethod
+class TestBrres(AbmattTest):
+
     def setUpClass(cls):
-        cls.root = get_project_root()
         AutoFix.set_loudness('0')
-
-    def tearDown(self):
-        try:
-            os.remove(self.tmp)
-        except (AttributeError, FileNotFoundError):
-            pass
-
-    def _get_tmp(self, ext='.brres'):
-        self.tmp = os.path.join(self.root, 'tmp' + ext)
-        return self.tmp
 
     def test_save_all(self):
         tmp = self._get_tmp()
@@ -47,9 +36,11 @@ class TestBrres(unittest.TestCase):
                 converter = DaeConverter(Brres(x), tmp)
                 for model in converter.brres.models:
                     converter.save_model(model)
-                    importer = DaeConverter(Brres(tmp_brres, read_file=False), tmp)
+                    importer = DaeConverter(Brres(tmp_brres, read_file=False),
+                                            tmp)
                     importer.load_model()
-                    self.assertTrue(node_eq(model.materials, importer.mdl0.materials))
+                    self.assertTrue(
+                        node_eq(model.materials, importer.mdl0.materials))
             except:
                 print(f'ERROR converting {x}')
                 raise
@@ -86,6 +77,7 @@ class TestBrres(unittest.TestCase):
             except:
                 print(f'ERROR importing {x}')
                 raise
+
 
 if __name__ == '__main__':
     unittest.main()

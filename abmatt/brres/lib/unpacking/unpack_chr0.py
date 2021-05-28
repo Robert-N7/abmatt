@@ -1,8 +1,6 @@
-from copy import deepcopy
-
-from abmatt.brres.lib.binfile import Folder, printCollectionHex
-from abmatt.brres.lib.unpacking.interface import Unpacker
-from abmatt.brres.lib.unpacking.unpack_key_frames import unpack_key_frames, unpack_frame_lists
+from abmatt.lib.binfile import Folder
+from abmatt.lib.unpack_interface import Unpacker
+from abmatt.brres.lib.unpacking.unpack_key_frames import unpack_frame_lists
 from abmatt.brres.lib.unpacking.unpack_subfile import UnpackSubfile
 
 
@@ -13,9 +11,9 @@ class UnpackChr0(UnpackSubfile):
         binfile.recall()  # section 0 (animation data)
         f = Folder(binfile)
         f.unpack(binfile)
-        chr0.data = binfile.readRemaining()
+        chr0.data = binfile.read_remaining()
         while len(f):
-            name = f.recallEntryI()
+            name = f.recall_entry_i()
             bone_anim = chr0.BoneAnimation(name, self.node, binfile, chr0.framecount, chr0.loop)
             bone_anim.offset = binfile.offset - binfile.beginOffset
             # UnpackChr0BoneAnim(bone_anim, binfile)

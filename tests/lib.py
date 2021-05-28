@@ -5,12 +5,11 @@ import numpy as np
 
 from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
-from abmatt.brres.lib import matching
-from abmatt.brres.lib.matching import it_eq
+from abmatt.lib import matching
+from abmatt.lib.matching import it_eq
 from abmatt.brres.mdl0 import Mdl0
 from abmatt.brres.mdl0.material.material import Material
 from abmatt.brres.mdl0.polygon import Polygon
-from abmatt.brres.mdl0.shader import Shader
 
 
 def get_base_path():
@@ -30,23 +29,30 @@ class AbmattTest(unittest.TestCase):
     def setUpClass(cls):
         AutoFix.set_loudness('2')
 
-    @classmethod
-    def tearDown(cls):
-        AutoFix.quit()
-
     @staticmethod
     def _get_brres_fname(filename):
         return os.path.join(AbmattTest.base_path, 'brres_files', filename)
 
     @staticmethod
     def _get_test_fname(filename):
-        return os.path.join(AbmattTest.base_path, 'test_files', filename)
+        test_path = os.path.join(AbmattTest.base_path, 'test_files', filename)
+        if not os.path.exists(test_path):
+            path = os.path.join(AbmattTest.base_path, 'tracks', filename)
+            if os.path.exists(path):
+                return path
+        return test_path
 
-    @staticmethod
-    def _get_tmp(extension, remove_if_exists=True):
+    def tearDown(self):
+        try:
+            os.remove(self.tmp)
+        except (AttributeError, FileNotFoundError):
+            pass
+
+    def _get_tmp(self, extension, remove_if_exists=True):
         if not extension.startswith('.'):
             extension = '.' + extension
-        f = os.path.join(AbmattTest.base_path, 'test_files', 'tmp' + extension)
+        self.tmp = f = os.path.join(AbmattTest.base_path, 'test_files', 'tmp' +
+                                    extension)
         if remove_if_exists and os.path.exists(f):
             os.remove(f)
         return f
@@ -55,6 +61,8 @@ class AbmattTest(unittest.TestCase):
     def _get_brres(filename):
         return Brres(AbmattTest._get_brres_fname(filename))
 
+
+class MatEqual:
     @staticmethod
     def _test_mats_equal(materials, updated):
         """A more in depth test for material equality"""
@@ -91,7 +99,8 @@ class AbmattTest(unittest.TestCase):
                     print('Indirect matrices different')
                 if not it_eq(my_mat.colors, updated_mat.colors):
                     print('Shader colors different')
-                if not it_eq(my_mat.constant_colors, updated_mat.constant_colors):
+                if not it_eq(my_mat.constant_colors,
+                             updated_mat.constant_colors):
                     print('Shader constant colors different')
                 if my_mat.ras1_ss != updated_mat.ras1_ss:
                     print('Ras1_ss different')
@@ -102,8 +111,11 @@ class AbmattTest(unittest.TestCase):
                 else:
                     for j in range(len(my_layers)):
                         if my_layers[j] != updated_layers[j]:
-                            print('Layer ' + my_layers[j].name + ' different from updated ' + updated_layers[j].name)
-                            if my_layers[j].minfilter != updated_layers[j].minfilter:
+                            print('Layer ' + my_layers[
+                                j].name + ' different from updated ' +
+                                  updated_layers[j].name)
+                            if my_layers[j].minfilter != updated_layers[
+                                j].minfilter:
                                 print('Minfilter different')
         return not err
 
@@ -129,14 +141,19 @@ class CheckPositions:
             vertices2 = [vertices2]
         mismatched_len = False
         if len(vertices1) != len(vertices2):
-            print('{} Groups are different lengths! {}, {}'.format(group_type, len(vertices1), len(vertices2)))
+            print('{} Groups are different lengths! {}, {}'.format(group_type,
+                                                                   len(
+                                                                       vertices1),
+                                                                   len(
+                                                                       vertices2)))
             mismatched_len = True
         if len(vertices1) == 0:
             return vertices1, vertices2, mismatched_len
         # Try to sort by name
         v1 = sorted(vertices1, key=lambda x: x.name)
         v2 = sorted(vertices2, key=lambda x: x.name)
-        if not matching.fuzzy_match(v1[0].name, v2):  # no match! try matching shapes
+        if not matching.fuzzy_match(v1[0].name,
+                                    v2):  # no match! try matching shapes
             # print('Groups dont have matching names!')
             v1 = sorted(vertices1, key=lambda x: x.count)
             v2 = sorted(vertices2, key=lambda x: x.count)
@@ -151,35 +168,49 @@ class CheckPositions:
                 colr1 = c1[i]
                 colr2 = c2[i]
                 if colr1.format != colr2.format:
-                    print('Colors {}, {} have mismatching formats'.format(colr1.name, colr2.name))
+                    print('Colors {}, {} have mismatching formats'.format(
+                        colr1.name, colr2.name))
                 decoded_c1 = colr1.get_decoded()
                 decoded_c2 = colr2.get_decoded()
                 if len(decoded_c1) != len(decoded_c2):
-                    print('Colors {}, {} dont have matching lengths!'.format(colr1.name, colr2.name))
+                    print('Colors {}, {} dont have matching lengths!'.format(
+                        colr1.name, colr2.name))
                 if len(decoded_c1) != colr1.count:
-                    print('Color {} length does not match count!'.format(colr1.name))
+                    print('Color {} length does not match count!'.format(
+                        colr1.name))
                 if len(decoded_c2) != colr2.count:
-                    print('Color {} length does not match count!'.format(colr2.name))
+                    print('Color {} length does not match count!'.format(
+                        colr2.name))
                 current_err = False
                 for j in range(min(len(decoded_c2), len(decoded_c1))):
-                    if not np.isclose(decoded_c1[j], decoded_c2[j], rtol, atol).all():
-                        print('Colors mismatch at {}, Expected {} found {}'.format(j, decoded_c1[j], decoded_c2[j]))
+                    if not np.isclose(decoded_c1[j], decoded_c2[j], rtol,
+                                      atol).all():
+                        print(
+                            'Colors mismatch at {}, Expected {} found {}'.format(
+                                j, decoded_c1[j], decoded_c2[j]))
                         current_err = err = True
                 if current_err:
-                    print('Colors {}, {} mismatch'.format(colr1.name, colr2.name))
+                    print(
+                        'Colors {}, {} mismatch'.format(colr1.name, colr2.name))
         return not err
 
     @staticmethod
     def model_equal(mdl1, mdl2, rtol=1.e-2, atol=1.e-3):
         return CheckPositions.bones_equal(mdl1.bones, mdl2.bones, rtol, atol) \
-               and CheckPositions.positions_equal(mdl1.vertices, mdl2.vertices, rtol, atol) \
-               and CheckPositions.positions_equal(mdl1.uvs, mdl2.uvs, rtol, atol) \
-               and CheckPositions.positions_equal(mdl1.normals, mdl2.normals, rtol, atol) \
-               and CheckPositions.colors_equal(mdl1.colors, mdl2.colors, rtol, atol)
+               and CheckPositions.positions_equal(mdl1.vertices, mdl2.vertices,
+                                                  rtol, atol) \
+               and CheckPositions.positions_equal(mdl1.uvs, mdl2.uvs, rtol,
+                                                  atol) \
+               and CheckPositions.positions_equal(mdl1.normals, mdl2.normals,
+                                                  rtol, atol) \
+               and CheckPositions.colors_equal(mdl1.colors, mdl2.colors, rtol,
+                                               atol)
 
     @staticmethod
     def bones_equal(bone_list1, bone_list2, rtol=1.e-2, atol=1.e-3):
-        bone_list1, bone_list2, err = CheckPositions.__pre_process(bone_list1, bone_list2, 'bones')
+        bone_list1, bone_list2, err = CheckPositions.__pre_process(bone_list1,
+                                                                   bone_list2,
+                                                                   'bones')
         if not err:
             for i in range(len(bone_list1)):
                 b1 = bone_list1[i]
@@ -187,34 +218,47 @@ class CheckPositions:
                 m1 = b1.get_transform_matrix()
                 m2 = b2.get_transform_matrix()
                 if not np.isclose(m1, m2, rtol, atol).all():
-                    print('Bone have different matrices {}\n{}\n{}\n{}\n'.format(b1.name, m1, b2.name, m2))
+                    print(
+                        'Bone have different matrices {}\n{}\n{}\n{}\n'.format(
+                            b1.name, m1, b2.name, m2))
                     err = True
-                srt1 = [b1.scale, [x % 360 for x in b1.rotation], b1.translation]
-                srt2 = [b2.scale, [x % 360 for x in b1.rotation], b2.translation]
+                srt1 = [b1.scale, [x % 360 for x in b1.rotation],
+                        b1.translation]
+                srt2 = [b2.scale, [x % 360 for x in b1.rotation],
+                        b2.translation]
                 if not np.isclose(srt1, srt2, rtol, atol).all():
-                    print('Bone have different srt {}\n{}\n{}\n{}\n'.format(b1.name, srt1, b2.name, srt2))
+                    print('Bone have different srt {}\n{}\n{}\n{}\n'.format(
+                        b1.name, srt1, b2.name, srt2))
                     err = True
                 if b1.b_parent or b2.b_parent:
                     if b1.b_parent.name != b2.b_parent.name:
-                        print('Bones {}, {} have different parents {}, {}'.format(b1.name, b2.name,
-                                                                                  b1.b_parent.name, b2.b_parent.name))
+                        print(
+                            'Bones {}, {} have different parents {}, {}'.format(
+                                b1.name, b2.name,
+                                b1.b_parent.name, b2.b_parent.name))
                         err = True
         return not err
 
     @staticmethod
     def positions_equal(vertices1, vertices2, rtol=1.e-2, atol=1.e-3):
         """Checks if the vertices are the same"""
-        vertices1, vertices2, err = CheckPositions.__pre_process(vertices1, vertices2, 'points')
+        vertices1, vertices2, err = CheckPositions.__pre_process(vertices1,
+                                                                 vertices2,
+                                                                 'points')
         if not err:
             # Check each vertex group
             for k in range(len(vertices1)):
-                points1 = np.array(sorted(vertices1[k].get_decoded(), key=lambda x: tuple(np.around(x, 2))))
-                points2 = np.array(sorted(vertices2[k].get_decoded(), key=lambda x: tuple(np.around(x, 2))))
+                points1 = np.array(sorted(vertices1[k].get_decoded(),
+                                          key=lambda x: tuple(np.around(x, 2))))
+                points2 = np.array(sorted(vertices2[k].get_decoded(),
+                                          key=lambda x: tuple(np.around(x, 2))))
                 if points1.shape != points2.shape:
-                    print('points {} and {} have different shapes {} and {}'.format(vertices1[k].name,
-                                                                                    vertices2[k].name,
-                                                                                    points1.shape,
-                                                                                    points2.shape))
+                    print(
+                        'points {} and {} have different shapes {} and {}'.format(
+                            vertices1[k].name,
+                            vertices2[k].name,
+                            points1.shape,
+                            points2.shape))
                     err = True
                     continue
                 if not len(points1):
@@ -222,10 +266,13 @@ class CheckPositions:
                 current_err = False
                 for i in range(len(points1)):
                     if not np.isclose(points1[i], points2[i], rtol, atol).all():
-                        print('Points mismatch at {} Expected {}, found {} '.format(i, points1[i], points2[i]))
+                        print(
+                            'Points mismatch at {} Expected {}, found {} '.format(
+                                i, points1[i], points2[i]))
                         current_err = err = True
                 if current_err:
-                    print('{} and {} mismatch'.format(vertices1[k].name, vertices2[k].name))
+                    print('{} and {} mismatch'.format(vertices1[k].name,
+                                                      vertices2[k].name))
         return not err
 
 
@@ -241,7 +288,8 @@ class CheckAttr:
 
 class CheckNodeEq:
 
-    def __init__(self, node, other, check_attr=[], trace=True, parent_node=None):
+    def __init__(self, node, other, check_attr=[], trace=True,
+                 parent_node=None):
         self.node = node
         self.other = other
         self.result = it_eq(node, other)
@@ -265,8 +313,11 @@ class CheckNodeEq:
         if self.result:
             self.err_message = 'Items equal, errors found'
             return None, None
-        my_trace = str(self.node) if not my_trace else my_trace + '->' + str(self.node)
-        other_trace = str(self.other) if not other_trace else other_trace + '->' + str(self.other)
+        my_trace = str(self.node) if not my_trace else my_trace + '->' + str(
+            self.node)
+        other_trace = str(
+            self.other) if not other_trace else other_trace + '->' + str(
+            self.other)
         if self.check_attr:
             for check in self.check_attr:
                 if type(check) == str:
@@ -283,7 +334,8 @@ class CheckNodeEq:
                     mine_sub, their_sub = CheckNodeEq(mine, theirs,
                                                       check.sub_check_attr,
                                                       False,
-                                                      self.parent_node).trace(my_trace, other_trace)
+                                                      self.parent_node).trace(
+                        my_trace, other_trace)
                     if mine_sub or their_sub:
                         return mine_sub, their_sub
                 else:  # iterable?
@@ -295,18 +347,22 @@ class CheckNodeEq:
                             if key not in theirs:
                                 self.parent_node.err_message = f'{check.attr} missing item {key} in theirs!'
                                 break
-                            mine_sub, their_sub = CheckNodeEq(mine[key], theirs[key],
+                            mine_sub, their_sub = CheckNodeEq(mine[key],
+                                                              theirs[key],
                                                               check.sub_check_attr,
                                                               False,
-                                                              self.parent_node).trace(my_trace, other_trace)
+                                                              self.parent_node).trace(
+                                my_trace, other_trace)
                             if mine_sub or their_sub:
                                 return mine_sub, their_sub
                     else:
                         for i in range(len(mine)):
-                            mine_sub, their_sub = CheckNodeEq(mine[i], theirs[i],
+                            mine_sub, their_sub = CheckNodeEq(mine[i],
+                                                              theirs[i],
                                                               check.sub_check_attr,
                                                               False,
-                                                              self.parent_node).trace(my_trace, other_trace)
+                                                              self.parent_node).trace(
+                                my_trace, other_trace)
                             if mine_sub or their_sub:
                                 return mine_sub, their_sub
             self.parent_node.attr = None
@@ -319,9 +375,12 @@ class CheckNodeEq:
 class CheckMaterialAttr(CheckAttr):
     class CheckLayerAttr(CheckAttr):
         def __init__(self):
-            sub_attrs = ['enable', 'scale', 'rotation', 'translation', 'scn0_light_ref', 'scn0_camera_ref',
-                         'map_mode', 'vwrap', 'uwrap', 'minfilter', 'magfilter', 'lod_bias', 'max_anisotrophy',
-                         'texel_interpolate', 'clamp_bias', 'normalize', 'projection', 'inputform', 'type',
+            sub_attrs = ['enable', 'scale', 'rotation', 'translation',
+                         'scn0_light_ref', 'scn0_camera_ref',
+                         'map_mode', 'vwrap', 'uwrap', 'minfilter', 'magfilter',
+                         'lod_bias', 'max_anisotrophy',
+                         'texel_interpolate', 'clamp_bias', 'normalize',
+                         'projection', 'inputform', 'type',
                          'coordinates', 'emboss_source', 'emboss_light']
             super().__init__('layers', sub_attrs)
 
@@ -341,24 +400,38 @@ class CheckMaterialAttr(CheckAttr):
 
     class CheckStageAttr(CheckAttr):
         def __init__(self):
-            sub_attrs = ['map_id', 'coord_id', 'texture_swap_sel', 'raster_color', 'raster_swap_sel',
-                         'constant', 'sel_a', 'sel_b', 'sel_c', 'sel_d', 'bias', 'oper', 'clamp', 'scale', 'dest',
-                         'constant_a', 'sel_a_a', 'sel_b_a', 'sel_c_a', 'sel_d_a',
+            sub_attrs = ['map_id', 'coord_id', 'texture_swap_sel',
+                         'raster_color', 'raster_swap_sel',
+                         'constant', 'sel_a', 'sel_b', 'sel_c', 'sel_d', 'bias',
+                         'oper', 'clamp', 'scale', 'dest',
+                         'constant_a', 'sel_a_a', 'sel_b_a', 'sel_c_a',
+                         'sel_d_a',
                          'bias_a', 'oper_a', 'clamp_a', 'scale_a', 'dest_a',
-                         'ind_stage', 'ind_format', 'ind_alpha', 'ind_bias', 'ind_matrix',
-                         'ind_s_wrap', 'ind_t_wrap', 'ind_use_prev', 'ind_unmodify_lod']
+                         'ind_stage', 'ind_format', 'ind_alpha', 'ind_bias',
+                         'ind_matrix',
+                         'ind_s_wrap', 'ind_t_wrap', 'ind_use_prev',
+                         'ind_unmodify_lod']
             super().__init__('stages', sub_attrs)
 
     def __init__(self):
-        sub_attrs = [self.CheckShaderAttr(), self.CheckLayerAttr(), self.CheckPat0Attr(), self.CheckSrt0Attr(),
+        sub_attrs = [self.CheckShaderAttr(), self.CheckLayerAttr(),
+                     self.CheckPat0Attr(), self.CheckSrt0Attr(),
                      CheckAttr('colors'), CheckAttr('constant_colors'),
                      CheckAttr('indirect_matrices'), CheckAttr('lightChannels'),
-                     CheckAttr('blend_dest'), CheckAttr('blend_source'), CheckAttr('blend_logic'),
-                     CheckAttr('blend_subtract'), CheckAttr('blend_update_alpha'), CheckAttr('blend_update_color'),
-                     CheckAttr('blend_dither'), CheckAttr('blend_logic_enabled'), CheckAttr('blend_enabled'),
-                     CheckAttr('depth_function'), CheckAttr('depth_update'), CheckAttr('depth_test'),
-                     CheckAttr('logic'), CheckAttr('comp1'), CheckAttr('comp0'), CheckAttr('ref1'), CheckAttr('ref0'),
-                     CheckAttr('constant_alpha_enabled'), CheckAttr('constant_alpha'),
+                     CheckAttr('blend_dest'), CheckAttr('blend_source'),
+                     CheckAttr('blend_logic'),
+                     CheckAttr('blend_subtract'),
+                     CheckAttr('blend_update_alpha'),
+                     CheckAttr('blend_update_color'),
+                     CheckAttr('blend_dither'),
+                     CheckAttr('blend_logic_enabled'),
+                     CheckAttr('blend_enabled'),
+                     CheckAttr('depth_function'), CheckAttr('depth_update'),
+                     CheckAttr('depth_test'),
+                     CheckAttr('logic'), CheckAttr('comp1'), CheckAttr('comp0'),
+                     CheckAttr('ref1'), CheckAttr('ref0'),
+                     CheckAttr('constant_alpha_enabled'),
+                     CheckAttr('constant_alpha'),
                      CheckAttr('indirect_matrices')]
         super().__init__('material', sub_attrs)
 
@@ -377,7 +450,8 @@ class CheckModelsAttr(CheckAttr):
 
 class CheckBrresAttr(CheckAttr):
     def __init__(self):
-        sub_attrs = [CheckModelsAttr(), CheckTextureMap(), CheckAttr('unused_pat0'),
+        sub_attrs = [CheckModelsAttr(), CheckTextureMap(),
+                     CheckAttr('unused_pat0'),
                      CheckAttr('unused_srt0'),
                      CheckAttr('chr0'),
                      CheckAttr('scn0'),

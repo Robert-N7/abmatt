@@ -1,5 +1,5 @@
-from abmatt.brres.lib.binfile import Folder
-from abmatt.brres.lib.packing.interface import Packer
+from abmatt.lib.binfile import Folder
+from abmatt.lib.pack_interface import Packer
 from abmatt.brres.lib.packing.pack_subfile import PackSubfile
 from abmatt.brres.srt0.srt0_animation import SRTTexAnim
 
@@ -123,19 +123,19 @@ class PackSrt0Material(Packer):
                         if frame_lists_offsets[x] == test_list:  # move the offset to create the reference and move back
                             tmp = binfile.offset
                             binfile.offset = x
-                            binfile.createRefFromStored(0, True, self.offset)
+                            binfile.create_ref_from_stored(0, True, self.offset)
                             binfile.offset = tmp
                             found = True
                             break
                     if not found:
                         frame_lists_offsets[binfile.offset] = test_list
-                        binfile.createRefFromStored(0, True, self.offset)
+                        binfile.create_ref_from_stored(0, True, self.offset)
                         self.pack_key_frame_list(binfile, test_list, frame_scale)
 
     def pack(self, srt0, binfile):
         """ Packs the material srt entry """
         self.offset = binfile.start()
-        binfile.storeNameRef(srt0.name)
+        binfile.store_name_ref(srt0.name)
         # parse enabled
         i = count = 0
         bit = 1
@@ -148,7 +148,7 @@ class PackSrt0Material(Packer):
         binfile.mark(count)
         animations = srt0.tex_animations
         for tex in animations:
-            binfile.createRef()
+            binfile.create_ref()
             p = PackSrt0Tex(tex, binfile)
             self.has_key_frames.append(p.has_offsets)
         binfile.end()
@@ -161,15 +161,15 @@ class PackSrt0(PackSubfile):
         super().pack(srt0, binfile)
         binfile.write("I2H2I", 0, srt0.framecount, len(srt0.matAnimations),
                       srt0.matrixmode, srt0.loop)
-        binfile.createRef()  # create ref to section 0
+        binfile.create_ref()  # create ref to section 0
         # create index group
         folder = Folder(binfile, "srt0root")
         for x in srt0.matAnimations:
-            folder.addEntry(x.name)
+            folder.add_entry(x.name)
         folder.pack(binfile)
         packers = []
         for x in srt0.matAnimations:
-            folder.createEntryRefI()
+            folder.create_entry_ref_i()
             packers.append(PackSrt0Material(x, binfile))
         # Now for key frames
         key_frame_lists = {}  # map of offsets to frame lists
