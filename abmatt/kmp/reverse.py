@@ -1,7 +1,7 @@
 import sys
 
 from abmatt.kmp.base import ConnectedPointCollection
-from abmatt.kmp.checkpoint import CheckPoint
+from abmatt.kmp.checkpoint import CheckPoint, CheckPointGroup
 from abmatt.kmp.kmp import Kmp
 
 
@@ -9,8 +9,9 @@ def reverse_kmp(kmp):
     """Reverses kmp (EXPERIMENTAL, this only gives a starting place)"""
     if type(kmp) == str:
         kmp = Kmp(kmp)
-    for route in [kmp.routes, kmp.check_points, kmp.item_routes, kmp.cpu_routes]:
-        reverse_route(route)
+    for routes in [kmp.routes, kmp.check_points, kmp.item_routes, kmp.cpu_routes]:
+        for route in routes:
+            reverse_route(route)
     reorder_key_checkpoints(kmp.check_points)
     rotate_group(kmp.respawns)
     rotate_group(kmp.start_positions)
@@ -19,7 +20,7 @@ def reverse_kmp(kmp):
 
 def rotate_group(group):
     for item in group:
-        item.rotation = item.rotation + 180 % 360
+        item.rotation[1] = item.rotation[1] + 180 % 360
 
 
 def reorder_key_checkpoints(checkpoints):
@@ -28,22 +29,27 @@ def reorder_key_checkpoints(checkpoints):
         for x in group:
             if x.key != 0xff:
                 if x.key in key_points:
-                    raise ValueError(f'Duplicate checkpoint key {x.key}')
-                key_points[x.key] = x
+                    key_points[x.key].append(x)
+                else:
+                    key_points[x.key] = [x]
 
     key_sorted = sorted(list(key_points.keys()), reverse=True)
+    start_line = key_points[key_sorted[-1]]
+    assert start_line and start_line[0].key == 0
     for i in range(len(key_sorted)):
-        key_points[key_sorted[i]].key = i + 1
-    key_points[-1].key = 0
+        for key_point in key_points[key_sorted[i]]:
+            key_point.key = i + 1
+    for item in start_line:
+        item.key = 0
 
 
 def reverse_route(route):
     route.points.reverse()
-    if issubclass(route, ConnectedPointCollection):
+    if issubclass(type(route), ConnectedPointCollection):
         t = route.prev_groups
         route.prev_groups = route.next_groups
         route.next_groups = t
-        if type(route) is CheckPoint:
+        if type(route) is CheckPointGroup:
             for check in route:
                 t = check.next
                 check.next = check.previous
@@ -54,8 +60,29 @@ def reverse_route(route):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 3:
-        print('Usage: reverse <kmp_file> <destination>')
+    usage = 'Usage: reverse <kmp_file> [<destination>] -o'
+    if len(sys.argv) < 1:
+        print(usage)
         sys.exit(-1)
-    reversed = reverse_kmp(Kmp(sys.argv[1]))
-    reversed.save(sys.argv[2])
+    file = destination = overwrite = None
+    err = False
+    for arg in sys.argv[1:]:
+        if arg in ('-o', '--overwrite'):
+            overwrite = True
+        elif not file:
+            file = arg
+        elif not destination:
+            destination = arg
+        else:
+            print(f'Extra argument {arg}')
+            err = True
+    if not file:
+        print(f'Kmp file required!')
+        err = True
+    if not destination:
+        destination = file
+    if err:
+        print(usage)
+        sys.exit(-1)
+    reversed = reverse_kmp(Kmp(file))
+    reversed.save(destination, overwrite)

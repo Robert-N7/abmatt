@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 
 from abmatt.brres import Brres
 from abmatt.command import load_preset_file
@@ -6,7 +7,7 @@ from abmatt.converters.convert_dae import DaeConverter
 from tests.lib import AbmattTest, CheckPositions, MatEqual
 
 
-class DaeConverterTest(AbmattTest):
+class DaeConverterTest(AbmattTest, MatEqual):
     # ------------------------------------------------------
     # region load_model
     def test_convert_to_correct_position(self):

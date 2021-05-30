@@ -64,8 +64,11 @@ class AbmattTest(unittest.TestCase):
 
 class MatEqual:
     @staticmethod
-    def _test_mats_equal(materials, updated):
+    def _test_mats_equal(materials, updated, sort=False):
         """A more in depth test for material equality"""
+        if sort:
+            materials = sorted(materials, key=lambda x: x.name)
+            updated = sorted(materials, key=lambda x: x.name)
         err = False
         if len(materials) != len(updated):
             print('Lengths different')
