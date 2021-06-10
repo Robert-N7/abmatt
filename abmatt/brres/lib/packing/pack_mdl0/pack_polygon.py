@@ -65,7 +65,7 @@ class PackPolygon(Packer):
 
     def get_cp_vertex_format(self):
         poly = self.node
-        lo = poly.has_weighted_matrix()
+        lo = poly.has_weights()
         for i in range(8):
             lo |= poly.has_uv_matrix(i) << i + 1
 
@@ -156,7 +156,7 @@ class PackPolygon(Packer):
                 flag |= bit
             bit <<= 1
         flag <<= 9
-        flag |= poly.has_weighted_matrix()
+        flag |= poly.has_weights()
         for i in range(8):
             flag |= poly.has_uv_matrix(i) << i + 1
         return flag

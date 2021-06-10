@@ -1,4 +1,5 @@
 """Objects (Polygons)"""
+from copy import deepcopy
 
 from abmatt.autofix import AutoFix, Bug
 from abmatt.brres.lib import decoder
@@ -21,8 +22,69 @@ class Polygon(Clipable):
     def get_str(self, key):
         raise NotImplementedError()
 
-    def paste(self, item):
-        raise NotImplementedError()
+    def paste(self, other):
+        parent = self.parent
+        self.tex_e = other.tex_e
+        i = parent.bones.index(other.visible_bone)
+        if i < 0:
+            b = deepcopy(other.visible_bone)
+            parent.add_bone(b)
+        else:
+            b = parent.bones[i]
+        self.visible_bone = b
+        i = parent.bones.index(other.linked_bone)
+        if i < 0:
+            b = deepcopy(other.linked_bone)
+            parent.add_bone(b)
+        else:
+            b = parent.bones[i]
+        self.linked_bone = b
+        parent.update_polygon_material(self, self.material, other.material)
+        self.decoded = None
+        self.priority = other.priority
+        self.vertex_index = other.vertex_index
+        self.normal_index = other.normal_index
+        self.color0_index = other.color0_index
+        self.color1_index = other.color1_index
+        self.uv_indices = deepcopy(other.uv_indices)
+        self.weight_index = other.weight_index
+        self.uv_mtx_indices = deepcopy(other.uv_mtx_indices)
+        parent.vertices.remove(self.vertices)
+        self.vertices = deepcopy(other.vertices)
+        parent.vertices.append(self.vertices)
+        self.facepoint_count = other.facepoint_count
+        self.face_count = other.face_count
+        for c in self.colors:
+            if c:
+                found = False
+                for poly in parent.objects:
+                    if c in poly.colors:
+                        found = True
+                        break
+                if not found:
+                    parent.colors.remove(c)
+        self.colors = deepcopy(other.colors)
+        for c in self.colors:
+            parent.colors.append(c)
+        self.color_count = other.color_count
+        parent.normals.remove(self.normals)
+        self.normals = deepcopy(other.normals)
+        parent.normals.append(self.normals)
+        self.encode_str = other.encode_str
+        for uv in self.uvs:
+            parent.uvs.remove(uv)
+        self.uvs = deepcopy(other.uvs)
+        for uv in self.uvs:
+            parent.uvs.append(uv)
+        self.uv_count = other.uv_count
+        self.data = deepcopy(other.data)
+        self.flags = deepcopy(other.flags)
+        self.bone_table = deepcopy(other.bone_table)
+        self.fur_vector = other.fur_vector
+        self.fur_coord = other.fur_coord
+        self.vertex_e = other.vertex_e
+        self.normal_index3 = other.normal_index3
+        self.color0_e = other.color0_e
 
     def __init__(self, name, parent, binfile=None):
         self.tex_e = [1] * 8
@@ -44,6 +106,9 @@ class Polygon(Clipable):
                and self.vertex_e == other.vertex_e and self.normal_index3 == other.normal_index3 \
                and self.color0_e == other.color0_e and self.normal_e == other.normal_e \
                and self.priority == other.priority and self.material == other.material and self.data == other.data
+
+    def __hash__(self):
+        return super().__hash__()
 
     def begin(self):
         # The face point indices, also indexes into the encode string
@@ -228,7 +293,7 @@ class Polygon(Clipable):
     def has_uv_group(self, i):
         return self.uvs[i] is not None
 
-    def has_weighted_matrix(self):
+    def has_weights(self):
         return self.weight_index >= 0
 
     def has_uv_matrix(self, i):

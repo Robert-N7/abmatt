@@ -22,7 +22,7 @@ class UnpackMdl0(UnpackSubfile):
         fh, mdl0.scaling_rule, mdl0.texture_matrix_mode, mdl0.facepoint_count, \
         mdl0.face_count, _, mdl0.boneCount, _ = binfile.read("i7I", 32)
         binfile.store()  # bone table offset
-        if binfile.offset - offset < ln:
+        if mdl0.version >= 10:
             mdl0.minimum = binfile.read("3f", 12)
             mdl0.maximum = binfile.read("3f", 12)
         else:

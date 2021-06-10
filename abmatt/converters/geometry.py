@@ -114,8 +114,8 @@ class Geometry:
         if self.__encode_colors(p, self.colors, mdl, use_default_colors_if_none_found):
             p.color0_index = self.ipp()
         self.__encode_texcoords(p, self.texcoords, mdl)
-        tris = self.__construct_tris(p, p.has_weighted_matrix())
-        data, p.face_count, p.facepoint_count = self.__encode_tris(tris, p.has_weighted_matrix())
+        tris = self.__construct_tris(p, p.has_weights())
+        data, p.face_count, p.facepoint_count = self.__encode_tris(tris, p.has_weights())
         past_align = len(data) % 0x20
         if past_align:
             data.extend(b'\0' * (0x20 - past_align))
@@ -225,7 +225,7 @@ class Geometry:
         mdl0.vertices.append(vert)
         points = vertices.points
         encoder = self.encoder.vertex_encoder if self.encoder is not None else None
-        if polygon.has_weighted_matrix():
+        if polygon.has_weights():
             for i in range(len(vertices)):
                 influence = self.influences[i]
                 points[i] = influence.apply_to(points[i], decode=False)

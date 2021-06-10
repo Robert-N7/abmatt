@@ -63,7 +63,7 @@ class SubFile(Clipable, Packable):
         if binfile:
             self.unpack(binfile)
 
-    def _getNumSections(self):
+    def get_num_sections(self):
         return self.VERSION_SECTIONCOUNT[self.version]
 
     def get_anim_base_name(self):
@@ -75,7 +75,7 @@ class SubFile(Clipable, Packable):
         if self.version != self.EXPECTED_VERSION:
             b = Bug(2, 3, '{} {} unusual version {}'.format(self.MAGIC, self.name, self.version),
                     'set to {}'.format(self.EXPECTED_VERSION))
-            if self.FORCE_VERSION:
+            if self.FORCE_VERSION and b.should_fix():
                 self.version = self.EXPECTED_VERSION
                 b.resolve()
                 self.parent.is_modified = True

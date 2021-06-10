@@ -2,11 +2,12 @@
 This tool is used to convert and edit *Brres* files in *Mario Kart Wii*. 
 
 ## Installation
-It is recommended to install as a python package:
+Compiled [releases](https://github.com/Robert-N7/abmatt/releases) are available for Linux and Windows.
+
+Or, install as python package:
 ```
 pip install git+https://github.com/Robert-N7/abmatt.git
 ```
-Alternatively, download compiled [releases](https://github.com/Robert-N7/abmatt/releases) for Linux and Windows.
 
 ## Dependencies
 ABMatt uses [Wiimm's Image Tool](https://szs.wiimm.de/download.html) which must be installed on your system path.
@@ -32,10 +33,11 @@ The material is copied and pasted, which includes shader and animation data.
 ## Command Line Usage
 ABMatt supports a command line (see [FileFormat](##FileFormat)) followed by options.
 ```
-abmatt [command_line][--interactive -f <file> -b <brres-file> -d <destination> --overwrite]
+abmatt [command_line][flags]
 ```
 | Flag |Expanded| Description |
 |---|---|---|
+| -a | --auto-fix | Set the autofix level (0 to turn off fixes). |
 | -b | --brres | Brres file selection. |
 | -d | --destination | The file path to be written to. Multiple destinations are not supported. |
 | -f | --file | File with ABMatt commands to be processed as specified in file format. |
@@ -56,7 +58,7 @@ abmatt -b course_model.brres -o -n xlu.* -k xlu -v true
 ```
 
 ### Examples
-Example command lines:
+Example command_line:
 ```
 convert course_model.obj                    # Converts obj to brres 
 set xlu:true for xlu.* in model course      # Sets all materials in course starting with xlu to transparent
@@ -100,9 +102,11 @@ preset = 'preset' preset_name;
 save = 'save' [filename] ['as' destination] ['overwrite']
 copy = 'copy' type;
 paste = 'paste' type;
-convert = 'convert' filename ['to' destination] ['--no-colors'] ['--no-normals'] ['--single-bone'] ['--no-uvs']
+convert = 'convert' filename ['to' destination] ['include' poly-list] ['exclude' poly-list] [convert-flags]
 load = 'load' command-file
 
+convert-flags = ['patch'] ['no-colors'] ['no-normals'] ['single-bone'] ['no-uvs']
+poly-list = [polygon-name[,polygon-name]*]
 selection = name ['in' container]
 container = ['brres' filename] ['model' name];
 type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id]
@@ -242,6 +246,22 @@ tex0-dimension = width ',' height;
 tex0-format = 'cmpr' | 'c14x2' | 'c8' | 'c4' | 'rgba32' | 'rgb5a3' | 'rgb565' 
             | 'ia8' | 'ia4' | 'i8' | 'i4';
 ```
+## Convert Examples
+Convert `course_model.brres` to a Dae file
+```
+convert course_model.brres to course_model.dae
+```
+
+Convert `course_model.dae` to a Brres file, excluding polygons `road` and `boost`, and renaming materials to satisfy 
+Moonview Highway conditions:
+```
+convert course_model.dae to course_model.brres exclude road,boost --moonview
+```
+
+Convert `course_model.dae` patching over _only_ the `road` and `boost` polygons while keeping the existing model intact.
+```
+convert course_model.dae to course_model.brres include road,boost --patch
+```
 
 ### Presets and Command Files
 Presets are a way of grouping commands together. They can be defined in `presets.txt` or in command files.
@@ -258,6 +278,13 @@ To call the preset:
 
 The `load` command can be used to load additional commands and presets. 
 As with all recursive things, be careful not to create an infinite loop!
+
+## Additional Configuration
+[An example configuration](etc/abmatt/config.conf)
+
+# Contributing
+Contributions are welcome! Feel free to submit a pull request.
+
 
 ## Known Limitations and Bugs
 * Windows installer sometimes hangs in the background until the process is terminated.

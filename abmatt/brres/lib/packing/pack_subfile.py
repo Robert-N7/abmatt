@@ -19,6 +19,6 @@ class PackSubfile(Packer):
         binfile.write("I", subfile.version)
         binfile.writeOuterOffset()
         # mark section offsets to be added later
-        binfile.mark(subfile._getNumSections())
+        binfile.mark(subfile.get_num_sections())
         # name offset to be packed separately
         binfile.storeNameRef(subfile.name)

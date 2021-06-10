@@ -56,12 +56,15 @@ class AbmattTest(unittest.TestCase):
         return Brres(AbmattTest._get_brres_fname(filename))
 
     @staticmethod
-    def _test_mats_equal(materials, updated):
+    def _test_mats_equal(materials, updated, sort=False):
         """A more in depth test for material equality"""
         err = False
         if len(materials) != len(updated):
             print('Lengths different')
             err = True
+        if sort:
+            materials = sorted(materials, key=lambda x: x.name)
+            updated = sorted(materials, key=lambda x: x.name)
         for i in range(len(materials)):
             if materials[i] != updated[i]:
                 err = True
@@ -123,6 +126,11 @@ class TestBeginner(AbmattTest):
 class CheckPositions:
     @staticmethod
     def __pre_process(vertices1, vertices2, group_type):
+        if vertices1 is None or vertices2 is None:
+            if vertices1 is not None or vertices2 is not None:
+                print(f'{vertices1} != {vertices2}')
+                return vertices1, vertices2, True
+            return vertices1, vertices2, False
         if type(vertices1) != list and type(vertices1) != np.array:
             vertices1 = [vertices1]
         if type(vertices2) != list and type(vertices2) != np.array:
@@ -144,8 +152,34 @@ class CheckPositions:
         return v1, v2, mismatched_len
 
     @staticmethod
+    def polygons_equal(poly1, poly2, rtol=-1.e-2, atol=1.e-3):
+        p1, p2, err = CheckPositions.__pre_process(poly1, poly2, 'polygons')
+        if not err:
+            for i in range(len(p1)):
+                t1 = p1[i]
+                t2 = p2[i]
+                n1 = t1.get_normal_group()
+                n2 = t2.get_normal_group()
+                if not (CheckPositions.bones_equal(t1.get_linked_bone(), t2.get_linked_bone(), rtol, atol) and
+                        CheckPositions.positions_equal(t1.get_vertex_group(), t2.get_vertex_group(), rtol, atol,
+                                                       group_name='vertices') and
+                        (not n1 or not n2 or CheckPositions.positions_equal(n1, n2,
+                                                       group_name='normals')) and
+                        all(CheckPositions.positions_equal(t1.get_uv_group(x), t2.get_uv_group(x), rtol, atol,
+                                                           group_name='uvs')
+                            for x in range(8))
+                        and CheckPositions.colors_equal(t1.get_color_group(), t2.get_color_group())):
+                    print(f'polygons {t1.name} != {t2.name}')
+                    err = True
+        return not err
+
+
+
+    @staticmethod
     def colors_equal(colr1, colr2, rtol=1.e-2, atol=1.e-3):
         c1, c2, err = CheckPositions.__pre_process(colr1, colr2, 'colors')
+        if not c1 or not c2:
+            return not err
         if not err:
             for i in range(len(c1)):
                 colr1 = c1[i]
@@ -160,6 +194,8 @@ class CheckPositions:
                     print('Color {} length does not match count!'.format(colr1.name))
                 if len(decoded_c2) != colr2.count:
                     print('Color {} length does not match count!'.format(colr2.name))
+                decoded_c2 = sorted(decoded_c2, key=lambda x: tuple(x))
+                decoded_c1 = sorted(decoded_c1, key=lambda x: tuple(x))
                 current_err = False
                 for j in range(min(len(decoded_c2), len(decoded_c1))):
                     if not np.isclose(decoded_c1[j], decoded_c2[j], rtol, atol).all():
@@ -171,16 +207,12 @@ class CheckPositions:
 
     @staticmethod
     def model_equal(mdl1, mdl2, rtol=1.e-2, atol=1.e-3):
-        return CheckPositions.bones_equal(mdl1.bones, mdl2.bones, rtol, atol) \
-               and CheckPositions.positions_equal(mdl1.vertices, mdl2.vertices, rtol, atol) \
-               and CheckPositions.positions_equal(mdl1.uvs, mdl2.uvs, rtol, atol) \
-               and CheckPositions.positions_equal(mdl1.normals, mdl2.normals, rtol, atol) \
-               and CheckPositions.colors_equal(mdl1.colors, mdl2.colors, rtol, atol)
+        return CheckPositions.polygons_equal(mdl1.objects, mdl2.objects, rtol, atol)
 
     @staticmethod
     def bones_equal(bone_list1, bone_list2, rtol=1.e-2, atol=1.e-3):
         bone_list1, bone_list2, err = CheckPositions.__pre_process(bone_list1, bone_list2, 'bones')
-        if not err:
+        if not err and bone_list1 is not None:
             for i in range(len(bone_list1)):
                 b1 = bone_list1[i]
                 b2 = bone_list2[i]
@@ -202,28 +234,49 @@ class CheckPositions:
         return not err
 
     @staticmethod
-    def positions_equal(vertices1, vertices2, rtol=1.e-2, atol=1.e-3):
+    def pos_eq_helper(points1, points2, v1_name, v2_name, rtol, atol, err_points):
+        if points1.shape != points2.shape:
+            print('points {} and {} have different shapes {} and {}'.format(v1_name,
+                                                                            v2_name,
+                                                                            points1.shape,
+                                                                            points2.shape))
+            return False
+        if not len(points1):
+            return True
+        current_err = False
+        for i in range(len(points1)):
+            if not np.isclose(points1[i], points2[i], rtol, atol).all():
+                err_points.append(i)
+                current_err = True
+        return not current_err
+
+    @staticmethod
+    def positions_equal(vertices1, vertices2, rtol=1.e-2, atol=1.e-3, group_name='points'):
         """Checks if the vertices are the same"""
-        vertices1, vertices2, err = CheckPositions.__pre_process(vertices1, vertices2, 'points')
+        vertices1, vertices2, err = CheckPositions.__pre_process(vertices1, vertices2, group_name)
+        if not vertices1 or not vertices2:
+            return not err
         if not err:
             # Check each vertex group
             for k in range(len(vertices1)):
-                points1 = np.array(sorted(vertices1[k].get_decoded(), key=lambda x: tuple(np.around(x, 2))))
-                points2 = np.array(sorted(vertices2[k].get_decoded(), key=lambda x: tuple(np.around(x, 2))))
-                if points1.shape != points2.shape:
-                    print('points {} and {} have different shapes {} and {}'.format(vertices1[k].name,
-                                                                                    vertices2[k].name,
-                                                                                    points1.shape,
-                                                                                    points2.shape))
-                    err = True
-                    continue
-                if not len(points1):
-                    continue
+                v1_decoded = vertices1[k].get_decoded()
+                v2_decoded = vertices2[k].get_decoded()
+                points1 = np.array(sorted(v1_decoded, key=lambda x: tuple(np.around(x, 2))))
+                points2 = np.array(sorted(v2_decoded, key=lambda x: tuple(np.around(x, 2))))
+                errs = []
                 current_err = False
-                for i in range(len(points1)):
-                    if not np.isclose(points1[i], points2[i], rtol, atol).all():
-                        print('Points mismatch at {} Expected {}, found {} '.format(i, points1[i], points2[i]))
-                        current_err = err = True
+                if not CheckPositions.pos_eq_helper(points1, points2, vertices1[k].name, vertices2[k].name,
+                                                    rtol, atol, errs):
+                    if errs:
+                        p1 = np.array(sorted([points1[z] for z in errs], key=lambda x: tuple(x)))
+                        p2 = np.array(sorted([points2[z] for z in errs], key=lambda x: tuple(x)))
+                        if CheckPositions.pos_eq_helper(p1, p2,
+                                                     vertices1[k].name, vertices2[k].name, rtol, atol, []):
+                            continue
+                    for x in errs:
+                        print('Points mismatch at {} Expected {}, found {} '.format(x, points1[x], points2[x]))
+
+                    err = current_err = True
                 if current_err:
                     print('{} and {} mismatch'.format(vertices1[k].name, vertices2[k].name))
         return not err

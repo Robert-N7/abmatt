@@ -10,6 +10,9 @@ class Normal(Point):
         copy = Normal(self.name, None)
         return copy.paste(self)
 
+    def __hash__(self):
+        return super().__hash__()
+
     @property
     def point_width(self):
         if self.comp_count == TYPE_NORMAL_BINORMAL_TANGENT:

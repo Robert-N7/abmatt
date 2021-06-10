@@ -4,6 +4,7 @@ import math
 import string
 
 from abmatt.autofix import AutoFix, Bug
+from abmatt.brres.lib.decoder import decode_mdl0_influences
 from abmatt.brres.lib.matching import fuzzy_match, MATCHING, it_eq
 from abmatt.brres.lib.node import Node, get_name_mapping
 from abmatt.brres.lib.packing.pack_mdl0.pack_mdl0 import PackMdl0
@@ -62,7 +63,7 @@ class Mdl0(SubFile):
     VERSION_SECTIONCOUNT = {8: 11, 9: 11, 10: 14, 11: 14}
     EXPECTED_VERSION = 11
 
-    SETTINGS = ('name')
+    SETTINGS = ('name',)
     DETECT_MODEL_NAME = True
     RENAME_UNKNOWN_REFS = True
     REMOVE_UNKNOWN_REFS = True
@@ -109,6 +110,8 @@ class Mdl0(SubFile):
                and self.bone_table == other.bone_table
 
     def get_influences(self):
+        if self.influences is None:
+            self.influences = decode_mdl0_influences(self)
         return self.influences
 
     def begin(self):
@@ -218,30 +221,28 @@ class Mdl0(SubFile):
         # self.mark_modified()
         return new_mat
 
-    def __remove_and_rebuild_index(self, item, group, if_not_in_group):
+    def __remove_group_item(self, item, group, if_not_in_group):
         if item is not None and item not in if_not_in_group:
             group.remove(item)
-            self.rebuild_indexes(group)
 
     def remove_polygon(self, polygon):
         self.objects.remove(polygon)
-        self.rebuild_indexes(self.objects)
         self.rebuild_head = True
         if len(polygon.material.polygons) == 1:
             self.remove_material(polygon.material)
-        self.__remove_and_rebuild_index(polygon.get_vertex_group(), self.vertices,
-                                        [x.get_vertex_group() for x in self.objects])
-        self.__remove_and_rebuild_index(polygon.get_normal_group(), self.normals,
-                                        [x.get_normal_group() for x in self.objects])
-        self.__remove_and_rebuild_index(polygon.get_color_group(), self.colors,
-                                        [x.get_color_group() for x in self.objects])
+        self.__remove_group_item(polygon.get_vertex_group(), self.vertices,
+                                 [x.get_vertex_group() for x in self.objects])
+        self.__remove_group_item(polygon.get_normal_group(), self.normals,
+                                 [x.get_normal_group() for x in self.objects])
+        self.__remove_group_item(polygon.get_color_group(), self.colors,
+                                 [x.get_color_group() for x in self.objects])
         if polygon.uv_count:
             uv_groups = set()
             for x in self.objects:
                 for i in range(x.uv_count):
                     uv_groups.add(x.get_uv_group(i))
             for i in range(polygon.uv_count):
-                self.__remove_and_rebuild_index(polygon.get_uv_group(i), self.uvs, uv_groups)
+                self.__remove_group_item(polygon.get_uv_group(i), self.uvs, uv_groups)
         self.mark_modified()
 
     def add_material(self, material):
@@ -271,12 +272,15 @@ class Mdl0(SubFile):
     def get_polys_using_material(self, material):
         return [x for x in self.objects if x.get_material() == material]
 
-    def add_bone(self, name, parent_bone=None, has_geometry=False,
+    def add_bone(self, bone, parent_bone=None, has_geometry=False,
                  scale_equal=True, fixed_scale=True,
                  fixed_rotation=True, fixed_translation=True):
-        b = Bone(name, self, has_geometry=has_geometry,
-                 scale_equal=scale_equal, fixed_scale=fixed_scale,
-                 fixed_rotation=fixed_rotation, fixed_translation=fixed_translation)
+        if type(bone) is not Bone:
+            b = Bone(bone, self, has_geometry=has_geometry,
+                     scale_equal=scale_equal, fixed_scale=fixed_scale,
+                     fixed_rotation=fixed_rotation, fixed_translation=fixed_translation)
+        else:
+            b = bone
         b.index = len(self.bones)
         self.bones.append(b)
         if self.bone_table is None:
@@ -293,7 +297,7 @@ class Mdl0(SubFile):
         material.add_poly_ref(polygon)
         polygon.material = material
         polygon.visible_bone = visible_bone
-        polygon.draw_priority = priority
+        polygon.priority = priority
         self.rebuild_head = True
 
     # ------------------ Name --------------------------------------
@@ -394,11 +398,6 @@ class Mdl0(SubFile):
         return self.parent.get_texture_map()
 
     # --------------------------------------- Check -----------------------------------
-    @staticmethod
-    def rebuild_indexes(group):
-        for i in range(len(group)):
-            group[i].index = i
-
     def check_group(self, group, used_set, extras=None):
         """
         helper function for check
@@ -419,7 +418,6 @@ class Mdl0(SubFile):
             AutoFix.info('(FIXED) Removed unused refs')
             for x in to_remove:
                 group.remove(x)
-            self.rebuild_indexes(group)
 
     def check(self, expected_name=None):
         """

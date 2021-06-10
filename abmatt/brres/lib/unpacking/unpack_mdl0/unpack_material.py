@@ -155,7 +155,6 @@ class UnpackMaterial(Unpacker):
         else:
             binfile.advance(4)
             binfile.store()  # store matgx offset
-            # binfile.advance(4)
         # ignore precompiled code space
         binfile.advance(360)
         startlayerInfo = binfile.offset

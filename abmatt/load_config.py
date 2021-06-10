@@ -119,7 +119,7 @@ def load_config(app_dir, loudness=None, autofix_level=None):
     return conf
 
 
-VERSION = '1.0.2'
+VERSION = '1.1.0'
 USAGE = "USAGE: abmatt [command_line][--interactive -f <file> -b <brres-file> -d <destination> --overwrite]"
 
 
@@ -138,26 +138,20 @@ def hlp(cmd=None):
 ====================================================================================
 ANOOB'S BRRES MATERIAL TOOL
 Version {}
-commands = set | info | add | remove | select | preset | save | copy | paste | convert
-type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id]
-    | 'srt0' | 'srt0layer' [':' id] | 'pat0'
-    | 'mdl0' | 'brres';
-To see what keys are available, try `info keys`
 ====================================================================================
-## Command Line Usage:
+Command Line Usage:
+abmatt [command_line][flags]
+
+| -a | --auto-fix | Set the autofix level (0 to turn off fixes). |
 | -b | --brres | Brres file selection. |
 | -c | --command | Command name to run. |
 | -d | --destination | The file path to be written to. Mutliple destinations are not supported. |
 | -f | --file | File with ABMatt commands to be processed as specified in file format. |
 | -h | --help | Displays a help message about program usage. |
 | -i | --interactive | Interactive shell mode. |
-| -k | --key | Setting key to be updated. |
 | -l | --loudness | Sets the verbosity level. (0-5)
-| -m | --model | Model selection. |
-| -n | --name | Material or layer name or regular expression to be found. |
 | -o | --overwrite | Overwrite existing files.  |
-| -t | --type | Type selection. |
-| -v | --value | Value to set corresponding with key. (set command) |
+|   | --moonview | Treat the Brres as Moonview course, adjusting material names. |
 
 command_line =  cmd-prefix ['for' selection] EOL;
 cmd-prefix = set | info | add | remove | select | preset | save | copy | paste | convert;
@@ -170,7 +164,11 @@ preset = 'preset' preset_name;
 save = 'save' [filename] ['as' destination] ['overwrite']
 copy = 'copy' type;
 paste = 'paste' type;
-convert = 'convert' filename ['to' destination] ['no-colors'] ['no-normals'] ['no-uvs']
+convert = 'convert' filename ['to' destination] ['include' poly-list] ['exclude' poly-list] [convert-flags]
+load = 'load' command-file
+
+convert-flags = ['patch'] ['no-colors'] ['no-normals'] ['single-bone'] ['no-uvs']
+poly-list = [polygon-name[,polygon-name]*]
 
 selection = name ['in' container]
 container = ['brres' filename] ['model' name];
@@ -204,7 +202,7 @@ def parse_args(argv, app_dir):
     command = destination = brres_file = command_file = model = value = key = ""
     autofix = loudness = None
     name = None
-    no_normals = no_colors = single_bone = no_uvs = moonview = False
+    no_normals = no_colors = single_bone = no_uvs = moonview = patch = False
     do_help = False
     for i in range(len(argv)):
         if argv[i][0] == '-':
@@ -214,12 +212,13 @@ def parse_args(argv, app_dir):
             break
 
     try:
-        opts, args = getopt.gnu_getopt(argv, "hd:oc:t:k:v:n:b:m:f:iul:g",
-                                   ["help", "destination=", "overwrite",
+        opts, args = getopt.gnu_getopt(argv, "ahd:oc:t:k:v:n:b:m:f:iul:g",
+                                   ["auto-fix", "help", "destination=", "overwrite",
                                     "command=", "type=", "key=", "value=",
                                     "name=", "brres=", "model=", "file=", "interactive",
                                     "loudness=", "debug",
-                                    "single-bone", "no-colors", "no-normals", "no-uvs", "moonview"])
+                                    "single-bone", "no-colors", "no-normals", "no-uvs", "moonview",
+                                    "patch"])
     except getopt.GetoptError as e:
         print(e)
         print(USAGE)
@@ -264,6 +263,8 @@ def parse_args(argv, app_dir):
             no_colors = True
         elif opt == '--no-uvs':
             no_uvs = True
+        elif opt == '--patch':
+            patch = True
         elif opt == '--moonview':
             moonview = True
         else:
@@ -306,6 +307,8 @@ def parse_args(argv, app_dir):
                 cmd_args.append('--no-normals')
             if no_uvs:
                 cmd_args.append('--no-uvs')
+            if patch:
+                cmd_args.append('--patch')
         cmds.append(Command(arg_list=cmd_args))
     if command:
         args = [command, type]
@@ -329,6 +332,8 @@ def parse_args(argv, app_dir):
                 args.append('--no-normals')
             if no_uvs:
                 args.append('--no-uvs')
+            if patch:
+                args.append('--patch')
         cmds.append(Command(arg_list=args))
     if destination:
         Command.DESTINATION = destination

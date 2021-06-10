@@ -22,12 +22,14 @@ class Converter:
     NO_COLORS = 0x2
     SINGLE_BONE = 0x4
     NO_UVS = 0x8
+    PATCH = 0x10
     DETECT_FILE_UNITS = True
     OVERWRITE_IMAGES = False
     ENCODE_PRESET = None
     ENCODE_PRESET_ON_NEW = True
 
-    def __init__(self, brres, mdl_file, flags=0, encode=True, mdl0=None, encoder=None):
+    def __init__(self, brres, mdl_file, flags=0, encode=True, mdl0=None, encoder=None,
+                 include=None, exclude=None):
         if not brres:
             # filename = Brres.getExpectedBrresFileName(mdl_file)
             d, f = os.path.split(mdl_file)
@@ -36,6 +38,9 @@ class Converter:
         elif type(brres) == str:
             brres = Brres.get_brres(brres, True)
         self.brres = brres
+        self.include = include
+        self.exclude = exclude
+        self.patch_existing = False
         self.texture_library = brres.get_texture_map()
         self.mdl_file = mdl_file
         self.mdl0 = mdl0 if type(mdl0) == Mdl0 else brres.get_model(mdl0)
@@ -47,8 +52,6 @@ class Converter:
 
     def _start_saving(self, mdl0):
         AutoFix.info('Exporting {} to {}...'.format(os.path.basename(self.brres.name), self.mdl_file))
-        if 'sand_battle.d' in self.brres.name and 'map_model' in self.brres.name:
-            print('debug')
         self.start = time.time()
         self.image_library = set()
         if mdl0 is None:
@@ -61,6 +64,12 @@ class Converter:
             self.mdl0 = mdl0 = self.brres.get_model(mdl0)
         if mdl0 is None:
             raise RuntimeError('No mdl0 file found to export!')
+        self.polygons = [x for x in mdl0.objects if self._should_include_geometry(x)]
+        mats = []
+        for x in self.polygons:
+            if x.material not in mats:
+                mats.append(x.material)
+        self.materials = mats
         self.cwd = os.getcwd()
         work_dir, name = os.path.split(self.mdl_file)
         if work_dir:
@@ -104,6 +113,11 @@ class Converter:
         return self._init_mdl0(brres_name, os.path.splitext(name)[0], model_name)
 
     def _before_encoding(self):
+        if self.patch_existing:
+            replace_names = [x.name for x in self.geometries]
+            for poly in [x for x in self.replacement_model.objects if x.name in replace_names]:
+                self.replacement_model.remove_polygon(poly)
+        self.encode_materials()
         if os.path.exists(self.json_file):
             converter = MatsToJsonConverter(self.json_file)
             converter.load_into(self.mdl0.materials)
@@ -124,7 +138,8 @@ class Converter:
         os.chdir(self.cwd)
         if self.ENCODE_PRESET:
             if not self.ENCODE_PRESET_ON_NEW or (self.replacement_model is None and self.json_polygon_encoding is None):
-                Command('preset ' + self.ENCODE_PRESET + ' for * in ' + self.brres.name + ' model ' + self.mdl0.name).run_cmd()
+                Command(
+                    'preset ' + self.ENCODE_PRESET + ' for * in ' + self.brres.name + ' model ' + self.mdl0.name).run_cmd()
         AutoFix.info('\t... finished in {} secs'.format(round(time.time() - self.start, 2)))
         if self.encoder:
             self.encoder.after_encode(mdl0)
@@ -137,9 +152,21 @@ class Converter:
         else:
             if mdl0_name is None:
                 mdl0_name = self.__get_mdl0_name(brres_name, mdl_name)
-            self.replacement_model = self.brres.get_model(mdl0_name)
-        self.mdl0 = Mdl0(mdl0_name, self.brres)
+            self.replacement_model = self.mdl0 = self.brres.get_model(mdl0_name)
+        if self.flags & self.PATCH and self.replacement_model:
+            self.patch_existing = True
+            if any(x.has_weights() for x in self.replacement_model.objects):
+                raise RuntimeError('Patching rigged models is not supported!')
+        if not self.patch_existing or not self.replacement_model:
+            self.mdl0 = Mdl0(mdl0_name, self.brres)
         return self.mdl0
+
+    def _should_include_geometry(self, geometry):
+        if self.include:
+            return geometry.name in self.include
+        elif self.exclude:
+            return geometry.name not in self.exclude
+        return True
 
     @staticmethod
     def __get_mdl0_name(brres_name, model_name):
@@ -259,6 +286,8 @@ class Converter:
             bone_weights={bone.name: influence.Weight(bone, 1.0)})})
 
     def _decode_geometry(self, polygon):
+        if not self._should_include_geometry(polygon):
+            return
         geo = polygon.get_decoded()
         if geo.colors and self.flags & self.NO_COLORS:
             geo.colors = None
@@ -271,6 +300,8 @@ class Converter:
         return geo
 
     def _encode_geometry(self, geometry):
+        if not self._should_include_geometry(geometry):
+            return
         if self.flags & self.NO_COLORS:
             geometry.colors = None
         if self.flags & self.NO_NORMALS:
@@ -285,8 +316,11 @@ class Converter:
         elif self.replacement_model:
             replace_geometry = [x for x in self.replacement_model.objects if x.name == geometry.name]
             if replace_geometry:
-                has_uv_mtx = [replace_geometry[0].has_uv_matrix(i) for i in range(8)]
-                priority = replace_geometry[0].priority
+                replace_geometry = replace_geometry[0]
+                has_uv_mtx = [replace_geometry.has_uv_matrix(i) for i in range(8)]
+                priority = replace_geometry.priority
+                if self.patch_existing:
+                    self.mdl0.remove_polygon(replace_geometry)
         encoder = self.encoder.get_encoder(geometry) if self.encoder else None
         return geometry.encode(self.mdl0, encoder=encoder,
                                priority=priority,
@@ -308,6 +342,9 @@ class Converter:
         raise NotImplementedError()
 
     def save_model(self, mdl0=None):
+        raise NotImplementedError()
+
+    def encode_materials(self):
         raise NotImplementedError()
 
 

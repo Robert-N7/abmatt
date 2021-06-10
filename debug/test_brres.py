@@ -26,6 +26,19 @@ class TestBrres(unittest.TestCase):
         self.tmp = os.path.join(self.root, 'tmp' + ext)
         return self.tmp
 
+    def test_older_brres_version(self):
+        load_config.turn_off_fixes()
+        tmp = self._get_tmp()
+        original = Brres(os.path.join(self.root, 'tracks', 'old_mario_gc_hayasi.d', 'course_model.brres'))
+        original.save(tmp, overwrite=True)
+        new = Brres(tmp)
+        self.assertTrue(node_eq(original, new))
+        # This is just to test that it can convert, not that they convert equal
+        converter = DaeConverter(original, self._get_tmp('.dae'), encode=False).convert()
+        converter = DaeConverter(Brres(tmp, read_file=False), converter.mdl_file).convert()
+        converter = ObjConverter(original, self._get_tmp('.obj'), encode=False).convert()
+        converter = ObjConverter(Brres(tmp, read_file=False), converter.mdl_file).convert()
+
     def test_save_all(self):
         tmp = self._get_tmp()
         for x in gather_files(self.root):
@@ -49,10 +62,13 @@ class TestBrres(unittest.TestCase):
                     converter.save_model(model)
                     importer = DaeConverter(Brres(tmp_brres, read_file=False), tmp)
                     importer.load_model()
-                    self.assertTrue(node_eq(model.materials, importer.mdl0.materials))
+                    mats = sorted(model.materials, key=lambda x: x.name)
+                    imported_mats = sorted(importer.mdl0.materials, key=lambda x: x.name)
+                    self.assertTrue(node_eq(mats, imported_mats))
             except:
                 print(f'ERROR converting {x}')
-                raise
+                if converter.brres.version == 11:
+                    raise
 
     def test_export_all_obj(self):
         tmp = self._get_tmp('.obj')

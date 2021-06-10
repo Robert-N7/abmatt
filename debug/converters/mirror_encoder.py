@@ -5,13 +5,12 @@ from struct import unpack_from
 
 from abmatt.brres import Brres
 from abmatt.brres.lib import matching
+from abmatt.brres.lib.decoder import get_stride
 from abmatt.brres.mdl0.normal import Normal
-from abmatt.brres.mdl0.vertex import Vertex
-from abmatt.converters import DaeConverter
-from abmatt.converters.encoder import GeometryEncoder, PointEncoder, ModelEncoder, ColorEncoder
 from abmatt.brres.mdl0.polygon import Polygon
-from abmatt.converters import get_stride
-from abmatt.converters.influence import decode_mdl0_influences, InfluenceManager
+from abmatt.brres.mdl0.vertex import Vertex
+from abmatt.converters.convert_dae import DaeConverter, InfluenceManager
+from abmatt.converters.encoder import GeometryEncoder, PointEncoder, ModelEncoder, ColorEncoder
 
 
 def create_mirror(brres_file_name, working_folder='tmp', mdl0_name=None, new_file_name=None, mirror_encoder=None):
@@ -42,7 +41,8 @@ class MirrorEncoder(ModelEncoder):
     """Mirrors a model encoding"""
 
     def __init__(self, mdl0=None, geo_name_mapping=None, match_min_max=False,
-                 replace_polygons=False, replace_vertices=False, replace_normals=False, replace_uvs=False, replace_colors=False):
+                 replace_polygons=False, replace_vertices=False, replace_normals=False, replace_uvs=False,
+                 replace_colors=False):
         """
         :param mdl0: existing model
         :param geo_name_mapping: How to map the incoming geometry names to the polygons, the default is to match names
@@ -69,7 +69,7 @@ class MirrorEncoder(ModelEncoder):
     def __mirror_influences(self, inf):
         my_node_mix = self.mdl0.NodeMix
         if my_node_mix is not None:
-            my_inf = InfluenceManager(decode_mdl0_influences(self.mdl0))
+            my_inf = InfluenceManager(self.mdl0.get_influences())
             inf.single_influences = self.__order_influence_list(my_inf.single_influences,
                                                                 inf.single_influences)
             inf.mixed_influences = self.__order_influence_list(my_inf.mixed_influences, inf.mixed_influences)
@@ -134,8 +134,6 @@ class MirrorEncoder(ModelEncoder):
             new_mdl0.rebuild_color_refs()
         else:
             self.reorder_group(new_mdl0.colors, self.mdl0.colors)
-        self.reorder_anims(new_mdl0.srt0_collection, self.mdl0.srt0_collection)
-        self.reorder_anims(new_mdl0.pat0_collection, self.mdl0.pat0_collection)
         if self.replace_polygons:
             self.replace_polys(new_mdl0.objects, self.mdl0.objects)
             new_mdl0.facepoint_count = self.mdl0.facepoint_count

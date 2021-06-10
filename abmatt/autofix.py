@@ -166,7 +166,7 @@ class AutoFix:
                     self.fix_level = 4
                 elif fix_level in self.ERROR_LEVELS:
                     self.fix_level = self.ERROR_LEVELS.index(fix_level)
-        if fix_level == 0 and self.zero_level_func:
+        if self.fix_level == 0 and self.zero_level_func:
             self.zero_level_func()
 
     def can_prompt(self):

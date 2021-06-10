@@ -19,6 +19,9 @@ class Point(Node):
         self.decoded = None
         super().__init__(name, parent, binfile)
 
+    def __hash__(self):
+        return super().__hash__()
+
     def paste(self, item):
         self.comp_count = item.comp_count
         self.divisor = item.divisor

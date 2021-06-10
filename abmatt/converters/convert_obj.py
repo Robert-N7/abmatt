@@ -17,52 +17,55 @@ class ObjConverter(Converter):
         material_geometry_map = {}
         # first collect geometries
         for geometry in obj_geometries:
-            normals = None if self.NO_NORMALS & self.flags else geometry.normals
-            texcoords = [geometry.texcoords] if geometry.has_texcoords else None
-            geo = Geometry(geometry.name, geometry.material_name, geometry.vertices, texcoords, normals,
-                           triangles=geometry.triangles, linked_bone=bone)
-            # geo.encode(self.mdl0)
-            mat = geometry.material_name
-            if mat in material_geometry_map:
-                material_geometry_map[mat].combine(geo)
-            else:
-                material_geometry_map[mat] = geo
-                self.geometries.append(geo)
+            if self._should_include_geometry(geometry):
+                normals = None if self.NO_NORMALS & self.flags else geometry.normals
+                texcoords = [geometry.texcoords] if geometry.has_texcoords else None
+                geo = Geometry(geometry.name, geometry.material_name, geometry.vertices, texcoords, normals,
+                               triangles=geometry.triangles, linked_bone=bone)
+                # geo.encode(self.mdl0)
+                mat = geometry.material_name
+                if mat in material_geometry_map:
+                    material_geometry_map[mat].combine(geo)
+                else:
+                    material_geometry_map[mat] = geo
+                    self.geometries.append(geo)
         return material_geometry_map
 
     def load_model(self, model_name=None):
         mdl = self._start_loading(model_name)
         bone = mdl.add_bone(mdl.name)
-        obj = Obj(self.mdl_file)
-        material_geometry_map = self.__collect_geometries(obj.geometries, bone)
-        for material in material_geometry_map:
-            try:
-                self.__encode_material(obj.materials[material])
-            except KeyError:
-                self._encode_material(Material(material))
-
+        self.obj = obj = Obj(self.mdl_file)
+        self.material_geometry_map = material_geometry_map = self.__collect_geometries(obj.geometries, bone)
         self._before_encoding()
         for material in material_geometry_map:
             super()._encode_geometry(material_geometry_map[material])
         self.import_textures_map = self.__convert_set_to_map(obj.images)
         return self._end_loading()
 
+    def encode_materials(self):
+        for material in self.material_geometry_map:
+            try:
+                self.__encode_material(self.obj.materials[material])
+            except KeyError:
+                self._encode_material(Material(material))
+
     def save_model(self, mdl0=None):
         base_name, mdl0 = self._start_saving(mdl0)
-        polygons = mdl0.objects
+        polygons = self.polygons
         obj = Obj(self.mdl_file, False)
         obj_materials = obj.materials
-        for mat in mdl0.materials:
+        for mat in self.materials:
             obj_mat = self.__decode_material(mat)
             obj_materials[obj_mat.name] = obj_mat
         obj_geometries = obj.geometries
         has_colors = False
         for x in polygons:
-            geometry = x.get_decoded()
-            material = geometry.material_name
-            obj_geometries.append(self.__decode_geometry(geometry, material))
-            if x.get_color_group():
-                has_colors = True
+            geometry = super()._decode_geometry(x)
+            if geometry:
+                material = geometry.material_name
+                obj_geometries.append(self.__decode_geometry(geometry, material))
+                if x.get_color_group():
+                    has_colors = True
         if has_colors:
             AutoFix.warn('Loss of color data exporting obj')
         self._end_saving(obj)

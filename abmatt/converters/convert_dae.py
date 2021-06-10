@@ -4,11 +4,10 @@ import sys
 import numpy as np
 
 from abmatt.autofix import AutoFix
-from abmatt.converters.arg_parse import cmdline_convert
-from abmatt.converters import influence
 from abmatt.converters import convert_lib
 from abmatt.converters import dae as collada
 from abmatt.converters import matrix as mtx
+from abmatt.converters.arg_parse import cmdline_convert
 from abmatt.converters.controller import get_controller
 from abmatt.converters.material import Material
 from abmatt.converters.matrix import rotate_z_up_to_y_up
@@ -21,24 +20,25 @@ class DaeConverter(convert_lib.Converter):
         self.bones = {}
         self.bones_by_name = {}
         self.dae = dae = collada.Dae(self.mdl_file)
-        materials = self.__parse_materials(dae.get_materials())
-        material_names = {x.name for x in materials}
+        materials = dae.get_materials()
+        self.material_names = material_names = {}
+        for x in materials:
+            material_names[x.name] = x
         self.controllers = []
-        self.influences = influence.InfluenceManager()   # this is to track all influences, consolidating from each controller
+        # this is to track all influences, consolidating from each controller
+        self.influences = InfluenceManager()
         # geometry
         matrix = np.identity(4)
         if self.DETECT_FILE_UNITS:
             if not np.isclose(dae.unit_meter, 1.0):     # set the matrix scale to convert to meters
                 for i in range(3):
                     matrix[i][i] = dae.unit_meter
-        material_geometry_map = {}
+        self.material_geometry_map = material_geometry_map = {}
         self.__parse_nodes(dae.get_scene(), material_geometry_map, matrix)
         self.__combine_bones_map()
         self.__parse_controllers(material_geometry_map)
-        for material in material_geometry_map:
-            if material not in material_names:
-                self._encode_material(material.Material(material))
-                material_names.add(material)
+        if self.patch_existing and len(self.influences.mixed_influences):
+            raise RuntimeError('Patching rigged models is not supported!')
 
         self._before_encoding()
         self.influences.encode_bone_weights(self.mdl0)
@@ -49,16 +49,27 @@ class DaeConverter(convert_lib.Converter):
         self.import_textures_map = dae.get_images()
         return self._end_loading()
 
+    def encode_materials(self):
+        encoded = set()
+        for material in self.material_geometry_map:
+            if material not in encoded:
+                if material not in self.material_names:
+                    self._encode_material(material.Material(material))
+                else:
+                    self._encode_material(self.material_names[material])
+                encoded.add(material)
+
     def save_model(self, mdl0=None):
         base_name, mdl0 = self._start_saving(mdl0)
         mesh = collada.Dae(initial_scene_name=base_name)
-        self.decoded_mats = [self.__decode_material(x, mesh) for x in mdl0.materials]
+        decoded_mats = [self.__decode_material(x, mesh) for x in self.materials]
         # polygons
-        polygons = mdl0.objects
         mesh.add_node(self.__decode_bone(mdl0.bones[0]))
-        for polygon in polygons:
-            mesh.add_node(self.__decode_geometry(polygon))
-        for mat in self.decoded_mats:
+        for polygon in self.polygons:
+            x = self.__decode_geometry(polygon)
+            if x:
+                mesh.add_node(x)
+        for mat in decoded_mats:
             mesh.add_material(mat)
         self._end_saving(mesh)
 
@@ -84,11 +95,12 @@ class DaeConverter(convert_lib.Converter):
 
     def __decode_geometry(self, polygon):
         geo = super()._decode_geometry(polygon)
-        name = polygon.name
-        node = collada.ColladaNode(name)
-        node.geometries.append(geo)
-        node.controller = get_controller(geo)
-        return node
+        if geo:
+            name = polygon.name
+            node = collada.ColladaNode(name)
+            node.geometries.append(geo)
+            node.controller = get_controller(geo)
+            return node
 
     def __decode_material(self, material, mesh):
         diffuse_map = ambient_map = specular_map = None
@@ -112,7 +124,12 @@ class DaeConverter(convert_lib.Converter):
 
     def __parse_controllers(self, material_geometry_map):
         for controller, matrix in self.controllers:
-            self.__parse_controller(controller, matrix, material_geometry_map)
+            if type(controller.geometry) is list:
+                controller.geometry = [x for x in controller.geometry if self._should_include_geometry(x)]
+            elif not self._should_include_geometry(controller.geometry):
+                controller.geometry = None
+            if controller.geometry:
+                self.__parse_controller(controller, matrix, material_geometry_map)
 
     def __parse_controller(self, controller, matrix, material_geometry_map):
         geometry, influences = controller.get_bound_geometry(self.bones, self.influences, matrix)
@@ -125,9 +142,6 @@ class DaeConverter(convert_lib.Converter):
     def __encode_geometry(self, geometry):
         if not self.dae.y_up:
             geometry.swap_y_z_axis()
-        replace = 'Mesh'
-        if geometry.name.endswith(replace) and len(replace) < len(geometry.name):
-            geometry.name = geometry.name[:len(replace) * -1]
         super()._encode_geometry(geometry)
 
     def __add_bone(self, node, parent_bone=None, matrix=None):
@@ -138,14 +152,25 @@ class DaeConverter(convert_lib.Converter):
             else:
                 if not self.dae.y_up:
                     matrix = rotate_z_up_to_y_up(matrix)
-                self.bones[name] = bone = self.mdl0.add_bone(name, parent_bone)
-                self.set_bone_matrix(bone, matrix)
+                bone = None
+                for x in self.mdl0.bones:
+                    if x.name == name:
+                        self.bones[name] = bone = x
+                        break
+                if not bone:
+                    self.bones[name] = bone = self.mdl0.add_bone(name, parent_bone)
+                    self.set_bone_matrix(bone, matrix)
             name = node.attrib.get('name')
             if name is not None and name not in self.bones_by_name:
                 self.bones_by_name[name] = bone
             return bone
 
     def __add_geometry(self, geometry, material_geometry_map):
+        replace = 'Mesh'
+        if geometry.name.endswith(replace) and len(replace) < len(geometry.name):
+            geometry.name = geometry.name[:len(replace) * -1]
+        if not self._should_include_geometry(geometry):
+            return
         geo = material_geometry_map.get(geometry.material_name)
         if geo is not None:
             if not geo[0].combine(geometry):
@@ -188,10 +213,91 @@ class DaeConverter(convert_lib.Converter):
         return [self._encode_material(material) for material in materials]
 
 
-
 def main():
     cmdline_convert(sys.argv[1:], '.dae', DaeConverter)
 
 
 if __name__ == '__main__':
     main()
+
+
+class InfluenceManager:
+    """Manages all influences"""
+
+    def __init__(self, influence_collection=None):
+        self.mixed_influences = []  # influences with mixed weights
+        self.single_influences = []  # influences with single weights
+        if influence_collection:
+            for x in influence_collection:
+                inf = influence_collection[x]
+                if inf.is_mixed():
+                    self.mixed_influences.append(inf)
+                else:
+                    self.single_influences.append(inf)
+
+    def encode_bone_weights(self, mdl0):
+        bone_sorted_single_bind_infs = sorted(self.single_influences, key=lambda x: x.get_single_bone_bind().index)
+        self.__create_inf_ids(bone_sorted_single_bind_infs)
+        bones_with_infs = [x.get_single_bone_bind() for x in bone_sorted_single_bind_infs]
+        remaining_bones = self.__create_bone_table(mdl0, bones_with_infs)
+        if self.mixed_influences:  # create node mix
+            bones_to_infs = {}
+            for x in bone_sorted_single_bind_infs:
+                bones_to_infs[x.get_single_bone_bind().index] = x
+            self.__create_node_mix(mdl0, remaining_bones, bones_to_infs)
+
+    def create_or_find(self, influence):
+        inf_list = self.mixed_influences if influence.is_mixed() else self.single_influences
+        for x in inf_list:
+            if x == influence:
+                return x
+        inf_list.append(influence)
+        return influence
+
+    def __create_node_mix(self, mdl0, remaining_bones, bones_to_infs):
+        """Creates the mdl0 node mix"""
+        node_mix = mdl0.NodeMix
+        used_weights = set()
+        for inf in self.mixed_influences:
+            for x in inf.bone_weights.values():
+                used_weights.add(x.bone.weight_id)
+            node_mix.add_mixed_weight(inf.influence_id,
+                                      [(x.bone.weight_id, x.weight) for x in inf.bone_weights.values()])
+        for bone in mdl0.bones:
+            if bone not in remaining_bones:
+                weight_id = bones_to_infs[bone.index].influence_id
+            else:
+                weight_id = bone.weight_id
+            if weight_id in used_weights:
+                node_mix.add_fixed_weight(weight_id, bone.index)
+        return node_mix
+
+    def __create_inf_ids(self, bone_sorted_singles):
+        index = 0
+        for x in bone_sorted_singles:
+            x.influence_id = index
+            index += 1
+        for x in self.mixed_influences:
+            x.influence_id = index
+            index += 1
+        return index
+
+    def __create_bone_table(self, mdl0, single_binds):
+        bonetable = []
+        for i in range(len(single_binds)):
+            bone = single_binds[i]
+            bone.weight_id = i
+            bonetable.append(bone.index)
+        # influence ids for mixed
+        mixed_length = len(self.mixed_influences)
+        if mixed_length:
+            bonetable += [-1] * mixed_length
+        # now gather up remaining bones
+        remaining = sorted([x for x in mdl0.bones if x not in single_binds], key=lambda x: x.index)
+        index = len(bonetable)
+        for x in remaining:
+            bonetable.append(x.index)
+            x.weight_id = index
+            index += 1
+        mdl0.set_bonetable(bonetable)
+        return remaining

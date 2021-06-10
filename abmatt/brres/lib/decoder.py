@@ -1,5 +1,5 @@
 from copy import deepcopy
-from struct import unpack_from, unpack
+from struct import unpack_from
 
 import numpy as np
 
@@ -93,8 +93,6 @@ class ColorDecoder:
 
 
 def decode_mdl0_influences(mdl0):
-    if mdl0.influences is not None:
-        return mdl0.influences
     influences = {}
     bones = mdl0.bones
     bonetable = mdl0.bone_table
@@ -103,7 +101,7 @@ def decode_mdl0_influences(mdl0):
         index = bonetable[i]
         if index >= 0:
             bone = bones[index]
-            influences[i] = Influence(bone_weights={bone.name: Weight(bone, 1)}, influence_id=index)
+            influences[i] = Influence(bone_weights={bone.name: Weight(bone, 1)}, influence_id=i)
 
     # Get mixed influences
     nodemix = mdl0.NodeMix
@@ -114,8 +112,7 @@ def decode_mdl0_influences(mdl0):
             for x in inf:
                 bone = bones[bonetable[x[0]]]
                 influence[bone.name] = Weight(bone, x[1])
-    mdl0.influences = InfluenceCollection(influences)
-    return mdl0.influences
+    return InfluenceCollection(influences)
 
 
 def decode_polygon(polygon, influences=None):
@@ -124,7 +121,7 @@ def decode_polygon(polygon, influences=None):
         """
     # build the decoder_string decoder
     if influences is None:
-        influences = decode_mdl0_influences(polygon.parent)
+        influences = polygon.parent.get_influences()
     pos_matrix_index = polygon.get_weight_index()
     vertex_index = polygon.get_vertex_index()
     vertices = polygon.get_vertex_group()
@@ -273,7 +270,6 @@ def decode_pos_mtx_indices(all_influences, weight_groups, vertices, pos_mtx_indi
     slicer.append(len(vert_indices))  # add the max onto the end for slicing
 
     remapper = {}
-    max_vert = np.max(vert_indices)
     new_points = []
     new_face_indices = deepcopy(vert_indices)
     # Each weighting slice group
