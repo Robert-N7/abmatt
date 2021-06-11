@@ -26,19 +26,6 @@ class TestBrres(unittest.TestCase):
         self.tmp = os.path.join(self.root, 'tmp' + ext)
         return self.tmp
 
-    def test_older_brres_version(self):
-        load_config.turn_off_fixes()
-        tmp = self._get_tmp()
-        original = Brres(os.path.join(self.root, 'tracks', 'old_mario_gc_hayasi.d', 'course_model.brres'))
-        original.save(tmp, overwrite=True)
-        new = Brres(tmp)
-        self.assertTrue(node_eq(original, new))
-        # This is just to test that it can convert, not that they convert equal
-        converter = DaeConverter(original, self._get_tmp('.dae'), encode=False).convert()
-        converter = DaeConverter(Brres(tmp, read_file=False), converter.mdl_file).convert()
-        converter = ObjConverter(original, self._get_tmp('.obj'), encode=False).convert()
-        converter = ObjConverter(Brres(tmp, read_file=False), converter.mdl_file).convert()
-
     def test_save_all(self):
         tmp = self._get_tmp()
         for x in gather_files(self.root):

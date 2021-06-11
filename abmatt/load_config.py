@@ -43,7 +43,9 @@ def set_remove_unused(val):
         pass
 
 
-def load_config(app_dir, loudness=None, autofix_level=None):
+def load_config(app_dir=None, loudness=None, autofix_level=None):
+    if app_dir is None:
+        app_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'etc', 'abmatt')
     conf = Config.get_instance(os.path.join(app_dir, 'config.conf'))
     tmp_dir = os.path.join(app_dir, 'temp_files')
     converter = ImgConverter(tmp_dir)
@@ -84,10 +86,6 @@ def load_config(app_dir, loudness=None, autofix_level=None):
         Mdl0.DETECT_MODEL_NAME = validBool(conf['detect_model_name'])
     except ValueError:
         pass
-    # try:
-    #     Mdl0.DRAW_PASS_AUTO = validBool(conf['draw_pass_auto'])
-    # except ValueError:
-    #     pass
     try:
         Shader.MAP_ID_AUTO = validBool(conf['map_id_auto'])
     except ValueError:

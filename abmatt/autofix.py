@@ -37,9 +37,6 @@ class Bug:
         self.is_resolved = False
         AutoFix.notify(self)
 
-    # def should_fix(self):
-    #     return not self.is_resolved and AutoFix.should_fix(self)
-
     def resolve(self):
         self.is_resolved = True
         AutoFix.info(f'(FIXED): {self.fix_des}', self.notify_level)

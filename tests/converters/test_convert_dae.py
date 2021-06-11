@@ -138,6 +138,12 @@ class DaeConverterTest(AbmattTest):
                      exclude=('simple_SKP__Wax_02', 'simple_SKP__Material2')).convert()
         self.assertEqual(['simple_SKP__Material1'], [x.name for x in converter.mdl0.objects])
 
+    def test_load_older_version(self):
+        # This is just to test that it can convert, not that they convert equal
+        converter = DaeConverter(self._get_brres('old_mario_gc_hayasi.brres'), self._get_tmp('.dae'),
+                                 encode=False).convert()
+        converter = DaeConverter(Brres(self._get_tmp('.brres'), read_file=False), converter.mdl_file).convert()
+
     # endregion load_model
     # ------------------------------------------------------------------
 

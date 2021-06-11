@@ -75,7 +75,7 @@ class SubFile(Clipable, Packable):
         if self.version != self.EXPECTED_VERSION:
             b = Bug(2, 3, '{} {} unusual version {}'.format(self.MAGIC, self.name, self.version),
                     'set to {}'.format(self.EXPECTED_VERSION))
-            if self.FORCE_VERSION and b.should_fix():
+            if self.FORCE_VERSION:
                 self.version = self.EXPECTED_VERSION
                 b.resolve()
                 self.parent.is_modified = True

@@ -43,7 +43,7 @@ class AbmattTest(unittest.TestCase):
         return os.path.join(AbmattTest.base_path, 'test_files', filename)
 
     @staticmethod
-    def _get_tmp(extension, remove_if_exists=True):
+    def _get_tmp(extension='.brres', remove_if_exists=True):
         if not extension.startswith('.'):
             extension = '.' + extension
         f = os.path.join(AbmattTest.base_path, 'test_files', 'tmp' + extension)
@@ -53,6 +53,8 @@ class AbmattTest(unittest.TestCase):
 
     @staticmethod
     def _get_brres(filename):
+        if not filename.endswith('.brres'):
+            filename += '.brres'
         return Brres(AbmattTest._get_brres_fname(filename))
 
     @staticmethod
