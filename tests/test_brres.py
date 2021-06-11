@@ -2,7 +2,9 @@ import os
 import sys
 import unittest
 
+from abmatt import load_config
 from abmatt.brres import Brres
+from abmatt.command import Command
 from tests.lib import AbmattTest, node_eq
 
 
@@ -60,6 +62,12 @@ class TestBrresSaveEqual(AbmattTest):
 
     def test_save_with_unknown_files(self):  # various txt files
         self.assertTrue(self._test_save_eq(self._get_brres('kuribo_with_txt.brres')))
+
+    def test_older_brres_version(self):
+        load_config.turn_off_fixes()
+        self.assertTrue(self._test_save_eq(self._get_brres('old_mario_gc_hayasi')))
+        load_config.load_config(loudness=0)
+        self.assertTrue(self._test_save_eq(self._get_brres('old_mario_gc_hayasi')))
 
 
 if __name__ == '__main__':

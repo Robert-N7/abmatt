@@ -115,7 +115,6 @@ class PackMaterial(Packer):
             binfile.mark()  # matgx
         else:
             binfile.mark()  # matgx
-            binfile.advance(4)
         # ignore precompiled code space
         binfile.advance(360)
         self.pack_layers(binfile)

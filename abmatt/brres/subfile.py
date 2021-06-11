@@ -63,7 +63,7 @@ class SubFile(Clipable, Packable):
         if binfile:
             self.unpack(binfile)
 
-    def _getNumSections(self):
+    def get_num_sections(self):
         return self.VERSION_SECTIONCOUNT[self.version]
 
     def get_anim_base_name(self):

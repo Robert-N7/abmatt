@@ -105,27 +105,3 @@ class Bone(Node):
                     return bone
 
 
-
-# class BoneTable:
-#     """ Bonetable class """
-#     def __init__(self, binfile=None):
-#         if binfile:
-#             self.unpack(binfile)
-#         else:
-#             self.entries = []
-#
-#     def __getitem__(self, item):
-#         return self.entries[item]
-#
-#     def __len__(self):
-#         return len(self.entries)
-#
-#     def add_entry(self, entry):
-#         self.entries.append(entry)
-#         return len(self.entries) - 1
-#
-#
-#     def pack(self, binfile):
-#         length = len(self.entries)
-#         binfile.write("I", length)
-#         binfile.write("{}i".format(length), *self.entries)

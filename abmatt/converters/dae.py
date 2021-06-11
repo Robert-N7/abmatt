@@ -73,6 +73,7 @@ class Dae:
         self.unit_meter = 1
         self.elements_by_id = {}
         self.node_ids = None
+        self.scene = None
         if filename:
             with open(filename) as f:
                 self.xml = self.__read_xml(f)
@@ -92,9 +93,11 @@ class Dae:
         self.xml.write(filename, pretty_print=True, xml_declaration=True, encoding='utf-8')
 
     def get_scene(self):
+        if self.scene:
+            return self.scene
         self.node_ids = set()
-        nodes = []
-        for x in self.scene:
+        self.scene = nodes = []
+        for x in self.scene_xml:
             if x.tag == 'node':
                 node = self.decode_node(x)
                 if node is not None:
@@ -108,8 +111,9 @@ class Dae:
         if nodes:
             for node in nodes:
                 if node_condition is not None:
-                    if node_condition(node):
-                        ret_list.append(node)
+                    n = node_condition(node)
+                    if n:
+                        ret_list.append(n)
                 else:
                     ret_list.append(node)
                 Dae.get_all_nodes_recurse(node.nodes, node_condition, ret_list)
@@ -117,18 +121,23 @@ class Dae:
 
     @staticmethod
     def get_all_joints(nodes):
-        return Dae.get_all_nodes_recurse(nodes, node_condition=lambda x: x.attrib.get('type') == 'JOINT')
+        return Dae.get_all_nodes_recurse(nodes, node_condition=lambda x: x if x.attrib.get('type') == 'JOINT' else None)
 
     @staticmethod
     def get_all_controllers(nodes):
-        return [x.controller for x in
-                Dae.get_all_nodes_recurse(nodes, node_condition=lambda x: x.controller is not None)]
+        return [x for x in
+                Dae.get_all_nodes_recurse(nodes, node_condition=lambda x: x if x.controller is not None else None)]
 
     @staticmethod
     def get_all_geometries(nodes):
         geometries = []
-        for x in Dae.get_all_nodes_recurse(nodes, node_condition=lambda x: x.geometries):
-            geometries.extend(x.geometries)
+        def get_geo_node(x):
+            if x.geometries:
+                return x.geometries
+            elif x.controller:
+                return x.controller.geometry
+        for x in Dae.get_all_nodes_recurse(nodes, node_condition=get_geo_node):
+            geometries.extend(x)
         return geometries
 
     def __eq__(self, other):
@@ -217,7 +226,7 @@ class Dae:
 
     def add_node(self, node, parent=None):
         if parent is None:
-            parent = self.scene
+            parent = self.scene_xml
         xml_node = XMLNode('node', id=node.name, name=node.name, parent=parent)
         if node.attrib:
             att = node.attrib
@@ -574,18 +583,18 @@ class Dae:
                 self.__setattr__(library, node)
         if initial_name:
             scene_id = initial_name + '-scene'
-            self.scene = XMLNode('visual_scene', id=scene_id, name=initial_name, parent=self.visual_scenes)
+            self.scene_xml = XMLNode('visual_scene', id=scene_id, name=initial_name, parent=self.visual_scenes)
             scene = XMLNode('scene', parent=root)
             instance_scene = XMLNode('instance_visual_scene', parent=scene)
             instance_scene.attrib['url'] = '#' + scene_id
         else:
-            self.scene = self.get_referenced_element(
+            self.scene_xml = self.get_referenced_element(
                 first(first(root, 'scene'), 'instance_visual_scene'), 'url')
 
     def __initialize_assets(self, root):
         asset = XMLNode('asset', parent=root)
         contributor = XMLNode('contributor', parent=asset)
-        authoring_tool = XMLNode('authoring_tool', 'ABMATT COLLADA exporter v1.0.2', parent=contributor)
+        authoring_tool = XMLNode('authoring_tool', 'ABMATT COLLADA exporter v1.1.0', parent=contributor)
         time_stamp = datetime.now()
         created = XMLNode('created', str(time_stamp), parent=asset)
         modified = XMLNode('modified', str(time_stamp), parent=asset)

@@ -198,7 +198,7 @@ class Command:
 
     def set_convert(self, params):
         flags = 0
-        self.name = self.destination = self.model = None
+        self.name = self.destination = self.model = self.include = self.exclude = None
         while len(params):
             param = params.pop(0)
             lower = param.lower()
@@ -213,6 +213,16 @@ class Command:
                     self.name = os.path.normpath(params.pop(0))
                 except IndexError:
                     raise ParsingException('Expected brres filename after keyword "in"')
+            elif lower == 'include':
+                try:
+                    self.include = params.pop(0).split(',')
+                except IndexError:
+                    raise ParsingException('Expected polygon list after include!')
+            elif lower == 'exclude':
+                try:
+                    self.exclude = params.pop(0).split(',')
+                except IndexError:
+                    raise ParsingException('Expected polygon list after exclude!')
             else:
                 if lower.startswith('--'):
                     lower = lower.lstrip('-')
@@ -224,6 +234,8 @@ class Command:
                     flags |= 4
                 elif lower == 'no-uvs':
                     flags |= 8
+                elif lower == 'patch':
+                    flags |= 0x10
                 elif not self.name:
                     self.name = os.path.normpath(param)
                 else:
@@ -830,7 +842,7 @@ class Command:
                 destination = self.destination if not dest_auto \
                     else os.path.join(os.path.dirname(self.destination), convert_file_ext(os.path.basename(file), self.ext))
                 brres = self.create_or_open(file)
-                converter = klass(brres, destination, self.flags)
+                converter = klass(brres, destination, self.flags, include=self.include, exclude=self.exclude)
                 models = MATCHING.findAll(self.model, brres.models)
                 if len(models) > 1:
                     multi_model = True

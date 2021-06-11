@@ -6,7 +6,7 @@ def unpack_default(subfile, binfile):
     UnpackSubfile(subfile, binfile)
     subfile.data = binfile.readRemaining()
     offsets = []
-    for i in range(subfile._getNumSections()):
+    for i in range(subfile.get_num_sections()):
         offsets.append(binfile.recall())
     subfile.offsets = offsets
     binfile.end()
@@ -22,7 +22,7 @@ class UnpackSubfile(Unpacker):
         binfile.readLen()
         subfile.version, outerOffset = binfile.read("Ii", 8)
         try:
-            subfile.numSections = subfile._getNumSections()
+            subfile.numSections = subfile.get_num_sections()
         except KeyError:
             raise UnpackingError(binfile,
                                  "{} {} unsupported version {}".format(subfile.MAGIC, subfile.name, subfile.version))

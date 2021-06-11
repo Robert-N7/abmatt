@@ -23,6 +23,9 @@ class Color(Node):
         copy = Color(self.name, None)
         return copy.paste(self)
 
+    def __hash__(self):
+        return super().__hash__()
+
     def paste(self, item):
         self.flags = item.flags
         self.index = item.index

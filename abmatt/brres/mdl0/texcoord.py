@@ -7,6 +7,9 @@ COORD_ST = 1
 class TexCoord(Point):
     flip_on_decode = True
 
+    def __hash__(self):
+        return super().__hash__()
+
     def __deepcopy__(self, memodict=None):
         copy = TexCoord(self.name, None)
         return copy.paste(self)

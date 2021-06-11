@@ -10,6 +10,8 @@ XYZ_POSITION = 1
 class Vertex(Point):
     __MAX_COORD = 131071
     """ Vertex class for storing vertices data """
+    def __hash__(self):
+        return super().__hash__()
 
     def __deepcopy__(self, memodict=None):
         copy = Vertex(self.name, None)

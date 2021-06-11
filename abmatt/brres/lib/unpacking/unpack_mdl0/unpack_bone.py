@@ -5,7 +5,7 @@ from abmatt.brres.mdl0.bone import Bone
 def unpack_bonetable(binfile, format):
     [length] = binfile.read("I", 4)
     if length:
-        return binfile.read("{}{}".format(length, format), length * 4)
+        return list(binfile.read("{}{}".format(length, format), length * 4))
 
 
 class UnpackBone(Unpacker):

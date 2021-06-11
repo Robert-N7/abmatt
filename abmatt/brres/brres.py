@@ -58,6 +58,9 @@ class Brres(Clipable, Packable):
     @staticmethod
     def add_open_file(file):
         Brres.OPEN_FILES.append(file)
+        if len(Brres.OPEN_FILES) > 10:
+            for i in range(5):
+                Brres.OPEN_FILES.pop(0).close()
 
     @staticmethod
     def close_files():
@@ -366,7 +369,7 @@ class Brres(Clipable, Packable):
     def check(self):
         AutoFix.info('checking file {}'.format(self.name), 4)
         expected = self.get_expected_mdl_name()
-        if self.MOONVIEW or 'ridgehighway_course' in self.name:
+        if self.MOONVIEW:
             self.check_moonview()
             Brres.MOONVIEW = False
         for mdl in self.models:

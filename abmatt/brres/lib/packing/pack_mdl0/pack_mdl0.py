@@ -18,8 +18,6 @@ class PackMdl0(PackSubfile):
     def pack(self, mdl0, binfile):
         """ Packs the model data """
         self.sections = self.pre_pack(mdl0)
-        if self.sections[6] or self.sections[7]:
-            raise PackingError(binfile, 'Packing Fur not supported')
         super(PackMdl0, self).pack(mdl0, binfile)
         binfile.start()  # header
         binfile.write('I', 0x40)
@@ -38,15 +36,15 @@ class PackMdl0(PackSubfile):
         folders = self.packFolders(binfile)
 
         # texture links
-        texture_link_map = self.packTextureLinks(binfile, folders[11])
+        texture_link_map = self.packTextureLinks(binfile, folders[-1])
         self.pack_definitions(binfile, folders[0])
         self.pack_section(binfile, 1, folders[1], PackBone)  # bones
-        i = 8
-        self.pack_materials(binfile, folders[i], texture_link_map)
+        i = len(self.sections) - 4
+        self.pack_materials(binfile, i, folders[i], texture_link_map)
         i += 1
         self.pack_shaders(binfile, folders[i])
         i += 1
-        self.pack_section(binfile, 10, folders[i], PackPolygon)  # objects
+        self.pack_section(binfile, i, folders[i], PackPolygon)  # objects
         i = 2
         self.pack_section(binfile, i, folders[i], PackVertex)
         i += 1
@@ -93,7 +91,7 @@ class PackMdl0(PackSubfile):
         """Packs texture link section, returning map of names:offsets be filled in by mat/layer refs"""
         # binfile.section_offsets.append((binfile.offset, 'Textures'))       #- debug
         tex_map = {}
-        links = self.sections[11]
+        links = self.sections[-1]
         for x in links:
             folder.createEntryRefI()
             tex_map[x.name] = self.PackTextureLink(x.name, binfile, x.num_refs)
@@ -106,11 +104,11 @@ class PackMdl0(PackSubfile):
             x.pack(binfile)
         binfile.align(4)
 
-    def pack_materials(self, binfile, folder, texture_link_map):
+    def pack_materials(self, binfile, section_index, folder, texture_link_map):
         """packs materials, requires texture link map to offsets that need to be filled"""
         # self.binfile.section_offsets.append((binfile.offset, folder.name))     #- debug
         mat_packers = self.mat_packers
-        section = self.sections[8]
+        section = self.sections[section_index]
         for i in range(len(section)):
             mat = section[i]
             folder.createEntryRefI()
@@ -152,23 +150,22 @@ class PackMdl0(PackSubfile):
         root_folders = []  # for storing Index Groups
         sections = self.sections
         # Create folder for each section the MDL0 has
-        i = j = 0
+        i = 0
         while i < len(sections):
             section = sections[i]
-            if i == 9:  # special case for shaders: must add entry for each material
+            if i == len(sections) - 3:  # special case for shaders: must add entry for each material
                 section = sections[i - 1]
             if section:
-                f = Folder(binfile, self.SECTION_NAMES[i])
+                f = Folder(binfile, self.section_names[i])
                 for x in section:
                     assert x
                     f.addEntry(x.name)
                 root_folders.append(f)
-                binfile.createRef(j, False)  # create the ref from stored offsets
+                binfile.createRef(i, False)  # create the ref from stored offsets
                 f.pack(binfile)
             else:
                 root_folders.append(None)  # create placeholder
             i += 1
-            j += 1
         return root_folders
 
     def build_texture_links(self, materials):
@@ -223,6 +220,14 @@ class PackMdl0(PackSubfile):
         for i in range(1, len(sections) - 1):
             if sections[i]:
                 self.rebuild_indexes(sections[i])
+        if mdl0.version < 10:
+            start = sections[:6]
+            start.extend(sections[8:])
+            sections = start
+            self.section_names = list(self.SECTION_NAMES[:6])
+            self.section_names.extend(self.SECTION_NAMES[8:])
+        else:
+            self.section_names = self.SECTION_NAMES
         sections[0] = self.build_definitions()
         return sections
 

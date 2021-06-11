@@ -152,7 +152,8 @@ class PointCollection:
         if divisor:
             multiplyBy = 2 ** divisor
             self.encode_points(multiplyBy, dtype)
-        should_consolidate = False if self.influences and self.influences.is_mixed() else encoder is None or encoder.should_consolidate()
+        should_consolidate = False if self.influences and self.influences.is_mixed() \
+            else encoder is None or encoder.should_consolidate()
         if should_consolidate:
             points, face_indices, index_remapper = self.__consolidate_points()
             self.points = points

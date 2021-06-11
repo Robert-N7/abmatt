@@ -1,8 +1,8 @@
 import os
 
 from abmatt.brres import Brres
-from abmatt.command import load_preset_file
 from abmatt.converters.convert_dae import DaeConverter
+from abmatt.converters.dae import Dae
 from tests.lib import AbmattTest, CheckPositions
 
 
@@ -27,7 +27,7 @@ class DaeConverterTest(AbmattTest):
         dae_file = self._get_test_fname('beginner.dae')
         converter = DaeConverter(Brres(self._get_tmp('.brres'), read_file=False), dae_file)
         converter.load_model()
-        self._test_mats_equal(converter.brres.models[0].materials, brres.models[0].materials)
+        self._test_mats_equal(converter.brres.models[0].materials, brres.models[0].materials, sort=True)
 
     def test_convert_multi_material_geometry(self):
         """Tests converting dae file that has multiple materials associated with geometry"""
@@ -100,7 +100,49 @@ class DaeConverterTest(AbmattTest):
         mdl0 = converter.mdl0
         # converter.brres.save(overwrite=True)
         # Ensure that the bones are correct
-        CheckPositions.bones_equal(original.bones, mdl0.bones, 0.0001)
+        self.assertTrue(CheckPositions.bones_equal(original.bones, mdl0.bones, 0.0001))
+
+    def test_patch_rigged_not_implemented(self):
+        converter = DaeConverter(self._get_brres('kuribo.brres'),
+                                 self._get_test_fname('simple_multi_bone_single_bind.dae'),
+                                 flags=DaeConverter.PATCH, mdl0='kuribo')
+        with self.assertRaises(RuntimeError):
+            converter.load_model()
+        with self.assertRaises(RuntimeError):
+            DaeConverter(self._get_brres('simple.brres'), self._get_test_fname('simple_multi_bone_multi_bind.dae'),
+                         flags=DaeConverter.PATCH, mdl0='3ds_simple').load_model()
+
+    def test_patch_adds_polys(self):
+        converter = DaeConverter(self._get_brres('castleflower1.brres'),
+                                 self._get_test_fname('simple_multi_bone_single_bind.dae'),
+                                 flags=DaeConverter.PATCH, mdl0='castleflower1').convert()
+        # converter.brres.save(self._get_tmp('.brres'), overwrite=True)
+        expected = ['polygon0', 'polygon1', 'BlackNWhite1', 'BlackNWhite2', 'GreenCloud', 'Yellow']
+        actual = [x.name for x in converter.mdl0.objects]
+        self.assertEqual(expected, actual)
+
+    def test_patch_replaces_polys(self):
+        original = self._get_brres('simple.brres')
+        mdl0 = original.models[0]
+        replace = mdl0.objects[0]
+        DaeConverter(original,
+                     self._get_test_fname('3ds_simple.DAE'),
+                     flags=DaeConverter.PATCH,
+                     include=[replace.name],
+                     mdl0=mdl0).convert()
+        new = [x for x in mdl0.objects if x.name == replace.name][0]
+        self.assertIsNot(replace, new)
+
+    def test_load_excludes(self):
+        converter = DaeConverter(self._get_tmp('.brres'), self._get_test_fname('3ds_simple.DAE'),
+                     exclude=('simple_SKP__Wax_02', 'simple_SKP__Material2')).convert()
+        self.assertEqual(['simple_SKP__Material1'], [x.name for x in converter.mdl0.objects])
+
+    def test_load_older_version(self):
+        # This is just to test that it can convert, not that they convert equal
+        converter = DaeConverter(self._get_brres('old_mario_gc_hayasi.brres'), self._get_tmp('.dae'),
+                                 encode=False).convert()
+        converter = DaeConverter(Brres(self._get_tmp('.brres'), read_file=False), converter.mdl_file).convert()
 
     # endregion load_model
     # ------------------------------------------------------------------
@@ -165,11 +207,15 @@ class DaeConverterTest(AbmattTest):
         poly = converter.mdl0.objects[0]
         expected = [False, True, True]
         expected.extend([False] * 5)
-        for i in range(8):
-            self.assertEqual(expected[i], poly.has_uv_matrix(i))
+        self.assertEqual(expected, [poly.has_uv_matrix(i) for i in range(8)])
 
     def test_save_multi_influence_per_face_index(self):
-        DaeConverter(self._get_brres('koopaFigure.brres'), self._get_tmp('.dae')).save_model()
+        converter = DaeConverter(self._get_brres('koopaFigure.brres'), self._get_tmp('.dae'))
+        converter.save_model()
+        original = converter.mdl0
+        new = DaeConverter(self._get_tmp('.brres'), converter.mdl_file).load_model()
+        self.assertTrue(CheckPositions.positions_equal(original.vertices, new.vertices, rtol=0.1, atol=0.01))
+        self.assertTrue(CheckPositions.bones_equal(original.bones, new.bones))
 
     def test_save_and_load_polygons_bound_to_single_material(self):
         converter = DaeConverter(self._get_brres('castleflower1.brres'), self._get_tmp('.dae'))
@@ -179,5 +225,12 @@ class DaeConverterTest(AbmattTest):
         self.assertTrue(CheckPositions.positions_equal(original.vertices, new.vertices, rtol=0.1, atol=0.01))
         self.assertTrue(CheckPositions.bones_equal([x.linked_bone for x in original.objects],
                                                    [x.linked_bone for x in new.objects]))
+
+    def test_save_exclude(self):
+        converter = DaeConverter(self._get_brres('simple.brres'), self._get_tmp('.dae'),
+                                 encode=False,
+                                 exclude=['simple_SKP__Wax_02', 'simple_SKP__Material1']).convert()
+        geometry = Dae.get_all_geometries(Dae(converter.mdl_file).get_scene())
+        self.assertEqual(['simple_SKP__Material2'], [x.name for x in geometry])
 
     # endregion save_model

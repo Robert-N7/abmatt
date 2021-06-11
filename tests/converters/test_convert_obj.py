@@ -1,5 +1,5 @@
 from abmatt.converters.convert_obj import ObjConverter
-from tests.lib import AbmattTest
+from tests.lib import AbmattTest, CheckPositions
 
 
 class TestConvertObj(AbmattTest):
@@ -16,3 +16,21 @@ class TestConvertObj(AbmattTest):
         for poly in converter.mdl0.objects:
             self.assertEqual(map_bone, poly.linked_bone)
             self.assertEqual(map_bone, poly.visible_bone)
+
+    def test_load_patch(self):
+        original = self._get_brres('simple.brres')
+        replace = original.models[0].objects[0]
+        converter = ObjConverter(original,
+                                 self._get_test_fname('3ds_simple.obj'),
+                                 flags=ObjConverter.PATCH,
+                                 include=[replace.name],
+                                 ).convert()
+        item = [x for x in converter.mdl0.objects if x.name == replace.name][0]
+        self.assertIsNot(replace, item)
+
+    def test_save_load_eq(self):
+        original = self._get_brres('beginner_course.brres')
+        converter = ObjConverter(original, self._get_tmp('.obj'),
+                                 encode=False).convert()
+        encoder = ObjConverter(self._get_tmp('.brres'), converter.mdl_file).convert()
+        self.assertTrue(CheckPositions.positions_equal(original.models[0].vertices, encoder.mdl0.vertices))
