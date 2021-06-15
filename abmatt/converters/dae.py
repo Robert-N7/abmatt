@@ -349,6 +349,9 @@ class Dae:
         geo_name = xml_geometry.attrib.get('name')
         if not geo_name:
             geo_name = get_id(xml_geometry)
+        replace = 'Mesh'
+        if geo_name.endswith(replace) and len(replace) < len(geo_name):
+            geo_name = geo_name[:len(replace) * -1]
         geo_count = 0
         for tri_node in mesh.iter('triangles'):
             if not mat_names:

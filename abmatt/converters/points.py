@@ -90,11 +90,8 @@ class PointCollection:
         is_signed = True if point_min < 0 else False
         point_max = max(point_max, abs(point_min))
         max_shift = 16 - math.frexp(point_max)[1] - is_signed
-        if max_shift <= 6:  # guarantee 6 decimals of precision
+        if max_shift <= 13:  # guarantee 4 decimals of precision
             return 'f', 0  # float
-        elif max_shift >= 15:
-            max_shift -= 8
-            format = 'b' if is_signed else 'B'
         else:
             format = 'h' if is_signed else 'H'
         return format, max_shift
