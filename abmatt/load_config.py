@@ -117,7 +117,7 @@ def load_config(app_dir=None, loudness=None, autofix_level=None):
     return conf
 
 
-VERSION = '1.1.0'
+VERSION = '1.2.0'
 USAGE = "USAGE: abmatt [command_line][--interactive -f <file> -b <brres-file> -d <destination> --overwrite]"
 
 

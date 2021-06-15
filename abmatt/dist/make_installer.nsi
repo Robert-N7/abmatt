@@ -1,4 +1,4 @@
-!define VERSION "1.1.0"
+!define VERSION "1.2.0"
 !define PROGRAM_NAME "ANoob's Brres Material Tool ${VERSION}"
 InstallDir "$Documents\abmatt"
 Name "${PROGRAM_NAME}"
