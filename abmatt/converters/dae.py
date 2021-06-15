@@ -349,6 +349,9 @@ class Dae:
         geo_name = xml_geometry.attrib.get('name')
         if not geo_name:
             geo_name = get_id(xml_geometry)
+        replace = 'Mesh'
+        if geo_name.endswith(replace) and len(replace) < len(geo_name):
+            geo_name = geo_name[:len(replace) * -1]
         geo_count = 0
         for tri_node in mesh.iter('triangles'):
             if not mat_names:
@@ -594,7 +597,7 @@ class Dae:
     def __initialize_assets(self, root):
         asset = XMLNode('asset', parent=root)
         contributor = XMLNode('contributor', parent=asset)
-        authoring_tool = XMLNode('authoring_tool', 'ABMATT COLLADA exporter v1.1.0', parent=contributor)
+        authoring_tool = XMLNode('authoring_tool', 'ABMATT COLLADA exporter v1.2.0', parent=contributor)
         time_stamp = datetime.now()
         created = XMLNode('created', str(time_stamp), parent=asset)
         modified = XMLNode('modified', str(time_stamp), parent=asset)

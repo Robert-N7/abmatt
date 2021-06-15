@@ -5,6 +5,7 @@ import numpy as np
 
 from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
+from abmatt.converters.error import ConvertError
 from abmatt.brres.lib.matching import fuzzy_match
 from abmatt.brres.material_library import MaterialLibrary
 from abmatt.brres.mdl0.material import material
@@ -113,6 +114,8 @@ class Converter:
         return self._init_mdl0(brres_name, os.path.splitext(name)[0], model_name)
 
     def _before_encoding(self):
+        if not self.geometries:
+            raise ConvertError('No geometries found to encode!')
         if self.patch_existing:
             replace_names = [x.name for x in self.geometries]
             for poly in [x for x in self.replacement_model.objects if x.name in replace_names]:

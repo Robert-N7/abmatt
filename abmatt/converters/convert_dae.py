@@ -166,9 +166,6 @@ class DaeConverter(convert_lib.Converter):
             return bone
 
     def __add_geometry(self, geometry, material_geometry_map):
-        replace = 'Mesh'
-        if geometry.name.endswith(replace) and len(replace) < len(geometry.name):
-            geometry.name = geometry.name[:len(replace) * -1]
         if not self._should_include_geometry(geometry):
             return
         geo = material_geometry_map.get(geometry.material_name)
