@@ -140,7 +140,7 @@ class ColorCollection:
             if combine_geometry:    # Make this apart of the tris
                 if self.combined_index.stop != len(self.face_indices):
                     raise RuntimeError('Cannot combine color geometry in previously combined color!')
-            if (self.rgba_colors != color.rgba_colors).all():
+            if self.rgba_colors != color.rgba_colors:
                 color.face_indices += len(self)
                 self.rgba_colors = np.append(self.rgba_colors, color.rgba_colors, 0)
             color.combined_index = slice(len(self.face_indices), len(self.face_indices) + len(color.face_indices))
