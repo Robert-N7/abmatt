@@ -827,9 +827,9 @@ class Command:
                 brres = self.create_or_open(self.destination)
             for file in files:
                 if not brres:
-                    converter = klass(self.create_or_open(convert_file_ext(file, '.brres')), file, self.flags)
-                else:
-                    converter = klass(brres, file, self.flags)
+                    brres = self.create_or_open(convert_file_ext(file, '.brres'))
+                converter = klass(brres, file, self.flags,
+                                  include=self.include, exclude=self.exclude)
                 base_name = os.path.splitext(os.path.basename(converter.brres.name))[0]
                 model = self.model
                 if model and len(model) > len(base_name) and model.startswith(base_name + '-'):

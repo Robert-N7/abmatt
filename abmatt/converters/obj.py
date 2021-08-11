@@ -93,10 +93,15 @@ class ObjGeometry():
             AutoFix.warn('Please triangulate your model before importing it!'.format(self.name))
             raise ValueError('Normalize triangles failed')
         triangles = triangles - 1
-        self.triangles = triangles
         self.vertices = self.normalize_indices_group(triangles[:, :, 0], vertices)
-        self.normals = self.normalize_indices_group(triangles[:, :, -1], normals) if self.has_normals else None
-        self.texcoords = self.normalize_indices_group(triangles[:, :, 1], tex_coords) if self.has_texcoords else None
+        tris = [self.vertices.face_indices]
+        if self.has_normals:
+            self.normals = self.normalize_indices_group(triangles[:, :, -1], normals)
+            tris.append(self.normals.face_indices)
+        if self.has_texcoords:
+            self.texcoords = self.normalize_indices_group(triangles[:, :, 1], tex_coords)
+            tris.append(self.texcoords.face_indices)
+        self.triangles = np.stack(tris, axis=-1)
 
 
 class Obj():

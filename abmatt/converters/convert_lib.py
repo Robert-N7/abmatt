@@ -116,14 +116,21 @@ class Converter:
     def _before_encoding(self):
         if not self.geometries:
             raise ConvertError('No geometries found to encode!')
+        self.removed_materials = {}
         if self.patch_existing:
             replace_names = [x.name for x in self.geometries]
             for poly in [x for x in self.replacement_model.objects if x.name in replace_names]:
+                self.removed_materials[poly.material.name] = poly.material
                 self.replacement_model.remove_polygon(poly)
+        self.material_name_remap = material_name_remap = {}
         self.encode_materials()
+        for x in self.geometries:
+            if x.material_name in material_name_remap:
+                x.material_name = material_name_remap[x.material_name]
+
         if os.path.exists(self.json_file):
             converter = MatsToJsonConverter(self.json_file)
-            converter.load_into(self.mdl0.materials)
+            converter.load_into(self.mdl0.materials, material_name_remap)
             self.json_polygon_encoding = converter.polygons_by_name
         else:
             self.json_polygon_encoding = None
@@ -222,7 +229,9 @@ class Converter:
     def _encode_material(self, generic_mat):
         m = None
         if self.replacement_model:
-            m = self.replacement_model.get_material_by_name(generic_mat.name)
+            m = self.removed_materials.get(generic_mat.name)
+            if m is None:
+                m = self.replacement_model.get_material_by_name(generic_mat.name)
         if m is None:
             if self.material_library:
                 m = self.material_library.get(generic_mat)
@@ -234,6 +243,8 @@ class Converter:
             mat.paste(m)
         else:
             mat = generic_mat.encode(self.mdl0)
+        if mat.name != generic_mat.name:
+            self.material_name_remap[generic_mat.name] = mat.name
         for x in mat.layers:
             self.image_library.add(x.name)
         return mat
@@ -317,13 +328,13 @@ class Converter:
             has_uv_mtx = json_data.get('has_uv_matrix')
             priority = json_data.get('draw_priority')
         elif self.replacement_model:
-            replace_geometry = [x for x in self.replacement_model.objects if x.name == geometry.name]
-            if replace_geometry:
-                replace_geometry = replace_geometry[0]
-                has_uv_mtx = [replace_geometry.has_uv_matrix(i) for i in range(8)]
-                priority = replace_geometry.priority
-                if self.patch_existing:
-                    self.mdl0.remove_polygon(replace_geometry)
+            for x in self.replacement_model.objects:
+                if x.name == geometry.name:
+                    has_uv_mtx = [x.has_uv_matrix(i) for i in range(8)]
+                    priority = x.priority
+                    if self.patch_existing:
+                        self.mdl0.remove_polygon(x)
+                    break
         encoder = self.encoder.get_encoder(geometry) if self.encoder else None
         return geometry.encode(self.mdl0, encoder=encoder,
                                priority=priority,

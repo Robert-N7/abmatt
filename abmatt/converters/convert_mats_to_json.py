@@ -40,7 +40,7 @@ class MatsToJsonConverter:
                           for x in self.materials_by_name]
         return materials
 
-    def load_into(self, materials):
+    def load_into(self, materials, material_mapper=None):
         """ Loads json data into materials, if the material name isn't found it is ignored
         :param materials: the materials to load data into
         :return: materials
@@ -49,6 +49,10 @@ class MatsToJsonConverter:
             self.materials_by_name = json.loads(f.read())
         for x in materials:
             data = self.materials_by_name.get(x.name)
+            if not data and material_mapper:
+                new_name = material_mapper.get(x.name)
+                if new_name:
+                    data = self.materials_by_name.get(new_name)
             if data:
                 self.__load_material(x, data)
 
