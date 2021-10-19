@@ -176,8 +176,8 @@ class Command:
             if not x:
                 raise ParsingException(self.txt, 'Not enough parameters')
             self.set_key_val(x[0])
-        elif cmd == 'add' and len(x):
-            self.set_key_val(x[0])
+        elif cmd == 'add':
+            self.set_add(x)
         elif len(x):
             if cmd != 'info':
                 raise ParsingException(self.txt, "Unknown parameter(s) {}".format(x))
@@ -270,6 +270,12 @@ class Command:
             if self.ext not in supported_formats:
                 raise ParsingException('Unsupported export format {}'.format(self.ext))
         self.flags = flags
+
+    def set_add(self, params):
+        if len(params):
+            self.set_key_val(params[0])
+        if self.type == 'mdl0':
+            self.include = self.exclude = self.model = None
 
     def set_key_val(self, keyval):
         if ':' not in keyval:
