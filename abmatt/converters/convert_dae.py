@@ -54,7 +54,7 @@ class DaeConverter(convert_lib.Converter):
         for material in self.material_geometry_map:
             if material not in encoded:
                 if material not in self.material_names:
-                    self._encode_material(material.Material(material))
+                    self._encode_material(Material(material))
                 else:
                     self._encode_material(self.material_names[material])
                 encoded.add(material)
