@@ -27,7 +27,7 @@ data_files = ['etc/abmatt/config.conf',
 
 # calling the setup function
 setup(name='abmatt',
-      version='1.2.0',
+      version='1.3.0',
       entry_points={
           'console_scripts': [
               'abmatt = abmatt.__main__:main'

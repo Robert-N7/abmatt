@@ -176,8 +176,8 @@ class Command:
             if not x:
                 raise ParsingException(self.txt, 'Not enough parameters')
             self.set_key_val(x[0])
-        elif cmd == 'add' and len(x):
-            self.set_key_val(x[0])
+        elif cmd == 'add':
+            self.set_add(x)
         elif len(x):
             if cmd != 'info':
                 raise ParsingException(self.txt, "Unknown parameter(s) {}".format(x))
@@ -270,6 +270,12 @@ class Command:
             if self.ext not in supported_formats:
                 raise ParsingException('Unsupported export format {}'.format(self.ext))
         self.flags = flags
+
+    def set_add(self, params):
+        if len(params):
+            self.set_key_val(params[0])
+        if self.type == 'mdl0':
+            self.include = self.exclude = self.model = None
 
     def set_key_val(self, keyval):
         if ':' not in keyval:
@@ -827,9 +833,9 @@ class Command:
                 brres = self.create_or_open(self.destination)
             for file in files:
                 if not brres:
-                    converter = klass(self.create_or_open(convert_file_ext(file, '.brres')), file, self.flags)
-                else:
-                    converter = klass(brres, file, self.flags)
+                    brres = self.create_or_open(convert_file_ext(file, '.brres'))
+                converter = klass(brres, file, self.flags,
+                                  include=self.include, exclude=self.exclude)
                 base_name = os.path.splitext(os.path.basename(converter.brres.name))[0]
                 model = self.model
                 if model and len(model) > len(base_name) and model.startswith(base_name + '-'):

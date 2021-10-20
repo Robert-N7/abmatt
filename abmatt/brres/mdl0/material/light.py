@@ -71,8 +71,12 @@ class LightChannel:
                                                                                self.alphaLightControl)
 
     def enable_vertex_color(self, enabled=True):
-        return self.colorLightControl.enable_vertex_color(enabled) or \
-            self.alphaLightControl.enable_vertex_color(enabled)
+        result = False
+        if self.colorLightControl.enable_vertex_color(enabled):
+            result = True
+        if self.alphaLightControl.enable_vertex_color(enabled):
+            result = True
+        return result
 
     def is_vertex_color_enabled(self):
         return self.colorLightControl.is_vertex_color_enabled() and \

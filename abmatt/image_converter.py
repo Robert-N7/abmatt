@@ -161,13 +161,14 @@ class ImgConverter:
 
         @staticmethod
         def find_file(filename):
+            original = filename
             if filename.startswith('file://'):
                 filename = filename.replace('file://', '')
             if not os.path.exists(filename):
                 from urllib import parse
                 filename = parse.unquote(filename)
                 if not os.path.exists(filename):
-                    raise EncodeError('No such file {}'.format(filename))
+                    raise EncodeError('No such file {}'.format(original))
             return filename
 
         @staticmethod
