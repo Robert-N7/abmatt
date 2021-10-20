@@ -354,14 +354,14 @@ class Dae:
             geo_name = geo_name[:len(replace) * -1]
         geo_count = 0
         for tri_node in mesh.iter('triangles'):
-            if not mat_names:
-                material_name = tri_node.attrib.get('material')
-                if not material_name:
+            material_name = tri_node.attrib.get('material')
+            if not material_name:
+                if not mat_names:
                     for attrib in xml_geometry.attrib:
                         material_name = xml_geometry.attrib[attrib] + '-mat'
                         break
-            else:
-                material_name = mat_names[geo_count]
+                else:
+                    material_name = mat_names[geo_count]
             inputs = []
             stride = 0
             uniqueOffsets = []
@@ -597,7 +597,7 @@ class Dae:
     def __initialize_assets(self, root):
         asset = XMLNode('asset', parent=root)
         contributor = XMLNode('contributor', parent=asset)
-        authoring_tool = XMLNode('authoring_tool', 'ABMATT COLLADA exporter v1.3.0', parent=contributor)
+        authoring_tool = XMLNode('authoring_tool', 'ABMATT COLLADA exporter v1.3.1', parent=contributor)
         time_stamp = datetime.now()
         created = XMLNode('created', str(time_stamp), parent=asset)
         modified = XMLNode('modified', str(time_stamp), parent=asset)
