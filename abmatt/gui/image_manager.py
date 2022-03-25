@@ -91,18 +91,6 @@ class ImageManager(QRunnable, ClipableObserver, ImageHandler):
     def is_done(self):
         return self.is_ready
 
-    # def subscribe(self, obj, brres):
-    #     li = self.image_updater.get(brres.name)
-    #     if not li:
-    #         self.image_updater[brres.name] = [obj]
-    #     else:
-    #         li.append(obj)
-    #
-    # def unsubscribe(self, obj, brres):
-    #     li = self.image_updater.get(brres.name)
-    #     if li:
-    #         li.remove(obj)
-
     def notify_image_observers(self, brres, directory):
         li = self.image_updater.get(self.__get_brres_key(brres))
         if li:
@@ -185,12 +173,6 @@ class ImageManager(QRunnable, ClipableObserver, ImageHandler):
         else:
             os.mkdir(self.tmp_dir)
 
-    # def __on_update_brres_images(self, brres_key, dir):
-    #     updater = self.updater.get(brres_key)
-    #     if updater:
-    #         for x in updater:
-    #             x.on_image_update(dir)
-
     @staticmethod
     def __get_brres_key(brres):
         return os.path.abspath(brres.name)
@@ -214,11 +196,6 @@ class ImageManager(QRunnable, ClipableObserver, ImageHandler):
         self.queue = []
         self.signals = ImageSignals()
         self.image_updater = {}
-        # if self.enabled:
-        #     self.thread = Thread(target=self.run)
-        #     self.thread.start()
-        # self.cfg_file = os.path.join(self.tmp_dir, 'brres_to_folder.txt')
-        # self.__load_config()
 
 
 def update_image(widget, dir, name, scale_width=64):

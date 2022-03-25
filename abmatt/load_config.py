@@ -281,17 +281,66 @@ def parse_args(argv, app_dir):
         sys.exit()
 
     app_dir = os.path.dirname(os.path.dirname(app_dir))
-    while not os.path.exists(os.path.join(app_dir, 'etc')):
-        app_dir = os.path.dirname(app_dir)
-        if not app_dir:
-            AutoFix.error('Failed to find folder "etc"')
+    test_app_dir = app_dir
+    while not os.path.exists(os.path.join(test_app_dir, 'etc')):
+        test_app_dir = os.path.dirname(test_app_dir)
+        if not test_app_dir or test_app_dir.endswith(':\\'):
+            test_app_dir = app_dir
             break
+    app_dir = test_app_dir
+    etc_path = os.path.join(test_app_dir, 'etc')
+    if not os.path.exists(etc_path):
+        AutoFix.warn('Failed to find folder "etc". Creating it...')
+        os.mkdir(etc_path)
+    etc_path = os.path.join(etc_path, 'abmatt')
+    if not os.path.exists(etc_path):
+        os.mkdir(etc_path)
+        with open(os.path.join(etc_path, 'config.conf'), 'w') as f:
+            f.write('''
+# ----------------------------------------------------------------------------------------------
+# ABMatt Configuration file
+# IMPORTANT: re-installing abmatt may overwrite your configurations. Remember to back them up!
+# ----------------------------------------------------------------------------------------------
+
+# General
+loudness=3              # verbosity between 0-5
+max_brres_files=10      # maximum files open (command line only)
+
+# Encoding
+encode_preset=          # preset to run upon loading a model
+encode_preset_only_on_new=True      # only run the preset if not replacing model and no previous json settings detected
+enable_vertex_colors=True   # enables vertex colors if colors are loaded in geometry
+
+# Materials
+material_library=         # brres file path, materials with matching names are replaced when creating model
+default_material_color=200,200,200,255      # RGBA color used for materials with no map layers
+
+# Textures
+remove_unused_textures=True     # removes textures that aren't used
+resize_pow_two=True             # automatically resize to a power of 2
+max_image_size=1024             # maximum size
+minfilter_auto=True             # sets the minfilter to linear when there's no mipmaps, linear_mipmap_linear if there is
+img_resample=bicubic            # Used when resizing images, (nearest|box|bilinear|hamming|bicubic|lanczos)
+
+# Auto fixes
+detect_model_name=True      # detects what model name it should be according to file name (vrcorn, course, map)
+remove_unused_refs=False    # removes refs that aren't used
+rename_unknown_refs=True    # try to rename unknown refs
+remove_unknown_refs=True    # if rename_unknown_refs enabled, renaming is tried first and then removal
+force_version=True          # forces version to the expected mkwii version
+map_id_auto=True            # switches/removes shader stage map id when not found
+invalid_divisor_zero=True   # zeros out invalid divisors
+
+# Matching functions
+regex_matching=on_none_found    # True|False|on_none_found
+partial_matching=on_none_found  # True|False|on_none_found
+case_sensitive=False            # True|False
+''')
+
     if debug and loudness is None:
         loudness = 5
-    if app_dir:
-        app_dir = os.path.join(app_dir, 'etc', 'abmatt')
-        config = load_config(app_dir, loudness, autofix)
-    Command.APP_DIR = app_dir
+    config = load_config(etc_path, loudness, autofix)
+    Command.APP_DIR = etc_path
     Command.DEBUG = debug
     Brres.MOONVIEW = moonview
     cmds = []

@@ -14,8 +14,6 @@ class MaterialLibrary(ClipableObserver):
     @staticmethod
     def get():
         if not MaterialLibrary.LIBRARY:
-            if MaterialLibrary.LIBRARY_PATH is None:
-                return None
             MaterialLibrary.LIBRARY = MaterialLibrary(MaterialLibrary.LIBRARY_PATH)
         return MaterialLibrary.LIBRARY
 
