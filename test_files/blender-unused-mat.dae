@@ -1,0 +1,207 @@
+<ns0:COLLADA xmlns:ns0="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
+  <ns0:asset>
+    <ns0:contributor>
+      <ns0:author>Blender User</ns0:author>
+      <ns0:authoring_tool>Blender 2.93.1 commit date:2021-06-22, commit time:05:57, hash:1b8d33b18c2f</ns0:authoring_tool>
+    </ns0:contributor>
+    <ns0:created>2021-08-16T16:17:29</ns0:created>
+    <ns0:modified>2021-08-16T16:17:29</ns0:modified>
+    <ns0:unit name="kilometer" meter="1000" />
+    <ns0:up_axis>Z_UP</ns0:up_axis>
+  </ns0:asset>
+  <ns0:library_lights>
+    <ns0:light id="Sun-light" name="Sun">
+      <ns0:technique_common>
+        <ns0:directional>
+          <ns0:color sid="color">1 1 1</ns0:color>
+        </ns0:directional>
+      </ns0:technique_common>
+      <ns0:extra>
+        <ns0:technique profile="blender">
+          <ns0:type sid="type" type="int">1</ns0:type>
+          <ns0:flag sid="flag" type="int">0</ns0:flag>
+          <ns0:mode sid="mode" type="int">1</ns0:mode>
+          <ns0:gamma sid="blender_gamma" type="float">1</ns0:gamma>
+          <ns0:red sid="red" type="float">1</ns0:red>
+          <ns0:green sid="green" type="float">1</ns0:green>
+          <ns0:blue sid="blue" type="float">1</ns0:blue>
+          <ns0:shadow_r sid="blender_shadow_r" type="float">0</ns0:shadow_r>
+          <ns0:shadow_g sid="blender_shadow_g" type="float">0</ns0:shadow_g>
+          <ns0:shadow_b sid="blender_shadow_b" type="float">0</ns0:shadow_b>
+          <ns0:energy sid="blender_energy" type="float">1</ns0:energy>
+          <ns0:dist sid="blender_dist" type="float">12.5</ns0:dist>
+          <ns0:spotsize sid="spotsize" type="float">45</ns0:spotsize>
+          <ns0:spotblend sid="spotblend" type="float">0.15</ns0:spotblend>
+          <ns0:att1 sid="att1" type="float">0</ns0:att1>
+          <ns0:att2 sid="att2" type="float">1</ns0:att2>
+          <ns0:falloff_type sid="falloff_type" type="int">2</ns0:falloff_type>
+          <ns0:clipsta sid="clipsta" type="float">0.04999995</ns0:clipsta>
+          <ns0:clipend sid="clipend" type="float">40</ns0:clipend>
+          <ns0:bias sid="bias" type="float">1</ns0:bias>
+          <ns0:soft sid="soft" type="float">3</ns0:soft>
+          <ns0:bufsize sid="bufsize" type="int">512</ns0:bufsize>
+          <ns0:samp sid="samp" type="int">3</ns0:samp>
+          <ns0:buffers sid="buffers" type="int">1</ns0:buffers>
+          <ns0:area_shape sid="area_shape" type="int">0</ns0:area_shape>
+          <ns0:area_size sid="area_size" type="float">0.125</ns0:area_size>
+          <ns0:area_sizey sid="area_sizey" type="float">0.125</ns0:area_sizey>
+          <ns0:area_sizez sid="area_sizez" type="float">0.125</ns0:area_sizez>
+        </ns0:technique>
+      </ns0:extra>
+    </ns0:light>
+  </ns0:library_lights>
+  <ns0:library_effects>
+    <ns0:effect id="Material__299-effect">
+      <ns0:profile_COMMON>
+        <ns0:newparam sid="ct_hwall02_color02_alb_png-surface">
+          <ns0:surface type="2D">
+            <ns0:init_from>ct_hwall02_color02_alb_png</ns0:init_from>
+          </ns0:surface>
+        </ns0:newparam>
+        <ns0:newparam sid="ct_hwall02_color02_alb_png-sampler">
+          <ns0:sampler2D>
+            <ns0:source>ct_hwall02_color02_alb_png-surface</ns0:source>
+          </ns0:sampler2D>
+        </ns0:newparam>
+        <ns0:technique sid="common">
+          <ns0:lambert>
+            <ns0:emission>
+              <ns0:color sid="emission">0 0 0 1</ns0:color>
+            </ns0:emission>
+            <ns0:diffuse>
+              <ns0:texture texture="ct_hwall02_color02_alb_png-sampler" texcoord="UVMap" />
+            </ns0:diffuse>
+            <ns0:index_of_refraction>
+              <ns0:float sid="ior">1.5</ns0:float>
+            </ns0:index_of_refraction>
+          </ns0:lambert>
+        </ns0:technique>
+      </ns0:profile_COMMON>
+    </ns0:effect>
+    <ns0:effect id="Material__454-effect">
+      <ns0:profile_COMMON>
+        <ns0:newparam sid="ct_road03_alb_png-surface">
+          <ns0:surface type="2D">
+            <ns0:init_from>ct_road03_alb_png</ns0:init_from>
+          </ns0:surface>
+        </ns0:newparam>
+        <ns0:newparam sid="ct_road03_alb_png-sampler">
+          <ns0:sampler2D>
+            <ns0:source>ct_road03_alb_png-surface</ns0:source>
+          </ns0:sampler2D>
+        </ns0:newparam>
+        <ns0:technique sid="common">
+          <ns0:lambert>
+            <ns0:emission>
+              <ns0:color sid="emission">0 0 0 1</ns0:color>
+            </ns0:emission>
+            <ns0:diffuse>
+              <ns0:texture texture="ct_road03_alb_png-sampler" texcoord="UVMap" />
+            </ns0:diffuse>
+            <ns0:index_of_refraction>
+              <ns0:float sid="ior">1.5</ns0:float>
+            </ns0:index_of_refraction>
+          </ns0:lambert>
+        </ns0:technique>
+      </ns0:profile_COMMON>
+    </ns0:effect>
+  </ns0:library_effects>
+  <ns0:library_images>
+    <ns0:image id="ct_hwall02_color02_alb_png" name="ct_hwall02_color02_alb_png">
+      <ns0:init_from>ct_hwall02_color02_alb.png</ns0:init_from>
+    </ns0:image>
+    <ns0:image id="ct_road03_alb_png" name="ct_road03_alb_png">
+      <ns0:init_from>ct_road03_alb.png</ns0:init_from>
+    </ns0:image>
+  </ns0:library_images>
+  <ns0:library_materials>
+    <ns0:material id="Material__299-material" name="Material__299">
+      <ns0:instance_effect url="#Material__299-effect" />
+    </ns0:material>
+    <ns0:material id="Material__454-material" name="Material__454">
+      <ns0:instance_effect url="#Material__454-effect" />
+    </ns0:material>
+  </ns0:library_materials>
+  <ns0:library_geometries>
+    <ns0:geometry id="MK8_Toad_Harbor-mesh" name="MK8_Toad_Harbor">
+      <ns0:mesh>
+        <ns0:source id="MK8_Toad_Harbor-mesh-positions">
+          <ns0:float_array id="MK8_Toad_Harbor-mesh-positions-array" count="12">-1122.358 -593.0255 1894.748 -1094.68 -593.0255 1542.113 -1413.46 -593.0255 1493.876 -1444.759 -593.0254 1892.65</ns0:float_array>
+          <ns0:technique_common>
+            <ns0:accessor source="#MK8_Toad_Harbor-mesh-positions-array" count="4" stride="3">
+              <ns0:param name="X" type="float" />
+              <ns0:param name="Y" type="float" />
+              <ns0:param name="Z" type="float" />
+            </ns0:accessor>
+          </ns0:technique_common>
+        </ns0:source>
+        <ns0:source id="MK8_Toad_Harbor-mesh-normals">
+          <ns0:float_array id="MK8_Toad_Harbor-mesh-normals-array" count="12">1.79282e-7 1 -1.32648e-7 3.80426e-7 1 -2.42943e-7 2.16824e-7 1 -1.53234e-7 0 1 0</ns0:float_array>
+          <ns0:technique_common>
+            <ns0:accessor source="#MK8_Toad_Harbor-mesh-normals-array" count="4" stride="3">
+              <ns0:param name="X" type="float" />
+              <ns0:param name="Y" type="float" />
+              <ns0:param name="Z" type="float" />
+            </ns0:accessor>
+          </ns0:technique_common>
+        </ns0:source>
+        <ns0:source id="MK8_Toad_Harbor-mesh-map-0">
+          <ns0:float_array id="MK8_Toad_Harbor-mesh-map-0-array" count="12">0 13.9074 0.9953 13.9214 0.938 10.0083 0 13.9074 0.938 10.0083 0.06199997 9.9935</ns0:float_array>
+          <ns0:technique_common>
+            <ns0:accessor source="#MK8_Toad_Harbor-mesh-map-0-array" count="6" stride="2">
+              <ns0:param name="S" type="float" />
+              <ns0:param name="T" type="float" />
+            </ns0:accessor>
+          </ns0:technique_common>
+        </ns0:source>
+        <ns0:vertices id="MK8_Toad_Harbor-mesh-vertices">
+          <ns0:input semantic="POSITION" source="#MK8_Toad_Harbor-mesh-positions" />
+        </ns0:vertices>
+        <ns0:triangles material="Material__454-material" count="2">
+          <ns0:input semantic="VERTEX" source="#MK8_Toad_Harbor-mesh-vertices" offset="0" />
+          <ns0:input semantic="NORMAL" source="#MK8_Toad_Harbor-mesh-normals" offset="1" />
+          <ns0:input semantic="TEXCOORD" source="#MK8_Toad_Harbor-mesh-map-0" offset="2" set="0" />
+          <ns0:p>2 0 0 3 1 1 0 2 2 2 0 3 0 2 4 1 3 5</ns0:p>
+        </ns0:triangles>
+      </ns0:mesh>
+    </ns0:geometry>
+  </ns0:library_geometries>
+  <ns0:library_visual_scenes>
+    <ns0:visual_scene id="Scene" name="Scene">
+      <ns0:node id="MK8_Toad_Harbor" name="MK8_Toad_Harbor" type="NODE">
+        <ns0:matrix sid="transform">0.02423656 0 0 0 0 -1.05941e-9 -0.02423656 0 0 0.02423656 -1.05941e-9 20 0 0 0 1</ns0:matrix>
+        <ns0:instance_geometry url="#MK8_Toad_Harbor-mesh" name="MK8_Toad_Harbor">
+          <ns0:bind_material>
+            <ns0:technique_common>
+              <ns0:instance_material symbol="Material__299-material" target="#Material__299-material">
+                <ns0:bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0" />
+              </ns0:instance_material>
+              <ns0:instance_material symbol="Material__454-material" target="#Material__454-material">
+                <ns0:bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0" />
+              </ns0:instance_material>
+            </ns0:technique_common>
+          </ns0:bind_material>
+        </ns0:instance_geometry>
+      </ns0:node>
+      <ns0:node id="Lap_Counter_Right_Point" name="Lap Counter Right Point" type="NODE">
+        <ns0:matrix sid="transform">0.1525574 0.5484338 0 -5.540346 -0.5484338 0.1525574 0 -3.175668 0 0 0.5692569 101.7593 0 0 0 1</ns0:matrix>
+      </ns0:node>
+      <ns0:node id="Lap_Counter_Left_Point" name="Lap Counter Left Point" type="NODE">
+        <ns0:matrix sid="transform">0.1525574 0.5484338 0 -2.70586 -0.5484338 0.1525574 0 -2.387201 0 0 0.5692569 101.7593 0 0 0 1</ns0:matrix>
+      </ns0:node>
+      <ns0:node id="Item_Box" name="Item Box" type="NODE">
+        <ns0:matrix sid="transform">1 0 0 -52.28759 0 1 0 -39.57203 0 0 1 5.693993 0 0 0 1</ns0:matrix>
+      </ns0:node>
+      <ns0:node id="Start_Position" name="Start Position" type="NODE">
+        <ns0:matrix sid="transform">10 0 0 -30.46458 0 10 0 -41.27719 0 0 10 6.149744 0 0 0 1</ns0:matrix>
+      </ns0:node>
+      <ns0:node id="Sun" name="Sun" type="NODE">
+        <ns0:matrix sid="transform">7.477443 8.92125e-7 -6.639868 0.008330668 -8.92125e-7 10 3.38928e-7 -0.01009264 6.639868 3.38928e-7 7.477443 3.991563 0 0 0 1</ns0:matrix>
+        <ns0:instance_light url="#Sun-light" />
+      </ns0:node>
+    </ns0:visual_scene>
+  </ns0:library_visual_scenes>
+  <ns0:scene>
+    <ns0:instance_visual_scene url="#Scene" />
+  </ns0:scene>
+</ns0:COLLADA>
