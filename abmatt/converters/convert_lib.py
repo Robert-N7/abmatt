@@ -24,6 +24,7 @@ class Converter:
     SINGLE_BONE = 0x4
     NO_UVS = 0x8
     PATCH = 0x10
+    MOONVIEW = 0x20
     DETECT_FILE_UNITS = True
     OVERWRITE_IMAGES = False
     ENCODE_PRESET = None
@@ -153,6 +154,8 @@ class Converter:
         AutoFix.info('\t... finished in {} secs'.format(round(time.time() - self.start, 2)))
         if self.encoder:
             self.encoder.after_encode(mdl0)
+        if self.MOONVIEW & self.flags:
+            self.brres.check_moonview()
         return mdl0
 
     def _init_mdl0(self, brres_name, mdl_name, mdl0_name):
@@ -294,8 +297,7 @@ class Converter:
         return image_paths
 
     def __get_single_bone_influence(self):
-        for bone in self.bones.values():
-            break
+        bone = list(self.bones.values())[0] if len(self.bones) else self.mdl0.bones[0]
         return influence.InfluenceCollection({0: influence.Influence(
             bone_weights={bone.name: influence.Weight(bone, 1.0)})})
 

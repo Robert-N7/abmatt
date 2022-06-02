@@ -356,6 +356,8 @@ case_sensitive=False            # True|False
                 cmd_args.append('--no-uvs')
             if patch:
                 cmd_args.append('--patch')
+            if moonview:
+                cmd_args.append('--moonview')
         cmds.append(Command(arg_list=cmd_args))
     if command:
         args = [command, type]
@@ -381,6 +383,8 @@ case_sensitive=False            # True|False
                 args.append('--no-uvs')
             if patch:
                 args.append('--patch')
+            if moonview:
+                args.append('--moonview')
         cmds.append(Command(arg_list=args))
     if destination:
         Command.DESTINATION = destination
