@@ -85,6 +85,11 @@ class Geometry:
         self.index += 1
         return j
 
+    def recode(self, original):
+        mdl0 = original.parent
+        self.encode(mdl0, original.visible_bone, priority=original.priority)
+        mdl0.remove_polygon(original)
+
     def encode(self, mdl, visible_bone=None, encoder=None,
                use_default_colors_if_none_found=True,
                priority=None, has_uv_mtx=None):

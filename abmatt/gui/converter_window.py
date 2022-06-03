@@ -3,12 +3,19 @@ import os
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QCheckBox, QLineEdit, QPushButton, QComboBox, \
     QFileDialog
 
-from brres import Brres
-from command import Command
-from converters.convert_lib import Converter
+from abmatt.brres import Brres
 
 
 class ConverterWindow(QWidget):
+    allowed_sources = ('.brres', '.obj', '.dae')
+    allowed_destinations = ('.brres', '.obj', '.dae')
+
+    def export_model(self, dest, brres_name, mdl0_name, include, exclude):
+        raise NotImplementedError()
+
+    def import_model(self, fname, brres_name, mdl0_name, include, exclude):
+        raise NotImplementedError()
+
     def __init__(self, handler):
         super(ConverterWindow, self).__init__()
         self.brres = self.mdl0 = None
@@ -16,6 +23,22 @@ class ConverterWindow(QWidget):
         self.hlayout = QHBoxLayout()
         self.vlayout = QVBoxLayout()
         self.button_layout = QHBoxLayout()
+        self.init_body_ui()
+
+        # Buttons
+        self.button_submit = QPushButton('&Convert!')
+        self.button_cancel = QPushButton('C&ancel')
+        self.button_submit.clicked.connect(self.submit)
+        self.button_cancel.clicked.connect(self.close)
+        self.button_layout.addWidget(self.button_cancel)
+        self.button_layout.addWidget(self.button_submit)
+
+        widget = QWidget()
+        widget.setLayout(self.button_layout)
+        self.vlayout.addWidget(widget)
+        self.setLayout(self.vlayout)
+
+    def init_body_ui(self):
         self.left_layout = QVBoxLayout()
         self.center_layout = QVBoxLayout()
         self.right_layout = QVBoxLayout()
@@ -65,51 +88,6 @@ class ConverterWindow(QWidget):
         widget.setLayout(self.hlayout)
         self.vlayout.addWidget(widget)
 
-        self.hlayout = QHBoxLayout()
-        self.left_layout = QVBoxLayout()
-        self.center_layout = QVBoxLayout()
-        self.right_layout = QVBoxLayout()
-
-        # Flags
-        self.exclude_norm_cb = QCheckBox('No Normals')
-        self.exclude_colors_cb = QCheckBox('No Colors')
-        self.exclude_uvs_cb = QCheckBox('No UVs')
-        self.patch_cb = QCheckBox('Patch Existing Model (Import Only)')
-        self.single_bone_cb = QCheckBox('Use Single Bone')
-        self.moonview_cb = QCheckBox('Moonview Highway (Import Only)')
-        self.left_layout.addWidget(self.exclude_norm_cb)
-        self.left_layout.addWidget(self.exclude_colors_cb)
-        self.left_layout.addWidget(self.exclude_uvs_cb)
-        self.center_layout.addWidget(self.patch_cb)
-        self.center_layout.addWidget(self.single_bone_cb)
-        self.center_layout.addWidget(self.moonview_cb)
-
-        # Buttons
-        self.button_submit = QPushButton('&Convert!')
-        self.button_cancel = QPushButton('C&ancel')
-        self.button_submit.clicked.connect(self.submit)
-        self.button_cancel.clicked.connect(self.close)
-        self.button_layout.addWidget(self.button_cancel)
-        self.button_layout.addWidget(self.button_submit)
-
-        widget = QWidget()
-        widget.setLayout(self.left_layout)
-        self.hlayout.addWidget(widget)
-        widget = QWidget()
-        widget.setLayout(self.center_layout)
-        self.hlayout.addWidget(widget)
-        widget = QWidget()
-        widget.setLayout(self.right_layout)
-        self.hlayout.addWidget(widget)
-        widget = QWidget()
-        widget.setLayout(self.hlayout)
-        self.vlayout.addWidget(widget)
-        widget = QWidget()
-        widget.setLayout(self.button_layout)
-        self.vlayout.addWidget(widget)
-        self.setLayout(self.vlayout)
-        self.setWindowTitle('Advanced Converter')
-
     def submit(self):
         file = self.file_edit.text()
         dest = self.dest_edit.text()
@@ -117,9 +95,14 @@ class ConverterWindow(QWidget):
         name, dest_ext = os.path.splitext(dest)
         file_ext = file_ext.lower()
         dest_ext = dest_ext.lower()
-        valid_ext = ['.brres', '.obj', '.dae']
-        if file_ext not in valid_ext or dest_ext not in valid_ext:
-            self.handler.error(f'File extension must be {", ".join(valid_ext)}')
+        if dest_ext not in self.allowed_destinations:
+            self.handler.error(f'Destination file must be {", ".join(self.allowed_destinations)}')
+            return
+        elif file_ext not in self.allowed_sources:
+            self.handler.error(f'Source file must be {", ".join(self.allowed_sources)}')
+            return
+        elif '.brres' not in (file_ext, dest_ext):
+            self.handler.error(f'One file must be .brres')
             return
         elif file_ext == dest_ext:
             self.handler.error(f'Converter destination must have different extension.')
@@ -131,29 +114,12 @@ class ConverterWindow(QWidget):
         exclude = self.exclude_edit.text()
         if exclude:
             exclude = [x.strip() for x in exclude.split(',')]
-        flags = 0
-        if self.exclude_norm_cb.isChecked():
-            flags |= Converter.NO_NORMALS
-        if self.exclude_uvs_cb.isChecked():
-            flags |= Converter.NO_UVS
-        if self.exclude_colors_cb.isChecked():
-            flags |= Converter.NO_COLORS
-        if self.single_bone_cb.isChecked():
-            flags |= Converter.SINGLE_BONE
-        if self.patch_cb.isChecked():
-            flags |= Converter.PATCH
-        if self.moonview_cb.isChecked():
-            flags |= Converter.MOONVIEW
         if file_ext == '.brres':
             self.handler.open(file)
-            self.handler.export_file(
-                dest, brres_name=file, mdl0_name=model, include=include, exclude=exclude, flags=flags
-            )
+            self.export_model(dest, file, model, include, exclude)
         else:
             self.handler.open(dest)
-            self.handler.import_file(
-                file, brres_name=dest, mdl0_name=model, include=include, exclude=exclude, flags=flags
-            )
+            self.import_model(file, dest, model, include, exclude)
 
     def on_brres_select(self, name):
         fname, ext = os.path.splitext(name)
@@ -165,16 +131,18 @@ class ConverterWindow(QWidget):
                 self.model_select.addItems([x.name for x in brres.models])
 
     def browse_file(self):
+        valid_ext = " ".join(['*' + x for x in self.allowed_sources])
         name, filter = QFileDialog.getOpenFileName(
-            self, 'Convert File', self.handler.cwd, 'Model Files (*.brres *.obj *.dae)'
+            self, 'Convert File', self.handler.cwd, f'Model Files ({valid_ext})'
         )
         if name:
             self.file_edit.setText(name)
             self.on_brres_select(name)
 
     def browse_dest(self):
+        valid_ext = " ".join(['*' + x for x in self.allowed_destinations])
         name, filter = QFileDialog.getSaveFileName(
-            self, 'Convert File', self.handler.cwd, 'Model Files (*.brres *.obj *.dae)'
+            self, 'Convert File', self.handler.cwd, f'Model Files ({valid_ext})'
         )
         if name:
             self.dest_edit.setText(name)

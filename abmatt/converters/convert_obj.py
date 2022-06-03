@@ -9,6 +9,8 @@ from abmatt.converters.convert_lib import Converter
 from abmatt.converters.geometry import Geometry
 from abmatt.converters.material import Material
 from abmatt.converters.obj import Obj, ObjGeometry, ObjMaterial
+from brres import Brres
+from converters.colors import ColorCollection
 
 
 class ObjConverter(Converter):
@@ -129,6 +131,59 @@ class ObjConverter(Converter):
                 mat.ambient_map = path
             first = False
         return mat
+
+
+def __load_vert_color(vert_color, geo, vertices):
+    for vert in geo.vertices.points[geo.vertices.face_indices].reshape(-1, 3):
+        t_vert = tuple(vert)
+        if t_vert not in vertices:
+            vertices[t_vert] = [vert_color]
+        else:
+            vertices[t_vert].append(vert_color)
+
+
+def __apply_colors_to_geo(colors, geo, default_color):
+    decoded = geo.get_decoded()
+    points = np.around(decoded.vertices.points, 2)
+    new_colors = []
+    for point in points:
+        color = colors.get(tuple(point)) #  or default_color
+        new_colors.append(color)
+    decoded.colors = ColorCollection(np.array(new_colors), decoded.vertices.face_indices, normalize=True)
+
+
+def obj_mats_to_vertex_colors(polygons, obj, default_color=None, overwrite=False):
+    if not overwrite:
+        polygons = [x for x in polygons if not x.get_decoded().colors]
+    if not polygons:
+        return
+    if not default_color:
+        default_color = (0.5, 0.5, 0.5, 1)
+    if type(obj) is not Obj:
+        obj = Obj(obj)
+    # Gather up color corresponding to each material
+    mat_to_vert_color = {}
+    for material in obj.materials.values():
+        vertex_color = [x for x in material.diffuse_color]
+        vertex_color.append(material.dissolve)
+        mat_to_vert_color[material.name] = vertex_color
+
+    vertices = {}
+    for geo in obj.geometries:
+        __load_vert_color(
+            mat_to_vert_color.get(geo.material_name),
+            geo,
+            vertices
+        )
+    # now interpolate colors
+    interpolated = {}
+    for vert, colors in vertices.items():
+        colors = np.around(colors, 2)
+        interpolated[vert] = [sum(colors[:, i]) / len(colors) for i in range(4)]
+
+    for x in polygons:
+        __apply_colors_to_geo(interpolated, x, default_color)
+        x.get_decoded().recode(x)
 
 
 def main():

@@ -25,6 +25,7 @@ from abmatt.gui.material_browser import MaterialTabs
 from abmatt.gui.poly_editor import PolyEditor
 from abmatt import load_config
 from gui.converter_window import ConverterWindow
+from gui.obj_to_vert_color_window import ObjToVertColorWindow
 
 
 class Window(QMainWindow, ClipableObserver):
@@ -120,10 +121,15 @@ class Window(QMainWindow, ClipableObserver):
         advanced_convert_act.setShortcut('Ctrl+Shift+C')
         advanced_convert_act.setStatusTip('Advanced conversion of models')
         advanced_convert_act.triggered.connect(self.advanced_converter_open)
+        obj_convert_to_vert_color_act = QAction('&OBJ to Vertex Colors', self)
+        obj_convert_to_vert_color_act.setShortcut('Ctrl+Shift+O')
+        obj_convert_to_vert_color_act.setStatusTip('Creates Vertex Colors using OBJ')
+        obj_convert_to_vert_color_act.triggered.connect(self.obj_to_vertex_color)
         toolMenu = menu.addMenu('&Tools')
         toolMenu.addAction(shell_Act)
         toolMenu.addAction(kcl_calc_Act)
         toolMenu.addAction(advanced_convert_act)
+        toolMenu.addAction(obj_convert_to_vert_color_act)
 
         # Help
         report_Act = QAction('&Report Issue', self)
@@ -140,6 +146,10 @@ class Window(QMainWindow, ClipableObserver):
         help_menu.addAction(website_Act)
         help_menu.addSeparator()
         help_menu.addAction(about_Act)
+
+    def obj_to_vertex_color(self):
+        self.obj_to_vert_window = ObjToVertColorWindow(self)
+        self.obj_to_vert_window.show()
 
     def advanced_converter_open(self):
         self.advanced_converter_window = ConverterWindow(self)
@@ -179,9 +189,6 @@ class Window(QMainWindow, ClipableObserver):
     def __init_child_UI(self, top_layout):
         # left
         vert_widget = QWidget(self)
-        # policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.MinimumExpanding)
-        # policy.setHorizontalStretch(2)
-        # vert_widget.setSizePolicy(policy)
         top_layout.addWidget(vert_widget)
         self.left = vert_layout = QVBoxLayout()
         vert_widget.setLayout(vert_layout)
@@ -199,16 +206,13 @@ class Window(QMainWindow, ClipableObserver):
         center_layout.addWidget(self.treeview)
         self.poly_editor = PolyEditor(self)
         center_layout.addWidget(self.poly_editor)
-        # center_widget.setGeometry(0, 0, 300, 300)
 
         # right
-        # top_layout.addSpacing(30)
         self.material_browser = MaterialTabs(self)
         policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.MinimumExpanding)
         policy.setHorizontalStretch(1)
         self.material_browser.setSizePolicy(policy)
         top_layout.addWidget(self.material_browser)
-        # self.material_browser.setFixedWidth(300)
 
     def __init_UI(self):
         self.setWindowTitle('ANoobs Brres Material Tool')

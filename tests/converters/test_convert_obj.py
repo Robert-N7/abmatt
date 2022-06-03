@@ -1,4 +1,4 @@
-from abmatt.converters.convert_obj import ObjConverter
+from abmatt.converters.convert_obj import ObjConverter, obj_mats_to_vertex_colors
 from tests.lib import AbmattTest, CheckPositions
 
 
@@ -34,3 +34,12 @@ class TestConvertObj(AbmattTest):
                                  encode=False).convert()
         encoder = ObjConverter(self._get_tmp('.brres'), converter.mdl_file).convert()
         self.assertTrue(CheckPositions.positions_equal(original.models[0].vertices, encoder.mdl0.vertices))
+
+    def test_load_mats_to_colors(self):
+        original = self._get_brres('simple.brres')
+        obj = self._get_test_fname('skp_simple.obj')
+        polygon = original.models[0].objects[0]
+        obj_mats_to_vertex_colors([polygon], obj)
+        decoded = original.models[0].objects[-1].get_decoded().colors.rgba_colors
+        expected = [149, 166, 91, 255]
+        self.assertEqual(expected, list(decoded[0]))
