@@ -45,7 +45,9 @@ class DaeConverterTest(AbmattTest):
         converter.load_model()
         mdl0 = converter.mdl0
         self.assertEqual(len(mdl0.bones), 1)
-        self.assertTrue(CheckPositions.positions_equal(original.models[0].vertices, mdl0.vertices))
+        expected = original.models[0].vertices
+        actual = mdl0.vertices
+        self.assertTrue(CheckPositions.positions_equal(expected, actual))
 
     def test_convert_single_bind_flip_y_z(self):
         original = self._get_brres('simple_multi_bone_single_bind.brres')
