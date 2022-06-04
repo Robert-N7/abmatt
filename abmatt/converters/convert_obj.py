@@ -1,5 +1,8 @@
+import math
 import os
 import sys
+import time
+from math import dist
 
 import numpy as np
 
@@ -11,6 +14,7 @@ from abmatt.converters.material import Material
 from abmatt.converters.obj import Obj, ObjGeometry, ObjMaterial
 from brres import Brres
 from converters.colors import ColorCollection
+from converters.points import PointCollection
 
 
 class ObjConverter(Converter):
@@ -134,29 +138,79 @@ class ObjConverter(Converter):
 
 
 def __load_vert_color(vert_color, geo, vertices):
-    for vert in geo.vertices.points[geo.vertices.face_indices].reshape(-1, 3):
-        t_vert = tuple(vert)
-        if t_vert not in vertices:
-            vertices[t_vert] = [vert_color]
-        else:
-            vertices[t_vert].append(vert_color)
+    points = np.around(geo.vertices.points, 3)
+    for tri in points[geo.vertices.face_indices]:
+        for i, vert in enumerate(tri):
+            t_vert = tuple(vert)
+            if t_vert not in vertices:
+                vertices[t_vert] = [(
+                    vert_color,
+                    tri[i - 2],
+                    math.dist(tri[i - 2], t_vert),
+                    tri[i - 1],
+                    math.dist(tri[i - 1], t_vert)
+                )]
+            else:
+                vertices[t_vert].append((
+                    vert_color,
+                    tri[i - 2],
+                    math.dist(tri[i - 2], t_vert),
+                    tri[i - 1],
+                    math.dist(tri[i - 1], t_vert)
+                ))
+
+
+def __get_best_tri(vert, tp1, tp2, possible):
+    total_1 = math.dist(tp1, vert)
+    total_2 = math.dist(tp2, vert)
+    for i, x in enumerate(possible):
+        if np.allclose(math.dist(tp1, x[1]) + x[2], total_1) and \
+                np.allclose(math.dist(tp2, x[3]) + x[4], total_2):
+            color = possible.pop(i)
+            return color[0]
+    return possible[0][0]
 
 
 def __apply_colors_to_geo(colors, geo, default_color):
     decoded = geo.get_decoded()
-    points = np.around(decoded.vertices.points, 2)
-    new_colors = []
-    for point in points:
-        color = colors.get(tuple(point)) #  or default_color
-        new_colors.append(color)
-    decoded.colors = ColorCollection(np.array(new_colors), decoded.vertices.face_indices, normalize=True)
+    points = np.around(decoded.vertices.points, 3)
+    new_colors = {}
+    new_colors_arr = []
+    fp = []
+    failed = 0
+    for tri in points[decoded.vertices.face_indices]:
+        fp_row = []
+        for i, vert in enumerate(tri):
+            t_vert = tuple(vert)
+            possible = colors.get(t_vert)
+            if not possible:
+                failed += 1
+                color = default_color
+            elif len(possible) == 1:
+                color = possible[0][0]
+            else:
+                color = __get_best_tri(vert, tri[i - 2], tri[i - 1], possible)
+            t = tuple(color)
+            index = new_colors.get(t)
+            if index is None:
+                new_colors[t] = index = len(new_colors_arr)
+                new_colors_arr.append(t)
+            fp_row.append(index)
+        fp.append(fp_row)
+    decoded.colors = ColorCollection(np.array(new_colors_arr), np.array(fp), normalize=True)
+    if failed:
+        AutoFix.warn(f'Failed to find vertices and used default color {failed} times.')
+    return failed
 
 
 def obj_mats_to_vertex_colors(polygons, obj, default_color=None, overwrite=False):
+    start = time.time()
+    AutoFix.info(f'Creating vertex colors from {obj}...', 3)
+    default_color_amount = 0
     if not overwrite:
         polygons = [x for x in polygons if not x.get_decoded().colors]
     if not polygons:
-        return
+        return default_color_amount
     if not default_color:
         default_color = (0.5, 0.5, 0.5, 1)
     if type(obj) is not Obj:
@@ -168,22 +222,94 @@ def obj_mats_to_vertex_colors(polygons, obj, default_color=None, overwrite=False
         vertex_color.append(material.dissolve)
         mat_to_vert_color[material.name] = vertex_color
 
-    vertices = {}
-    for geo in obj.geometries:
-        __load_vert_color(
-            mat_to_vert_color.get(geo.material_name),
-            geo,
-            vertices
-        )
-    # now interpolate colors
-    interpolated = {}
-    for vert, colors in vertices.items():
-        colors = np.around(colors, 2)
-        interpolated[vert] = [sum(colors[:, i]) / len(colors) for i in range(4)]
-
+    named = {x.name for x in polygons}
+    geom_vertices = {'': {}}
+    for geom in obj.geometries:
+        name = geom.name.split('-')[0]
+        if name in named:
+            if name not in geom_vertices:
+                geom_vertices[name] = {}
+            __load_vert_color(
+                mat_to_vert_color.get(geom.material_name), geom, geom_vertices[name]
+            )
+        else:
+            __load_vert_color(
+                mat_to_vert_color.get(geom.material_name), geom, geom_vertices['']
+            )
     for x in polygons:
-        __apply_colors_to_geo(interpolated, x, default_color)
+        vertices = geom_vertices[x.name] if x.name in geom_vertices else geom_vertices['']
+        default_color_amount += __apply_colors_to_geo(vertices, x, default_color)
         x.get_decoded().recode(x)
+    AutoFix.info(f'... Finished in {round(time.time() - start, 2)} secs.', 3)
+    return default_color_amount
+
+
+def __get_color_map(poly):
+    poly.apply_linked_bone_bindings()
+    colors = poly.colors
+    o_points = poly.vertices.points
+    color_map = {}
+    # Create triangle for each vertex
+    for i, tri in enumerate(poly.vertices.face_indices):
+        tri_verts = o_points[tri]
+        color = colors.rgba_colors[colors.face_indices[i]]
+        t1 = tuple(color[0])
+        t2 = tuple(color[1])
+        t3 = tuple(color[2])
+        if t1 not in color_map:
+            color_map[t1] = []
+        if t2 not in color_map:
+            color_map[t2] = []
+        if t3 not in color_map:
+            color_map[t3] = []
+        color_map[t1].append((
+            tri_verts[0],
+            tri_verts[0] + (tri_verts[1] - tri_verts[0]) / 5,
+            tri_verts[0] + (tri_verts[2] - tri_verts[0]) / 5
+        ))
+        color_map[tuple(color[1])].append((
+            tri_verts[1],
+            tri_verts[1] + (tri_verts[2] - tri_verts[1]) / 5,
+            tri_verts[1] + (tri_verts[0] - tri_verts[1]) / 5
+        ))
+        color_map[tuple(color[2])].append((
+            tri_verts[2],
+            tri_verts[2] + (tri_verts[0] - tri_verts[2]) / 5,
+            tri_verts[2] + (tri_verts[1] - tri_verts[2]) / 5
+        ))
+    return color_map
+
+
+def vertex_colors_to_obj(polygons, obj):
+    if not isinstance(obj, Obj):
+        obj = Obj(obj, read_file=False)
+    AutoFix.info('Exporting vertex colors...', 3)
+    start = time.time()
+    # Strategy: create 3 small triangles from each triangle,
+    # each corresponding to a vertex color. We'll create a
+    # geometry and material consisting of all small triangles
+    # for each vertex color.
+    for poly in [x for x in polygons if x.has_color0()]:
+        color_map = __get_color_map(poly.get_decoded())
+        for color, tris in color_map.items():
+            geo = ObjGeometry(f'{poly.name}-{"_".join([str(x) for x in color])}')
+            points = np.array(tris).reshape(-1, 3)
+            geo.vertices = PointCollection(points, np.arange(len(points)).reshape(-1, 3))
+            geo.vertices.consolidate_points()
+            geo.material_name = geo.name
+            geo.texcoords = PointCollection(
+                np.array([[0, 0], [0, 1], [1, 1]]),
+                np.array([i for i in range(3)] * len(tris)).reshape(-1, 3)
+            )
+            geo.has_texcoords = True
+            geo.has_normals = False
+            geo.triangles = np.stack([geo.vertices.face_indices, geo.texcoords.face_indices], -1)
+            obj.geometries.append(geo)
+            obj.materials[geo.name] = ObjMaterial(
+                geo.name, dissolve=color[-1] / 255.0, diffuse_color=[x / 255.0 for x in color[:3]]
+            )
+    obj.save()
+    AutoFix.info(f'... Finished in {round(time.time() - start, 2)} secs.', 3)
 
 
 def main():

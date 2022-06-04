@@ -170,6 +170,10 @@ class PointCollection:
             return form, divisor, index_remapper
         return form, divisor
 
+    def consolidate_points(self, precision=None):
+        self.points, self.face_indices, r = self.__consolidate_points(precision)
+        return r
+
     def __consolidate_points(self, precision=None):
         points = self.points if not precision else np.around(self.points, precision)
         return consolidate_data(points, self.face_indices)

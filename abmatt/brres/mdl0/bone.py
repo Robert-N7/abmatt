@@ -1,3 +1,5 @@
+from copy import copy, deepcopy
+
 import numpy as np
 
 from abmatt.brres.lib.node import Node
@@ -38,6 +40,29 @@ class Bone(Node):
         self.part2 = 0
         self.transform_matrix = [[y for y in x] for x in self.identity_matrix]
         self.inverse_matrix = [[y for y in x] for x in self.identity_matrix]
+
+    def __deepcopy__(self, memodict={}):
+        b = Bone(self.name, None)
+        b.scale = copy(self.scale)
+        b.rotation = copy(self.rotation)
+        b.translation = copy(self.translation)
+        b.minimum = copy(self.minimum)
+        b.maximum = copy(self.maximum)
+        b.child = deepcopy(self.child)
+        b.part2 = self.part2
+        b.transform_matrix = deepcopy(self.transform_matrix)
+        b.inverse_matrix = deepcopy(self.inverse_matrix)
+        b.no_transform = self.no_transform
+        b.fixed_translation = self.fixed_translation
+        b.fixed_scale = self.fixed_scale
+        b.fixed_rotation = self.fixed_rotation
+        b.scale_equal = self.scale_equal
+        b.seg_scale_comp_apply = self.seg_scale_comp_apply
+        b.seg_scale_comp_parent = self.seg_scale_comp_parent
+        b.classic_scale_off = self.classic_scale_off
+        b.visible = self.visible
+        b.has_geometry = self.has_geometry
+        b.has_billboard_parent = self.has_billboard_parent
 
     def __eq__(self, other):
         result = super().__eq__(other) and np.allclose(self.scale, other.scale) and \

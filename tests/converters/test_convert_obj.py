@@ -1,4 +1,7 @@
-from abmatt.converters.convert_obj import ObjConverter, obj_mats_to_vertex_colors
+import numpy as np
+
+from abmatt.converters.convert_obj import ObjConverter, obj_mats_to_vertex_colors, vertex_colors_to_obj
+from abmatt.converters.obj import Obj
 from tests.lib import AbmattTest, CheckPositions
 
 
@@ -40,6 +43,40 @@ class TestConvertObj(AbmattTest):
         obj = self._get_test_fname('skp_simple.obj')
         polygon = original.models[0].objects[0]
         obj_mats_to_vertex_colors([polygon], obj)
-        decoded = original.models[0].objects[-1].get_decoded().colors.rgba_colors
-        expected = [149, 166, 91, 255]
+        decoded = polygon.get_decoded().colors.rgba_colors
+        expected = [148, 165, 91, 255]
         self.assertEqual(expected, list(decoded[0]))
+
+    def test_create_obj_from_colors(self):
+        original = self._get_brres('simple.brres')
+        polygons = original.models[0].objects
+        obj = Obj(self._get_tmp('.obj'), read_file=False)
+        vertex_colors_to_obj(polygons, obj)
+        colors = np.array([(*x.diffuse_color, x.dissolve) for x in obj.materials.values()]) * 255
+        arr = [x.get_decoded().colors.rgba_colors
+            for x in polygons if x.has_color0()]
+
+        expected = np.unique(np.concatenate(arr), axis=0)
+        self.assertTrue(np.array_equal(
+            np.sort(expected, axis=0), np.sort(colors, axis=0)
+        ))
+
+    def test_obj_to_vert_color_eq(self):
+        original = self._get_brres('beginner_course.brres')
+        polygons = original.models[0].objects
+        colors = [x.get_decoded().colors for x in polygons if x.has_color0()]
+        for x in colors:
+            x.consolidate()
+        expected = [np.sort(np.unique(x.rgba_colors, axis=0))
+                    for x in colors]
+        obj = self._get_tmp('.obj')
+        vertex_colors_to_obj(polygons, obj)
+        default_amount = obj_mats_to_vertex_colors(polygons, obj, overwrite=True)
+        self.assertEqual(default_amount, 0)
+        actual = [np.sort(np.unique(x.get_decoded().colors.rgba_colors, axis=0))
+                    for x in polygons if x.has_color0()]
+        for i in range(len(expected)):
+            self.assertTrue(np.array_equal(
+                expected[i],
+                actual[i]
+            ))

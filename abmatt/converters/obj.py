@@ -9,19 +9,19 @@ from abmatt.converters.points import PointCollection
 
 
 class ObjMaterial:
-    def __init__(self, name):
+    def __init__(self, name, diffuse_color=(0.5, 0.5, 0.5), diffuse_map=None, dissolve=1):
         self.name = name
         self.ambient_map = None
-        self.diffuse_map = None
+        self.diffuse_map = diffuse_map
         self.specular_map = None
         self.specular_highlight_map = None
         self.alpha_map = None
         self.displacement_map = None
         self.ambient_color = (0.5, 0.5, 0.5)
-        self.diffuse_color = (0.5, 0.5, 0.5)
+        self.diffuse_color = diffuse_color
         self.specular_color = (0.33, 0.33, 0.33)
         self.specular_highlight = 0
-        self.dissolve = 1
+        self.dissolve = dissolve
         self.optical_density = 1.5
         self.illumination = 2
 

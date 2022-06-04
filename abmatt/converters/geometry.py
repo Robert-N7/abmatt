@@ -86,9 +86,39 @@ class Geometry:
         return j
 
     def recode(self, original):
-        mdl0 = original.parent
-        self.encode(mdl0, original.visible_bone, priority=original.priority)
-        mdl0.remove_polygon(original)
+        original.before_recode()
+        return self.__encode(original)
+
+    def __encode(self, polygon):
+        mdl = polygon.parent
+        self.fmt_str = '>'
+        if self.__encode_influences(polygon, self.influences, polygon.visible_bone):
+            polygon.weight_index = self.ipp()
+        self.__encode_tex_matrices(polygon, self.has_uv_mtx)
+        if self.__encode_vertices(polygon, self.vertices, mdl):
+            polygon.vertex_index = self.ipp()
+        if self.__encode_normals(polygon, self.normals, mdl):
+            polygon.normal_index = self.ipp()
+        if self.__encode_colors(polygon, self.colors, mdl, False):
+            polygon.color0_index = self.ipp()
+        self.__encode_texcoords(polygon, self.texcoords, mdl)
+        tris = self.__construct_tris(polygon, polygon.has_weights())
+        data, polygon.face_count, polygon.facepoint_count = self.__encode_tris(tris, polygon.has_weights())
+        past_align = len(data) % 0x20
+        if past_align:
+            data.extend(b'\0' * (0x20 - past_align))
+
+        if polygon.face_count <= 0:
+            # todo, cleanup?
+            return None
+        polygon.data = data
+        polygon.encode_str = self.fmt_str
+        material = mdl.get_material_by_name(self.material_name)
+        if self.colors and self.ENABLE_VERTEX_COLORS:
+            AutoFix.info('{} has colors, enabled vertex color in light channel.'.format(self.name))
+            material.enable_vertex_color()
+        self.encoded = polygon
+        return polygon
 
     def encode(self, mdl, visible_bone=None, encoder=None,
                use_default_colors_if_none_found=True,
@@ -101,41 +131,15 @@ class Geometry:
             if not mdl.bones:
                 mdl.add_bone(mdl.name)
             visible_bone = mdl.bones[0]
-            # if not linked_bone:
-            #     self.linked_bone = visible_bone
         visible_bone.has_geometry = True
         self.encoded = p = Polygon(self.name, mdl)
         if encoder is not None:
             self.encoder = encoder
             encoder.before_encode(self)
-        self.fmt_str = '>'
-        if self.__encode_influences(p, self.influences, mdl, visible_bone):
-            p.weight_index = self.ipp()
-        self.__encode_tex_matrices(p, self.has_uv_mtx)
-        if self.__encode_vertices(p, self.vertices, mdl):
-            p.vertex_index = self.ipp()
-        if self.__encode_normals(p, self.normals, mdl):
-            p.normal_index = self.ipp()
-        if self.__encode_colors(p, self.colors, mdl, use_default_colors_if_none_found):
-            p.color0_index = self.ipp()
-        self.__encode_texcoords(p, self.texcoords, mdl)
-        tris = self.__construct_tris(p, p.has_weights())
-        data, p.face_count, p.facepoint_count = self.__encode_tris(tris, p.has_weights())
-        past_align = len(data) % 0x20
-        if past_align:
-            data.extend(b'\0' * (0x20 - past_align))
-
-        if p.face_count <= 0:
-            # todo, cleanup?
-            return None
-        p.data = data
-        p.encode_str = self.fmt_str
+        self.__encode(p)
         mdl.objects.append(p)
         material = mdl.get_material_by_name(self.material_name)
         mdl.add_definition(material, p, visible_bone, self.priority)
-        if self.colors and self.ENABLE_VERTEX_COLORS:
-            AutoFix.info('{} has colors, enabled vertex color in light channel.'.format(self.name))
-            material.enable_vertex_color()
         if encoder:
             encoder.after_encode(p)
         return p
@@ -214,7 +218,7 @@ class Geometry:
             tristrips = self.__encode_weighted_tris(tristrips, tris)
         return tristrips, face_count, facepoint_count
 
-    def __encode_influences(self, polygon, influences, mdl0, default_bone):
+    def __encode_influences(self, polygon, influences, default_bone):
         if influences is not None and influences.is_mixed():
             polygon.weight_index = 0
             self.fmt_str += 'B'
@@ -223,7 +227,6 @@ class Geometry:
             bone = self.get_linked_bone()
             polygon.linked_bone = self.linked_bone = bone if bone else default_bone
         return False
-        # face_indices = influences.get_face_indices(vertex_face_indices)
 
     def __encode_vertices(self, polygon, vertices, mdl0):
         vert = Vertex(self.name, mdl0)
