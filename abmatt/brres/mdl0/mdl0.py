@@ -272,14 +272,17 @@ class Mdl0(SubFile):
             if x is not polygon:
                 all_used.extend([x.get_uv_group(i) for i in range(x.uv_count)])
         result = True
+        removed = False
         for x in uvs:
             if not self.__remove_group_item(
-                uvs,
+                x,
                 self.uvs,
                 all_used
             ):
                 result = False
-        if result:
+            else:
+                removed = True
+        if removed:
             self.mark_modified()
             self.rebuild_head = True
         return result

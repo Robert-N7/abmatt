@@ -37,26 +37,20 @@ Creates three small triangles from each triangle, each corresponding to a vertex
         self.setWindowTitle('OBJ Vertex Colors')
 
     def export_model(self, dest, brres_name, mdl0_name, include, exclude):
-        polygons = self.get_brres_polygons(brres_name, mdl0_name, include, exclude)
-        convert_obj.vertex_colors_to_obj(
-            polygons, dest
-        )
-
-    def get_brres_polygons(self, brres_name, mdl0_name, include, exclude):
-        brres = Brres.get_brres(brres_name)
-        mdl = brres.get_model(mdl0_name)
-        polygons = [
-            x for x in mdl.objects
-            if (not include or x.name in include) and x.name not in exclude
-        ]
-        return polygons
+        brres, polygons = self.get_brres_polygons(brres_name, mdl0_name, include, exclude)
+        self.handler.converter.enqueue(convert_obj.VertexColorExporter(
+            brres,
+            dest,
+            polygons
+        ))
 
     def import_model(self, fname, brres_name, mdl0_name, include, exclude):
-        polygons = self.get_brres_polygons(brres_name, mdl0_name, include, exclude)
-        convert_obj.obj_mats_to_vertex_colors(
-            polygons,
+        brres, polygons = self.get_brres_polygons(brres_name, mdl0_name, include, exclude)
+        self.handler.converter.enqueue(convert_obj.VertexColorImporter(
+            brres,
             fname,
+            polygons,
             self.color_widget.color,
             self.overwrite.isChecked()
-        )
+        ))
 

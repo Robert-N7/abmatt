@@ -1,7 +1,6 @@
 import os
 
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QCheckBox, QLineEdit, QPushButton, QComboBox, \
-    QFileDialog
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QFileDialog
 
 from abmatt.brres import Brres
 
@@ -171,3 +170,13 @@ class ConverterWindow(QWidget):
         new = self.exclude_select.currentText()
         current = current + ', ' + new if current else new
         self.exclude_edit.setText(current)
+
+    @staticmethod
+    def get_brres_polygons(brres_name, mdl0_name, include, exclude):
+        brres = Brres.get_brres(brres_name)
+        mdl = brres.get_model(mdl0_name)
+        polygons = [
+            x for x in mdl.objects
+            if (not include or x.name in include) and x.name not in exclude
+        ]
+        return brres, polygons

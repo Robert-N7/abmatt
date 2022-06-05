@@ -18,7 +18,22 @@ from abmatt.image_converter import EncodeError, NoImgConverterError, ImgConverte
 from abmatt.converters import influence
 
 
-class Converter:
+class BaseConverter():
+    def __init__(self, brres, mdl_file):
+        if not brres:
+            d, f = os.path.split(mdl_file)
+            filename = os.path.join(d, os.path.splitext(f)[0] + '.brres')
+            brres = Brres.get_brres(filename, True)
+        elif type(brres) == str:
+            brres = Brres.get_brres(brres, True)
+        self.brres = brres
+        self.mdl_file = mdl_file
+
+    def convert(self):
+        raise NotImplementedError()
+
+
+class Converter(BaseConverter):
     NO_NORMALS = 0x1
     NO_COLORS = 0x2
     SINGLE_BONE = 0x4
@@ -30,22 +45,17 @@ class Converter:
     ENCODE_PRESET = None
     ENCODE_PRESET_ON_NEW = True
 
-    def __init__(self, brres, mdl_file, flags=0, encode=True, mdl0=None, encoder=None,
-                 include=None, exclude=None):
-        if not brres:
-            # filename = Brres.getExpectedBrresFileName(mdl_file)
-            d, f = os.path.split(mdl_file)
-            filename = os.path.join(d, os.path.splitext(f)[0] + '.brres')
-            brres = Brres.get_brres(filename, True)
-        elif type(brres) == str:
-            brres = Brres.get_brres(brres, True)
-        self.brres = brres
+    def __init__(
+        self, brres, mdl_file, flags=0, encode=True, mdl0=None, encoder=None,
+        include=None, exclude=None, uv_channel=None
+    ):
+        super().__init__(brres, mdl_file)
         self.include = include
         self.exclude = exclude
+        self.uv_channel = uv_channel
         self.patch_existing = False
-        self.texture_library = brres.get_texture_map()
-        self.mdl_file = mdl_file
-        self.mdl0 = mdl0 if type(mdl0) == Mdl0 else brres.get_model(mdl0)
+        self.texture_library = self.brres.get_texture_map()
+        self.mdl0 = mdl0 if type(mdl0) == Mdl0 else self.brres.get_model(mdl0)
         self.flags = flags
         self.image_dir = None
         self.replacement_model = None
@@ -282,19 +292,9 @@ class Converter:
 
     def _import_images(self, image_path_map):
         try:
-            return self._try_import_textures(self.brres, image_path_map)
+            return try_import_textures(self.brres, image_path_map)
         except NoImgConverterError as e:
             AutoFix.exception(e)
-
-    @staticmethod
-    def _try_import_textures(brres, image_paths):
-        if len(image_paths):
-            try:
-                converter = ImgConverter()
-                converter.batch_encode(image_paths.values(), brres, overwrite=converter.OVERWRITE_IMAGES)
-            except EncodeError:
-                AutoFix.warn('Failed to encode images')
-        return image_paths
 
     def __get_single_bone_influence(self):
         bone = list(self.bones.values())[0] if len(self.bones) else self.mdl0.bones[0]
@@ -362,6 +362,16 @@ class Converter:
 
     def encode_materials(self):
         raise NotImplementedError()
+
+
+def try_import_textures(brres, image_paths):
+    if len(image_paths):
+        try:
+            converter = ImgConverter()
+            converter.batch_encode(image_paths.values(), brres, overwrite=converter.OVERWRITE_IMAGES)
+        except EncodeError:
+            AutoFix.warn('Failed to encode images')
+    return image_paths
 
 
 def float_to_str(fl):

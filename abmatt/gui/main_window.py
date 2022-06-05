@@ -26,6 +26,7 @@ from abmatt.gui.poly_editor import PolyEditor
 from abmatt import load_config
 from gui.converter_window import ConverterWindow
 from gui.obj_to_vert_color_window import ObjToVertColorWindow
+from gui.uv_converter_window import UvConverterWindow
 
 
 class Window(QMainWindow, ClipableObserver):
@@ -121,15 +122,20 @@ class Window(QMainWindow, ClipableObserver):
         advanced_convert_act.setShortcut('Ctrl+Shift+C')
         advanced_convert_act.setStatusTip('Advanced conversion of models')
         advanced_convert_act.triggered.connect(self.advanced_converter_open)
-        obj_convert_to_vert_color_act = QAction('&OBJ to Vertex Colors', self)
+        obj_convert_to_vert_color_act = QAction('&OBJ Vertex Colors', self)
         obj_convert_to_vert_color_act.setShortcut('Ctrl+Shift+O')
-        obj_convert_to_vert_color_act.setStatusTip('Creates Vertex Colors using OBJ')
+        obj_convert_to_vert_color_act.setStatusTip('Imports/Exports Vertex Colors using OBJ')
         obj_convert_to_vert_color_act.triggered.connect(self.obj_to_vertex_color)
+        obj_convert_uvs_act = QAction('O&BJ UVs Converter', self)
+        obj_convert_uvs_act.setShortcut('Ctrl+Shift+B')
+        obj_convert_uvs_act.setStatusTip('Imports/Exports UVs using OBJ')
+        obj_convert_uvs_act.triggered.connect(self.uv_converter_window_open)
         toolMenu = menu.addMenu('&Tools')
         toolMenu.addAction(shell_Act)
         toolMenu.addAction(kcl_calc_Act)
         toolMenu.addAction(advanced_convert_act)
         toolMenu.addAction(obj_convert_to_vert_color_act)
+        toolMenu.addAction(obj_convert_uvs_act)
 
         # Help
         report_Act = QAction('&Report Issue', self)
@@ -146,6 +152,10 @@ class Window(QMainWindow, ClipableObserver):
         help_menu.addAction(website_Act)
         help_menu.addSeparator()
         help_menu.addAction(about_Act)
+
+    def uv_converter_window_open(self):
+        self.uv_converter_window = UvConverterWindow(self)
+        self.uv_converter_window.show()
 
     def obj_to_vertex_color(self):
         self.obj_to_vert_window = ObjToVertColorWindow(self)
@@ -409,7 +419,8 @@ class Window(QMainWindow, ClipableObserver):
         multiple_models=False,
         include=None,
         exclude=None,
-        flags=0
+        flags=0,
+        uv_channel=None,
     ):
         brres, mdl0 = self.__get_brres_mdl0(fname, brres, mdl0, brres_name, mdl0_name)
         self.cwd, name = os.path.split(fname)
@@ -425,15 +436,19 @@ class Window(QMainWindow, ClipableObserver):
         if multiple_models:
             for x in brres.models:
                 export_name = os.path.join(self.cwd, base_name + '-' + x.name + ext)
-                converter = klass(brres, export_name, encode=False, mdl0=x,
-                                  include=include, exclude=exclude, flags=flags)
+                converter = klass(
+                    brres, export_name, encode=False, mdl0=x,
+                    include=include, exclude=exclude, flags=flags, uv_channel=uv_channel
+                )
                 self.update_status('Added {} to queue...'.format(x.name))
                 self.converter.enqueue(converter)
         else:
             if mdl0 is None:
                 mdl0 = brres.models[0]
-            converter = klass(brres, fname, encode=False, mdl0=mdl0,
-                              include=include, exclude=exclude, flags=flags)
+            converter = klass(
+                brres, fname, encode=False, mdl0=mdl0,
+                include=include, exclude=exclude, flags=flags, uv_channel=uv_channel
+            )
             self.update_status('Added {} to queue...'.format(mdl0.name))
             self.converter.enqueue(converter)
 

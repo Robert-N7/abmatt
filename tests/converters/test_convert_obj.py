@@ -1,6 +1,6 @@
 import numpy as np
 
-from abmatt.converters.convert_obj import ObjConverter, obj_mats_to_vertex_colors, vertex_colors_to_obj
+from abmatt.converters.convert_obj import ObjConverter, UVImporter, VertexColorExporter, VertexColorImporter
 from abmatt.converters.obj import Obj
 from tests.lib import AbmattTest, CheckPositions
 
@@ -42,7 +42,7 @@ class TestConvertObj(AbmattTest):
         original = self._get_brres('simple.brres')
         obj = self._get_test_fname('skp_simple.obj')
         polygon = original.models[0].objects[0]
-        obj_mats_to_vertex_colors([polygon], obj)
+        VertexColorImporter(original, obj, [polygon]).convert()
         decoded = polygon.get_decoded().colors.rgba_colors
         expected = [173, 204, 163, 255]
         self.assertEqual(expected, list(decoded[0]))
@@ -51,7 +51,7 @@ class TestConvertObj(AbmattTest):
         original = self._get_brres('simple.brres')
         polygons = original.models[0].objects
         obj = Obj(self._get_tmp('.obj'), read_file=False)
-        vertex_colors_to_obj(polygons, obj)
+        VertexColorExporter(original, obj, polygons).convert()
         colors = np.array([(*x.diffuse_color, x.dissolve) for x in obj.materials.values()]) * 255
         arr = [x.get_decoded().colors.rgba_colors
             for x in polygons if x.has_color0()]
@@ -70,8 +70,8 @@ class TestConvertObj(AbmattTest):
         expected = [np.sort(np.unique(x.rgba_colors, axis=0))
                     for x in colors]
         obj = self._get_tmp('.obj')
-        vertex_colors_to_obj(polygons, obj)
-        default_amount = obj_mats_to_vertex_colors(polygons, obj, overwrite=True)
+        VertexColorExporter(original, obj, polygons).convert()
+        default_amount = VertexColorImporter(original, obj, polygons, overwrite=True).convert()
         self.assertEqual(default_amount, 0)
         actual = [np.sort(np.unique(x.get_decoded().colors.rgba_colors, axis=0))
                     for x in polygons if x.has_color0()]
@@ -80,3 +80,12 @@ class TestConvertObj(AbmattTest):
                 expected[i],
                 actual[i]
             ))
+
+    def test_import_uvs(self):
+        brres = self._get_brres('simple.brres')
+        obj = self._get_test_fname('skp_simple_uv.obj')
+        polygon = brres.models[0].objects[0]
+        total = UVImporter(brres, obj, [polygon]).convert()
+        self.assertEqual(total, 1)
+        self.assertEqual(polygon.uv_count, 2)
+        brres.save(self._get_tmp())
