@@ -154,7 +154,7 @@ class CheckPositions:
         return v1, v2, mismatched_len
 
     @staticmethod
-    def polygons_equal(poly1, poly2, rtol=-1.e-2, atol=1.e-3):
+    def polygons_equal(poly1, poly2, rtol=-1.e-2, atol=1.e-3, unique=False):
         p1, p2, err = CheckPositions.__pre_process(poly1, poly2, 'polygons')
         if not err:
             for i in range(len(p1)):
@@ -162,20 +162,21 @@ class CheckPositions:
                 t2 = p2[i]
                 n1 = t1.get_normal_group()
                 n2 = t2.get_normal_group()
-                if not (CheckPositions.bones_equal(t1.get_linked_bone(), t2.get_linked_bone(), rtol, atol) and
-                        CheckPositions.positions_equal(t1.get_vertex_group(), t2.get_vertex_group(), rtol, atol,
-                                                       group_name='vertices') and
-                        (not n1 or not n2 or CheckPositions.positions_equal(n1, n2,
-                                                       group_name='normals')) and
-                        all(CheckPositions.positions_equal(t1.get_uv_group(x), t2.get_uv_group(x), rtol, atol,
-                                                           group_name='uvs')
-                            for x in range(8))
+                if not (CheckPositions.bones_equal(t1.get_linked_bone(), t2.get_linked_bone(), rtol, atol)
+                        and CheckPositions.positions_equal(
+                            t1.get_vertex_group(), t2.get_vertex_group(), rtol, atol, group_name='vertices',
+                            unique=unique
+                        )
+                        and (not n1 or not n2 or CheckPositions.positions_equal(
+                            n1, n2, group_name='normals', unique=unique
+                        ))
+                        and all(CheckPositions.positions_equal(
+                            t1.get_uv_group(x), t2.get_uv_group(x), rtol, atol, group_name='uvs', unique=unique
+                        ) for x in range(8))
                         and CheckPositions.colors_equal(t1.get_color_group(), t2.get_color_group())):
                     print(f'polygons {t1.name} != {t2.name}')
                     err = True
         return not err
-
-
 
     @staticmethod
     def colors_equal(colr1, colr2, rtol=1.e-2, atol=1.e-3):
@@ -196,8 +197,8 @@ class CheckPositions:
                     print('Color {} length does not match count!'.format(colr1.name))
                 if len(decoded_c2) != colr2.count:
                     print('Color {} length does not match count!'.format(colr2.name))
-                decoded_c2 = sorted(decoded_c2, key=lambda x: tuple(x))
-                decoded_c1 = sorted(decoded_c1, key=lambda x: tuple(x))
+                decoded_c2 = np.sort(np.unique(decoded_c2))
+                decoded_c1 = np.sort(np.unique(decoded_c1))
                 current_err = False
                 for j in range(min(len(decoded_c2), len(decoded_c1))):
                     if not np.isclose(decoded_c1[j], decoded_c2[j], rtol, atol).all():
@@ -208,8 +209,8 @@ class CheckPositions:
         return not err
 
     @staticmethod
-    def model_equal(mdl1, mdl2, rtol=1.e-2, atol=1.e-3):
-        return CheckPositions.polygons_equal(mdl1.objects, mdl2.objects, rtol, atol)
+    def model_equal(mdl1, mdl2, rtol=1.e-2, atol=1.e-3, unique=False):
+        return CheckPositions.polygons_equal(mdl1.objects, mdl2.objects, rtol, atol, unique)
 
     @staticmethod
     def bones_equal(bone_list1, bone_list2, rtol=1.e-2, atol=1.e-3):
@@ -230,18 +231,18 @@ class CheckPositions:
                     err = True
                 if b1.b_parent or b2.b_parent:
                     if b1.b_parent.name != b2.b_parent.name:
-                        print('Bones {}, {} have different parents {}, {}'.format(b1.name, b2.name,
-                                                                                  b1.b_parent.name, b2.b_parent.name))
+                        print('Bones {}, {} have different parents {}, {}'.format(
+                            b1.name, b2.name, b1.b_parent.name, b2.b_parent.name
+                        ))
                         err = True
         return not err
 
     @staticmethod
     def pos_eq_helper(points1, points2, v1_name, v2_name, rtol, atol, err_points):
         if points1.shape != points2.shape:
-            print('points {} and {} have different shapes {} and {}'.format(v1_name,
-                                                                            v2_name,
-                                                                            points1.shape,
-                                                                            points2.shape))
+            print('points {} and {} have different shapes {} and {}'.format(
+                v1_name, v2_name, points1.shape, points2.shape
+            ))
             return False
         if not len(points1):
             return True
@@ -253,31 +254,37 @@ class CheckPositions:
         return not current_err
 
     @staticmethod
-    def positions_equal(vertices1, vertices2, rtol=1.e-2, atol=1.e-3, group_name='points'):
+    def positions_equal(vertices1, vertices2, rtol=1.e-2, atol=1.e-3, group_name='points',
+                        unique=False):
         """Checks if the vertices are the same"""
         vertices1, vertices2, err = CheckPositions.__pre_process(vertices1, vertices2, group_name)
         if not vertices1 or not vertices2:
             return not err
+        num_places = len(str(atol)) - 1
         if not err:
             # Check each vertex group
             for k in range(len(vertices1)):
                 v1_decoded = vertices1[k].get_decoded()
                 v2_decoded = vertices2[k].get_decoded()
-                points1 = np.array(sorted(v1_decoded, key=lambda x: tuple(np.around(x, 2))))
-                points2 = np.array(sorted(v2_decoded, key=lambda x: tuple(np.around(x, 2))))
+                points1 = np.array(sorted(v1_decoded, key=lambda x: tuple([round(p, num_places) for p in x])))
+                points2 = np.array(sorted(v2_decoded, key=lambda x: tuple([round(p, num_places) for p in x])))
+                if unique:
+                    points1 = np.unique(np.around(points1, num_places))
+                    points2 = np.unique(np.around(points2, num_places))
                 errs = []
                 current_err = False
-                if not CheckPositions.pos_eq_helper(points1, points2, vertices1[k].name, vertices2[k].name,
-                                                    rtol, atol, errs):
+                if not CheckPositions.pos_eq_helper(
+                    points1, points2, vertices1[k].name, vertices2[k].name, rtol, atol, errs
+                ):
                     if errs:
                         p1 = np.array(sorted([points1[z] for z in errs], key=lambda x: tuple(x)))
                         p2 = np.array(sorted([points2[z] for z in errs], key=lambda x: tuple(x)))
-                        if CheckPositions.pos_eq_helper(p1, p2,
-                                                     vertices1[k].name, vertices2[k].name, rtol, atol, []):
+                        if CheckPositions.pos_eq_helper(
+                                p1, p2, vertices1[k].name, vertices2[k].name, rtol, atol, []
+                        ):
                             continue
                     for x in errs:
                         print('Points mismatch at {} Expected {}, found {} '.format(x, points1[x], points2[x]))
-
                     err = current_err = True
                 if current_err:
                     print('{} and {} mismatch'.format(vertices1[k].name, vertices2[k].name))

@@ -81,7 +81,6 @@ class Polygon(Clipable):
         super(Polygon, self).__init__(name, parent, binfile)
 
     def __eq__(self, other):
-        x = type(other)
         return super().__eq__(other) and self.encode_str == other.encode_str and self.face_count == other.face_count \
                and self.weight_index == other.weight_index and self.vertex_index == other.vertex_index \
                and self.normal_index == other.normal_index and self.color0_index == other.color0_index \

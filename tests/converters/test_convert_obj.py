@@ -44,7 +44,7 @@ class TestConvertObj(AbmattTest):
         polygon = original.models[0].objects[0]
         obj_mats_to_vertex_colors([polygon], obj)
         decoded = polygon.get_decoded().colors.rgba_colors
-        expected = [148, 165, 91, 255]
+        expected = [173, 204, 163, 255]
         self.assertEqual(expected, list(decoded[0]))
 
     def test_create_obj_from_colors(self):
