@@ -3,6 +3,7 @@ import platform
 import sys
 import traceback
 import webbrowser
+import OpenGL
 
 from PyQt5.QtCore import QThreadPool
 from PyQt5.QtGui import QIcon

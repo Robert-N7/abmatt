@@ -19,6 +19,7 @@ REQUIREMENTS = [
     'PyQt5',
     'lxml',
     'pyqtgraph',
+    'PyOpenGL'
 ]
 
 # some more details

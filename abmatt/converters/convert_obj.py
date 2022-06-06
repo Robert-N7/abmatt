@@ -210,7 +210,7 @@ class VertexColorImporter(BaseConverter):
                     new_colors_arr.append(t)
                 fp_row.append(index)
             fp.append(fp_row)
-        decoded.colors = ColorCollection(np.array(new_colors_arr), np.array(fp), normalize=True)
+        decoded.colors = ColorCollection(np.array(new_colors_arr), np.array(fp, np.uint), normalize=True)
         if failed:
             AutoFix.warn(f'Failed to find vertices and used default color {failed} times.')
         return failed
@@ -359,7 +359,7 @@ class UVImporter(BaseConverter):
             else:
                 nfi = new_uvs.face_indices[m[(t2, t3, t1)]]
                 fi.append((nfi[2], nfi[0], nfi[1]))
-        new_uvs.face_indices = np.array(fi)
+        new_uvs.face_indices = np.array(fi, dtype=np.uint)
 
     def convert(self):
         obj = self.mdl_file
