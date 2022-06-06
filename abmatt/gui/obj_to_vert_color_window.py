@@ -1,9 +1,8 @@
 from PyQt5.QtWidgets import QLabel, QHBoxLayout, QWidget, QCheckBox
 
-from brres import Brres
-from converters import convert_obj
-from gui.color_widget import ColorWidget
-from gui.converter_window import ConverterWindow
+from abmatt.converters import convert_obj
+from abmatt.gui.color_widget import ColorWidget
+from abmatt.gui.converter_window import ConverterWindow
 
 
 class ObjToVertColorWindow(ConverterWindow):

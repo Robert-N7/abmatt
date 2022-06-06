@@ -3,6 +3,7 @@ from datetime import datetime
 import numpy as np
 from lxml import etree
 
+from abmatt import __version__
 from abmatt.converters.colors import ColorCollection
 from abmatt.converters.controller import Controller
 from abmatt.converters.convert_lib import float_to_str
@@ -597,7 +598,7 @@ class Dae:
     def __initialize_assets(self, root):
         asset = XMLNode('asset', parent=root)
         contributor = XMLNode('contributor', parent=asset)
-        authoring_tool = XMLNode('authoring_tool', 'ABMATT COLLADA exporter v1.3.1', parent=contributor)
+        authoring_tool = XMLNode('authoring_tool', 'ABMATT COLLADA exporter ' + __version__, parent=contributor)
         time_stamp = datetime.now()
         created = XMLNode('created', str(time_stamp), parent=asset)
         modified = XMLNode('modified', str(time_stamp), parent=asset)

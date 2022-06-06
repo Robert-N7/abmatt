@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QCheckBox
 
-from converters.convert_lib import Converter
-from gui.converter_window import ConverterWindow
+from abmatt.converters.convert_lib import Converter
+from abmatt.gui.converter_window import ConverterWindow
 
 
 class AdvancedConverterWindow(ConverterWindow):

@@ -1,3 +1,4 @@
+from copy import deepcopy
 from struct import pack
 
 import numpy as np
@@ -35,6 +36,14 @@ class Geometry:
         self.has_uv_mtx = None
         self.priority = 0
 
+    def __deepcopy__(self, memodict={}):
+        new = Geometry(self.name, self.material_name, deepcopy(self.vertices), deepcopy(self.texcoords),
+                       deepcopy(self.normals), deepcopy(self.colors), deepcopy(self.triangles),
+                       deepcopy(self.influences), self.linked_bone)
+        new.has_uv_mtx = self.has_uv_mtx
+        new.priority = self.priority
+        return new
+
     def __eq__(self, other):
         return other is not None and type(other) == Geometry and self.name == other.name and \
                self.vertices == other.vertices and self.texcoords == other.texcoords and self.colors == other.colors \
@@ -65,8 +74,9 @@ class Geometry:
         points = self.vertices.points
         points[:, [1, 2]] = points[:, [2, 1]]
         points[:, 2] *= -1
-        points = self.normals.points
-        points[:, [1, 2]] = points[:, [2, 1]]
+        if self.normals:
+            points = self.normals.points
+            points[:, [1, 2]] = points[:, [2, 1]]
 
     def apply_linked_bone_bindings(self):
         self.influences.apply_world_position(np.array(self.vertices))
@@ -87,7 +97,9 @@ class Geometry:
 
     def recode(self, original):
         original.before_recode()
-        return self.__encode(original)
+        p = self.__encode(original)
+        p.after_recode()
+        return p
 
     def __encode(self, polygon):
         mdl = polygon.parent
@@ -115,8 +127,8 @@ class Geometry:
         polygon.encode_str = self.fmt_str
         material = mdl.get_material_by_name(self.material_name)
         if self.colors and self.ENABLE_VERTEX_COLORS:
-            AutoFix.info('{} has colors, enabled vertex color in light channel.'.format(self.name))
-            material.enable_vertex_color()
+            if material.enable_vertex_color():
+                AutoFix.info('{} has colors, enabled vertex color in light channel.'.format(self.name))
         self.encoded = polygon
         return polygon
 

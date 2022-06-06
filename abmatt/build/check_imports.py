@@ -23,7 +23,7 @@ class ImportChecker:
             new_data = []
             for i in range(len(data)):
                 line = data[i]
-                match = re.search('(from (?P<from>\.?\w+)(\.\w+)* )?import (?P<imported>\w+).*', line)
+                match = re.search('^\s*(from (?P<from>\.?\w+)(\.\w+)* )?import (?P<imported>\w+).*', line)
                 new_line = None
                 if match:
                     d = match.groupdict()

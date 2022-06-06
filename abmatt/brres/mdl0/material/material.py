@@ -1006,6 +1006,8 @@ class Material(Clipable):
     def enable_vertex_color(self, enable=True):
         if self.lightChannels[0].enable_vertex_color(enable):
             self.mark_modified()
+            return True
+        return False
 
     def get_material_color(self):
         return self.lightChannels[0].materialColor

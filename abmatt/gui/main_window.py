@@ -9,6 +9,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMainWindow, QApplication, QAction, QFileDialog, QVBoxLayout, QHBoxLayout, \
     QWidget, QPlainTextEdit, QMessageBox, QSizePolicy
 
+from abmatt import __version__
 from abmatt.autofix import AutoFix
 from abmatt.brres.brres import Brres
 from abmatt.brres.lib.node import ClipableObserver
@@ -24,9 +25,9 @@ from abmatt.gui.logger_pipe import LoggerPipe
 from abmatt.gui.material_browser import MaterialTabs
 from abmatt.gui.poly_editor import PolyEditor
 from abmatt import load_config
-from gui.converter_window import ConverterWindow
-from gui.obj_to_vert_color_window import ObjToVertColorWindow
-from gui.uv_converter_window import UvConverterWindow
+from abmatt.gui.advanced_converter_window import AdvancedConverterWindow
+from abmatt.gui.obj_to_vert_color_window import ObjToVertColorWindow
+from abmatt.gui.uv_converter_window import UvConverterWindow
 
 
 class Window(QMainWindow, ClipableObserver):
@@ -119,7 +120,7 @@ class Window(QMainWindow, ClipableObserver):
         kcl_calc_Act.setStatusTip('KCL Flag Calculator')
         kcl_calc_Act.triggered.connect(self.open_kcl_calculator)
         advanced_convert_act = QAction('&Advanced Converter', self)
-        advanced_convert_act.setShortcut('Ctrl+Shift+C')
+        advanced_convert_act.setShortcut('Ctrl+Shift+A')
         advanced_convert_act.setStatusTip('Advanced conversion of models')
         advanced_convert_act.triggered.connect(self.advanced_converter_open)
         obj_convert_to_vert_color_act = QAction('&OBJ Vertex Colors', self)
@@ -162,7 +163,7 @@ class Window(QMainWindow, ClipableObserver):
         self.obj_to_vert_window.show()
 
     def advanced_converter_open(self):
-        self.advanced_converter_window = ConverterWindow(self)
+        self.advanced_converter_window = AdvancedConverterWindow(self)
         self.advanced_converter_window.show()
 
     def open_website(self):
@@ -174,7 +175,7 @@ class Window(QMainWindow, ClipableObserver):
     def about_abmatt(self):
         self.box = QMessageBox()
         bit_size = '64-Bit' if sys.maxsize > 2 ** 32 else '32-Bit'
-        self.box.setText(f'ABMatt Version {load_config.VERSION} {platform.platform()} {bit_size}')
+        self.box.setText(f'ABMatt Version {__version__} {platform.platform()} {bit_size}')
         self.box.setWindowTitle('ABMatt')
         self.box.show()
 

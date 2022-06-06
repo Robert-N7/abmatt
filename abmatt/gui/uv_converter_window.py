@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QHBoxLayout, QWidget, QLineEdit, QSpinBox, QLabel, QCheckBox
 
-from converters import convert_obj
-from gui.converter_window import ConverterWindow
+from abmatt.converters import convert_obj
+from abmatt.gui.converter_window import ConverterWindow
 
 
 class UvConverterWindow(ConverterWindow):

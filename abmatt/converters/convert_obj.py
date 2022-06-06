@@ -11,8 +11,8 @@ from abmatt.converters.convert_lib import Converter, try_import_textures, BaseCo
 from abmatt.converters.geometry import Geometry
 from abmatt.converters.material import Material
 from abmatt.converters.obj import Obj, ObjGeometry, ObjMaterial
-from converters.colors import ColorCollection
-from converters.points import PointCollection
+from abmatt.converters.colors import ColorCollection
+from abmatt.converters.points import PointCollection
 
 
 class ObjConverter(Converter):

@@ -63,7 +63,7 @@ class Polygon(Clipable):
                 if self.visible_bone is not self.linked_bone:
                     parent.add_bone(self.linked_bone)
                 parent.update_polygon_material(self, self.material, other.material)
-        else:   # parent is same
+        else:  # parent is same
             self.visible_bone = other.visible_bone
             self.linked_bone = other.linked_bone
 
@@ -301,3 +301,7 @@ class Polygon(Clipable):
         self.parent.remove_colors(self)
         self.parent.remove_uvs(self)
         self.__reset()
+
+    def after_recode(self):
+        """Only call after recoding"""
+        self.mark_modified()

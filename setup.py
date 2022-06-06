@@ -3,13 +3,23 @@ import os
 
 import setuptools
 from setuptools import setup
+from abmatt import __version__
 
 # reading long description from file
 with open('README.md') as file:
     long_description = file.read()
 
 
-REQUIREMENTS = ['fuzzywuzzy', 'python-Levenshtein', 'numpy', 'pillow', 'colorama', 'PyQt5', 'lxml']
+REQUIREMENTS = [
+    'fuzzywuzzy',
+    'python-Levenshtein',
+    'numpy',
+    'pillow',
+    'colorama',
+    'PyQt5',
+    'lxml',
+    'pyqtgraph',
+]
 
 # some more details
 CLASSIFIERS = [
@@ -27,7 +37,7 @@ data_files = ['etc/abmatt/config.conf',
 
 # calling the setup function
 setup(name='abmatt',
-      version='1.3.1',
+      version=__version__,
       entry_points={
           'console_scripts': [
               'abmatt = abmatt.__main__:main'

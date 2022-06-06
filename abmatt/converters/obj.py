@@ -3,6 +3,7 @@ import re
 
 import numpy as np
 
+from abmatt import __version__
 from abmatt.autofix import AutoFix
 from abmatt.converters.convert_lib import float_to_str
 from abmatt.converters.points import PointCollection
@@ -146,7 +147,7 @@ class Obj():
         return self.materials.get(name)
 
     def __save_mtllib(self, folder):
-        s = '# Wavefront MTL exported with ABMATT v1.3.1'
+        s = '# Wavefront MTL exported with ABMATT ' + __version__
         materials = self.materials
         for x in materials:
             s += '\n' + materials[x].get_save_str()
@@ -154,7 +155,8 @@ class Obj():
             f.write(s)
 
     def save_obj(self):
-        s = '# Wavefront OBJ exported with ABMATT v1.3.1\n\nmtllib ' + self.mtllib + '\n\n'
+        s = '# Wavefront OBJ exported with ABMATT ' + __version__
+        + '\n\nmtllib ' + self.mtllib + '\n\n'
         vertex_index = 1
         normal_index = 1
         normal_offset = -1
