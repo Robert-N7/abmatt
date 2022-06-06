@@ -45,7 +45,7 @@ class DaeConverterTest(AbmattTest):
         converter.load_model()
         mdl0 = converter.mdl0
         self.assertEqual(len(mdl0.bones), 1)
-        self.assertTrue(CheckPositions.positions_equal(original.models[0].vertices, mdl0.vertices))
+        self.assertTrue(CheckPositions.positions_equal(original.models[0].vertices, mdl0.vertices, unique=True))
 
     def test_convert_single_bind_flip_y_z(self):
         original = self._get_brres('simple_multi_bone_single_bind.brres')
@@ -78,7 +78,7 @@ class DaeConverterTest(AbmattTest):
         }
         for x in mdl0.objects:
             self.assertEqual(expected_linked_bones[x.name], x.linked_bone.name)
-        self.assertTrue(CheckPositions.positions_equal(original.vertices, mdl0.vertices))
+        self.assertTrue(CheckPositions.positions_equal(original.vertices, mdl0.vertices, unique=True))
 
     def test_kuribo_loads(self):
         b = self._get_brres('kuribo.brres')
@@ -157,7 +157,7 @@ class DaeConverterTest(AbmattTest):
         converter = DaeConverter(self._get_tmp('.brres'), fname)
         converter.load_model()
         converter.brres.save(overwrite=True)
-        self.assertTrue(CheckPositions().model_equal(original, converter.mdl0, 0.01, 0.001))
+        self.assertTrue(CheckPositions().model_equal(original, converter.mdl0, 0.01, 0.001, unique=True))
 
     def test_save_multi_bone_as_single_bone(self):
         fname = self._get_tmp('.dae')
@@ -170,10 +170,12 @@ class DaeConverterTest(AbmattTest):
         # converter.brres.save(overwrite=True)
         original = self._get_brres('simple.brres').models[0]
         new = converter.mdl0
-        self.assertTrue(CheckPositions().bones_equal(original.bones, new.bones, 0.01,
-                                                     0.001))
-        self.assertTrue(CheckPositions().positions_equal(original.vertices, new.vertices, 0.01,
-                                                         0.001))
+        self.assertTrue(CheckPositions().bones_equal(
+            original.bones, new.bones, 0.01, 0.001
+        ))
+        self.assertTrue(CheckPositions().positions_equal(
+            original.vertices, new.vertices, 0.1, 0.01, unique=True
+        ))
 
     def test_save_multi_bone_scaled_as_single_bone(self):
         fname = self._get_tmp('.dae')
@@ -184,8 +186,9 @@ class DaeConverterTest(AbmattTest):
         converter = DaeConverter(self._get_tmp('.brres'), fname)
         converter.load_model()
         original = self._get_brres('simple.brres').models[0]
-        self.assertTrue(CheckPositions().positions_equal(original.vertices,
-                                                         converter.mdl0.vertices))
+        self.assertTrue(CheckPositions().positions_equal(
+            original.vertices, converter.mdl0.vertices, unique=True
+        ))
         self.assertNotEqual(original.bones, converter.mdl0.bones)  # should be scaled
 
     def test_save_and_load_multi_bind_equal(self):
@@ -214,7 +217,9 @@ class DaeConverterTest(AbmattTest):
         converter.save_model()
         original = converter.mdl0
         new = DaeConverter(self._get_tmp('.brres'), converter.mdl_file).load_model()
-        self.assertTrue(CheckPositions.positions_equal(original.vertices, new.vertices, rtol=0.1, atol=0.01))
+        self.assertTrue(CheckPositions.positions_equal(
+            original.vertices, new.vertices, rtol=0.1, atol=0.1
+        ))
         self.assertTrue(CheckPositions.bones_equal(original.bones, new.bones))
 
     def test_save_and_load_polygons_bound_to_single_material(self):

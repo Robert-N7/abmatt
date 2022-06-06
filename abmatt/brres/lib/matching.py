@@ -80,10 +80,11 @@ def validInt(str, min=-0x7fffffff, max=0x7fffffff):
 
 def it_eq(x, y):
     """determines if iterable is equal"""
-    x_type = type(x)
-    y_type = type(y)
-    if x_type != tuple and x_type != list or y_type != tuple and y_type != list:
-        return x == y   # default comparison
+    try:
+        iter(x)
+        iter(y)
+    except TypeError:
+        return x == y
     if len(x) != len(y):
         return False
     # recursively compare, in case of nested iterables

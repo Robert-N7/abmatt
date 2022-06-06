@@ -3,25 +3,26 @@ import re
 
 import numpy as np
 
+from abmatt import __version__
 from abmatt.autofix import AutoFix
 from abmatt.converters.convert_lib import float_to_str
 from abmatt.converters.points import PointCollection
 
 
 class ObjMaterial:
-    def __init__(self, name):
+    def __init__(self, name, diffuse_color=(0.5, 0.5, 0.5), diffuse_map=None, dissolve=1):
         self.name = name
         self.ambient_map = None
-        self.diffuse_map = None
+        self.diffuse_map = diffuse_map
         self.specular_map = None
         self.specular_highlight_map = None
         self.alpha_map = None
         self.displacement_map = None
         self.ambient_color = (0.5, 0.5, 0.5)
-        self.diffuse_color = (0.5, 0.5, 0.5)
+        self.diffuse_color = diffuse_color
         self.specular_color = (0.33, 0.33, 0.33)
         self.specular_highlight = 0
-        self.dissolve = 1
+        self.dissolve = dissolve
         self.optical_density = 1.5
         self.illumination = 2
 
@@ -118,7 +119,7 @@ class Obj():
         self.filename = filename
         if read_file:
             self.mtllib = None
-            self.parse_file(filename)
+            self.__parse_file(filename)
             to_remove = []
             for geo in self.geometries:
                 try:
@@ -139,11 +140,14 @@ class Obj():
 
     def save(self):
         folder, name = os.path.split(self.filename)
-        self.save_mtllib(folder)
+        self.__save_mtllib(folder)
         self.save_obj()
 
-    def save_mtllib(self, folder):
-        s = '# Wavefront MTL exported with ABMATT v1.3.1'
+    def get_material(self, name):
+        return self.materials.get(name)
+
+    def __save_mtllib(self, folder):
+        s = '# Wavefront MTL exported with ABMATT ' + __version__
         materials = self.materials
         for x in materials:
             s += '\n' + materials[x].get_save_str()
@@ -151,7 +155,8 @@ class Obj():
             f.write(s)
 
     def save_obj(self):
-        s = '# Wavefront OBJ exported with ABMATT v1.3.1\n\nmtllib ' + self.mtllib + '\n\n'
+        s = '# Wavefront OBJ exported with ABMATT ' + __version__ + \
+            '\n\nmtllib ' + self.mtllib + '\n\n'
         vertex_index = 1
         normal_index = 1
         normal_offset = -1
@@ -203,7 +208,7 @@ class Obj():
         with open(self.filename, 'w') as f:
             f.write(s)
 
-    def parse_words(self, words, geometry):
+    def __parse_words(self, words, geometry):
         start = words.pop(0)
         if start == 'v':
             self.vertices.append([float(x) for x in words])
@@ -238,7 +243,7 @@ class Obj():
         else:
             raise self.ObjParseException('Unknown statement {} {}'.format(start, ' '.join(words)))
 
-    def parse_mtl_words(self, words, material):
+    def __parse_mtl_words(self, words, material):
         first = words.pop(0)
         if 'map' in first:
             map = words[-1]
@@ -275,7 +280,7 @@ class Obj():
             material.displacement_map = words[-1]
             self.images.add(words[-1])
 
-    def parse_mat_lib(self, mat_lib_path):
+    def __parse_mat_lib(self, mat_lib_path):
         material = None
         with open(mat_lib_path) as f:
             data = f.readlines()
@@ -283,12 +288,12 @@ class Obj():
                 if len(line) < 2 or line[0] == '#':
                     continue
                 words = re.split(r"\s+", line.rstrip('\n').strip())
-                new_mat = self.parse_mtl_words(words, material)
+                new_mat = self.__parse_mtl_words(words, material)
                 if new_mat:
                     material = ObjMaterial(new_mat)
                     self.materials[new_mat] = material
 
-    def parse_file(self, filename):
+    def __parse_file(self, filename):
         geometry = None
         self.start_new_geo = False
         with open(filename) as f:
@@ -297,15 +302,17 @@ class Obj():
                 if len(line) < 2 or line[0] == '#':
                     continue
                 words = re.split(r'\s+', line.rstrip('\n').strip())
-                new_geo = self.parse_words(words, geometry)
+                new_geo = self.__parse_words(words, geometry)
                 if new_geo:
                     if not geometry or geometry.name != new_geo:
                         geometry = ObjGeometry(new_geo)
                         self.geometries.append(geometry)
                         self.start_new_geo = True
         if self.mtllib:
+            if not os.path.exists(self.mtllib):
+                self.mtllib = os.path.join(os.path.dirname(filename), self.mtllib)
             try:
-                self.parse_mat_lib(self.mtllib)
+                self.__parse_mat_lib(self.mtllib)
             except FileNotFoundError as e:
                 AutoFix.error(str(e))
 

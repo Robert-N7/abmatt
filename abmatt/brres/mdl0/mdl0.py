@@ -214,35 +214,88 @@ class Mdl0(SubFile):
                 m.paste(new_mat)
                 new_mat = m
         new_mat.add_poly_ref(polygon)
-        old_mat.remove_poly_ref(polygon)
+        if old_mat:
+            old_mat.remove_poly_ref(polygon)
         polygon.material = new_mat
-        if not len(old_mat.polygons):
+        if old_mat and not len(old_mat.polygons):
             self.materials.remove(old_mat)
         # self.mark_modified()
         return new_mat
 
-    def __remove_group_item(self, item, group, if_not_in_group):
-        if item is not None and item not in if_not_in_group:
+    @staticmethod
+    def __remove_group_item(item, group, if_not_in_group):
+        if item is not None and item in group:
+            for x in if_not_in_group:
+                if x is item:
+                    return False
             group.remove(item)
+            return True
+
+    def remove_vertices(self, polygon):
+        result = self.__remove_group_item(
+            polygon.get_vertex_group(),
+            self.vertices,
+            [x.get_vertex_group() for x in self.objects if x is not polygon]
+        )
+        if result:
+            self.rebuild_head = True
+            self.mark_modified()
+        return result
+
+    def remove_normals(self, polygon):
+        result = self.__remove_group_item(
+            polygon.get_normal_group(),
+            self.normals,
+            [x.get_normal_group() for x in self.objects if x is not polygon]
+        )
+        if result:
+            self.rebuild_head = True
+            self.mark_modified()
+        return result
+
+    def remove_colors(self, polygon):
+        result = self.__remove_group_item(
+            polygon.get_color_group(),
+            self.colors,
+            [x.get_color_group() for x in self.objects if x is not polygon]
+        )
+        if result:
+            self.rebuild_head = True
+            self.mark_modified()
+        return result
+
+    def remove_uvs(self, polygon, uvs=None):
+        if not uvs:
+            uvs = [polygon.get_uv_group(i) for i in range(polygon.uv_count)]
+        all_used = []
+        for x in self.objects:
+            if x is not polygon:
+                all_used.extend([x.get_uv_group(i) for i in range(x.uv_count)])
+        result = True
+        removed = False
+        for x in uvs:
+            if not self.__remove_group_item(
+                x,
+                self.uvs,
+                all_used
+            ):
+                result = False
+            else:
+                removed = True
+        if removed:
+            self.mark_modified()
+            self.rebuild_head = True
+        return result
 
     def remove_polygon(self, polygon):
         self.objects.remove(polygon)
         self.rebuild_head = True
         if len(polygon.material.polygons) == 1:
             self.remove_material(polygon.material)
-        self.__remove_group_item(polygon.get_vertex_group(), self.vertices,
-                                 [x.get_vertex_group() for x in self.objects])
-        self.__remove_group_item(polygon.get_normal_group(), self.normals,
-                                 [x.get_normal_group() for x in self.objects])
-        self.__remove_group_item(polygon.get_color_group(), self.colors,
-                                 [x.get_color_group() for x in self.objects])
-        if polygon.uv_count:
-            uv_groups = set()
-            for x in self.objects:
-                for i in range(x.uv_count):
-                    uv_groups.add(x.get_uv_group(i))
-            for i in range(polygon.uv_count):
-                self.__remove_group_item(polygon.get_uv_group(i), self.uvs, uv_groups)
+        self.remove_vertices(polygon)
+        self.remove_normals(polygon)
+        self.remove_colors(polygon)
+        self.remove_uvs(polygon)
         self.mark_modified()
 
     def add_material(self, material):

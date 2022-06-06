@@ -2,6 +2,7 @@ import getopt
 import os
 import sys
 
+from abmatt import __version__
 from abmatt.autofix import AutoFix
 from abmatt.brres import Brres
 from abmatt.brres.lib.matching import validBool, MATCHING, parse_color, validInt
@@ -117,7 +118,6 @@ def load_config(app_dir=None, loudness=None, autofix_level=None):
     return conf
 
 
-VERSION = '1.3.1'
 USAGE = "USAGE: abmatt [command_line][--interactive -f <file> -b <brres-file> -d <destination> --overwrite]"
 
 
@@ -176,7 +176,7 @@ type = 'material' | 'layer' [':' id] | 'shader' | 'stage' [':' id]
 
 For more Help or if you want to contribute visit https://github.com/Robert-N7/abmatt
     '''
-    print(helpstr.format(VERSION))
+    print(helpstr.format(__version__))
     print("{}".format(USAGE))
 
 
@@ -356,6 +356,8 @@ case_sensitive=False            # True|False
                 cmd_args.append('--no-uvs')
             if patch:
                 cmd_args.append('--patch')
+            if moonview:
+                cmd_args.append('--moonview')
         cmds.append(Command(arg_list=cmd_args))
     if command:
         args = [command, type]
@@ -381,6 +383,8 @@ case_sensitive=False            # True|False
                 args.append('--no-uvs')
             if patch:
                 args.append('--patch')
+            if moonview:
+                args.append('--moonview')
         cmds.append(Command(arg_list=args))
     if destination:
         Command.DESTINATION = destination

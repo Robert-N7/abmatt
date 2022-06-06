@@ -236,6 +236,8 @@ class Command:
                     flags |= 8
                 elif lower == 'patch':
                     flags |= 0x10
+                elif lower == 'moonview':
+                    flags |= 0x20
                 elif not self.name:
                     self.name = os.path.normpath(param)
                 else:

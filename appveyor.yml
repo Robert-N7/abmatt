@@ -75,11 +75,11 @@ for:
 
 
 deploy:
-  release: ABMatt v1.3.1
+  release: ABMatt v1.3.2
   description: 'Release description'
   provider: GitHub
   auth_token:
-    secure: 6KTk86aiAEvcI6ogZAbY8iW75JpWLvs2vipWcPfIdWDQKoXsdpzq7tP5Zaq8jdrn
+    secure: EI0LiQ9R33njUgd776KqE7CypD07ckGhRixFjMjhWEAKSRecHBDM69OairVM8Qik
   artifact: Abmatt-zip Abmatt-tar
   draft: true
   prerelease: false

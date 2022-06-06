@@ -3,6 +3,7 @@ from copy import deepcopy
 from abmatt.autofix import AutoFix
 from abmatt.brres.lib.decoder import decode_geometry_group
 from abmatt.brres.lib.node import Node
+from abmatt.brres.lib.matching import it_eq
 
 FMT_UINT8 = 0
 FMT_INT8 = 1
@@ -78,7 +79,7 @@ class Point(Node):
     def __eq__(self, other):
         return super().__eq__(other) and self.count == other.count and self.stride == other.stride \
                and self.divisor == other.divisor and self.format == other.format and self.comp_count == other.comp_count \
-               and self.data == other.data
+               and it_eq(self.data, other.data)
 
     def get_format(self):
         return self.format
