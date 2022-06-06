@@ -20,9 +20,12 @@ def update_version(version):
     if version == get_last_update(version_file):
         print('Version already up to date')
         return 0
-    version_files = ['../../setup.py', '../dist/install-ubu.txt', '../dist/install-win.txt', '../__main__.py', '../dist/Makefile',
+    version_files = ['../../setup.py', '../dist/install-ubu.txt', '../dist/install-win.txt', '../__main__.py',
+                     '../dist/Makefile',
                      'update_version.py', '../dist/make_installer.nsi', '../converters/obj.py', '../converters/dae.py',
-                     '../load_config.py']
+                     '../load_config.py',
+                     '../../appveyor.yml',
+                     ]
     # version_files = ['test.txt']
     rex = re.compile("(v(ersion)?\s*(\:|\=)?\s*(\"|\')?)\d+\.\d+\.\d+", re.IGNORECASE)
     replacement = '\g<1>' + version

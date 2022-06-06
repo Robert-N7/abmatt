@@ -12,8 +12,11 @@ class ColorWidget(QLabel):
     def __init__(self, color=None, text=None, handler=None):
         if color is None:
             color = (0, 0, 0, 0)
-        elif not type(color) == tuple:
+        elif type(color) not in (list, tuple):
             raise RuntimeError('Unexpected type for color {}'.format(type(color)))
+        elif len(color) < 4:
+            color = list(color)
+            color.append(255)
         if text:
             self.has_label = True
         else:
@@ -31,20 +34,22 @@ class ColorWidget(QLabel):
         return ret
 
     def mouseDoubleClickEvent(self, ev):
-        if self.handler:
-            initial = self.color
-            color = QColorDialog.getColor(QColor(initial[0], initial[1], initial[2], initial[3]),
-                                          options=QColorDialog.ShowAlphaChannel)
-            if color.isValid():
-                color = self.get_rgba255(color)
-                if self.handler.on_color_change(self, color):
-                    self.set_color(color)
+        initial = self.color
+        color = QColorDialog.getColor(QColor(initial[0], initial[1], initial[2], initial[3]),
+                                      options=QColorDialog.ShowAlphaChannel)
+        if color.isValid():
+            color = self.get_rgba255(color)
+            if not self.handler or self.handler.on_color_change(self, color):
+                self.set_color(color)
 
     def set_color(self, color):
         if not self.has_label:
-            self.setText(str(color))
+            self.setText(' ' * 4 + ','.join([str(x) for x in color]))
         self.color = color
-        # todo, based on color set foreground
-        s = 'rgba' + str((color[0], color[1], color[2], 255))
-        self.setStyleSheet('QLabel { background-color: ' + s + ' }')
+        tcolor = 'white' if sum(color[:3]) < 128 * 3 else 'black'
+        self.setStyleSheet(
+            f'background-color: rgba{(color[0], color[1], color[2], 255)}; '
+            f'color: {tcolor}; '
+            f'padding: 5px; '
+        )
 

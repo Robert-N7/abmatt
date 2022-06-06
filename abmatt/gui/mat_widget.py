@@ -44,8 +44,8 @@ class MaterialWidget(QWidget, ClipableObserver, ImageObserver):
             self.__update_image(ImageManager.get().get_image_dir(self.material.getBrres()), name)
 
     def __update_image(self, dir, name):
-        if not update_image(self.img_label, dir, name, scale_width=self.w):
-            pass
+        if dir:
+            update_image(self.img_label, dir, name, scale_width=self.w)
 
     def __init__(self, parent, handler=None, material=None, brres_path=None, removable=False, width=64):
         super().__init__(parent)

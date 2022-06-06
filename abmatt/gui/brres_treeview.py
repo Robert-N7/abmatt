@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QTreeView, QMenu, QAction, QInputDialog
 
 from abmatt.autofix import AutoFix
 from abmatt.brres.lib.node import ClipableObserver
+from abmatt.gui.polygon_window import GLPolygonWidget
 
 
 class BrresTreeView(QTreeView):
@@ -16,23 +17,28 @@ class BrresTreeView(QTreeView):
         self.setModel(self.mdl)
         self.clicked.connect(self.on_click)
         self.brres_map = {}
+        self.named_items = {}
+        self.clicked_index = None
+        self.clicked_item = None
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.on_context_click)
         self.setAcceptDrops(True)
         self.setDropIndicatorShown(True)
 
-    @staticmethod
-    def __create_tree_item(linked_item, parent, use_base_name=False):
+    def __create_tree_item(self, linked_item, parent, use_base_name=False):
         item = QLinkedItem(linked_item, use_base_name)
         item.setEditable(False)
         parent.appendRow(item)
+        self.named_items[linked_item.name] = item
         return item
 
     def on_click(self, index):
+        self.clicked_index = index
+        self.clicked_item = self.get_indexed_item(index)
         level, parent = self.get_indexed_level(index, get_parent=True)
         if level == 2:
             if self.handler is not None:
-                self.handler.on_update_polygon(self.get_indexed_item(index))
+                self.handler.on_update_polygon(self.clicked_item)
         self.handler.set_brres(self.get_indexed_item(parent))
 
     @staticmethod
@@ -93,6 +99,10 @@ class BrresTreeView(QTreeView):
         delete = QAction('&Delete', self)
         delete.setStatusTip('Delete Polygon')
         delete.triggered.connect(self.delete_node)
+        view = QAction('&View', self)
+        view.setStatusTip('View Polygon')
+        view.triggered.connect(self.view_polygon)
+        menu.addAction(view)
         menu.addAction(self.__create_rename_action())
         menu.addSeparator()
         menu.addAction(delete)
@@ -106,6 +116,11 @@ class BrresTreeView(QTreeView):
         open.triggered.connect(self.open_file)
         menu.addAction(open)
         menu.addAction(imp)
+
+    def view_polygon(self):
+        polygon = self.get_indexed_item(self.clicked_index)
+        self.view_poly_win = GLPolygonWidget(polygon)
+        self.view_poly_win.show()
 
     def rename(self):
         node = self.get_indexed_item(self.clicked_index)
@@ -173,6 +188,7 @@ class BrresTreeView(QTreeView):
         indexes = self.selectedIndexes()
         if len(indexes) > 0:
             self.clicked_index = indexes[0]
+            self.clicked_item = self.get_indexed_item(self.clicked_index)
             level = self.get_indexed_level(self.clicked_index)
         else:
             self.clicked_index = None
@@ -249,7 +265,6 @@ class BrresTreeView(QTreeView):
             if x is None:
                 return
             self.unlink_tree(x)
-            # i += 1
 
     def on_file_close(self, brres):
         """This is called when closing file"""
@@ -268,10 +283,19 @@ class BrresTreeView(QTreeView):
             self.brres_map[new_name] = item
             self.brres_map[old_name] = None
 
+    def expand_parents(self, index):
+        self.setExpanded(index, True)
+        parent = index.parent()
+        if parent.isValid():
+            self.expand_parents(parent)
+
     def on_brres_update(self, brres):
         """This provides a way to update brres tree (after conversion)"""
         self.on_file_close(brres)
         self.add_brres_tree(brres)
+        if self.clicked_item:
+            index = self.model().indexFromItem(self.named_items[self.clicked_item.name])
+            self.expand_parents(index)
 
 
 class QLinkedItem(QStandardItem, ClipableObserver):

@@ -24,22 +24,8 @@ class Polygon(Clipable):
 
     def paste(self, other):
         parent = self.parent
+        parent_diff = self.parent is not other.parent
         self.tex_e = other.tex_e
-        i = parent.bones.index(other.visible_bone)
-        if i < 0:
-            b = deepcopy(other.visible_bone)
-            parent.add_bone(b)
-        else:
-            b = parent.bones[i]
-        self.visible_bone = b
-        i = parent.bones.index(other.linked_bone)
-        if i < 0:
-            b = deepcopy(other.linked_bone)
-            parent.add_bone(b)
-        else:
-            b = parent.bones[i]
-        self.linked_bone = b
-        parent.update_polygon_material(self, self.material, other.material)
         self.decoded = None
         self.priority = other.priority
         self.vertex_index = other.vertex_index
@@ -49,42 +35,42 @@ class Polygon(Clipable):
         self.uv_indices = deepcopy(other.uv_indices)
         self.weight_index = other.weight_index
         self.uv_mtx_indices = deepcopy(other.uv_mtx_indices)
-        parent.vertices.remove(self.vertices)
         self.vertices = deepcopy(other.vertices)
-        parent.vertices.append(self.vertices)
         self.facepoint_count = other.facepoint_count
         self.face_count = other.face_count
-        for c in self.colors:
-            if c:
-                found = False
-                for poly in parent.objects:
-                    if c in poly.colors:
-                        found = True
-                        break
-                if not found:
-                    parent.colors.remove(c)
         self.colors = deepcopy(other.colors)
-        for c in self.colors:
-            parent.colors.append(c)
         self.color_count = other.color_count
-        parent.normals.remove(self.normals)
         self.normals = deepcopy(other.normals)
-        parent.normals.append(self.normals)
         self.encode_str = other.encode_str
-        for uv in self.uvs:
-            parent.uvs.remove(uv)
         self.uvs = deepcopy(other.uvs)
-        for uv in self.uvs:
-            parent.uvs.append(uv)
         self.uv_count = other.uv_count
         self.data = deepcopy(other.data)
         self.flags = deepcopy(other.flags)
         self.bone_table = deepcopy(other.bone_table)
-        self.fur_vector = other.fur_vector
-        self.fur_coord = other.fur_coord
         self.vertex_e = other.vertex_e
         self.normal_index3 = other.normal_index3
         self.color0_e = other.color0_e
+        if parent:
+            parent.vertices.append(self.vertices)
+            parent.colors.extend([x for x in self.colors if x])
+            parent.uvs.extend([x for x in self.uvs if x])
+            parent.normals.append(self.normals)
+        if parent_diff:
+            self.visible_bone = deepcopy(other.visible_bone)
+            self.linked_bone = deepcopy(other.linked_bone)
+            if parent:
+                parent.add_bone(self.visible_bone)
+                if self.visible_bone is not self.linked_bone:
+                    parent.add_bone(self.linked_bone)
+                parent.update_polygon_material(self, self.material, other.material)
+        else:  # parent is same
+            self.visible_bone = other.visible_bone
+            self.linked_bone = other.linked_bone
+
+    def __deepcopy__(self, memodict={}):
+        p = Polygon(self.name, None)
+        p.paste(self)
+        return p
 
     def __init__(self, name, parent, binfile=None):
         self.tex_e = [1] * 8
@@ -110,7 +96,7 @@ class Polygon(Clipable):
     def __hash__(self):
         return super().__hash__()
 
-    def begin(self):
+    def __reset(self):
         # The face point indices, also indexes into the encode string
         self.vertex_index = -1
         self.normal_index = -1
@@ -120,6 +106,8 @@ class Polygon(Clipable):
         self.weight_index = -1
         self.uv_mtx_indices = [-1] * 8
         self.vertices = None
+        self.linked_bone = None
+        self.decoded = None
         self.facepoint_count = 0
         self.face_count = 0
         self.colors = [None, None]
@@ -129,9 +117,11 @@ class Polygon(Clipable):
         self.uvs = [None] * 8
         self.uv_count = 0
         self.data = None
+
+    def begin(self):
+        self.__reset()
         self.flags = 0
-        self.linked_bone = None
-        self.visible_bone = self.parent.bones[0]
+        self.visible_bone = self.parent.bones[0] if self.parent else None
         self.bone_table = None
         self.fur_vector = None
         self.fur_coord = None
@@ -239,6 +229,8 @@ class Polygon(Clipable):
             verts.add(vertices.name)
             if self.linked_bone:
                 vertices.check_vertices(self.linked_bone)
+        else:
+            AutoFix.warn(f'{self.name} has no vertices!')
         normals = self.get_normal_group()
         if normals:
             norms.add(normals.name)
@@ -301,3 +293,15 @@ class Polygon(Clipable):
 
     def has_normals(self):
         return self.normals is not None
+
+    def before_recode(self):
+        """Should only be called if recoding"""
+        self.parent.remove_vertices(self)
+        self.parent.remove_normals(self)
+        self.parent.remove_colors(self)
+        self.parent.remove_uvs(self)
+        self.__reset()
+
+    def after_recode(self):
+        """Only call after recoding"""
+        self.mark_modified()

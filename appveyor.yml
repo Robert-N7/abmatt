@@ -75,7 +75,7 @@ for:
 
 
 deploy:
-  release: ABMatt v$(APPVEYOR_BUILD_VERSION)
+  release: ABMatt v1.3.2
   description: 'Release description'
   provider: GitHub
   auth_token:
