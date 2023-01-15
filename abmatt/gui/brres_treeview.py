@@ -15,10 +15,9 @@ class BrresTreeView(QTreeView):
         self.handler = parent
         self.mdl = QStandardItemModel()
         self.setModel(self.mdl)
-        self.clicked.connect(self.on_click)
+        self.selectionModel().currentChanged.connect(self.on_current_changed)
         self.brres_map = {}
         self.named_items = {}
-        self.clicked_index = None
         self.clicked_item = None
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.on_context_click)
@@ -32,8 +31,7 @@ class BrresTreeView(QTreeView):
         self.named_items[linked_item.name] = item
         return item
 
-    def on_click(self, index):
-        self.clicked_index = index
+    def on_current_changed(self, index):
         self.clicked_item = self.get_indexed_item(index)
         level, parent = self.get_indexed_level(index, get_parent=True)
         if level == 2:
@@ -118,12 +116,12 @@ class BrresTreeView(QTreeView):
         menu.addAction(imp)
 
     def view_polygon(self):
-        polygon = self.get_indexed_item(self.clicked_index)
+        polygon = self.get_indexed_item(self.currentIndex())
         self.view_poly_win = GLPolygonWidget(polygon)
         self.view_poly_win.show()
 
     def rename(self):
-        node = self.get_indexed_item(self.clicked_index)
+        node = self.get_indexed_item(self.currentIndex())
         if self.level == 0:
             self.handler.save_as_dialog()
         elif self.level == 1:
@@ -146,7 +144,7 @@ class BrresTreeView(QTreeView):
                 node.rename(text)
 
     def delete_node(self):
-        node = self.get_indexed_item(self.clicked_index)
+        node = self.get_indexed_item(self.currentIndex())
         if self.level == 1:
             node.parent.remove_mdl0(node.name)
             self.on_brres_update(node.parent)
@@ -159,18 +157,18 @@ class BrresTreeView(QTreeView):
 
     def import_file(self):
         if self.level > 0:
-            self.handler.import_file_dialog(mdl0=self.get_indexed_item(self.clicked_index))
+            self.handler.import_file_dialog(mdl0=self.get_indexed_item(self.currentIndex()))
         else:
-            self.handler.import_file_dialog(self.get_indexed_item(self.clicked_index))
+            self.handler.import_file_dialog(self.get_indexed_item(self.currentIndex()))
 
     def export_file(self):
         if self.level > 0:
-            self.handler.export_file_dialog(mdl0=self.get_indexed_item(self.clicked_index))
+            self.handler.export_file_dialog(mdl0=self.get_indexed_item(self.currentIndex()))
         else:
-            self.handler.export_file_dialog(self.get_indexed_item(self.clicked_index))
+            self.handler.export_file_dialog(self.get_indexed_item(self.currentIndex()))
 
     def close_file(self):
-        self.handler.close_file(self.get_indexed_item(self.clicked_index))
+        self.handler.close_file(self.get_indexed_item(self.currentIndex()))
 
     def start_context_menu(self, position, level):
         menu = QMenu()
@@ -187,11 +185,9 @@ class BrresTreeView(QTreeView):
     def on_context_click(self, position):
         indexes = self.selectedIndexes()
         if len(indexes) > 0:
-            self.clicked_index = indexes[0]
-            self.clicked_item = self.get_indexed_item(self.clicked_index)
-            level = self.get_indexed_level(self.clicked_index)
+            self.clicked_item = self.get_indexed_item(self.currentIndex())
+            level = self.get_indexed_level(self.currentIndex())
         else:
-            self.clicked_index = None
             level = -1
         self.level = level
         self.start_context_menu(position, level)
